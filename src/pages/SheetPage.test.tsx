@@ -924,6 +924,7 @@ describe('modes, undo and redo', () => {
       open('asax');
       await user.click(screen.getByRole('radio', { name: mode }));
       await clickEvent(tied);
+      sheet().focus();   // in Chords mode a click focuses the Chord field, where arrows move the caret
       await user.keyboard('{ArrowRight}');
       expect(selected()).toBe(events[k + 1].id);
       expect(events[k + 1].tiedFrom).toBe(true);
@@ -1402,6 +1403,152 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     act(() => { t.dispatchEvent(save); });
     expect(save.defaultPrevented).toBe(true);
     expect(screen.getByText('Saved')).toBeInTheDocument();
+  });
+});
+
+describe('Chords mode', () => {
+  const hit = (id: string) => document.querySelector(`[data-hit="${id}"]`)!;
+  const clickEvent = (id: string) => user.click(hit(id));
+  const selectedId = () => document.querySelector('[data-selected="true"]')?.getAttribute('data-ev') ?? null;
+  const current = () => useApp.getState().doc!;
+  const events = () => current().score.flatMap(b => b.ev);
+  const firstEvent = () => events()[0];
+  const field = () => screen.getByRole('textbox', { name: 'Chord' }) as HTMLInputElement;
+  const panel = () => screen.getByRole('group', { name: 'Chords panel' });
+  /** The chord drawn on the sheet for an event, extensions and bass flattened into one string. */
+  const chordOnSheet = (id: string) => document.querySelector(`[data-ev="${id}"] [data-chord]`)?.textContent ?? null;
+  const chords = async (id: InstId, patch: Partial<Doc> = {}) => {
+    open(id, patch);
+    await user.click(screen.getByRole('radio', { name: 'Chords' }));
+  };
+  const BAD = 'Not a chord we can transpose. Start with a note name A–G.';
+
+  it('check 7: typing Bb shows B♭; F#m7b5/C# is stored and drawn; transposing moves chords', async () => {
+    await chords('fl');
+    const e = firstEvent();
+    await clickEvent(e.id);
+    const f = field();
+    expect(f).toHaveFocus();
+    expect(screen.getByText('b → ♭ and # → ♯ after a note name')).toBeInTheDocument();
+    await user.clear(f);
+    await user.type(f, 'Bb');
+    expect(f).toHaveValue('B♭');
+    await user.clear(f);
+    await user.type(f, 'F#m7b5/C#');
+    expect(f).toHaveValue('F♯m7♭5/C♯');
+    expect(current().chords[e.id]).toMatchObject({ ok: true });
+    expect(chordOnSheet(e.id)).toBe('F♯m7♭5/C♯');
+    act(() => useApp.getState().setShift(current().shift + 2));
+    expect(chordOnSheet(e.id)).toBe('G♯m7♭5/D♯');
+    expect(field()).toHaveValue('G♯m7♭5/D♯');
+  });
+
+  it('prettifying keeps the caret where it was typed', async () => {
+    await chords('fl');
+    await clickEvent(firstEvent().id);
+    const f = field();
+    await user.clear(f);
+    await user.type(f, 'A7');
+    f.setSelectionRange(1, 1);
+    await user.keyboard('b');
+    expect(f).toHaveValue('A♭7');
+    expect(f.selectionStart).toBe(2);
+  });
+
+  it('chords on rests and tied notes; empty removes; invalid stays red with the message', async () => {
+    const d = sampleDoc('fl');
+    const all = derive(d, DEFAULT_PREFS).events;
+    const cont = all.find(x => x.tiedFrom)!;
+    const note = all.find(x => !x.rest && !x.tiedFrom && !x.tieTo && !(x.id in d.chords))!;
+    const restDoc = toggleRest(d, note.id)!;
+    await chords('fl', { score: restDoc.score });
+    await clickEvent(note.id);
+    expect(selectedId()).toBe(note.id);
+    const f = field();
+    expect(f).toHaveValue('');
+    await user.type(f, 'N.C.');
+    expect(within(panel()).getByRole('status')).toHaveTextContent(BAD);
+    expect(f).toHaveAttribute('aria-invalid', 'true');
+    expect(current().chords[note.id]).toMatchObject({ ok: false, raw: 'N.C.' });
+    expect(document.querySelector(`[data-ev="${note.id}"] [data-chord]`)).toHaveAttribute('data-chord', 'bad');
+    await user.clear(f);
+    expect(current().chords[note.id]).toBeUndefined();
+    expect(screen.queryByText(BAD)).toBeNull();
+    expect(f).toHaveAttribute('aria-invalid', 'false');
+    await clickEvent(cont.id);
+    expect(selectedId()).toBe(cont.id);
+    await user.type(field(), 'Dm');
+    expect(current().chords[cont.id]).toMatchObject({ ok: true, raw: 'Dm' });
+    expect(chordOnSheet(cont.id)).toBe('Dm');
+  });
+
+  it('buttons insert at the caret; "( )" puts the caret inside', async () => {
+    await chords('fl');
+    await clickEvent(firstEvent().id);
+    const f = field();
+    expect(within(panel()).getAllByRole('button').map(b => b.getAttribute('aria-label'))).toEqual([
+      'Insert ♭', 'Insert ♯', 'Insert m', 'Insert °', 'Insert ø', 'Insert Δ7', 'Insert 7', 'Insert sus4', 'Insert add9', 'Insert 6', 'Insert /', 'Insert ( )',
+    ]);
+    await user.clear(f);
+    await user.type(f, 'C');
+    await user.click(within(panel()).getByRole('button', { name: 'Insert ( )' }));
+    expect(f).toHaveValue('C()');
+    expect(f).toHaveFocus();
+    expect(f.selectionStart).toBe(2);
+    await user.keyboard('9');
+    expect(f).toHaveValue('C(9)');
+    f.setSelectionRange(4, 4);
+    await user.click(within(panel()).getByRole('button', { name: 'Insert Δ7' }));
+    expect(f).toHaveValue('C(9)Δ7');
+    expect(f).toHaveFocus();
+    expect(f.selectionStart).toBe(6);
+    f.setSelectionRange(1, 1);
+    await user.click(within(panel()).getByRole('button', { name: 'Insert ♯' }));
+    expect(f).toHaveValue('C♯(9)Δ7');
+    expect(current().chords[firstEvent().id]).toMatchObject({ ok: true, rest: '(9)Δ7' });
+  });
+
+  it('Enter moves to the next event including rests; one undo step per chord', async () => {
+    const d = sampleDoc('fl');
+    const k = d.score.flatMap(b => b.ev).findIndex((x, j, all) => j > 0 && !(x.id in d.chords) && !(all[j + 1]?.id in d.chords));
+    const all0 = d.score.flatMap(b => b.ev);
+    const restDoc = toggleRest(d, all0[k + 1].id)!;
+    await chords('fl', { score: restDoc.score });
+    const [a, rest, after] = [all0[k], all0[k + 1], all0[k + 2]];
+    await clickEvent(a.id);
+    await user.type(field(), 'G{Enter}');
+    expect(selectedId()).toBe(rest.id);
+    expect(field()).toHaveFocus();
+    await user.type(field(), 'C7{Tab}');
+    expect(selectedId()).toBe(after.id);
+    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    expect(selectedId()).toBe(rest.id);
+    expect(field()).toHaveValue('C7');
+    await user.keyboard('{Control>}z{/Control}');
+    expect(current().chords[rest.id]).toBeUndefined();
+    expect(field()).toHaveValue('');
+    expect(current().chords[a.id]).toMatchObject({ raw: 'G' });
+    await user.keyboard('{Control>}z{/Control}');
+    expect(current().chords[a.id]).toBeUndefined();
+    expect(useApp.getState().past).toHaveLength(0);
+    await user.keyboard('{Escape}');
+    expect(selectedId()).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Chords panel' })).toBeNull();
+  });
+
+  it('at the first and last event Tab leaves the panel', async () => {
+    await chords('fl');
+    const all = events();
+    await clickEvent(all[0].id);
+    const back = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    act(() => { field().dispatchEvent(back); });
+    expect(back.defaultPrevented).toBe(false);
+    await clickEvent(all[all.length - 1].id);
+    const on = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    act(() => { field().dispatchEvent(on); });
+    expect(on.defaultPrevented).toBe(false);
+    await user.keyboard('{Enter}');
+    expect(selectedId()).toBe(all[all.length - 1].id);
   });
 });
 

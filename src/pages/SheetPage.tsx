@@ -18,6 +18,7 @@ import { listEntries } from '../state/library';
 import { canRedo, canUndo, saveStatus, useApp } from '../state/store';
 import AltFingeringPopover, { popoverWidth } from '../ui/AltFingeringPopover';
 import Banners from '../ui/Banners';
+import ChordPanel from '../ui/ChordPanel';
 import BulkCard from '../ui/BulkCard';
 import { downloadText } from '../ui/download';
 import FileMenu from '../ui/FileMenu';
@@ -411,6 +412,10 @@ function Sheet({ doc }: { doc: Doc }) {
     return (
       <div role="group" aria-label={PANEL[mode]} className={s.panel} style={{ left }}>
         {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
+        {mode === 'chords' && (
+          <ChordPanel doc={doc} derived={derived} id={selectedId} focus={fieldFocus === selectedId}
+            onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} />
+        )}
         {mode === 'lyrics' && (
           <LyricPanel doc={doc} id={selectedId} focus={fieldFocus === selectedId} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} />
         )}
