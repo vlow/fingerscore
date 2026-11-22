@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { defaultBuildOptions } from './index';
 import { parseMidi } from './midi';
-import type { ParsedSong, ParsedTrack } from './types';
+import { ImportError, type ParsedSong, type ParsedTrack } from './types';
 
 const demo = () => parseMidi('Auld_Lang_Syne.mid', new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid')));
 
@@ -46,6 +46,12 @@ describe('defaultBuildOptions', () => {
     const o = defaultBuildOptions(s, 'asax', DEFAULT_PREFS);
     expect(o.trackId).toBe('mel');
     expect(o.lyricsFrom).toBe('voice');
+  });
+
+  it('throws an ImportError when no track is usable', () => {
+    const s = song([tr('drums', { percussion: true, notes: line(0, 36, 38) })]);
+    expect(() => defaultBuildOptions(s, 'asax', DEFAULT_PREFS)).toThrow(ImportError);
+    expect(() => defaultBuildOptions(s, 'asax', DEFAULT_PREFS)).toThrow('"x.musicxml" has no melody track.');
   });
 
   it('skips percussion as a chord source', () => {

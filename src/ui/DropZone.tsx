@@ -1,4 +1,4 @@
-import { useId, useState, type ChangeEvent } from 'react';
+import { useId, useState, type ChangeEvent, type DragEvent } from 'react';
 import { ACCEPT, parseFile } from '../import';
 import { ImportError, type ParsedSong } from '../import/types';
 import s from './DropZone.module.css';
@@ -26,10 +26,7 @@ export default function DropZone({ instrumentName, onSong, onContinue }: Props) 
   const titleId = useId();
   const hintId = useId();
 
-  async function onFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    setDrag(false);
-    if (!file) return;
+  async function readFile(file: File) {
     setState({ kind: 'parsing', file: file.name });
     try {
       const song = await parseFile(file);
@@ -40,16 +37,35 @@ export default function DropZone({ instrumentName, onSong, onContinue }: Props) 
     }
   }
 
+  function onChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) void readFile(file);
+  }
+
+  // Drops are handled here in every state, so a file dropped on a result never makes the browser open it.
+  function onDragOver(e: DragEvent) {
+    e.preventDefault();
+    setDrag(true);
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault();
+    setDrag(false);
+    const file = e.dataTransfer.files[0];
+    if (file && state.kind !== 'parsing') void readFile(file);
+  }
+
   const reset = () => setState({ kind: 'idle' });
 
   return (
     <div
       className={s.zone}
       data-drag={drag || undefined}
-      onDragEnter={() => setDrag(true)}
-      onDragOver={() => setDrag(true)}
+      data-testid="drop-zone"
+      onDragEnter={onDragOver}
+      onDragOver={onDragOver}
       onDragLeave={() => setDrag(false)}
-      onDrop={() => setDrag(false)}
+      onDrop={onDrop}
     >
       {state.kind === 'idle' && (
         <>
@@ -71,7 +87,7 @@ export default function DropZone({ instrumentName, onSong, onContinue }: Props) 
           <input
             type="file" accept={ACCEPT} className={s.input}
             aria-labelledby={titleId} aria-describedby={hintId}
-            onChange={onFile}
+            onChange={onChange}
           />
         </>
       )}
@@ -85,7 +101,7 @@ export default function DropZone({ instrumentName, onSong, onContinue }: Props) 
           <div className={s.check}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
           </div>
-          <p className={s.result}>{state.file} — Ready — next you pick the part to play.</p>
+          <p className={s.result} role="status">{state.file} — Ready — next you pick the part to play.</p>
           <div className={s.actions}>
             <button type="button" className={s.primary} onClick={onContinue}>Continue →</button>
             <button type="button" className={s.secondary} onClick={reset}>Choose another file</button>

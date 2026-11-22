@@ -1,11 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { render, screen, within } from '@testing-library/react';
+import { previewTrack, stopPreview } from '../audio/player';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { parseMidi } from '../import/midi';
 import { useApp } from '../state/store';
 import Tracks from './Tracks';
+
+vi.mock('../audio/player', () => ({ previewTrack: vi.fn(), stopPreview: vi.fn() }));
 
 const demo = () => parseMidi('Auld_Lang_Syne.mid', new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid')));
 
@@ -17,7 +20,7 @@ function Probe() {
 const currentPath = () => path;
 
 function renderTracks() {
-  render(
+  return render(
     <MemoryRouter initialEntries={['/tracks']}>
       <Routes>
         <Route path="/tracks" element={<><Tracks /><Probe /></>} />
@@ -31,6 +34,7 @@ const user = userEvent.setup();
 const trackRadios = () => screen.getAllByRole('radio', { name: /^\d · / });
 
 beforeEach(() => {
+  vi.clearAllMocks();
   sessionStorage.clear();
   useApp.setState({ song: demo(), doc: null, instId: 'asax', prefs: DEFAULT_PREFS });
 });
@@ -109,4 +113,23 @@ it('redirects without a song', () => {
   useApp.setState({ song: null });
   renderTracks();
   expect(currentPath()).toBe('/');
+});
+
+it('a song without a usable track lists it disabled and cannot make a sheet', () => {
+  const s = demo();
+  useApp.setState({ song: { ...s, tracks: s.tracks.filter(t => t.percussion) } });
+  renderTracks();
+  const [radio] = trackRadios();
+  expect(radio).toBeDisabled();
+  expect(radio).not.toBeChecked();
+  expect(screen.getByRole('button', { name: /Make the sheet from/ })).toBeDisabled();
+});
+
+it('plays an 8-second preview and stops it on leaving the page', async () => {
+  const view = renderTracks();
+  await user.click(screen.getByRole('button', { name: 'Play a preview of Melody' }));
+  expect(previewTrack).toHaveBeenCalledWith(useApp.getState().song!.tracks[0].notes, 100, 8);
+  expect(stopPreview).not.toHaveBeenCalled();
+  view.unmount();
+  expect(stopPreview).toHaveBeenCalledTimes(1);
 });

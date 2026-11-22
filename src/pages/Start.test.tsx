@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { writeMidi, type MidiEvent } from 'midi-file';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -124,4 +124,30 @@ it('Try a sample loads the demo and goes to the tracks page', async () => {
   await vi.waitFor(() => expect(currentPath()).toBe('/tracks'));
   expect(fetchMock).toHaveBeenCalledWith('/demo/Auld_Lang_Syne.mid');
   expect(useApp.getState().song?.file).toBe('Auld_Lang_Syne.mid');
+});
+
+const drop = (file: File) =>
+  fireEvent.drop(screen.getByTestId('drop-zone'), { dataTransfer: { files: [file], types: ['Files'] } });
+
+it('a file dropped on the ready state is read, not opened by the browser', async () => {
+  renderStart();
+  await user.upload(screen.getByLabelText(/drop a song/i), demoFile());
+  await screen.findByText(/Auld_Lang_Syne.mid — Ready/);
+  expect(fireEvent.dragOver(screen.getByTestId('drop-zone'))).toBe(false);   // false = default prevented
+  expect(drop(new File(['x'], 'tune.abc'))).toBe(false);
+  expect(await screen.findByRole('alert')).toHaveTextContent('"tune.abc" is not a format fingerscore reads yet.');
+});
+
+it('a file dropped on the error state is read', async () => {
+  renderStart();
+  expect(drop(new File(['x'], 'tune.abc'))).toBe(false);
+  await screen.findByRole('alert');
+  expect(drop(demoFile())).toBe(false);
+  expect(await screen.findByText(/Auld_Lang_Syne.mid — Ready/)).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('Ready');
+});
+
+it('subline names the formats version 1 reads', () => {
+  renderStart();
+  expect(screen.getByText(/^Upload a MIDI or MusicXML file\./)).toBeInTheDocument();
 });

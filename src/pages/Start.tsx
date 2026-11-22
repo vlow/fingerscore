@@ -19,7 +19,12 @@ const STEPS = [
 ];
 
 export default function Start() {
-  const { instId, prefs, setInstrument, setPrefs, setSong, setDoc } = useApp();
+  const instId = useApp(st => st.instId);
+  const prefs = useApp(st => st.prefs);
+  const setInstrument = useApp(st => st.setInstrument);
+  const setPrefs = useApp(st => st.setPrefs);
+  const setSong = useApp(st => st.setSong);
+  const setDoc = useApp(st => st.setDoc);
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
@@ -53,8 +58,8 @@ export default function Start() {
       <div className={s.intro}>
         <h1 className={s.h1}>Sheet music with fingering charts for woodwinds</h1>
         <p className={s.lead}>
-          Upload a MIDI, MusicXML or MuseScore file. We transpose it to a key that suits your instrument and add a
-          fingering chart under every note.
+          Upload a MIDI or MusicXML file. We transpose it to a key that suits your instrument and add a fingering chart
+          under every note.
         </p>
       </div>
 

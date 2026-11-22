@@ -4,7 +4,7 @@ import { previewTrack, stopPreview } from '../audio/player';
 import { displayName, inst, noteNameFlat } from '../domain/instruments';
 import { buildDoc } from '../import/buildDoc';
 import { buildOptionsFor, defaultBuildOptions } from '../import';
-import { analyseTracks, type TrackInfo } from '../import/melody';
+import { analyseTracks, usableTracks, type TrackInfo } from '../import/melody';
 import { ImportError, type ParsedSong, type ParsedTrack } from '../import/types';
 import { useApp } from '../state/store';
 import PageBar from '../ui/PageBar';
@@ -47,7 +47,9 @@ export default function Tracks() {
 }
 
 function TrackChooser({ song }: { song: ParsedSong }) {
-  const { instId, prefs, setDoc } = useApp();
+  const instId = useApp(st => st.instId);
+  const prefs = useApp(st => st.prefs);
+  const setDoc = useApp(st => st.setDoc);
   const navigate = useNavigate();
   const instrument = inst(instId);
   const instLabel = displayName(instrument);
@@ -66,7 +68,10 @@ function TrackChooser({ song }: { song: ParsedSong }) {
     });
   }, [song, bandLo]);
 
-  const [opts, setOpts] = useState(() => defaultBuildOptions(song, instId, prefs));
+  // A song without a usable track still lists its rows, all disabled, with nothing to make.
+  const [opts, setOpts] = useState(() => usableTracks(song).length > 0
+    ? defaultBuildOptions(song, instId, prefs)
+    : buildOptionsFor(song, song.tracks[0]?.id ?? '', instId, prefs));
   const [error, setError] = useState<string | null>(null);
 
   const selected = rows.find(r => r.track.id === opts.trackId) ?? rows[0];
@@ -128,7 +133,7 @@ function TrackChooser({ song }: { song: ParsedSong }) {
                   <label className={s.info}>
                     <input
                       type="radio" name="track" className={s.radio} aria-labelledby={nameId}
-                      checked={on} disabled={!r.usable} onChange={() => choose(r.track.id)}
+                      checked={on && r.usable} disabled={!r.usable} onChange={() => choose(r.track.id)}
                     />
                     <span className={s.infoText}>
                       <span className={s.nameLine}>
@@ -173,7 +178,7 @@ function TrackChooser({ song }: { song: ParsedSong }) {
             <section className={s.card} aria-labelledby="selected-h">
               <h2 id="selected-h" className={s.cardTitle}>Selected</h2>
               <div className={s.selectedName}>{selected.num} · {selected.track.name}</div>
-              {selected.info.stats.maxSimultaneous === 1 && !selected.below && (
+              {selected.usable && selected.info.stats.maxSimultaneous === 1 && !selected.below && (
                 <Hint tone="teal" icon="✓">One note at a time — ready for the {instLabel}.</Hint>
               )}
               {selected.info.tags.includes('Chords') && (
@@ -229,7 +234,7 @@ function TrackChooser({ song }: { song: ParsedSong }) {
 
             {error && <p role="alert" className={s.error}>{error}</p>}
 
-            <button type="button" className={s.cta} onClick={make}>
+            <button type="button" className={s.cta} onClick={make} disabled={!selected.usable}>
               Make the sheet from {selected.track.name}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 12h14" /><path d="M13 6l6 6-6 6" />

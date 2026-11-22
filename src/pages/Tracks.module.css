@@ -330,8 +330,14 @@
   cursor: pointer;
 }
 
-.cta:hover {
+.cta:hover:not(:disabled) {
   background: var(--teal-hover);
+}
+
+.cta:disabled {
+  background: var(--ghost);
+  color: var(--ink);
+  cursor: not-allowed;
 }
 
 .secondary {

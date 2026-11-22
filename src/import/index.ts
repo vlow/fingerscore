@@ -51,9 +51,10 @@ export function buildOptionsFor(song: ParsedSong, trackId: string, instId: InstI
   };
 }
 
-/** Options for the recommended track (the first track when none is usable). */
+/** Options for the recommended track. Throws an ImportError when no track is usable. */
 export function defaultBuildOptions(song: ParsedSong, instId: InstId, prefs: Prefs): BuildOptions {
   const infos = analyseTracks(song);
-  const rec = song.tracks.find((_, i) => infos[i].recommended) ?? song.tracks[0];
+  const rec = song.tracks.find((_, i) => infos[i].recommended);
+  if (!rec) throw new ImportError(`"${song.file}" has no melody track.`);
   return buildOptionsFor(song, rec.id, instId, prefs);
 }
