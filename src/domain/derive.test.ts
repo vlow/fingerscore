@@ -20,7 +20,7 @@ describe('derive', () => {
   });
   it('non-transposing header is the written key alone', () => {
     const d = derive(sampleDoc('xc'), DEFAULT_PREFS);
-    expect(d.headerKeys).toBe('C major');
+    expect(d.headerKeys).toBe('F major');
     expect(d.originalKey).toBe('D major');
   });
   it('tied continuations carry no accidental, chart or count', () => {

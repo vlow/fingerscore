@@ -183,3 +183,10 @@ Triplets; editing modes and undo/redo; library, Save, File menu, JSON files, gal
 9. Fingering tables are per chart kind with per-instrument overrides where published charts differ.
 10. A pitch with no published fingering stays empty and goes on a gap list; ranges in `instruments.json` change only on the owner's word.
 11. Acceptance check 5 asserts 78.6 s, not the spec's "≈ 76 s"; a note tied into a first ending is struck anew in the second ending.
+
+## 9. Changes after version 1 (owner decisions, 2026-11-22)
+
+- **Xaphoon easy range.** After seeing both keys as fingerings, the owner chose the low octave: `easyTop = 72` (C5) for both Xaphoons, replacing 79. "The Water Is Wide" on Xaphoon C suggests F major, C4–C5 again (+3, score 11), as in SPEC §16 check 1; Xaphoon B♭ suggests +1. This replaces the values in 5.1, 5.2 and call 14 above.
+- **Xaphoon F♯5.** Two fingerings from the Xaphoon handbook: the G5 fingering with less lip pressure (standard, as the chart prints it) and the high F fingering with more lip pressure.
+- **Flute low C.** The C key alone, following the Woodwind Fingering Guide.
+- **Music glyphs.** All glyphs move from GNU FreeSerif to Bravura (SIL Open Font License); the FreeSerif credit is replaced by a Bravura credit.

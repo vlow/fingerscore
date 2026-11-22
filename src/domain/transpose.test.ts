@@ -19,15 +19,15 @@ it('fixture ids are deterministic and every bar fills its cap', () => {
   for (const b of d.score) expect(b.ev.reduce((n, e) => n + e.d, 0)).toBe(b.cap);
   expect(d).toMatchObject({ timeSig: [4, 4], originalTonicPc: 2, originalMode: 'major', tempo: 100, inst: 'asax', chords: {}, fingering: {} });
   expect(d.shift).toBe(rank('asax')[0].shift);
-  expect(sampleDoc('xc').shift).toBe(10);
+  expect(sampleDoc('xc').shift).toBe(3);
 });
-it('check 1: Xaphoon C suggests C major, G4–G5', () => {
+it('check 1: Xaphoon C suggests F major, C4–C5', () => {
   const r = rank('xc');
-  expect(r.slice(0, 3).map(s => s.shift)).toEqual([10, 3, 5]);
-  expect(r[0]).toMatchObject({ score: 10, bad: 0, ext: 0, upper: 0, min: 67, max: 79, sig: 0 });
+  expect(r.slice(0, 3).map(s => s.shift)).toEqual([3, 5, 6]);
+  expect(r[0]).toMatchObject({ score: 11, bad: 0, ext: 0, upper: 0, min: 60, max: 72, sig: -1 });
   expect(reasonText(r[0], inst('xc'))).toBe('low register only');
 });
-it('check 1b: Xaphoon B♭', () => { expect(rank('xbb').slice(0, 3).map(s => s.shift)).toEqual([8, 1, 3]); });
+it('check 1b: Xaphoon B♭', () => { expect(rank('xbb').slice(0, 3).map(s => s.shift)).toEqual([1, 3, 4]); });
 it('check 2: shift 0 on Xaphoon C has 8 notes below C4', () => {
   expect(evalShift(P(), 0, inst('xc'), 2, 'major', DEFAULT_PREFS).bad).toBe(8);
 });

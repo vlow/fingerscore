@@ -59,8 +59,8 @@ it('check 2: red banner at shift 0 on Xaphoon C, fix button applies the best key
   const alert = screen.getByRole('alert');
   expect(alert).toHaveTextContent('8 notes are below C4 — out of range for the xaphoon');
   expect(alert).toHaveTextContent('Those notes are marked red and have no fingering chart.');
-  await user.click(within(alert).getByRole('button', { name: /Use C major \(\+10\)/ }));
-  expect(useApp.getState().doc!.shift).toBe(10);
+  await user.click(within(alert).getByRole('button', { name: /Use F major \(\+3\)/ }));
+  expect(useApp.getState().doc!.shift).toBe(3);
   expect(screen.queryByRole('alert')).toBeNull();
 });
 
@@ -206,7 +206,7 @@ it('simplified notice', () => {
 
 it('range text', () => {
   open('xc');
-  expect(screen.getByText('This song: G4 – G5 · all playable')).toBeInTheDocument();
+  expect(screen.getByText('This song: C4 – C5 · all playable')).toBeInTheDocument();
 });
 
 it('range meter: the xaphoon has no extended band; the alto sax has one', () => {

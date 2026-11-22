@@ -6,7 +6,7 @@ it('range states', () => {
   const a = inst('asax');
   expect([57, 58, 89, 90, 96, 97].map(w => rangeState(a, w))).toEqual(['bad','ok','ok','ext','ext','bad']);
 });
-it('xaphoon follows the official chart', () => { expect(inst('xbb')).toMatchObject({ lo: 60, hi: 84, ext: 84, easyTop: 79 }); });
+it('xaphoon follows the official chart', () => { expect(inst('xbb')).toMatchObject({ lo: 60, hi: 84, ext: 84, easyTop: 72 }); });
 it('family defaults', () => { expect(FAMILIES.map(familyDefault)).toEqual(['asax','cl','fl','xc','rs']); });
 it('interval text', () => {
   expect(intervalText(inst('asax'))).toBe('Alto sax in E♭: you read a major sixth higher than it sounds');
