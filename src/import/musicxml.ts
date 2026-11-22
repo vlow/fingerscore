@@ -9,8 +9,10 @@ const ROOT_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A'
 const STEP_PC: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const KIND_SUFFIX: Record<string, string> = {
   major: '', minor: 'm', dominant: '7', 'major-seventh': 'maj7', 'minor-seventh': 'm7', diminished: 'dim',
-  augmented: 'aug', 'half-diminished': 'm7♭5', 'suspended-fourth': 'sus4',
+  augmented: 'aug', 'half-diminished': 'm7♭5', 'suspended-fourth': 'sus4', 'diminished-seventh': 'dim7',
+  'major-sixth': '6', 'minor-sixth': 'm6', 'dominant-ninth': '9', 'suspended-second': 'sus2', power: '5', 'major-minor': 'm(maj7)',
 };
+const NO_CHORD = /^n\.?\s*c\.?$/i;
 const BEAT_UNITS: Record<string, number> = { whole: 4, half: 2, quarter: 1, eighth: 0.5, '16th': 0.25 };
 
 interface WrittenKey { tonicPc: number; mode: 'major' | 'minor' | null; transpose: number }
@@ -33,8 +35,13 @@ const num = (s: string | undefined): number | null => {
 
 // ---- container and XML ----
 
+/** UTF-16 by byte-order mark (some Finale and Sibelius exports), else UTF-8. The decoder drops the mark. */
+function decode(b: Uint8Array): string {
+  const label = b[0] === 0xff && b[1] === 0xfe ? 'utf-16le' : b[0] === 0xfe && b[1] === 0xff ? 'utf-16be' : 'utf-8';
+  return new TextDecoder(label).decode(b);
+}
+
 async function readXml(file: string, bytes: Uint8Array): Promise<string> {
-  const decode = (b: Uint8Array) => new TextDecoder('utf-8').decode(b);
   const isZip = bytes.length > 3 && bytes[0] === 0x50 && bytes[1] === 0x4b;
   if (!isZip) return decode(bytes);
   const zip = await JSZip.loadAsync(bytes);
@@ -113,6 +120,7 @@ function chordText(h: Element, transpose: number): string {
   };
   const kind = kid(h, 'kind');
   const kindName = kind?.textContent?.trim() ?? '';
+  if (kindName === 'none' || NO_CHORD.test(kind?.getAttribute('text')?.trim() ?? '')) return '';
   const suffix = kindName in KIND_SUFFIX ? KIND_SUFFIX[kindName] : (kind?.getAttribute('text') ?? '');
   const bassEl = kid(h, 'bass');
   const bass = bassEl ? `/${name(bassEl, 'bass-step', 'bass-alter')}` : '';

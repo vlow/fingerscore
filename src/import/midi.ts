@@ -7,9 +7,17 @@ import { ImportError, type ParsedSong, type ParsedTrack } from './types';
 const PERCUSSION_CHANNEL = 9;
 const DEFAULT_TEMPO = 120;
 const ONSET_TOLERANCE = 1e-6;     // quarter notes
+const LYRIC_REACH = 0.25;         // quarter notes: 3 ticks of 12, the same reach buildDoc uses
 
 type Lyric = { at: number; text: string };
 interface TextLists { lyrics: Lyric[]; texts: Lyric[] }
+
+/** Karaoke conventions: `@` starts a header, a leading `/` or `\` marks a new line or verse. Null: not a syllable. */
+function cleanLyric(raw: string): string | null {
+  if (raw.startsWith('@')) return null;
+  const text = raw.replace(/[\r\n]+$/, '').replace(/^[/\\]+/, '').trim();
+  return text === '' ? null : text;
+}
 
 /** Lyric and text meta events per midi-file track, in quarter notes. Not index-aligned with @tonejs/midi tracks. */
 function readTextLists(bytes: Uint8Array, ppq: number): TextLists[] {
@@ -19,8 +27,9 @@ function readTextLists(bytes: Uint8Array, ppq: number): TextLists[] {
     let tick = 0;
     for (const ev of events) {
       tick += ev.deltaTime;
-      if (ev.type === 'lyrics') out.lyrics.push({ at: tick / ppq, text: ev.text });
-      else if (ev.type === 'text' && ev.text.trim() !== '') out.texts.push({ at: tick / ppq, text: ev.text });
+      if (ev.type !== 'lyrics' && ev.type !== 'text') continue;
+      const text = cleanLyric(ev.text);
+      if (text !== null) (ev.type === 'lyrics' ? out.lyrics : out.texts).push({ at: tick / ppq, text });
     }
     return out;
   });
@@ -36,7 +45,7 @@ function keyFromSignature(key: string, scale: string): { tonicPc: number; mode: 
 }
 
 const onsetCount = (list: Lyric[], notes: { start: number }[]) =>
-  list.filter(l => notes.some(n => Math.abs(n.start - l.at) < ONSET_TOLERANCE)).length;
+  list.filter(l => notes.some(n => Math.abs(n.start - l.at) <= LYRIC_REACH + ONSET_TOLERANCE)).length;
 
 /**
  * Attach each lyric list to the note track whose onsets it matches best (ties: higher share of that track's notes).

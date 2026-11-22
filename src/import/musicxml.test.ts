@@ -70,6 +70,17 @@ describe('parseMusicXml', () => {
     expect(s.tracks[0].notes).toHaveLength(8);
   });
 
+  it('reads UTF-16 files by their byte-order mark', async () => {
+    const source = readFileSync('src/import/fixtures/simple.musicxml', 'utf8').replace('UTF-8', 'UTF-16');
+    const le = new Uint8Array([0xff, 0xfe, ...Buffer.from(source, 'utf16le')]);
+    const be = new Uint8Array([0xfe, 0xff, ...Buffer.from(source, 'utf16le').swap16()]);
+    for (const bytes of [le, be]) {
+      const s = await parseMusicXml('simple16.musicxml', bytes);
+      expect(s.tracks[0].notes).toHaveLength(8);
+      expect(s.tracks[0].lyrics.map(l => l.text)).toEqual(['wat-', 'er']);
+    }
+  });
+
   it('broken XML is refused', async () => {
     const run = parseMusicXml('x.musicxml', new TextEncoder().encode('<score'));
     await expect(run).rejects.toBeInstanceOf(ImportError);
@@ -112,6 +123,14 @@ describe('parseMusicXml', () => {
   it('reads harmony with alter, bass, offset and a kind text fallback, and skips rootless harmonies', async () => {
     const s = await load('harmony.musicxml');
     expect(s.tracks[0].chords).toEqual([{ at: 0, text: 'B♭/D' }, { at: 3, text: 'Csus2' }, { at: 4, text: 'F♯m' }]);
+  });
+
+  it('maps more chord kinds; none and N.C. are no chord', async () => {
+    const h = (kind: string, at: number) => `<harmony><root><root-step>C</root-step></root>${kind}<offset>${at}</offset></harmony>`;
+    const kinds = ['<kind>diminished-seventh</kind>', '<kind>major-sixth</kind>', '<kind>minor-sixth</kind>', '<kind>dominant-ninth</kind>',
+      '<kind>suspended-second</kind>', '<kind>power</kind>', '<kind>major-minor</kind>', '<kind>none</kind>', '<kind text="N.C.">other</kind>', '<kind text="7alt">other</kind>'];
+    const s = await parseMusicXml('k.xml', xml(`${head}${kinds.map((k, i) => h(k, i)).join('')}${n('C', 5, 4)}`));
+    expect(s.tracks[0].chords.map(c => c.text)).toEqual(['Cdim7', 'C6', 'Cm6', 'C9', 'Csus2', 'C5', 'Cm(maj7)', 'C7alt']);
   });
 
   it('a tie written only as <tied> merges', async () => {

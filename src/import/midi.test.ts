@@ -161,8 +161,30 @@ describe('lyric attachment', () => {
   });
 
   it('drops a lyric list that matches no onsets', () => {
-    const bytes = midiBytes([absTrack([...nt(0, 60), ly(100, 'x')])]);
+    const bytes = midiBytes([absTrack([...nt(0, 60), ly(200, 'x')])]);   // 5 ticks of 12 away: beyond the reach
     expect(parseMidi('n.mid', bytes).tracks[0].lyrics).toEqual([]);
+  });
+
+  it('matches lyrics within a sixteenth of an onset, like buildDoc', () => {
+    const bytes = midiBytes([absTrack([...nt(0, 60), ...nt(480, 62), ly(30, 'la'), ly(580, 'di')])]);   // 0.75 and 2.5 ticks late
+    const s = parseMidi('late.mid', bytes);
+    expect(s.tracks[0].lyrics.map(l => l.text)).toEqual(['la', 'di']);
+    const doc = buildDoc(s, { trackId: s.tracks[0].id, keep: 'top', lyricsFrom: s.tracks[0].id, chordsFrom: null, instId: 'asax', prefs: DEFAULT_PREFS });
+    expect(doc.score[0].ev.filter(e => !e.r).map(e => e.l)).toEqual(['la', 'di']);
+  });
+
+  it('cleans karaoke text: skips @ headers, strips / and \\ and line ends, drops empty syllables', () => {
+    const bytes = midiBytes([absTrack([
+      ...nt(0, 60), ...nt(480, 62), ...nt(960, 64), ...nt(1440, 65),
+      ly(0, '@KMIDI KARAOKE FILE', 'text'), ly(0, '@LENGLISH', 'text'),
+      ly(0, 'la ', 'text'), ly(480, '/di', 'text'), ly(960, '\\da\r\n', 'text'), ly(1440, '/', 'text'),
+    ])]);
+    expect(parseMidi('k.kar', bytes).tracks[0].lyrics).toEqual([{ at: 0, text: 'la' }, { at: 1, text: 'di' }, { at: 2, text: 'da' }]);
+  });
+
+  it('cleans lyric events the same way', () => {
+    const bytes = midiBytes([absTrack([...nt(0, 60), ...nt(480, 62), ly(0, 'la\r'), ly(480, ' ')])]);
+    expect(parseMidi('l.mid', bytes).tracks[0].lyrics).toEqual([{ at: 0, text: 'la' }]);
   });
 });
 
