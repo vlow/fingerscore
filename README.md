@@ -32,17 +32,24 @@ A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chord
 | Ctrl/⌘+S | Sheet page | Save |
 | Ctrl/⌘+Z | Sheet page | Undo |
 | Ctrl/⌘+Shift+Z, Ctrl+Y | Sheet page | Redo |
+| ← / → | Every mode, sheet focused | Previous or next note or rest (View and Lyrics skip tied notes; Lyrics also skips rests) |
+| Home / End | Every mode, sheet focused | First or last note or rest |
+| Enter, Space | Every mode, sheet focused | Play from the selection, or stop playback |
+| Esc | Every mode | Clear the selection |
 | ↑ / ↓ | Edit notes, sheet focused | Semitone up or down |
 | Ctrl/⌘+↑ / ↓ | Edit notes | Octave up or down |
 | A–G | Edit notes | Jump to that note name, nearest to the current pitch |
-| ← / → | Edit notes | Previous or next note or rest |
 | 2 3 4 5 6 | Edit notes | Sixteenth, eighth, quarter, half, whole |
 | . | Edit notes | Dot |
 | R | Edit notes | Note or rest |
 | T | Edit notes | Tie |
 | Delete, Backspace | Edit notes | Turn into rest |
-| Enter, Space | Edit notes | Play from the selection |
-| Esc | Edit notes | Clear the selection |
+| Tab | Lyrics and Chords, sheet focused | Go into the Lyric or Chord field |
+| Enter, Tab | Lyric or Chord field | Next note (Lyrics) or next event (Chords) |
+| Shift+Tab | Lyric or Chord field | Previous note or event; at the first one, back to the sheet |
+| Esc | Lyric or Chord field | Clear the selection |
+
+The Edit notes keys follow the key's position on layouts without Latin letters, and on French AZERTY the digits and the dot work with Shift.
 
 ### Saving and files
 
@@ -62,9 +69,7 @@ The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The 
 
 ## What it does not do
 
-- Insert mode, copy and paste, or selecting several notes.
-- Editing repeats and endings, or changing the meter or key signature.
-- More than one verse of lyrics.
+- Editing repeats and endings, or changing the time signature, or the key signature other than by transposing.
 - Scales page.
 - MuseScore (`.mscz`) and ABC import.
 - Triplets.
@@ -73,6 +78,8 @@ The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The 
 - A full accessibility audit.
 
 Later versions plan these.
+
+Not planned yet: insert mode, copy and paste, selecting several notes, and more than one verse of lyrics.
 
 There is no sync between browsers or devices, and none is planned: the app has no server and sends no user data over the network. To move a sheet, use File, then Download JSON, and open the file on the other device.
 

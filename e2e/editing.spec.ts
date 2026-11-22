@@ -23,6 +23,7 @@ const hit = (page: Page, id: string) => page.locator(`[data-hit="${id}"]`);
 const status = (page: Page, text: string) => page.getByRole('status').filter({ hasText: new RegExp(`^${text}$`) });
 const hitIds = (page: Page) => page.locator('[data-hit]').evaluateAll(els => els.map(e => e.getAttribute('data-hit')!));
 const rests = (page: Page) => page.locator('[data-rest]');
+const bars = (page: Page) => page.locator('[data-bar]');
 const lyrics = (page: Page) => page.locator('[data-lyric]').allTextContents();
 /** The key shown for the player (the select labelled "You read", or "Key" for a non-transposing instrument). */
 const keyText = (page: Page) => page.getByRole('combobox', { name: /^(You read|Key)/ }).first().evaluate(el => (el as HTMLSelectElement).selectedOptions[0].text);
@@ -48,29 +49,32 @@ test('edit notes: shorten a note, add a bar, undo both', async ({ page }) => {
   const keyBefore = await keyText(page);
   const restsBefore = await rests(page).count();
   const columnsBefore = (await hitIds(page)).length;
+  const barsBefore = await bars(page).count();
 
   const id = await selectQuarterNote(page);
   const panel = page.getByRole('group', { name: 'Edit notes panel' });
   await panel.getByRole('button', { name: 'Eighth' }).click();
   await expect(panel.getByRole('button', { name: 'Eighth' })).toHaveAttribute('aria-pressed', 'true');
   await expect(rests(page)).toHaveCount(restsBefore + 1);
+  await expect(page.locator('[data-hit]')).toHaveCount(columnsBefore + 1);
   const ids = await hitIds(page);
-  expect(ids).toHaveLength(columnsBefore + 1);
   const next = ids[ids.indexOf(id) + 1];
   await expect(page.locator(`[data-ev="${next}"][data-rest]`).or(page.locator(`[data-ev="${next}"] [data-rest]`))).toHaveCount(1);
   expect(await keyText(page)).toBe(keyBefore);
 
   await page.keyboard.press('Control+Z');
   await expect(rests(page)).toHaveCount(restsBefore);
-  expect(await hitIds(page)).toHaveLength(columnsBefore);
+  await expect(page.locator('[data-hit]')).toHaveCount(columnsBefore);
 
   await expect(panel).toBeVisible();   // the selected note still exists after the undo
   await panel.getByRole('button', { name: '+ Bar after' }).click();
-  expect(await hitIds(page)).toHaveLength(columnsBefore + 1);
+  await expect(bars(page)).toHaveCount(barsBefore + 1);
+  await expect(page.locator('[data-hit]')).toHaveCount(columnsBefore + 1);
   await expect(rests(page)).toHaveCount(restsBefore + 1);
 
   await undoButton(page).click();
-  expect(await hitIds(page)).toHaveLength(columnsBefore);
+  await expect(bars(page)).toHaveCount(barsBefore);
+  await expect(page.locator('[data-hit]')).toHaveCount(columnsBefore);
   await expect(rests(page)).toHaveCount(restsBefore);
   expect(errors).toEqual([]);
 });
@@ -89,7 +93,7 @@ test('keyboard: pitch, rest, redo', async ({ page }) => {
 
   await page.keyboard.press('ArrowUp');
   await expect(page.locator(`[data-ev="${id}"] [data-head]`).first()).not.toHaveAttribute('cy', y0!);
-  expect(await page.locator(`[data-ev="${id}"] [data-chart]`).innerHTML()).not.toBe(chart0);
+  await expect.poll(() => page.locator(`[data-ev="${id}"] [data-chart]`).innerHTML()).not.toBe(chart0);
 
   const restsBefore = await rests(page).count();
   await page.keyboard.press('r');
@@ -115,23 +119,21 @@ test('lyrics: type, bulk fill, restore from file', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(field).toHaveValue('auld');   // the next syllable's own text; typing replaces it
   await field.fill('li');
-  const shown = await lyrics(page);
-  expect(shown.slice(0, 2)).toEqual(['La', 'li']);
+  await expect.poll(async () => (await lyrics(page)).slice(0, 2)).toEqual(['La', 'li']);
 
   await page.getByRole('textbox', { name: 'Type or paste a verse' }).fill('Should auld ac-quain-tance be for-got');
   await hit(page, ids[0]).click();   // the selection moved to note 2; choose note 1 again
   await page.getByRole('button', { name: 'Fill lyrics' }).click();
-  const filled = await lyrics(page);
-  expect(filled.slice(0, 7)).toEqual(['Should', 'auld', 'ac-', 'quain-', 'tance', 'be', 'for-']);
+  await expect.poll(async () => (await lyrics(page)).slice(0, 7)).toEqual(['Should', 'auld', 'ac-', 'quain-', 'tance', 'be', 'for-']);
   // This verse is the sample's own text, so the fill changes nothing against the file. A different verse does.
   await expect(page.getByText('0 edits to lyrics and chords')).toBeVisible();
   await page.getByRole('textbox', { name: 'Type or paste a verse' }).fill('wat-er _ la');
   await page.getByRole('button', { name: 'Fill lyrics' }).click();   // note 1 is still selected
-  expect((await lyrics(page)).slice(0, 2)).toEqual(['wat-', 'er']);
+  await expect.poll(async () => (await lyrics(page)).slice(0, 2)).toEqual(['wat-', 'er']);
   await expect(page.getByText(/^[1-9]\d* edits to lyrics and chords$/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Restore from file' }).click();
-  expect((await lyrics(page))[0]).toBe('Should');
+  await expect.poll(async () => (await lyrics(page))[0]).toBe('Should');
   await expect(page.getByText('0 edits to lyrics and chords')).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -154,8 +156,8 @@ test('chords: type, change instrument, invalid text', async ({ page }) => {
 
   await page.getByLabel(/Fingerings for/).selectOption('cl');
   await expect(page.locator(`[data-ev="${ids[0]}"] [data-chord="ok"]`)).toHaveCount(1);
-  const after = await page.locator(`[data-ev="${ids[0]}"] [data-chord="ok"]`).textContent();
-  expect(after).not.toBe(before);   // a B♭ clarinet reads the chord a whole tone up
+  // a B♭ clarinet reads the chord a whole tone up
+  await expect(page.locator(`[data-ev="${ids[0]}"] [data-chord="ok"]`)).not.toHaveText(before!);
   await expect(page.locator('[data-chord="bad"]')).toHaveCount(0);
 
   await hit(page, ids[1]).click();
