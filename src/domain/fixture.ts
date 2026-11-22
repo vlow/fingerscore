@@ -12,7 +12,7 @@ function sampleScore(): Bar[] {
     cap: b.cap * EIGHTH,
     rs: b.rs,
     re: b.re,
-    volta: b.volta as Bar['volta'],
+    volta: b.volta.replace('.', '') as Bar['volta'], // the file labels endings "1." / "2."
     ev: b.ev.map(e => ({ id: `e${++n}`, m: e.m, d: e.d * EIGHTH, r: e.r, tie: e.tie, l: e.l, c: e.c })),
   }));
 }
