@@ -174,6 +174,32 @@ describe('parseMusicXml', () => {
     expect(both.key).toEqual({ tonicPc: 0, mode: null });
   });
 
+  it('a measure split by a mid-bar repeat stays on the bar grid', async () => {
+    // pickup G | C D E F | G A B :|| (implicit) C ||: D E F G | A B C — the repeat falls on beat 4 of bar 2
+    const m = (no: number, body: string, implicit = false) => `<measure number="${no}"${implicit ? ' implicit="yes"' : ''}>${body}</measure>`;
+    const attrs = '<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>';
+    const fwd = '<barline location="left"><repeat direction="forward"/></barline>';
+    const back = '<barline location="right"><repeat direction="backward"/></barline>';
+    const q = (step: string) => n(step, 5, 1);
+    const s = await parseMusicXml('split.xml', xmlRaw(
+      m(0, attrs + q('G'), true) + m(1, q('C') + q('D') + q('E') + q('F')) + m(2, q('G') + q('A') + q('B') + back)
+      + m(3, fwd + q('C'), true) + m(4, q('D') + q('E') + q('F') + q('G')) + m(5, q('A') + q('B') + q('C') + back)));
+    expect(s.pickup).toBe(1);
+    expect(s.tracks[0].notes.map(x => x.start)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    // bars: 0 = pickup, 1 = [1,5), 2 = [5,9), 3 = [9,13), 4 = [13,17)
+    expect(s.marks).toEqual([{ bar: 2, re: true }, { bar: 3, rs: true }, { bar: 4, re: true }]);
+    const doc = buildDoc(s, opts(s));
+    expect(doc.score).toHaveLength(5);
+    expect(doc.score.slice(0, 4).every(b => b.ev.every(e => !e.r))).toBe(true);
+  });
+
+  it('an ordinary under-full measure keeps the bar grid', async () => {
+    const attrs = '<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>';
+    const s = await parseMusicXml('u.xml', xmlRaw(
+      `<measure number="1">${attrs}${n('C', 5, 4)}</measure><measure number="2">${n('D', 5, 3)}</measure><measure number="3">${n('E', 5, 4)}</measure>`));
+    expect(s.tracks[0].notes.map(x => x.start)).toEqual([0, 4, 8]);
+  });
+
   describe('a key without <mode>', () => {
     const song = (mode: string, notes: string) => parseMusicXml('k.xml', xmlRaw(
       `<measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths>${mode}</key><time><beats>4</beats><beat-type>4</beat-type></time></attributes>${notes}</measure>`));

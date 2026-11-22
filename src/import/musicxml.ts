@@ -134,24 +134,66 @@ function lyricOf(note: Element): string | null {
 
 interface PartResult { key: WrittenKey | null; id: string; name: string; instrument: string; channel: number | null; voices: Map<string, { notes: RawNote[]; lyrics: Lyric[] }>; chords: Lyric[] }
 
-/** Length of the first measure in quarter notes, from the furthest position anything reaches. */
-function firstMeasureExtent(part: Element, divisionsDefault: number): { length: number; implicit: boolean } | null {
-  const m = kid(part, 'measure');
-  if (!m) return null;
-  let divisions = divisionsDefault;
-  let pos = 0;
-  let max = 0;
-  for (const el of Array.from(m.children)) {
-    const dur = (num(text(el, 'duration')) ?? 0) / divisions;
-    if (el.localName === 'attributes') divisions = num(text(el, 'divisions')) ?? divisions;
-    else if (el.localName === 'note') {
-      if (!kid(el, 'chord') && !kid(el, 'grace')) pos += dur;
-    } else if (el.localName === 'forward') pos += dur;
-    else if (el.localName === 'backup') pos -= dur;
-    max = Math.max(max, pos);
-  }
-  return { length: max, implicit: m.getAttribute('implicit') === 'yes' };
+/** Where measures start, in quarter notes, and how bars are laid over them. Shared by all parts. */
+interface Grid {
+  starts: number[]; ends: number[]; pickup: number; barLength: number;
 }
+
+/**
+ * Walk the first part's measures. A measure's extent is the furthest position anything reaches, capped at a bar.
+ * The first measure shorter than a bar is the pickup. A later measure keeps its real extent only when it or a
+ * neighbour other than the pickup is `implicit="yes"` (a bar split by a mid-bar repeat); otherwise it counts as a full bar.
+ */
+function measureGrid(part: Element | undefined, barLength: number, divisionsDefault: number): Grid {
+  const measures = part ? kids(part, 'measure') : [];
+  const implicit = measures.map(m => m.getAttribute('implicit') === 'yes');
+  let divisions = divisionsDefault;
+  const extents = measures.map(m => {
+    let pos = 0;
+    let max = 0;
+    for (const el of Array.from(m.children)) {
+      const dur = (num(text(el, 'duration')) ?? 0) / divisions;
+      if (el.localName === 'attributes') divisions = num(text(el, 'divisions')) ?? divisions;
+      else if (el.localName === 'note') {
+        if (!kid(el, 'chord') && !kid(el, 'grace')) pos += dur;
+      } else if (el.localName === 'forward') pos += dur;
+      else if (el.localName === 'backup') pos -= dur;
+      max = Math.max(max, pos);
+    }
+    return Math.min(max, barLength);
+  });
+  const first = extents[0] ?? 0;
+  const pickup = first > EPS && first < barLength - EPS ? first : 0;
+  const starts: number[] = [];
+  const ends: number[] = [];
+  let t = 0;
+  extents.forEach((e, i) => {
+    const split = implicit[i] || (i > 1 && implicit[i - 1]) || implicit[i + 1] === true;   // the pickup is no split half
+    const length = i === 0 ? (pickup > 0 ? pickup : barLength) : split && e < barLength - EPS ? e : barLength;
+    starts.push(t);
+    t += length;
+    ends.push(t);
+  });
+  return { starts, ends, pickup, barLength };
+}
+
+/** Start of measure i; parts longer than the first part continue in full bars. */
+function measureStartAt(g: Grid, i: number): number {
+  if (i < g.starts.length) return g.starts[i];
+  const last = g.ends.length > 0 ? g.ends[g.ends.length - 1] : 0;
+  return last + (i - g.starts.length) * g.barLength;
+}
+
+/** Index of the bar (incl. pickup bar) that contains time t. */
+function barAt(g: Grid, t: number): number {
+  if (g.pickup > 0 && t < g.pickup - EPS) return 0;
+  return Math.floor((t - g.pickup) / g.barLength + EPS) + (g.pickup > 0 ? 1 : 0);
+}
+
+const onBarLine = (g: Grid, t: number): boolean => {
+  const k = (t - g.pickup) / g.barLength;
+  return t < EPS || Math.abs(k - Math.round(k)) < EPS;
+};
 
 /** Ending numbers are a list ("1", "1,2", "1-2"). Only a plain 1 or 2 maps to a volta. */
 function voltaOf(list: string): '1' | '2' | null {
@@ -167,7 +209,7 @@ function voltaOf(list: string): '1' | '2' | null {
   return numbers.has(1) ? '1' : numbers.has(2) ? '2' : null;
 }
 
-function readPart(part: Element, info: Map<string, Element>, barLength: number, pickup: number, marks: Map<number, Mark> | null): PartResult {
+function readPart(part: Element, info: Map<string, Element>, grid: Grid, marks: Map<number, Mark> | null): PartResult {
   const id = part.getAttribute('id') ?? 'P1';
   const sp = info.get(id);
   const channel = num(text(kid(sp ?? part, 'midi-instrument'), 'midi-channel'));
@@ -187,7 +229,8 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
   };
 
   kids(part, 'measure').forEach((measure, index) => {
-    measureStart = index === 0 ? 0 : (pickup > 0 ? pickup : barLength) + (index - 1) * barLength;
+    measureStart = measureStartAt(grid, index);
+    const measureEnd = index < grid.ends.length ? grid.ends[index] : measureStart + grid.barLength;
     let pos = 0;
     let lastStart = 0;
     let endVolta = false;
@@ -209,8 +252,9 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
       } else if (name === 'barline') {
         if (!marks) continue;
         const rep = kid(el, 'repeat')?.getAttribute('direction');
-        if (rep === 'forward') mark(index).rs = true;
-        if (rep === 'backward') mark(index).re = true;
+        // a forward repeat mid-bar starts the next bar; a backward repeat mid-bar ends the bar containing it
+        if (rep === 'forward') mark(barAt(grid, measureStart) + (onBarLine(grid, measureStart) ? 0 : 1)).rs = true;
+        if (rep === 'backward') mark(barAt(grid, measureEnd) - (onBarLine(grid, measureEnd) ? 1 : 0)).re = true;
         const ending = kid(el, 'ending');
         const type = ending?.getAttribute('type');
         if (ending && type === 'start') {
@@ -255,7 +299,10 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
         if (tieStart) waiting.set(midi, target); else waiting.delete(midi);
       }
     }
-    if (marks && voltaActive) mark(index).volta = voltaActive;
+    if (marks && voltaActive) {
+      const m = mark(barAt(grid, (measureStart + measureEnd) / 2));
+      m.volta ??= voltaActive;
+    }
     if (endVolta) voltaActive = null;
   });
   return result;
@@ -276,12 +323,12 @@ export async function parseMusicXml(file: string, bytes: Uint8Array): Promise<Pa
   for (const sp of Array.from(root.getElementsByTagName('score-part'))) info.set(sp.getAttribute('id') ?? '', sp);
 
   const firstDivisions = num(text(kid(parts[0] ?? root, 'measure')?.getElementsByTagName('attributes')[0], 'divisions')) ?? 1;
-  const ext = parts[0] ? firstMeasureExtent(parts[0], firstDivisions) : null;
-  const pickup = ext && ext.length > EPS && ext.length < barLength - EPS ? ext.length : 0;
+  const grid = measureGrid(parts[0], barLength, firstDivisions);
+  const pickup = grid.pickup;
 
   const marks = new Map<number, Mark>();
   const tracks: ParsedTrack[] = [];
-  const results = parts.map((part, i) => readPart(part, info, barLength, pickup, i === 0 ? marks : null));
+  const results = parts.map((part, i) => readPart(part, info, grid, i === 0 ? marks : null));
   results.forEach((r, i) => {
     const voiceIds = Array.from(r.voices.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     voiceIds.forEach((vid, vi) => {
