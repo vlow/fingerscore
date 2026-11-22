@@ -1,0 +1,366 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.h1 {
+  margin: 0 0 6px;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.fileLine {
+  color: var(--muted-2);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.picked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--teal-tint);
+  color: var(--teal-hover);
+  font-size: 13px;
+}
+
+.picked svg {
+  flex: none;
+  color: var(--teal);
+}
+
+.body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.list {
+  display: flex;
+  flex: 999 1 560px;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+/* 2px teal frame without shifting the layout: border plus a 1px inset ring. */
+.row[data-selected] {
+  border-color: var(--teal);
+  box-shadow: inset 0 0 0 1px var(--teal);
+  background: var(--teal-light);
+}
+
+.row[data-disabled] {
+  background: var(--pagebar);
+  opacity: 0.6;
+}
+
+.info {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.row[data-disabled] .info {
+  cursor: not-allowed;
+}
+
+.radio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--teal);
+  cursor: inherit;
+}
+
+.infoText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nameLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.recommended,
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.recommended {
+  background: var(--teal);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.tag {
+  font-weight: 600;
+}
+
+.tagTeal {
+  background: var(--teal-tint);
+  color: var(--teal-hover);
+}
+
+.tagGrey {
+  background: var(--page);
+  color: var(--muted-2);
+}
+
+.tagAmber {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.instrument {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.statLabel {
+  color: var(--muted);
+}
+
+.preview {
+  display: flex;
+  flex: 2 1 300px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.preview > svg {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.play {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-2);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.play:hover {
+  background: var(--page);
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legendSwatch {
+  flex: none;
+  width: 14px;
+  height: 10px;
+  border: 1px solid #c8e6e1;
+  border-radius: 2px;
+  background: var(--teal-tint);
+}
+
+.side {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 380px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.selectedName {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.hint {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hintTeal {
+  background: var(--teal-tint);
+  color: var(--teal-hover);
+}
+
+.hintAmber {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.hintIcon {
+  font-weight: 800;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.select {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--teal);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cta:hover {
+  background: var(--teal-hover);
+}
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.secondary:hover {
+  background: var(--page);
+}
+
+.note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Once the side panel wraps below the list, let it use the full width. */
+@media (max-width: 960px) {
+  .side {
+    max-width: none;
+  }
+}

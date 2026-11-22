@@ -1,0 +1,24 @@
+.roll {
+  display: block;
+  width: 100%;
+  height: 64px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--pagebar);
+}
+
+.band {
+  fill: var(--teal-tint);
+}
+
+.accent {
+  fill: var(--teal);
+}
+
+.muted {
+  fill: var(--muted);
+}
+
+.ghost {
+  fill: var(--ghost);
+}

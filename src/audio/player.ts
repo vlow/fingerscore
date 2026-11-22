@@ -2,6 +2,7 @@ import { inst } from '../domain/instruments';
 import type { Family } from '../domain/instruments';
 import { ticksToSeconds, type Schedule } from '../domain/playback';
 import type { Doc } from '../domain/types';
+import type { RawNote } from '../import/types';
 
 export interface Player {
   play(s: Schedule, doc: Doc, onEvent: (evId: string | null) => void): void;
@@ -114,4 +115,49 @@ export function createPlayer(): Player {
   }
 
   return { play, stop, get playing() { return playing; } };
+}
+
+// Track preview on the Tracks page: one shared context, one preview at a time.
+let previewCtx: AudioContext | null = null;
+let previewNodes: OscillatorNode[] = [];
+
+/** Stops the running track preview, if any. */
+export function stopPreview(): void {
+  for (const o of previewNodes) {
+    try { o.stop(); } catch { /* already stopped */ }
+    o.disconnect();
+  }
+  previewNodes = [];
+}
+
+/** Plays the first `seconds` of a track (positions in quarter notes) with a neutral timbre. Replaces any running preview. */
+export function previewTrack(notes: RawNote[], tempo: number, seconds: number): void {
+  stopPreview();
+  if (notes.length === 0) return;
+  previewCtx ??= new AudioContext();
+  const c = previewCtx;
+  void c.resume();
+  const secPerQuarter = 60 / tempo;
+  const from = Math.min(...notes.map(n => n.start));   // skip leading silence
+  const t0 = c.currentTime + 0.05;
+  const peak = PEAK / 2;                               // chords add up
+  for (const n of notes) {
+    const start = t0 + (n.start - from) * secPerQuarter;
+    if (start >= t0 + seconds) continue;
+    const end = Math.min(start + n.dur * secPerQuarter, t0 + seconds);
+    if (end - start < ATTACK) continue;
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = hz(n.midi);
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(peak, start + ATTACK);
+    gain.gain.setValueAtTime(peak, Math.max(start + ATTACK, end - RELEASE));
+    gain.gain.linearRampToValueAtTime(0, end);
+    osc.connect(gain).connect(c.destination);
+    osc.start(start);
+    osc.stop(end + 0.02);
+    osc.onended = () => { previewNodes = previewNodes.filter(x => x !== osc); };
+    previewNodes.push(osc);
+  }
 }

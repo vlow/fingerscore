@@ -1,0 +1,20 @@
+/*
+ * The bar sits inside .app-main but spans the full window width: a spread box-shadow paints the
+ * background and the bottom border, clip-path cuts it at the top and bottom edges. The negative
+ * top margin cancels .app-main's 40px top padding so the bar touches the header.
+ */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin: -40px 0 28px;
+  padding: 10px 0;
+  background: var(--pagebar);
+  box-shadow: 0 0 0 100vmax var(--pagebar), 0 1px 0 100vmax var(--border);
+  clip-path: inset(0 -100vmax -1px);
+}
+
+.spacer {
+  flex: 1 1 0;
+}
