@@ -246,6 +246,46 @@ describe('store', () => {
 });
 
 describe('library state', () => {
+  it('relinkEntry links the open sheet to an entry again: saved when equal, dirty when edited', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    useApp.getState().saveSheet();
+    const id = useApp.getState().libraryId!;
+    deleteEntry(id);
+    useApp.getState().forgetEntry(id);
+    expect(saveStatus(useApp.getState())).toBe('new');
+    useApp.getState().relinkEntry(id);   // not in the library: no change
+    expect(useApp.getState()).toMatchObject({ libraryId: null, savedSnapshot: null });
+    useApp.getState().setDoc(sampleDoc('asax'));
+    useApp.getState().saveSheet();
+    const id2 = useApp.getState().libraryId!;
+    useApp.getState().forgetEntry(id2);
+    useApp.getState().relinkEntry(id2);
+    expect(useApp.getState().libraryId).toBe(id2);
+    expect(saveStatus(useApp.getState())).toBe('saved');
+    useApp.getState().forgetEntry(id2);
+    useApp.getState().patchDoc({ tempo: 90 });
+    useApp.getState().relinkEntry(id2);
+    expect(saveStatus(useApp.getState())).toBe('dirty');
+  });
+
+  it('relinkEntry with an unknown id changes nothing', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    useApp.getState().saveSheet();
+    const before = useApp.getState();
+    useApp.getState().relinkEntry('nope');
+    expect(useApp.getState()).toMatchObject({ libraryId: before.libraryId, savedSnapshot: before.savedSnapshot });
+  });
+
+  it('relinkEntry ignores the source rewrite of an opened sheet', () => {
+    useApp.getState().setDoc({ ...sampleDoc('cl'), title: 'Mine' });
+    useApp.getState().saveSheet();
+    const id = useApp.getState().libraryId!;
+    useApp.getState().openEntry(id);
+    useApp.getState().forgetEntry(id);
+    useApp.getState().relinkEntry(id);
+    expect(saveStatus(useApp.getState())).toBe('saved');
+  });
+
   it('save status follows the document', () => {
     useApp.getState().setDoc(sampleDoc('asax'));
     expect(saveStatus(useApp.getState())).toBe('new');

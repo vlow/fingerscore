@@ -22,6 +22,7 @@ export interface AppState {
   openEntry(id: string): boolean;
   openImported(doc: Doc, fileName: string): boolean;
   forgetEntry(id: string): void;
+  relinkEntry(id: string): void;
   setInstrument(id: InstId): void;
   setPrefs(p: Partial<Prefs>): void;
   setSong(s: ParsedSong | null): void;
@@ -95,6 +96,15 @@ export const useApp = create<AppState>()((set, get) => ({
     if (get().libraryId !== id) return;
     remove('session', KEY_SHEET);
     set({ libraryId: null, savedSnapshot: null });
+  },
+
+  /** Links the open sheet to an entry again (undo of a delete): saved when the sheet equals the entry, else dirty. */
+  relinkEntry(id) {
+    const entry = getEntry(id);
+    if (!entry) return;
+    const { doc } = get();
+    const snapshot = canonical(doc ? { ...entry.doc, source: doc.source } : entry.doc);
+    set({ libraryId: entry.id, savedSnapshot: snapshot });
   },
 
   setInstrument(id) {

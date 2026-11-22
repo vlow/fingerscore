@@ -197,7 +197,7 @@ function Sheet({ doc }: { doc: Doc }) {
   const status = useMemo(() => saveStatus({ doc, libraryId, savedSnapshot }), [doc, libraryId, savedSnapshot]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [libraryChanged, setLibraryChanged] = useState(0);
-  // The menu lists the library as it is after the last save, open, delete or undo on this page.
+  // The menu reads the library each time it opens, and again after a save, open, delete or undo here.
   const entries = useMemo(() => listEntries(), [libraryId, savedSnapshot, libraryChanged]);
 
   const save = useCallback(() => {
@@ -243,12 +243,18 @@ function Sheet({ doc }: { doc: Doc }) {
     const entry = deleteEntry(id);
     setLibraryChanged(n => n + 1);
     if (!entry) return;
+    // Edits keep doc.source; loading another sheet replaces it.
+    const openSource = useApp.getState().libraryId === id ? doc.source : null;
     useApp.getState().forgetEntry(id);
     setFileError(null);
-    showToast({
-      message: `Deleted "${entry.title}"`,
-      action: { label: 'Undo', run: () => { restoreEntry(entry); setLibraryChanged(n => n + 1); } },
-    });
+    const undo = () => {
+      if (!restoreEntry(entry)) return;
+      // Link the open sheet again only if it is still the one whose entry was deleted.
+      const now = useApp.getState();
+      if (openSource && now.libraryId === null && now.doc?.source === openSource) now.relinkEntry(id);
+      setLibraryChanged(n => n + 1);
+    };
+    showToast({ message: `Deleted "${entry.title}"`, action: { label: 'Undo', run: undo } });
   }
 
   // Alternate fingerings: one popover at a time, anchored to its pill.
@@ -332,7 +338,8 @@ function Sheet({ doc }: { doc: Doc }) {
             <div className={s.barRight}>
               <SaveControls status={status} error={saveError} onSave={save} />
               <FileMenu entries={entries} currentId={libraryId} onPrint={print} onDownload={download}
-                onOpenFile={file => void openFile(file)} onNew={() => navigate('/')} onOpen={openSaved} onDelete={deleteSaved} />
+                onOpenFile={file => void openFile(file)} onNew={() => navigate('/')} onOpen={openSaved} onDelete={deleteSaved}
+                onOpenMenu={() => setLibraryChanged(n => n + 1)} />
             </div>
           }
         />

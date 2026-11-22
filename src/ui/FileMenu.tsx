@@ -12,6 +12,8 @@ interface Props {
   onNew(): void;
   onOpen(id: string): void;
   onDelete(id: string): void;
+  /** Called each time the menu opens, so the caller can read the library afresh. */
+  onOpenMenu?(): void;
 }
 
 const INTERACTIVE = 'a, button, input, select, textarea, [tabindex]';
@@ -37,6 +39,11 @@ export default function FileMenu(p: Props) {
 
   const items = () => [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])];
 
+  function openMenu() {
+    p.onOpenMenu?.();
+    setOpen(true);
+  }
+
   function close(focusButton: boolean) {
     if (focusButton) buttonRef.current?.focus();
     setOpen(false);
@@ -60,7 +67,7 @@ export default function FileMenu(p: Props) {
   }, [open]);
 
   function onButtonKey(e: KeyboardEvent<HTMLButtonElement>) {
-    if (e.key === 'ArrowDown' && !open) { e.preventDefault(); setOpen(true); }
+    if (e.key === 'ArrowDown' && !open) { e.preventDefault(); openMenu(); }
   }
 
   function onMenuKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -92,7 +99,7 @@ export default function FileMenu(p: Props) {
   return (
     <div className={s.wrap}>
       <button ref={buttonRef} type="button" className={s.button} aria-haspopup="menu" aria-expanded={open}
-        aria-controls={open ? menuId : undefined} onClick={() => (open ? close(false) : setOpen(true))} onKeyDown={onButtonKey}>
+        aria-controls={open ? menuId : undefined} onClick={() => (open ? close(false) : openMenu())} onKeyDown={onButtonKey}>
         File
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="m6 9 6 6 6-6" />

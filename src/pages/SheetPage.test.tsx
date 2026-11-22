@@ -378,6 +378,54 @@ describe('save and the File menu', () => {
     expect(screen.queryByText('Deleted "Other"')).toBeNull();
   });
 
+  it('undo after deleting the open sheet links it again', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete The Water Is Wide' }));
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+    expect(listEntries()).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(listEntries()).toHaveLength(1);
+  });
+
+  it('undo after deleting and editing the open sheet shows unsaved changes; Save updates that entry', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const id = useApp.getState().libraryId;
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete The Water Is Wide' }));
+    await user.click(screen.getByLabelText('Lyrics'));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(listEntries().map(e => e.id)).toEqual([id]);
+    expect(listEntries()[0].doc.show.lyrics).toBe(false);
+  });
+
+  it('undo does not link a sheet loaded after the delete', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete The Water Is Wide' }));
+    act(() => useApp.getState().setDoc({ ...sampleDoc('fl'), title: 'New song' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(listEntries()).toHaveLength(1);
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+  });
+
+  it('the menu reads the library each time it opens', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    expect(within(screen.getByRole('menu')).getByText('No saved sheets yet.')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    saveEntry({ ...sampleDoc('fl'), title: 'Elsewhere' }, null);
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    expect(within(screen.getByRole('menu')).getByText('Elsewhere')).toBeInTheDocument();
+  });
+
   it('/sheet?id opens a saved sheet without a current doc; an unknown id goes to the start page', async () => {
     const r = saveEntry({ ...sampleDoc('cl'), title: 'Linked' }, null);
     if (!r.ok) throw new Error(r.message);

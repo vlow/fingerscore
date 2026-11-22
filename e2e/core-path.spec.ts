@@ -45,6 +45,21 @@ test('core path: sample → track → sheet → instruments → alternate → pl
   await expect(page.locator('[data-playing="true"]')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Play from selected' })).toBeVisible();
 
+  // The File menu paints above the page body: its items are the element hit at their own centre.
+  const fileButton = page.getByRole('button', { name: /^File/ });
+  await fileButton.click();
+  const download = page.getByRole('menuitem', { name: 'Download JSON' });
+  await expect(download).toBeVisible();
+  const hitsItself = await download.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return hit !== null && el.contains(hit);
+  });
+  expect(hitsItself).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(fileButton).toBeFocused();
+
   await page.reload();
   await expect(title).toHaveValue('Auld Lang Syne'); // session survives reload
   expect(errors).toEqual([]);

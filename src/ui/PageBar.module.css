@@ -1,18 +1,31 @@
 /*
- * The bar sits inside .app-main but spans the full window width: a spread box-shadow paints the
- * background and the bottom border, clip-path cuts it at the top and bottom edges. The negative
- * top margin cancels .app-main's 40px top padding so the bar touches the header.
+ * The bar sits inside .app-main but spans the full window width: its ::before paints the background
+ * and the bottom border with a spread box-shadow, and clip-path cuts that band at the top and bottom
+ * edges. The clip sits on the pseudo-element, not the bar, so popups in the bar (the File menu) are
+ * not cut off. The bar is its own stacking context above the page body (alternate-fingering popover
+ * z-index 20) and below the toast (100). The negative top margin cancels .app-main's 40px top padding
+ * so the bar touches the header.
  */
 .bar {
+  position: relative;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px 16px;
   margin: -40px 0 28px;
   padding: 10px 0;
+}
+
+.bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: var(--pagebar);
   box-shadow: 0 0 0 100vmax var(--pagebar), 0 1px 0 100vmax var(--border);
   clip-path: inset(0 -100vmax -1px);
+  pointer-events: none;
 }
 
 .spacer {
