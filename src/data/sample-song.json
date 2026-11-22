@@ -1,0 +1,556 @@
+{
+ "_doc": "The demo song as imported from The_Water_Is_Wide.mid (track 1 'Melody'), in the document model. m = concert MIDI pitch in the ORIGINAL key (D major). d = duration in eighth notes (1,2,3,4,6,8). cap = bar capacity in eighths (pickup = 6). l = lyric syllable, c = chord symbol (spelled in F major, i.e. 3 semitones above the stored pitches; transpose with ORIG=-3 to get the original-key chord). tie = tied to next event. rs/re = repeat start/end, volta = ending label.",
+ "title": "The Water Is Wide",
+ "subtitle": "Traditional",
+ "originalKey": "D major",
+ "originalTonicPc": 2,
+ "chordSpellingOffset": -3,
+ "tempo": 100,
+ "timeSignature": "4/4",
+ "bars": [
+  {
+   "cap": 6,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 57,
+     "d": 2,
+     "l": "The",
+     "c": "Am",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 1,
+     "l": "wat-",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 1,
+     "l": "er",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 64,
+     "d": 2,
+     "l": "is",
+     "c": "",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": true,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 64,
+     "d": 1,
+     "l": "wide,",
+     "c": "F",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 66,
+     "d": 1,
+     "l": "",
+     "c": "",
+     "tie": true,
+     "r": false
+    },
+    {
+     "m": 66,
+     "d": 6,
+     "l": "",
+     "c": "",
+     "tie": true,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 66,
+     "d": 2,
+     "l": "",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 64,
+     "d": 2,
+     "l": "I",
+     "c": "C",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 3,
+     "l": "cross",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 59,
+     "d": 1,
+     "l": "o’er",
+     "c": "",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 57,
+     "d": 8,
+     "l": "",
+     "c": "F",
+     "tie": true,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 57,
+     "d": 2,
+     "l": "",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 57,
+     "d": 2,
+     "l": "Nei-",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 3,
+     "l": "ther",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 61,
+     "d": 1,
+     "l": "have",
+     "c": "",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 62,
+     "d": 8,
+     "l": "I",
+     "c": "Dm",
+     "tie": true,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 62,
+     "d": 2,
+     "l": "",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 64,
+     "d": 2,
+     "l": "the",
+     "c": "Gm",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 66,
+     "d": 3,
+     "l": "wings",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 67,
+     "d": 1,
+     "l": "to",
+     "c": "",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 64,
+     "d": 8,
+     "l": "fly",
+     "c": "C",
+     "tie": true,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 64,
+     "d": 2,
+     "l": "",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 64,
+     "d": 2,
+     "l": "Give",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 66,
+     "d": 3,
+     "l": "me",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 67,
+     "d": 1,
+     "l": "a",
+     "c": "",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 69,
+     "d": 8,
+     "l": "boat",
+     "c": "Am",
+     "tie": true,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 69,
+     "d": 2,
+     "l": "",
+     "c": "Bb",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 67,
+     "d": 1,
+     "l": "that",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 66,
+     "d": 1,
+     "l": "can",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 64,
+     "d": 2,
+     "l": "car-",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 2,
+     "l": "ry",
+     "c": "",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 66,
+     "d": 8,
+     "l": "two,",
+     "c": "Am",
+     "tie": true,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 66,
+     "d": 2,
+     "l": "",
+     "c": "Bb",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 64,
+     "d": 2,
+     "l": "And",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 3,
+     "l": "both",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 59,
+     "d": 1,
+     "l": "shall",
+     "c": "",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 57,
+     "d": 8,
+     "l": "row",
+     "c": "F",
+     "tie": true,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 57,
+     "d": 2,
+     "l": "",
+     "c": "C",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 59,
+     "d": 1,
+     "l": "my",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 61,
+     "d": 1,
+     "l": "",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 2,
+     "l": "love",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 61,
+     "d": 2,
+     "l": "and",
+     "c": "",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "",
+   "ev": [
+    {
+     "m": 62,
+     "d": 8,
+     "l": "I",
+     "c": "F",
+     "tie": true,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": true,
+   "volta": "1.",
+   "ev": [
+    {
+     "m": 62,
+     "d": 2,
+     "l": "",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 57,
+     "d": 2,
+     "l": "",
+     "c": "F",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 1,
+     "l": "",
+     "c": "Bb",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 62,
+     "d": 1,
+     "l": "",
+     "c": "",
+     "tie": false,
+     "r": false
+    },
+    {
+     "m": 64,
+     "d": 2,
+     "l": "",
+     "c": "C",
+     "tie": false,
+     "r": false
+    }
+   ]
+  },
+  {
+   "cap": 8,
+   "rs": false,
+   "re": false,
+   "volta": "2.",
+   "ev": [
+    {
+     "m": 62,
+     "d": 8,
+     "l": "",
+     "c": "F",
+     "tie": false,
+     "r": false
+    }
+   ]
+  }
+ ]
+}

@@ -6,3 +6,4 @@ dist/
 fingerscore-handoff/reference/
 test-results/
 playwright-report/
+*.tsbuildinfo

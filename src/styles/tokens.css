@@ -1,0 +1,23 @@
+:root {
+  --ink: #15171c;
+  --text: #2a2d33;
+  --muted: #5b616e;
+  --muted-2: #4a505c;
+  --border: #e2e4e8;
+  --border-2: #d5d8de;
+  --page: #f3f4f6;
+  --pagebar: #fafafb;
+  --card: #ffffff;
+  --teal: #0e6e68;
+  --teal-hover: #0a4f4a;
+  --teal-tint: #e3f4f2;
+  --teal-light: #f0faf8;
+  --amber: #b45309;
+  --amber-bg: #fff7ed;
+  --red: #b91c1c;
+  --red-bg: #fef2f2;
+  --ghost: #c3c7ce;
+  --radius: 10px;
+  --radius-card: 14px;
+  --page-padding: 28px;
+}
