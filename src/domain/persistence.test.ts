@@ -4,7 +4,7 @@ import { inst } from './instruments';
 import { optionsFor } from './fingerings';
 import { derive } from './derive';
 import { DEFAULT_PREFS } from './transpose';
-import { canonical, fileName, importMessage, parseFile, parseFileText, serializeFile, toFile } from './persistence';
+import { canonical, fileName, importMessage, MAX_FILE_BYTES, parseFile, parseFileText, readSheet, serializeFile, toFile } from './persistence';
 import type { Doc, Ev } from './types';
 
 const doc = () => sampleDoc('asax');
@@ -59,6 +59,31 @@ describe('sheet file', () => {
     ['cap not on the grid', (d: any) => { d.score[0].cap = 4; }],
   ])('refuses a damaged document: %s', (_n, m) => {
     expect(broken(m)).toEqual({ ok: false, reason: 'damaged' });
+  });
+
+  it('refuses a score with more than 2000 bars as damaged; 2000 bars are fine', () => {
+    const grow = (n: number) => (d: any) => {
+      const full = d.score[1];
+      d.score = Array.from({ length: n }, (_, k) => ({ ...full, ev: full.ev.map((e: any) => ({ ...e, id: `b${k}-${e.id}` })) }));
+      d.chords = {};
+    };
+    expect(broken(grow(2000)).ok).toBe(true);
+    expect(broken(grow(2001))).toEqual({ ok: false, reason: 'damaged' });
+  });
+
+  it('refuses a bar with more than 64 events as damaged', () => {
+    expect(broken(d => {
+      d.score[1].ev = Array.from({ length: 65 }, (_, k) => ({ id: `x${k}`, m: 60, d: 3, r: false, tie: false, l: '', c: '' }));
+    })).toEqual({ ok: false, reason: 'damaged' });
+  });
+
+  it('readSheet refuses a file larger than 5 MB without reading it', async () => {
+    const big = new File([new Uint8Array(MAX_FILE_BYTES + 1)], 'big.fingerscore.json');
+    const text = vi.spyOn(big, 'text');
+    expect(await readSheet(big)).toEqual({ ok: false, reason: 'not-a-sheet' });
+    expect(text).not.toHaveBeenCalled();
+    const ok = new File([serializeFile(doc())], 'ok.fingerscore.json');
+    expect((await readSheet(ok)).ok).toBe(true);
   });
 
   it('accepts a pickup bar shorter than the meter', () => {

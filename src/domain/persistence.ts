@@ -16,6 +16,23 @@ export function serializeFile(doc: Doc, now?: Date): string {
   return JSON.stringify(toFile(doc, now), null, 2);
 }
 
+/** Limits on what an import may hold; anything larger is refused before or during validation. */
+export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+export const MAX_BARS = 2000;
+export const MAX_EVENTS_PER_BAR = 64;
+
+/** Reads a sheet file: one larger than MAX_FILE_BYTES is refused unread, as not a sheet. */
+export async function readSheet(file: File): Promise<ParseResult> {
+  if (file.size > MAX_FILE_BYTES) return { ok: false, reason: 'not-a-sheet' };
+  let text: string;
+  try {
+    text = await file.text();
+  } catch {
+    return { ok: false, reason: 'not-a-sheet' };
+  }
+  return parseFileText(text);
+}
+
 export function parseFileText(text: string): ParseResult {
   let value: unknown;
   try {
@@ -52,7 +69,7 @@ function validBar(v: unknown, maxCap: number, ids: Set<string>): Bar | null {
   if (!isObject(v)) return null;
   const { cap, rs, re, volta, ev } = v;
   if (!isNum(cap) || !Number.isInteger(cap) || cap <= 0 || cap > maxCap || cap % 3 !== 0) return null;
-  if (!isBool(rs) || !isBool(re) || (volta !== '' && volta !== '1' && volta !== '2') || !Array.isArray(ev)) return null;
+  if (!isBool(rs) || !isBool(re) || (volta !== '' && volta !== '1' && volta !== '2') || !Array.isArray(ev) || ev.length > MAX_EVENTS_PER_BAR) return null;
   const events: Ev[] = [];
   let sum = 0;
   for (const raw of ev) {
@@ -96,7 +113,7 @@ export function validateDoc(value: unknown): Doc | null {
   if (!isStr(instId) || !ORDER.includes(instId as InstId)) return null;
   if (!isInt(shift, -24, 24) || !isNum(tempo) || !isInt(originalTonicPc, 0, 11)) return null;
   if (originalMode !== 'major' && originalMode !== 'minor') return null;
-  if (!Array.isArray(score) || score.length === 0) return null;
+  if (!Array.isArray(score) || score.length === 0 || score.length > MAX_BARS) return null;
 
   const ids = new Set<string>();
   const bars: Bar[] = [];

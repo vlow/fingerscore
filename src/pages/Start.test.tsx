@@ -274,6 +274,16 @@ it('a storage failure opens the sheet unsaved and shows the storage message', as
   expect(useApp.getState().libraryId).toBeNull();
 });
 
+it('a .json file larger than 5 MB is refused unread', async () => {
+  renderStart();
+  const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'huge.json');
+  const text = vi.spyOn(big, 'text');
+  drop(big);
+  expect(await screen.findByRole('alert')).toHaveTextContent('"huge.json" isn\'t a fingerscore sheet.');
+  expect(text).not.toHaveBeenCalled();
+  expect(listEntries()).toEqual([]);
+});
+
 it('a second file is read after a success and after an error', async () => {
   renderStart();
   drop(sheetFile('First'));

@@ -50,7 +50,8 @@ A document is accepted when all of these hold; otherwise it is refused as a whol
 
 - envelope: `app === "fingerscore"`, `format === 1`, `doc` is an object;
 - `timeSig` is one of 4/4, 3/4, 2/4, 6/8; `inst` is a known instrument; `shift` is an integer in −24..24; `tempo` is a number (clamped to 40..200); `originalTonicPc` is 0..11; `originalMode` is major or minor;
-- `score` is a non-empty array of bars; every bar has `cap` > 0 and ≤ the meter's bar capacity, `rs`/`re` booleans, `volta` in `'' | '1' | '2'`, and events whose durations are allowed values and sum to `cap`; every event has a unique non-empty string id, a MIDI pitch 0..127, booleans `r` and `tie`, strings `l` and `c`.
+- `score` is a non-empty array of bars; every bar has `cap` > 0 and ≤ the meter's bar capacity, `rs`/`re` booleans, `volta` in `'' | '1' | '2'`, and events whose durations are allowed values and sum to `cap`; every event has a unique non-empty string id, a MIDI pitch 0..127, booleans `r` and `tie`, strings `l` and `c`;
+- size: at most 2000 bars and at most 64 events in one bar. A file larger than 5 MB is refused before it is read, with the "isn't a fingerscore sheet" message.
 
 Repaired silently instead of refused: missing `title`/`subtitle` (empty string), missing or malformed `show`, `chartStyle`, `recorderSystem` (defaults), fingering overrides whose event id is unknown or whose index is not a valid option for that note (dropped), chord entries whose event id is unknown or whose shape is wrong (dropped), unknown extra fields (dropped), a missing `source` (replaced, see 4.5).
 

@@ -1,6 +1,6 @@
 import { useId, useState, type ChangeEvent, type DragEvent, type Ref } from 'react';
 import { Link } from 'react-router-dom';
-import { importMessage, parseFileText } from '../domain/persistence';
+import { importMessage, readSheet } from '../domain/persistence';
 import type { Doc } from '../domain/types';
 import { ACCEPT, parseFile } from '../import';
 import { ImportError, type ParsedSong } from '../import/types';
@@ -36,13 +36,7 @@ const isSheetFile = (name: string) => name.toLowerCase().endsWith('.json');
 
 /** Reads a saved sheet and adds it to the library; a failed save returns the sheet with the storage message. */
 async function addSheet(file: File): Promise<{ entry: LibraryEntry } | { doc: Doc; message: string } | { error: string }> {
-  let text: string;
-  try {
-    text = await file.text();
-  } catch {
-    return { error: importMessage(file.name, 'not-a-sheet') };
-  }
-  const parsed = parseFileText(text);
+  const parsed = await readSheet(file);
   if (!parsed.ok) return { error: importMessage(file.name, parsed.reason) };
   const saved = saveEntry(parsed.doc, null);
   return saved.ok ? { entry: saved.entry } : { doc: parsed.doc, message: saved.message };

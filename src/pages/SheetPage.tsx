@@ -5,7 +5,7 @@ import { derive, type DerivedEvent } from '../domain/derive';
 import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
 import { keySignature, spell } from '../domain/keys';
-import { fileName, importMessage, parseFileText, serializeFile } from '../domain/persistence';
+import { fileName, importMessage, readSheet, serializeFile } from '../domain/persistence';
 import { buildSchedule, firstTickOf, sliceSchedule } from '../domain/playback';
 import { barCap } from '../domain/time';
 import type { Doc } from '../domain/types';
@@ -221,14 +221,7 @@ function Sheet({ doc }: { doc: Doc }) {
   }
 
   async function openFile(file: File) {
-    let text: string;
-    try {
-      text = await file.text();
-    } catch {
-      setFileError(importMessage(file.name, 'not-a-sheet'));
-      return;
-    }
-    const r = parseFileText(text);
+    const r = await readSheet(file);
     if (!r.ok) { setFileError(importMessage(file.name, r.reason)); return; }
     const opened = useApp.getState().openImported(r.doc, file.name);
     setFileError(opened.saved ? null : opened.message);

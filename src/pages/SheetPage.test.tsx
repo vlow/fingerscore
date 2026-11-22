@@ -373,6 +373,15 @@ describe('save and the File menu', () => {
     expect(useApp.getState().saveError).toBeNull();
   });
 
+  it('Open JSON file refuses a file larger than 5 MB unread', async () => {
+    open('asax');
+    const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'huge.fingerscore.json');
+    const text = vi.spyOn(big, 'text');
+    await user.upload(screen.getByLabelText('Open JSON file', { selector: 'input' }), big);
+    expect(await screen.findByRole('alert')).toHaveTextContent('"huge.fingerscore.json" isn\'t a fingerscore sheet.');
+    expect(text).not.toHaveBeenCalled();
+  });
+
   it('saved list: open another sheet, delete with undo', async () => {
     saveEntry({ ...sampleDoc('fl'), title: 'Other' }, null);
     open('asax');
