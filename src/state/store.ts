@@ -26,7 +26,10 @@ export interface AppState {
   openUnsaved(doc: Doc, fileName: string): void;
   forgetEntry(id: string): void;
   relinkEntry(id: string): void;
+  /** Changes the open sheet's instrument (sheet page). */
   setInstrument(id: InstId): void;
+  /** The instrument new sheets are built for (start page); the open sheet is not touched. */
+  setPreferredInstrument(id: InstId): void;
   setPrefs(p: Partial<Prefs>): void;
   setSong(s: ParsedSong | null): void;
   setDoc(d: Doc | null): void;
@@ -126,6 +129,11 @@ export const useApp = create<AppState>()((set, get) => ({
     const { doc, prefs } = get();
     if (!doc) { set({ instId: id }); return; }
     set({ instId: id, doc: changed(doc, { inst: id, shift: bestShift(doc, id, prefs) }) });
+  },
+
+  setPreferredInstrument(id) {
+    writeJSON('local', KEY_INST, id);
+    set({ instId: id });
   },
 
   setPrefs(p) {

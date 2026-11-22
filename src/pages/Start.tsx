@@ -22,7 +22,7 @@ const STEPS = [
 export default function Start() {
   const instId = useApp(st => st.instId);
   const prefs = useApp(st => st.prefs);
-  const setInstrument = useApp(st => st.setInstrument);
+  const setPreferredInstrument = useApp(st => st.setPreferredInstrument);
   const setPrefs = useApp(st => st.setPrefs);
   const setSong = useApp(st => st.setSong);
   const setDoc = useApp(st => st.setDoc);
@@ -87,7 +87,7 @@ export default function Start() {
 
       <Gallery version={libraryVersion} emptyFocus={() => dropInput.current} />
 
-      <InstrumentPicker value={instId} onChange={setInstrument} />
+      <InstrumentPicker value={instId} onChange={setPreferredInstrument} />
 
       <DropZone
         instrumentName={displayName(inst(instId))}

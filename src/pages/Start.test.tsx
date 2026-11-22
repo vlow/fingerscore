@@ -84,6 +84,27 @@ it('a MIDI file leads to Continue', async () => {
   expect(currentPath()).toBe('/tracks');
 });
 
+it('picking an instrument here leaves the open sheet unchanged; the next import uses it', async () => {
+  useApp.getState().setDoc({ ...sampleDoc('asax'), title: 'Kept' });
+  expect(useApp.getState().saveSheet()).toBe(true);
+  const before = useApp.getState().doc;
+  renderStart();
+  await user.click(screen.getByRole('radio', { name: /Clarinet/ }));
+  expect(useApp.getState().instId).toBe('cl');
+  expect(useApp.getState().doc).toBe(before);
+  const notes = [60, 62, 64, 65].flatMap(n => [
+    { deltaTime: 0, type: 'noteOn', channel: 0, noteNumber: n, velocity: 80 },
+    { deltaTime: 480, type: 'noteOff', channel: 0, noteNumber: n, velocity: 0 },
+  ]);
+  const bytes = new Uint8Array(writeMidi({
+    header: { format: 1, numTracks: 1, ticksPerBeat: 480 },
+    tracks: [[...notes, { deltaTime: 0, meta: true, type: 'endOfTrack' }] as MidiEvent[]],
+  }));
+  await user.upload(screen.getByLabelText(/drop a song/i), new File([bytes], 'scale.mid'));
+  await user.click(await screen.findByRole('button', { name: 'Continue →' }));
+  expect(useApp.getState().doc?.inst).toBe('cl');
+});
+
 it('a file with one usable track goes straight to the sheet', async () => {
   const notes = [60, 62, 64, 65].flatMap(n => [
     { deltaTime: 0, type: 'noteOn', channel: 0, noteNumber: n, velocity: 80 },

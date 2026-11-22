@@ -36,6 +36,15 @@ describe('store', () => {
     expect(readJSON('local', 'fingerscore.inst')).toBe('fl');
   });
 
+  it('setPreferredInstrument persists instId and leaves the open doc alone', () => {
+    useApp.getState().setDoc({ ...sampleDoc('asax'), fingering: { e3: 1 } });
+    const before = useApp.getState().doc;
+    useApp.getState().setPreferredInstrument('cl');
+    expect(useApp.getState().instId).toBe('cl');
+    expect(useApp.getState().doc).toBe(before);
+    expect(readJSON('local', 'fingerscore.inst')).toBe('cl');
+  });
+
   it('changing the shift clears overrides and clamps', () => {
     useApp.getState().setDoc({ ...sampleDoc('asax'), fingering: { e3: 1 } });
     useApp.getState().setShift(1);
