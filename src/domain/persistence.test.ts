@@ -86,6 +86,15 @@ describe('sheet file', () => {
     expect((await readSheet(ok)).ok).toBe(true);
   });
 
+  it.each(['__proto__', 'constructor', 'prototype'])('refuses the event id %s as damaged', id => {
+    const f: any = JSON.parse(serializeFile(doc()));
+    const old = f.doc.score[0].ev[0].id;
+    f.doc.score[0].ev[0].id = id;
+    f.doc.chords = { [id]: { ...f.doc.chords[old] ?? { raw: 'C', ok: true, pc: 0, rest: '', bass: null, tk: 0 } } };
+    const r = parseFileText(JSON.stringify(f));   // JSON.parse makes "__proto__" an own key, as a real file would
+    expect(r).toEqual({ ok: false, reason: 'damaged' });
+  });
+
   it('accepts a pickup bar shorter than the meter', () => {
     const r = broken(d => {
       const bar = d.score[0];
