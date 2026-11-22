@@ -31,7 +31,6 @@ const gapKey = (g: { inst: string; pitch: number; system: string }) => `${g.inst
 it('every gap is documented, in both recorder systems', () => {
   const doc = new Set(documentedGaps().map(gapKey));
   expect(coverageGaps().filter(g => !doc.has(gapKey(g)))).toEqual([]);
-  expect(coverageGaps().some(g => g.system === 'german')).toBe(true);
 });
 
 it('no documented gap has data', () => {
@@ -99,7 +98,7 @@ it('satellite keys exist for sax, clarinet and flute only', () => {
 });
 
 // Normal-range gaps where the charts disagree; each waits for an owner decision (docs/fingering-gaps.md, "Waiting for the owner").
-const OWNER_PENDING = ['rs:68:german', 'ra:73:german'];
+const OWNER_PENDING: string[] = [];
 
 it('gap list is short and sourced', () => {
   const gaps = documentedGaps();
@@ -118,9 +117,29 @@ it('named alternates exist', () => {
 
 it('every kind records two sources', () => { for (const k of ['xaph','sax','cl','fl','rec'] as const) expect(meta(k).sources.length).toBeGreaterThanOrEqual(2); });
 
-it('an empty German entry shows no chart instead of the baroque fingering', () => {
-  expect(optionsFor('rs', 68, 'baroque').length).toBeGreaterThan(0);
-  expect(optionsFor('rs', 68, 'german')).toEqual([]);
+it('an empty German entry shows no chart instead of the baroque fingering', async () => {
+  const path = '../data/fingerings.json';
+  const real = (await vi.importActual<{ default: { tables: Record<string, Record<string, unknown>> } }>(path)).default;
+  vi.resetModules();
+  vi.doMock(path, () => ({ default: { ...real, tables: { ...real.tables, recGerman: { ...real.tables.recGerman, '8': [] } } } }));
+  try {
+    const m = await import('./fingerings');
+    expect(m.optionsFor('rs', 68, 'baroque').length).toBeGreaterThan(0);
+    expect(m.optionsFor('rs', 68, 'german')).toEqual([]);
+  } finally {
+    vi.doUnmock(path);
+    vi.resetModules();
+  }
+});
+
+it('no option list holds the same fingering twice', async () => {
+  const data = (await vi.importActual<{ default: { tables: Record<string, Record<string, { h: number[]; x: string[] }[]>>; overrides: Record<string, Record<string, { h: number[]; x: string[] }[]>> } }>('../data/fingerings.json')).default;
+  const lists = [...Object.entries(data.tables), ...Object.entries(data.overrides)]
+    .flatMap(([k, t]) => Object.entries(t).map(([p, l]) => [`${k}:${p}`, l] as const));
+  for (const [where, list] of lists) {
+    const keys = list.map(o => JSON.stringify([o.h, [...o.x].sort()]));
+    expect(new Set(keys).size, where).toBe(keys.length);
+  }
 });
 
 it('an empty override hides the kind table for one instrument only', () => {

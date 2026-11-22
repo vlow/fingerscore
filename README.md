@@ -55,7 +55,7 @@ The app uses real paths (`/tracks`, `/sheet`). The server must serve `index.html
 
 ## Fingering data status
 
-Every fingering comes from published charts. Where charts disagree and no common fingering exists, the app shows no chart for that note. It never guesses.
+Every fingering comes from published charts. Where charts print different fingerings for a note, the first is the standard one and the others are offered as alternates, unless the evidence shows a variant is probably wrong. Where no fingering is sourced, the app shows no chart for that note. It never guesses.
 
 No owner has reviewed any table yet.
 
@@ -64,13 +64,13 @@ No owner has reviewed any table yet.
 | Xaphoon | Official Xaphoon chart; "The Water Is Wide" songbook page | no |
 | Saxophone | The Woodwind Fingering Guide; Sax Teacher UK saxophone and altissimo charts | no |
 | Clarinet | The Woodwind Fingering Guide; Tomplay clarinet chart; Sax Teacher UK clarinet chart | no |
-| Flute, piccolo, alto flute | The Woodwind Fingering Guide; Tomplay flute chart; Sax Teacher UK flute chart; flutetunes.com | no |
-| Recorder (baroque) | The Woodwind Fingering Guide; Dolmetsch Online; Tomplay recorder charts | no |
-| Recorder (German) | The Woodwind Fingering Guide; Wikipedia (en, de) citing Rowland-Jones and Linde | no |
+| Flute, piccolo, alto flute | The Woodwind Fingering Guide; Tomplay flute chart; Sax Teacher UK flute chart; flutetunes.com; Yamaha flute chart; *Flute For Dummies* chart | no |
+| Recorder (baroque) | The Woodwind Fingering Guide; Dolmetsch Online; Tomplay recorder charts; Yamaha, Philippe Bolton and Prescott Workshop charts; American Recorder Society charts; Blockis | no |
+| Recorder (German) | The Woodwind Fingering Guide; Yamaha and Dolmetsch German charts; Philippe Bolton; Blockis; Wikipedia (en, de) citing Rowland-Jones and Linde | no |
 
 Source titles, URLs and access dates are in the `meta` block of `src/data/fingerings.json`.
 
-Known gaps, with the sources checked for each, are in [docs/fingering-gaps.md](docs/fingering-gaps.md). Its section "Waiting for the owner" lists the gaps inside the normal range, such as alto recorder E♭6 and four German recorder notes. A player who knows the right fingering can settle them.
+Known gaps, with the sources checked for each, are in [docs/fingering-gaps.md](docs/fingering-gaps.md). Every note inside the normal range has a fingering; the remaining gaps are three saxophone altissimo notes. The same file records which chart prints each alternate and why some printed variants were left out.
 
 ## Credits
 

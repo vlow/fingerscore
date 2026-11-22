@@ -27,38 +27,6 @@
     "WFG saxophone charts (wfg.woodwind.org/sax/)",
     "Sax Teacher UK altissimo chart"
    ]
-  },
-  {
-   "inst": "rs",
-   "pitch": 68,
-   "system": "german",
-   "note": "German G♯ (index 8): charts print three fingerings. T 12–|45–– (WFG, Bolton, Blockis general chart); T 12–|45 + half 6 (Yamaha German chart; Bolton and Blockis as alternative); T 12–|456– (Dolmetsch German chart, Aulos via Blockis). The makers of German-system recorders all cover hole 6 at least half.",
-   "checked": [
-    "WFG basic recorder chart (T 12–|45––)",
-    "Philippe Bolton German fingering chart (T 12–|45––; alternative half 6)",
-    "Blockis German fingering chart (T 12–|45––; alternative half 6)",
-    "Yamaha soprano recorder (German) chart (T 12–|45 + half 6)",
-    "Dolmetsch German Recorder Fingering Chart (T 12–|456–)",
-    "Aulos German chart as transcribed by Blockis (T 12–|456–)",
-    "Dolmetsch Online text chart (baroque only)",
-    "Tomplay recorder chart (German only as PDF, not read)"
-   ]
-  },
-  {
-   "inst": "ra",
-   "pitch": 73,
-   "system": "german",
-   "note": "German C♯ (index 8): charts print three fingerings. T 12–|45–– (WFG, Bolton, Blockis general chart); T 12–|45 + half 6 (Yamaha German chart; Bolton and Blockis as alternative); T 12–|456– (Dolmetsch German chart, Aulos via Blockis). The makers of German-system recorders all cover hole 6 at least half.",
-   "checked": [
-    "WFG basic recorder chart (T 12–|45––)",
-    "Philippe Bolton German fingering chart (T 12–|45––; alternative half 6)",
-    "Blockis German fingering chart (T 12–|45––; alternative half 6)",
-    "Yamaha soprano recorder (German) chart (T 12–|45 + half 6)",
-    "Dolmetsch German Recorder Fingering Chart (T 12–|456–)",
-    "Aulos German chart as transcribed by Blockis (T 12–|456–)",
-    "Dolmetsch Online text chart (baroque only)",
-    "Tomplay recorder chart (German only as PDF, not read)"
-   ]
   }
  ]
 }
