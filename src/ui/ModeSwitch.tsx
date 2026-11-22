@@ -12,9 +12,9 @@ const MODES: { mode: Mode; name: string; hint: string }[] = [
 
 /**
  * The editing mode (design 4.2): a segmented control with one line of hint below. A radio group:
- * one tab stop, arrow keys move the choice and the focus.
+ * one tab stop, arrow keys move the choice and the focus. onMode says whether the choice came from a click.
  */
-export function ModeSwitch(p: { mode: Mode; onMode(m: Mode): void }): JSX.Element {
+export function ModeSwitch(p: { mode: Mode; onMode(m: Mode, byClick: boolean): void }): JSX.Element {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const at = MODES.findIndex(m => m.mode === p.mode);
 
@@ -23,7 +23,7 @@ export function ModeSwitch(p: { mode: Mode; onMode(m: Mode): void }): JSX.Elemen
     if (step === 0 || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault();
     const k = (at + step + MODES.length) % MODES.length;
-    p.onMode(MODES[k].mode);
+    p.onMode(MODES[k].mode, false);
     refs.current[k]?.focus();
   }
 
@@ -32,7 +32,7 @@ export function ModeSwitch(p: { mode: Mode; onMode(m: Mode): void }): JSX.Elemen
       <div role="radiogroup" aria-label="Mode" className={s.group} onKeyDown={onKey}>
         {MODES.map((m, k) => (
           <button key={m.mode} ref={el => { refs.current[k] = el; }} type="button" role="radio" className={s.option}
-            aria-checked={m.mode === p.mode} tabIndex={m.mode === p.mode ? 0 : -1} onClick={() => p.onMode(m.mode)}>
+            aria-checked={m.mode === p.mode} tabIndex={m.mode === p.mode ? 0 : -1} onClick={() => p.onMode(m.mode, true)}>
             {m.name}
           </button>
         ))}

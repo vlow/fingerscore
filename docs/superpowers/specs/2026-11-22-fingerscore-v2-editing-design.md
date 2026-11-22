@@ -75,14 +75,14 @@ Keyboard (sheet focused, Edit notes mode): ↑/↓ semitone, Ctrl/⌘+↑/↓ oc
 ### 4.4 Lyrics (§9.4)
 
 - Panel with one **Lyric** field (focused on open) and symbol buttons ‿ ’ - „ “ … that insert at the caret without taking focus. Enter and Tab move to the next note that can carry a syllable (rests and tied continuations are skipped), Shift+Tab to the previous one; at the last note Enter keeps the selection. Esc clears the selection.
-- The Lyric field takes focus when a click on the sheet makes or re-makes the selection, when the mode switches to Lyrics with a selection, and on Enter/Tab moves; arrow keys on the sheet move the selection without taking focus from the sheet.
+- The Lyric field takes focus when a click on the sheet makes or re-makes the selection, when the mode is switched to Lyrics by click with a note selected, and on Enter/Tab moves; arrow keys on the sheet (and on the mode switch) move the selection without taking the focus. Tab on the sheet goes into the open field; Shift+Tab at the first note goes back to the sheet.
 - Selecting a rest or a tied continuation in Lyrics mode moves the selection to the next note that can carry a syllable.
 - Sidebar card "Lyrics & chords": textarea "Type or paste a verse", **Fill lyrics** (fills from the selected note, or from the first note; `wat-er` puts "wat-" and "er" on two notes; a standalone `_` leaves a note empty; extra syllables beyond the last note are dropped; notes beyond the text keep what they have), **Clear lyrics**, **Clear chords**, and a line "{n} edits to lyrics and chords" with **Restore from file** (restores lyrics and chords of all surviving events to the imported state; disabled at 0 edits). A sheet with no imported lyrics or chords at all (one saved before this feature, or a file without them) shows "Nothing was imported with this sheet." instead of the count, and Restore from file stays disabled. The card shows in every mode.
 
 ### 4.5 Chords (§9.5)
 
 - Panel with one **Chord** field (focused on open) and buttons ♭ ♯ m ° ø Δ 7 sus4 add9 6 / ( ) that insert at the caret without taking focus; "Δ" inserts "Δ7"; "( )" inserts both and puts the caret between them. Hint: "b → ♭ and # → ♯ after a note name". Typing "b" or "#" directly after a root or bass letter is shown as ♭ / ♯.
-- Any event can carry a chord: notes, tied continuations and rests. Enter and Tab move to the next event, Shift+Tab to the previous. An empty field removes the chord. The Chord field takes focus on the same occasions as the Lyric field (4.4).
+- Any event can carry a chord: notes, tied continuations and rests. Enter and Tab move to the next event, Shift+Tab to the previous. An empty field removes the chord. The Chord field takes focus on the same occasions as the Lyric field (4.4), with the mode switched to Chords by click.
 - A valid chord is stored relative to the original key, so it follows every transposition and instrument; the typed text shows verbatim until the key changes. Invalid text is kept, shown red with a wavy underline, not transposed, with the message "Not a chord we can transpose. Start with a note name A–G." under the field.
 
 ### 4.6 Undo and redo (§10)
@@ -92,7 +92,7 @@ Keyboard (sheet focused, Edit notes mode): ↑/↓ semitone, Ctrl/⌘+↑/↓ oc
 - History covers the whole document: score, lyrics, chords, title, subtitle, tempo, instrument, transposition, fingering choices, chart style, recorder system, show toggles. Selection, mode, open panels and menus are not recorded.
 - Changes to the same field within 1.5 s coalesce into one step (title, subtitle, tempo slider, one event's lyric, one event's chord). Maximum 200 steps; a new change clears redo. History lives in memory only.
 - **History resets when a sheet is opened or imported** (deviation from §10 "Opening a sheet is undoable"): undo never crosses into another sheet.
-- After undo or redo, a selection whose event no longer exists is cleared. The save status follows the document: undoing back to the saved state shows "Saved".
+- After undo or redo, a selection whose event no longer exists is cleared. The sheet's live line says "Undone" or "Redone"; nothing is said when there was nothing to undo or redo. The save status follows the document: undoing back to the saved state shows "Saved".
 
 ## 5. Calls made by the author
 

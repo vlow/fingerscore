@@ -45,6 +45,20 @@ const OWN_KEYS = 'input, textarea, select, button, a, [role="dialog"]';
 const OPEN_LAYERS = '[role="dialog"], [role="menu"]';
 /** Letter keys in the order setLetter numbers them (0 = C … 6 = B). */
 const LETTERS = 'cdefgab';
+/**
+ * The Edit notes key a key press means: e.key when it is a Latin letter, a digit or ".", else the physical key from
+ * e.code (KeyA–KeyZ, Digit0–Digit9, Period), so Cyrillic, Greek or Hebrew letters and AZERTY's shifted digits work.
+ */
+function editKey(e: KeyboardEvent<HTMLElement>): string {
+  if (e.key.length !== 1) return e.key;
+  const key = e.key.toLowerCase();
+  if (/^[a-z0-9.]$/.test(key)) return key;
+  const letter = /^Key([A-Z])$/.exec(e.code);
+  if (letter) return letter[1].toLowerCase();
+  const digit = /^Digit([0-9])$/.exec(e.code);
+  if (digit) return digit[1];
+  return e.code === 'Period' ? '.' : key;
+}
 const MISSING = 'That sheet is no longer saved in this browser.';
 /** Sources that went through the import steps; a sheet opened from a file or the library did not. */
 const IMPORTED: Doc['source']['format'][] = ['MIDI', 'MusicXML', 'sample'];
@@ -186,11 +200,13 @@ function Sheet({ doc }: { doc: Doc }) {
 
   /** The Edit notes keys; true when the key is one of them (handled, or doing nothing because its edit is disabled). */
   function noteKey(e: KeyboardEvent<HTMLDivElement>): boolean {
-    if (mode !== 'notes' || selectedId === null || e.altKey || e.shiftKey || e.nativeEvent.isComposing) return false;
+    if (mode !== 'notes' || selectedId === null || e.altKey || e.nativeEvent.isComposing) return false;
     if (openAlt !== null || document.querySelector(OPEN_LAYERS)) return false;
     const id = selectedId;
     const octave = e.ctrlKey || e.metaKey;
-    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const key = editKey(e);
+    // French AZERTY needs Shift for digits and the dot; Shift with any other key does nothing.
+    if (e.shiftKey && !/^[0-9.]$/.test(key)) return false;
     let next: Doc | null;
     if (key === 'ArrowUp' || key === 'ArrowDown') {
       next = shiftPitch(doc, id, (key === 'ArrowUp' ? 1 : -1) * (octave ? 12 : 1));
@@ -216,12 +232,14 @@ function Sheet({ doc }: { doc: Doc }) {
     return true;
   }
 
-  function changeMode(m: Mode) {
+  /** A click on Lyrics or Chords focuses the field of the selected note; arrow keys leave the focus on the switch. */
+  function changeMode(m: Mode, byClick: boolean) {
     setMode(m);
     if (selectedId === null) return;
     const id = landing(selectedId, m);
     if (id !== selectedId) select(id);
-    if (m === 'lyrics' || m === 'chords') focusField(id);   // the panel's field is focused on open
+    if (byClick && (m === 'lyrics' || m === 'chords')) focusField(id);
+    else setFieldFocus(null);
   }
 
   // Keyboard order: every event in score order. Edit notes and Chords mode include tied continuations
@@ -235,6 +253,10 @@ function Sheet({ doc }: { doc: Doc }) {
   function onSheetKey(e: KeyboardEvent<HTMLDivElement>) {
     if (e.target instanceof Element && e.target.closest(OWN_KEYS)) return;
     if (noteKey(e)) return;
+    // Tab from the sheet goes into the open Lyric or Chord field (the keyboard path after arrow keys).
+    const field = e.key === 'Tab' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey
+      ? paperRef.current?.querySelector<HTMLInputElement>('[data-panel] input') : null;
+    if (field) { e.preventDefault(); field.focus(); return; }
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if (stops.length === 0) return;
     const at = selectedId === null ? -1 : derived.events.indexOf(derived.byId[selectedId]);
@@ -319,7 +341,9 @@ function Sheet({ doc }: { doc: Doc }) {
   // Undo and redo leave the selection alone unless its event is gone from the document they bring back.
   function travel(step: 'undo' | 'redo') {
     const st = useApp.getState();
+    if (step === 'undo' ? !canUndo(st) : !canRedo(st)) return;
     st[step]();
+    setAnnouncement(step === 'undo' ? 'Undone' : 'Redone');
     const now = useApp.getState().doc;
     if (selection !== null && (!now || locate(now, selection) === null)) setSelection(null);
   }
@@ -405,6 +429,8 @@ function Sheet({ doc }: { doc: Doc }) {
     focusField(id);
   }
 
+  const focusSheet = useCallback(() => paperRef.current?.focus({ preventScroll: true }), []);
+
   /** Esc in a panel's field clears the selection; the sheet takes the keys again. */
   function closePanel() {
     select(null);
@@ -445,16 +471,16 @@ function Sheet({ doc }: { doc: Doc }) {
     if (mode === 'view' || selectedId === null || !at || at.system !== systemIndex) return null;
     const left = Math.round(Math.max(0, Math.min(SHEET.systemWidth - PANEL_WIDTH, at.x - PANEL_WIDTH / 2)));
     return (
-      <div role="group" aria-label={PANEL[mode]} className={s.panel} style={{ left }}
+      <div role="group" aria-label={PANEL[mode]} data-panel="" className={s.panel} style={{ left }}
         onMouseDown={keepFocusOffButtons} onKeyDown={onPanelKey} onFocus={() => { panelFocus.current = true; }}
         onBlur={e => { if (!gone(e.target)) panelFocus.current = false; }}>
         {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
         {mode === 'chords' && (
           <ChordPanel doc={doc} derived={derived} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null}
-            onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} />
+            onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} onExit={focusSheet} />
         )}
         {mode === 'lyrics' && (
-          <LyricPanel doc={doc} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} />
+          <LyricPanel doc={doc} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} onExit={focusSheet} />
         )}
       </div>
     );
@@ -507,7 +533,8 @@ function Sheet({ doc }: { doc: Doc }) {
           }
           right={
             <div className={s.barRight}>
-              <UndoRedo canUndo={undoable} canRedo={redoable} onUndo={() => travel('undo')} onRedo={() => travel('redo')} />
+              <UndoRedo canUndo={undoable} canRedo={redoable} onUndo={() => travel('undo')} onRedo={() => travel('redo')}
+                onFocusLost={focusSheet} />
               <SaveControls status={status} error={saveError} onSave={save} />
               <FileMenu entries={entries} currentId={libraryId} onPrint={print} onDownload={download}
                 onOpenFile={file => void openFile(file)} onNew={() => navigate('/')} onOpen={openSaved} onDelete={deleteSaved}

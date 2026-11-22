@@ -1,4 +1,5 @@
 import { inst, rangeState } from './instruments';
+import { MAX_BARS } from './persistence';
 import { keySignature, mod12, signatureLetters } from './keys';
 import { barCap, DURATIONS, newId, splitDuration } from './time';
 import type { Bar, Doc, Ev } from './types';
@@ -231,9 +232,18 @@ export function toggleTie(doc: Doc, id: string): Doc | null {
 
 // ---- bars -------------------------------------------------------------------------------------
 
-/** Inserts a bar of the song's meter holding one whole-bar rest after the given bar, and selects that rest. */
-export function addBarAfter(doc: Doc, barIndex: number): { doc: Doc; selectId: string } {
+/** False once the score holds MAX_BARS bars: one more could not be saved. */
+export function canAddBar(doc: Doc): boolean {
+  return doc.score.length < MAX_BARS;
+}
+
+/**
+ * Inserts a bar of the song's meter holding one whole-bar rest after the given bar, and selects that rest;
+ * null at the bar limit.
+ */
+export function addBarAfter(doc: Doc, barIndex: number): { doc: Doc; selectId: string } | null {
   if (!Number.isInteger(barIndex) || barIndex < 0 || barIndex >= doc.score.length) throw new RangeError(`No bar ${barIndex}`);
+  if (!canAddBar(doc)) return null;
   const prev = doc.score[barIndex];
   const lastId = prev && prev.ev.length > 0 ? prev.ev[prev.ev.length - 1].id : undefined;
   const cap = barCap(doc.timeSig);

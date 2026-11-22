@@ -23,6 +23,8 @@ interface Props {
   onEdit(next: Doc | null, coalesceKey: string): void;
   onMove(id: string): void;
   onClose(): void;
+  /** Shift+Tab before the first event: back to the sheet, the selection stays. */
+  onExit(): void;
 }
 
 /** The Chords panel (design 4.5): one chord field shown in the current key, and symbol buttons that insert at the caret. */
@@ -56,7 +58,10 @@ export default function ChordPanel(p: Props): JSX.Element | null {
     const all = eventOrder(doc);
     const k = all.findIndex(ev => ev.id === id);
     const next = all[k + (e.key === 'Tab' && e.shiftKey ? -1 : 1)];
-    if (e.key === 'Tab' && next === undefined) return;   // at the ends Tab leaves the panel
+    if (e.key === 'Tab' && next === undefined) {
+      if (e.shiftKey) { e.preventDefault(); p.onExit(); }   // at the first event: back to the sheet
+      return;                                              // at the last event Tab leaves the panel
+    }
     e.preventDefault();
     if (next !== undefined) p.onMove(next.id);
   }

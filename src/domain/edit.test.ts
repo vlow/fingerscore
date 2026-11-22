@@ -6,7 +6,7 @@ import {
   splitLength, toggleDotted, toggleRest, toggleTie,
 } from './edit';
 import { sampleDoc } from './fixture';
-import { validateDoc } from './persistence';
+import { MAX_BARS, validateDoc } from './persistence';
 import { DURATIONS } from './time';
 import type { Doc } from './types';
 
@@ -91,10 +91,10 @@ describe('lengths', () => {
   it('pickup bar and 3/4', () => {
     const d = mkDoc([{ ev: [[60, 12]] }, { ev: [[62, 36]] }], [3, 4]); const p = d.score[0].ev[0].id;
     expect(fits(d, p, 18)).toBe(false); expect(shape(ok(setLength(d, p, 6)))).toEqual(['n6', 'r6']);
-    expect(fits(d, d.score[1].ev[0].id, 48)).toBe(false); const a = addBarAfter(d, 1); expect(a.doc.score[2]).toMatchObject({ cap: 36, rs: false, re: false, volta: '' });
+    expect(fits(d, d.score[1].ev[0].id, 48)).toBe(false); const a = addBarAfter(d, 1)!; expect(a.doc.score[2]).toMatchObject({ cap: 36, rs: false, re: false, volta: '' });
     expect(a.doc.score[2].ev).toHaveLength(1); expect(a.doc.score[2].ev[0]).toMatchObject({ r: true, d: 36, m: 62 }); expect(a.selectId).toBe(a.doc.score[2].ev[0].id);
   });
-  it('6/8 bar capacity', () => { const d = mkDoc([{ ev: [[60, 36]] }], [6, 8]); expect(addBarAfter(d, 0).doc.score[1].cap).toBe(36); });
+  it('6/8 bar capacity', () => { const d = mkDoc([{ ev: [[60, 36]] }], [6, 8]); expect(addBarAfter(d, 0)!.doc.score[1].cap).toBe(36); });
   it('shortening a tied note clears its tie', () => {
     const d = mkDoc([{ ev: [[60, 24, { tie: true }], [60, 24]] }]);
     expect(ok(setLength(d, d.score[0].ev[0].id, 12)).score[0].ev[0].tie).toBe(false);
@@ -185,9 +185,16 @@ describe('bars', () => {
     expect(() => addBarAfter(d, 1)).toThrow(RangeError); expect(() => addBarAfter(d, -1)).toThrow(RangeError);
     expect(() => addBarAfter(d, 0.5)).toThrow(RangeError);
   });
+  it('addBarAfter stops at the saveable limit of MAX_BARS bars', () => {
+    const full = mkDoc(Array.from({ length: MAX_BARS }, () => ({ ev: [[60, 48]] as EvSpec[] })));
+    expect(addBarAfter(full, 0)).toBeNull();
+    const one = { ...full, score: full.score.slice(1) };
+    expect(addBarAfter(one, 0)!.doc.score).toHaveLength(MAX_BARS);
+    expect(validateDoc(addBarAfter(one, 0)!.doc)).not.toBeNull();
+  });
   it('bars: add and remove', () => {
     const d = mkDoc([{ ev: [[60, 48]], rs: true }, { ev: [[62, 48]], re: true, volta: '1' }]);
-    const a = addBarAfter(d, 0); expect(a.doc.score.map(b => [b.rs, b.re, b.volta])).toEqual([[true, false, ''], [false, false, ''], [false, true, '1']]);
+    const a = addBarAfter(d, 0)!; expect(a.doc.score.map(b => [b.rs, b.re, b.volta])).toEqual([[true, false, ''], [false, false, ''], [false, true, '1']]);
     const r = removeBar(a.doc, 1)!; expect(r.doc.score).toHaveLength(2); expect(r.selectId).toBe(d.score[1].ev[0].id);
     const last = removeBar(d, 1)!; expect(last.selectId).toBe(d.score[0].ev[0].id); expect(removeBar(mkDoc([{ ev: [[60, 48]] }]), 0)).toBeNull();
   });
@@ -200,7 +207,7 @@ describe('bars', () => {
   });
   it('a bar added after a tied note clears the tie', () => {
     const d = mkDoc([{ ev: [[60, 48, { tie: true }]] }, { ev: [[60, 48]] }]);
-    expect(addBarAfter(d, 0).doc.score[0].ev[0].tie).toBe(false);
+    expect(addBarAfter(d, 0)!.doc.score[0].ev[0].tie).toBe(false);
   });
 });
 
@@ -216,7 +223,7 @@ describe('every edit result', () => {
       for (let letter = 0; letter < 7; letter++) push(setLetter(d, e.id, letter, 'nearest'));
       push(toggleRest(d, e.id)); push(toggleTie(d, e.id));
     }
-    d.score.forEach((_b, i) => { push(addBarAfter(d, i).doc); push(removeBar(d, i)?.doc ?? null); });
+    d.score.forEach((_b, i) => { push(addBarAfter(d, i)!.doc); push(removeBar(d, i)?.doc ?? null); });
     expect(results.length).toBeGreaterThan(500);
     for (const r of results) {
       expect(sum(r) && uniq(r)).toBe(true);

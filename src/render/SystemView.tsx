@@ -195,7 +195,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
           <text data-bar-number="" x={0} y={65} fontSize={11} fontFamily={FONT} fill={MUTED}>{system.barNumber}</text>
         )}
         {line(0, 1)}
-        {system.bars.map(bar => <Barlines key={bar.bar} bar={bar} doc={doc} />)}
+        {system.bars.map(bar => <g key={bar.bar} data-bar={bar.bar}><Barlines bar={bar} doc={doc} /></g>)}
         {system.bars.map(bar => bar.events.map(e => (
           <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}
             show={show} playing={p.playingId === e.id} selected={p.selectedId === e.id}

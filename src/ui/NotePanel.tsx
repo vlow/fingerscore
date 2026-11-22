@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import {
-  addBarAfter, BASE_LENGTHS, canTie, dottedOf, fits, LENGTH_NAMES, locate, removeBar, setLength, shiftPitch, splitLength, toggleDotted,
+  addBarAfter, BASE_LENGTHS, canAddBar, canTie, dottedOf, fits, LENGTH_NAMES, locate, removeBar, setLength, shiftPitch, splitLength, toggleDotted,
   toggleRest, toggleTie,
 } from '../domain/edit';
 import type { Doc } from '../domain/types';
@@ -74,7 +74,8 @@ export default function NotePanel(p: Props): JSX.Element | null {
           {ev.r ? 'Turn into note' : 'Turn into rest'}
         </button>
         <span className={s.spacer} />
-        <button type="button" className={s.action} onClick={() => { const r = addBarAfter(doc, at.bar); onEdit(r.doc, r.selectId); }}>
+        <button type="button" className={s.action} disabled={!canAddBar(doc)}
+          onClick={() => { const r = addBarAfter(doc, at.bar); if (r) onEdit(r.doc, r.selectId); }}>
           + Bar after
         </button>
         <button type="button" className={`${s.action} ${s.danger}`} disabled={doc.score.length <= 1}

@@ -11,7 +11,8 @@ import { addBarAfter, locate, shiftPitch, toggleRest } from '../domain/edit';
 import { setChord } from '../domain/editText';
 import { inst } from '../domain/instruments';
 import { mod12, signatureLetters } from '../domain/keys';
-import { serializeFile } from '../domain/persistence';
+import { MAX_BARS, serializeFile } from '../domain/persistence';
+import { mkDoc, type EvSpec } from '../test/helpers';
 import { listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
 import { downloadText } from '../ui/download';
@@ -785,6 +786,72 @@ describe('modes, undo and redo', () => {
     expect(useApp.getState().doc!.show.lyrics).toBe(false);
   });
 
+  it('undo and redo name their shortcuts and are announced', async () => {
+    open('asax');
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    const redo = screen.getByRole('button', { name: 'Redo' });
+    expect(undo).toHaveAttribute('aria-keyshortcuts', 'Control+Z Meta+Z');
+    expect(redo).toHaveAttribute('aria-keyshortcuts', 'Control+Shift+Z Meta+Shift+Z Control+Y');
+    const live = () => sheet().querySelector('[aria-live="polite"]')!;
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    await user.click(undo);
+    expect(live()).toHaveTextContent(/^Undone$/);
+    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    expect(live()).toHaveTextContent(/^Redone$/);
+    await clickEvent(firstEventId());
+    await user.keyboard('{Control>}y{/Control}');   // nothing to redo: nothing is said
+    expect(live()).not.toHaveTextContent(/Redone|Undone/);
+  });
+
+  it('a history button that disables itself hands the focus on: to the other one, else to the sheet', async () => {
+    open('asax');
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    act(() => useApp.getState().patchDoc({ tempo: 130 }));
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    const redo = screen.getByRole('button', { name: 'Redo' });
+    undo.focus();
+    await user.keyboard('{Enter}');
+    expect(undo).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(undo).toBeDisabled();
+    expect(redo).toHaveFocus();
+    await user.keyboard('{Enter}{Enter}');
+    expect(redo).toBeDisabled();
+    expect(undo).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(undo).toHaveFocus();   // one step undone, more to undo
+    act(() => useApp.setState({ past: [], future: [] }));   // neither button is enabled now
+    expect(sheet()).toHaveFocus();
+  });
+
+  it('a mode chosen with arrow keys keeps the focus on the switch; a click on Lyrics or Chords focuses the field', async () => {
+    open('asax');
+    await clickEvent(afterChain);
+    const radios = within(screen.getByRole('radiogroup', { name: 'Mode' })).getAllByRole('radio');
+    radios[1].click();
+    radios[1].focus();
+    await user.keyboard('{ArrowRight}');
+    expect(radios[2]).toBeChecked();
+    expect(radios[2]).toHaveFocus();
+    await user.keyboard('{ArrowRight}');
+    expect(radios[3]).toBeChecked();
+    expect(radios[3]).toHaveFocus();
+    await user.click(radios[2]);
+    expect(screen.getByRole('textbox', { name: 'Lyric' })).toHaveFocus();
+  });
+
+  it('Tab on the sheet goes into the open Lyric or Chord field', async () => {
+    open('asax');
+    for (const [mode, label] of [['Lyrics', 'Lyric'], ['Chords', 'Chord']]) {
+      await user.click(screen.getByRole('radio', { name: mode }));
+      sheet().focus();
+      await user.keyboard('{Home}{ArrowRight}');
+      expect(sheet()).toHaveFocus();
+      await user.keyboard('{Tab}');
+      expect(screen.getByRole('textbox', { name: label })).toHaveFocus();
+    }
+  });
+
   it('undo and redo sit left of the save status, with the shortcut in the tooltip', () => {
     open('asax');
     const undo = screen.getByRole('button', { name: 'Undo' });
@@ -885,7 +952,7 @@ describe('modes, undo and redo', () => {
     let added = '';
     act(() => {
       const st = useApp.getState();
-      const r = addBarAfter(st.doc!, 2);
+      const r = addBarAfter(st.doc!, 2)!;
       added = r.selectId;
       st.applyEdit(r.doc);
     });
@@ -1094,8 +1161,10 @@ describe('Edit notes panel and keys', () => {
     const count = current().score.length;
     const n = current().score[2].ev[1];
     await clickEvent(n.id);
+    expect(document.querySelectorAll('[data-bar]')).toHaveLength(count);
     await user.click(button('+ Bar after'));
     expect(current().score).toHaveLength(count + 1);
+    expect(document.querySelectorAll('[data-bar]')).toHaveLength(count + 1);
     const added = current().score[3].ev;
     expect(added).toHaveLength(1);
     expect(added[0].r).toBe(true);
@@ -1271,6 +1340,32 @@ describe('Edit notes panel and keys', () => {
     expect(within(panel()).getByText('Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · R rest · T tie')).toBeInTheDocument();
   });
 
+  it('+ Bar after is disabled at the bar limit', async () => {
+    const full = mkDoc(Array.from({ length: MAX_BARS }, () => ({ ev: [[0, 48]] as EvSpec[] })));
+    await edit('asax', { score: full.score, chords: {}, imported: { lyrics: {}, chords: {} } });
+    await clickEvent(full.score[0].ev[0].id);
+    expect(button('+ Bar after')).toBeDisabled();
+    expect(button('Remove bar')).toBeEnabled();
+  });
+
+  it('editing keys on other layouts: letters by key code, digits and dot with Shift', async () => {
+    await edit('fl');
+    const n = current().score[2].ev[1];
+    await clickEvent(n.id);
+    sheet().focus();
+    fireEvent.keyDown(sheet(), { key: 'ф', code: 'KeyA' });
+    expect(derive(current(), DEFAULT_PREFS).byId[n.id].spelled.name[0]).toBe('A');
+    fireEvent.keyDown(sheet(), { key: '"', code: 'Digit3', shiftKey: true });
+    expect(ev(n.id).d).toBe(6);
+    fireEvent.keyDown(sheet(), { key: '.', code: 'Comma', shiftKey: true });
+    expect(ev(n.id).d).toBe(9);
+    fireEvent.keyDown(sheet(), { key: 'к', code: 'KeyR' });
+    expect(ev(n.id).r).toBe(true);
+    const d0 = current();
+    fireEvent.keyDown(sheet(), { key: 'R', code: 'KeyR', shiftKey: true });   // Shift with a letter still does nothing
+    expect(current()).toBe(d0);
+  });
+
   it('an edit during playback stops it and keeps the selection (review focus 5)', async () => {
     await edit();
     const n = current().score[2].ev[1];
@@ -1342,7 +1437,9 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     expect(selectedId()).toBe(notes[0].id);
     const shiftTab = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
     act(() => { field().dispatchEvent(shiftTab); });
-    expect(shiftTab.defaultPrevented).toBe(false);   // the first note: Shift+Tab leaves the panel
+    expect(shiftTab.defaultPrevented).toBe(true);   // the first note: Shift+Tab goes back to the sheet
+    expect(screen.getByRole('group', { name: /Sheet music/ })).toHaveFocus();
+    expect(selectedId()).toBe(notes[0].id);
     const last = notes[notes.length - 1];
     await clickEvent(last.id);
     expect(field()).toHaveFocus();
@@ -1658,7 +1755,9 @@ describe('Chords mode', () => {
     await clickEvent(all[0].id);
     const back = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
     act(() => { field().dispatchEvent(back); });
-    expect(back.defaultPrevented).toBe(false);
+    expect(back.defaultPrevented).toBe(true);   // back to the sheet, the selection stays
+    expect(screen.getByRole('group', { name: /Sheet music/ })).toHaveFocus();
+    expect(selectedId()).toBe(all[0].id);
     await clickEvent(all[all.length - 1].id);
     const on = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
     act(() => { field().dispatchEvent(on); });

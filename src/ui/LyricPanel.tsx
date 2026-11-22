@@ -14,6 +14,8 @@ interface Props {
   onEdit(next: Doc | null, coalesceKey: string): void;
   onMove(id: string): void;
   onClose(): void;
+  /** Shift+Tab before the first event: back to the sheet, the selection stays. */
+  onExit(): void;
 }
 
 /** The Lyrics panel (design 4.4): one syllable field and symbol buttons that insert at the caret. */
@@ -36,7 +38,10 @@ export default function LyricPanel(p: Props): JSX.Element | null {
     if (e.key !== 'Enter' && e.key !== 'Tab') return;
     const next = nextLyricNote(doc, id, e.key === 'Tab' && e.shiftKey ? -1 : 1);
     if (e.key === 'Enter') e.preventDefault();
-    else if (next === null) return;   // at the ends Tab leaves the panel
+    else if (next === null) {
+      if (e.shiftKey) { e.preventDefault(); p.onExit(); }   // at the first note: back to the sheet
+      return;                                              // at the last note Tab leaves the panel
+    }
     else e.preventDefault();
     if (next !== null) p.onMove(next);
   }
