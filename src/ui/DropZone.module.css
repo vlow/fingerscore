@@ -1,0 +1,152 @@
+.zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  padding: 28px 24px;
+  border: 2px dashed #9fb8b4;
+  border-radius: 20px;
+  background: var(--card);
+  color: var(--ink);
+  text-align: center;
+}
+
+.zone[data-drag] {
+  border-color: var(--teal);
+  background: var(--teal-light);
+}
+
+/* The keyboard focus lands on the invisible input; show it on the whole zone. */
+.zone:has(.input:focus-visible) {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.uploadIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: var(--teal-tint);
+  color: var(--teal);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.hint {
+  color: var(--muted-2);
+}
+
+.browse {
+  color: var(--teal);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.chip {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--page);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Covers the whole zone: click to browse, or drop a file on it. */
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--teal-tint);
+  color: var(--teal);
+}
+
+.result {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.error {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--red);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  border: none;
+  background: var(--teal);
+  color: #ffffff;
+}
+
+.primary:hover {
+  background: var(--teal-hover);
+}
+
+.secondary {
+  border: 1px solid var(--border-2);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.secondary:hover {
+  background: var(--page);
+}

@@ -17,6 +17,16 @@ it('renders the shell on every route', () => {
   expect(screen.queryByRole('link', { name: 'Imprint' })).toBeNull(); // version 2
 });
 
+it.each(['/', '/tracks', '/sheet'])('header: Songs is current on %s, the brand link never is', path => {
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  );
+  expect(screen.getByRole('link', { name: 'Songs' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('link', { name: /fingerscore/i })).not.toHaveAttribute('aria-current');
+});
+
 it('dev build: /dev/sheet previews the renderer for the fixture', async () => {
   render(
     <MemoryRouter initialEntries={['/dev/sheet?inst=asax&shift=0']}>

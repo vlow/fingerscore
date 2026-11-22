@@ -1,18 +1,23 @@
-import { NavLink } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { LogoMark } from './icons';
 
+/** Routes that belong to the "Songs" section. */
+const SONG_PATHS = ['/', '/tracks', '/sheet'];
+
 export default function Header() {
+  const { pathname } = useLocation();
+  const inSongs = SONG_PATHS.includes(pathname);
   return (
     <header className="site-header">
-      <NavLink to="/" className="brand" end>
+      <Link to="/" className="brand">
         <LogoMark size={28} />
         <span className="brand-name">fingerscore</span>
-      </NavLink>
+      </Link>
       <div className="header-spacer" />
       <nav aria-label="Main" className="main-nav">
-        <NavLink to="/" end className="nav-link">
+        <Link to="/" className="nav-link" aria-current={inSongs ? 'page' : undefined}>
           Songs
-        </NavLink>
+        </Link>
       </nav>
     </header>
   );

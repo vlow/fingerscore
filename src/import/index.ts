@@ -1,3 +1,7 @@
+import type { Prefs } from '../domain/transpose';
+import type { InstId } from '../domain/types';
+import type { BuildOptions } from './buildDoc';
+import { analyseTracks, usableTracks } from './melody';
 import { parseMidi } from './midi';
 import { parseMusicXml } from './musicxml';
 import { ImportError, type ParsedSong } from './types';
@@ -28,4 +32,28 @@ export async function parseFile(file: File): Promise<ParsedSong> {
     throw new ImportError(`"${file.name}" could not be read as a ${isMidi ? 'MIDI' : 'MusicXML'} file.`);
   }
   return isMidi ? parseMidi(file.name, bytes) : parseMusicXml(file.name, bytes);
+}
+
+/** Options for building the sheet from one track: top note, lyrics and chord symbols from the most likely source. */
+export function buildOptionsFor(song: ParsedSong, trackId: string, instId: InstId, prefs: Prefs): BuildOptions {
+  const track = song.tracks.find(t => t.id === trackId);
+  const withLyrics = track && track.lyrics.length > 0 ? track : song.tracks.find(t => t.lyrics.length > 0);
+  const infos = analyseTracks(song);
+  const chordTrack = usableTracks(song).find(t =>
+    t.id !== trackId && infos[song.tracks.indexOf(t)].tags.includes('Chords'));
+  return {
+    trackId,
+    keep: 'top',
+    lyricsFrom: withLyrics?.id ?? null,
+    chordsFrom: track && track.chords.length > 0 ? 'file' : chordTrack?.id ?? null,
+    instId,
+    prefs,
+  };
+}
+
+/** Options for the recommended track (the first track when none is usable). */
+export function defaultBuildOptions(song: ParsedSong, instId: InstId, prefs: Prefs): BuildOptions {
+  const infos = analyseTracks(song);
+  const rec = song.tracks.find((_, i) => infos[i].recommended) ?? song.tracks[0];
+  return buildOptionsFor(song, rec.id, instId, prefs);
 }

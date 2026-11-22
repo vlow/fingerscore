@@ -46,7 +46,7 @@ export function familySubline(f: Family): string {
 }
 
 // Display names as in the prototype: "Alto sax (E♭)" → "Alto sax in E♭".
-function label(i: Instrument): string {
+export function displayName(i: Instrument): string {
   return i.name.replace(/ \(([^)]+)\)$/, ' in $1');
 }
 
@@ -82,7 +82,7 @@ const HIGHER_BY: Record<number, string> = {
 export function intervalText(i: Instrument): string {
   if (i.off === 0) return 'sounds as written';
   if (i.off === -12) return 'sounds an octave higher than written';
-  return `${label(i)}: you read ${HIGHER_BY[i.off]} higher than it sounds`;
+  return `${displayName(i)}: you read ${HIGHER_BY[i.off]} higher than it sounds`;
 }
 
 const READS: Record<number, string> = {
@@ -101,5 +101,5 @@ export function noteNameFlat(midi: number): string {
 }
 
 export function summary(i: Instrument): string {
-  return `${label(i)} · ${noteNameFlat(i.lo)} – ${noteNameFlat(i.hi)} · ${READS[i.off]}`;
+  return `${displayName(i)} · ${noteNameFlat(i.lo)} – ${noteNameFlat(i.hi)} · ${READS[i.off]}`;
 }

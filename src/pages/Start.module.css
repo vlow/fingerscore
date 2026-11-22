@@ -1,0 +1,139 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.h1 {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  max-width: 620px;
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.prefs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.check input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+.sample {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.sampleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sampleButton:hover {
+  background: var(--page);
+}
+
+.error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--red-bg);
+  color: var(--red);
+  font-weight: 600;
+}
+
+.how {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.step {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.stepNum {
+  color: var(--teal);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.stepTitle {
+  margin: 4px 0 6px;
+  font-size: 16px;
+}
+
+.stepText {
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .h1 {
+    font-size: 30px;
+  }
+}
