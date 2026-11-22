@@ -343,7 +343,10 @@ function Sheet({ doc }: { doc: Doc }) {
     const st = useApp.getState();
     if (step === 'undo' ? !canUndo(st) : !canRedo(st)) return;
     st[step]();
-    setAnnouncement(step === 'undo' ? 'Undone' : 'Redone');
+    // The same word twice in a row would leave the live region unchanged, and a screen reader
+    // would stay silent on the second press: a zero-width space makes the repeat a new text.
+    const word = step === 'undo' ? 'Undone' : 'Redone';
+    setAnnouncement(prev => (prev === word ? `${word}\u200B` : word));
     const now = useApp.getState().doc;
     if (selection !== null && (!now || locate(now, selection) === null)) setSelection(null);
   }

@@ -803,6 +803,20 @@ describe('modes, undo and redo', () => {
     expect(live()).not.toHaveTextContent(/Redone|Undone/);
   });
 
+  it('repeated undo is announced each time', async () => {
+    open('asax');
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    act(() => useApp.getState().patchDoc({ tempo: 130 }));
+    act(() => useApp.getState().patchDoc({ tempo: 140 }));
+    const live = () => screen.getByRole('group', { name: /Sheet music/ }).querySelector('[aria-live="polite"]')!.textContent;
+    const said: (string | null)[] = [];
+    for (let i = 0; i < 3; i++) { await user.keyboard('{Control>}z{/Control}'); said.push(live()); }
+    expect(said[0]).toBe('Undone');
+    expect(said[1]).not.toBe(said[0]);                       // the live region's text changes on every press
+    expect(said[2]).not.toBe(said[1]);
+    expect(said.every(t => t!.replace('\u200B', '') === 'Undone')).toBe(true);
+  });
+
   it('a history button that disables itself hands the focus on: to the other one, else to the sheet', async () => {
     open('asax');
     act(() => useApp.getState().patchDoc({ tempo: 120 }));
