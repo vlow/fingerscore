@@ -21,3 +21,27 @@ export function mkDoc(bars: BarSpec[], timeSig: TimeSig = [4, 4]): Doc {
     source: { file: '', format: 'sample', track: '', trackCount: 1, simplified: false },
   };
 }
+
+/** Playable on every test instrument's default shift (G4 on the C xaphoon). */
+const PLAYABLE = 67;
+
+function barOf(cap: number, durations: number[]): BarSpec {
+  const sum = durations.reduce((s, d) => s + d, 0);
+  if (sum !== cap) throw new Error(`Bar durations sum to ${sum}, expected ${cap}`);
+  return { ev: durations.map((d): EvSpec => [PLAYABLE, d]) };
+}
+
+/** A full 4/4 bar of sixteen sixteenth notes. */
+export function sixteenthBar(): BarSpec {
+  return barOf(48, Array<number>(16).fill(3));
+}
+
+/** A full 6/8 bar of notes with the given durations (ticks). */
+export function bar68of(...durations: number[]): BarSpec {
+  return barOf(36, durations);
+}
+
+/** A full 4/4 bar of notes with the given durations (ticks). */
+export function bar44of(...durations: number[]): BarSpec {
+  return barOf(48, durations);
+}
