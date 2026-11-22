@@ -2,114 +2,6 @@
  "_doc": "Written pitches inside an instrument's range (lo..ext) that have no fingering entry. A 'kind' entry covers every instrument of that kind at that written MIDI pitch; an 'inst' entry covers one instrument. checked = sources looked at that print no fingering for the pitch. Keep in sync with docs/fingering-gaps.md.",
  "gaps": [
   {
-   "kind": "sax",
-   "pitch": 74,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 75,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 76,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 77,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 78,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 79,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 80,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 81,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 82,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 83,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 84,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 85,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 91,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 92,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 93,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 94,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 95,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
-   "kind": "sax",
-   "pitch": 96,
-   "note": "not yet looked up",
-   "checked": []
-  },
-  {
    "inst": "cl",
    "pitch": 71,
    "note": "not yet looked up",
@@ -384,6 +276,33 @@
    "pitch": 85,
    "note": "not yet looked up",
    "checked": []
+  },
+  {
+   "inst": "ssax",
+   "pitch": 94,
+   "note": "B♭6 (altissimo): no soprano fingering printed by both sources",
+   "checked": [
+    "WFG saxophone charts (wfg.woodwind.org/sax/)",
+    "Sax Teacher UK altissimo chart"
+   ]
+  },
+  {
+   "inst": "tsax",
+   "pitch": 95,
+   "note": "B6 (altissimo): no tenor fingering printed by both sources",
+   "checked": [
+    "WFG saxophone charts (wfg.woodwind.org/sax/)",
+    "Sax Teacher UK altissimo chart"
+   ]
+  },
+  {
+   "inst": "bsax",
+   "pitch": 95,
+   "note": "B6 (altissimo): no baritone fingering printed by both sources",
+   "checked": [
+    "WFG saxophone charts (wfg.woodwind.org/sax/)",
+    "Sax Teacher UK altissimo chart"
+   ]
   }
  ]
 }

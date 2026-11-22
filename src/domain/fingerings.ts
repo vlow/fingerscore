@@ -17,10 +17,13 @@ interface FingeringData {
   FINGER: Record<string, string>;
   tables: Record<Kind | 'recGerman', Table>;
   overrides: Partial<Record<InstId, Table>>;
-  meta: Partial<Record<Kind, { sources: { title: string }[]; reviewed: string | null }>>;
+  meta: Partial<Record<Kind, KindMeta>>;
 }
 
-interface GapEntry { inst?: InstId; kind?: Kind; pitch: number; note: string; checked: string[] }
+export interface Source { title: string; url?: string; accessed?: string }
+export interface KindMeta { sources: Source[]; reviewed: string | null }
+
+export interface GapEntry { inst?: InstId; kind?: Kind; pitch: number; note: string; checked: string[] }
 
 const D = data as unknown as FingeringData;
 
@@ -58,8 +61,18 @@ export function coverageGaps(): { inst: InstId; pitch: number }[] {
   return out;
 }
 
+export function meta(kind: Kind): KindMeta {
+  return D.meta[kind] ?? { sources: [], reviewed: null };
+}
+
+export function rawGaps(): GapEntry[] {
+  return gapData.gaps as GapEntry[];
+}
+
+/** Gap list with 'kind' entries expanded to the instruments of that kind whose lo..ext contains the pitch. */
 export function documentedGaps(): { inst: InstId; pitch: number }[] {
-  return (gapData.gaps as GapEntry[]).flatMap(g =>
+  return rawGaps().flatMap(g =>
     g.inst ? [{ inst: g.inst, pitch: g.pitch }]
-      : ORDER.filter(id => inst(id).kind === g.kind).map(id => ({ inst: id, pitch: g.pitch })));
+      : ORDER.filter(id => inst(id).kind === g.kind && g.pitch >= inst(id).lo && g.pitch <= inst(id).ext)
+        .map(id => ({ inst: id, pitch: g.pitch })));
 }

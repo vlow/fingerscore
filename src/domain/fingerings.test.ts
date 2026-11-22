@@ -35,9 +35,23 @@ it('no documented gap has data', () => {
   for (const g of documentedGaps()) expect(optionsFor(g.inst, g.pitch, 'baroque'), `${g.inst}:${g.pitch}`).toEqual([]);
 });
 
-it('a kind entry in the gap list expands to every instrument of that kind', () => {
-  const sax = documentedGaps().filter(g => g.pitch === 80).map(g => g.inst).sort();
-  expect(sax).toEqual(expect.arrayContaining(['asax', 'bsax', 'ssax', 'tsax']));
+async function withGaps(gaps: unknown[], run: (m: typeof import('./fingerings')) => void) {
+  const path = '../data/fingering-gaps.json';
+  vi.resetModules();
+  vi.doMock(path, () => ({ default: { gaps } }));
+  try { run(await import('./fingerings')); } finally { vi.doUnmock(path); vi.resetModules(); }
+}
+
+it('a kind entry in the gap list expands to every instrument of that kind', async () => {
+  await withGaps([{ kind: 'sax', pitch: 80, note: 'test', checked: [] }], m => {
+    expect(m.documentedGaps().map(g => g.inst).sort()).toEqual(['asax', 'bsax', 'ssax', 'tsax']);
+  });
+});
+
+it('a kind entry skips instruments whose range does not reach the pitch', async () => {
+  await withGaps([{ kind: 'fl', pitch: 95, note: 'test', checked: [] }, { kind: 'fl', pitch: 61, note: 'test', checked: [] }], m => {
+    expect(m.documentedGaps().map(g => `${g.inst}:${g.pitch}`).sort()).toEqual(['afl:61', 'fl:61', 'fl:95', 'picc:95']);
+  });
 });
 
 it('recorder systems', () => {
@@ -73,3 +87,4 @@ it('legend carries the draft suffix until reviewed', () => { expect(legend('xc')
 it('satellite keys exist for sax, clarinet and flute only', () => {
   expect(['xaph', 'sax', 'cl', 'fl', 'rec'].filter(k => hasSatellites(k as 'sax'))).toEqual(['sax', 'cl', 'fl']);
 });
+

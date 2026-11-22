@@ -1,5 +1,5 @@
 {
- "_doc": "Fingering data. tables[kind] maps a key to an array of options (first = standard). rec and recGerman are keyed by written pitch minus the instrument's base (soprano and alto recorder share one table; recGerman holds only the notes where the German system differs); every other table is keyed by written MIDI pitch. overrides[instId][pitch] replaces the kind table's entry for that instrument. meta[kind] = {sources, reviewed}; reviewed null = draft. Pitches with no published fingering have no entry and are listed in fingering-gaps.json. Entries come from published charts only. LAYOUT[kind] = main holes/keys of the vertical column: [dx, dyTop, size(px), double?] relative to the chart centre x and chart top (px at 1x). Values in an option's 'h' array follow that order: 1 = closed/pressed, 0 = open, 0.5 = half-hole (or, for recorder double holes, only the larger hole closed). Xaphoon order: top hole, thumb, holes 3-9. SATS[kind] = satellite keys: id -> [centreX, centreY, cluster]. SHAPE[cluster] = [w,h] in the full key map (compact mode draws 5px dots). Option objects: {h, x: [satellite ids pressed], n: name, p: penalty used by the fingering chooser (0 = standard)}. FINGER maps satellite ids to the finger that operates them (used to penalise same-finger slides).",
+ "_doc": "Fingering data. tables[kind] maps a key to an array of options (first = standard). rec and recGerman are keyed by written pitch minus the instrument's base (soprano and alto recorder share one table; recGerman holds only the notes where the German system differs); every other table is keyed by written MIDI pitch. overrides[instId][pitch] replaces the kind table's entry for that instrument; an empty array there means that instrument has no sourced fingering for the pitch (listed in fingering-gaps.json). meta[kind] = {sources: [{title, url, accessed}], reviewed}; reviewed null = draft. Pitches with no published fingering have no entry and are listed in fingering-gaps.json. Entries come from published charts only. LAYOUT[kind] = main holes/keys of the vertical column: [dx, dyTop, size(px), double?] relative to the chart centre x and chart top (px at 1x). Values in an option's 'h' array follow that order: 1 = closed/pressed, 0 = open, 0.5 = half-hole (or, for recorder double holes, only the larger hole closed). Xaphoon order: top hole, thumb, holes 3-9. SATS[kind] = satellite keys: id -> [centreX, centreY, cluster]. SHAPE[cluster] = [w,h] in the full key map (compact mode draws 5px dots). Option objects: {h, x: [satellite ids pressed], n: name, p: penalty used by the fingering chooser (0 = standard)}. FINGER maps satellite ids to the finger that operates them (used to penalise same-finger slides).",
  "LAYOUT": {
   "xaph": [
    [
@@ -952,7 +952,8 @@
       1
      ],
      "x": [
-      "tBb"
+      "tBb",
+      "rC"
      ],
      "n": "standard",
      "p": 0
@@ -970,7 +971,8 @@
       1
      ],
      "x": [
-      "tB"
+      "tB",
+      "rC"
      ],
      "n": "standard",
      "p": 0
@@ -1006,7 +1008,8 @@
       1
      ],
      "x": [
-      "tCs"
+      "tCs",
+      "rC"
      ],
      "n": "standard",
      "p": 0
@@ -1106,8 +1109,8 @@
      "x": [
       "aFs"
      ],
-     "n": "alt. F♯ key",
-     "p": 0.6
+     "n": "alternate F♯ key",
+     "p": 0.3
     }
    ],
    "67": [
@@ -1165,6 +1168,22 @@
      "h": [
       0,
       1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "side B♭",
+     "p": 0
+    },
+    {
+     "h": [
+      0,
+      1,
       0,
       0,
       0,
@@ -1175,7 +1194,7 @@
       "bis"
      ],
      "n": "bis key",
-     "p": 0
+     "p": 0.1
     },
     {
      "h": [
@@ -1189,7 +1208,7 @@
      ],
      "x": [],
      "n": "1 + 1",
-     "p": 0.3
+     "p": 0.2
     },
     {
      "h": [
@@ -1198,14 +1217,12 @@
       0,
       0,
       0,
-      0,
+      1,
       0
      ],
-     "x": [
-      "sBb"
-     ],
-     "n": "side B♭",
-     "p": 0.4
+     "x": [],
+     "n": "1 + 2 (sharp; next to F♯)",
+     "p": 0.5
     }
    ],
    "71": [
@@ -1253,13 +1270,287 @@
       "sC"
      ],
      "n": "side C",
-     "p": 0.6
+     "p": 0.3
     }
    ],
    "73": [
     {
      "h": [
       0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "74": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "75": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "rEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "76": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "77": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "78": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "aFs"
+     ],
+     "n": "alternate F♯ key",
+     "p": 0.3
+    }
+   ],
+   "79": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "80": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "tGs"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "81": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "82": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "side B♭",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "bis"
+     ],
+     "n": "bis key",
+     "p": 0.1
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "1 + 1",
+     "p": 0.2
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "1 + 2 (sharp; next to F♯)",
+     "p": 0.5
+    }
+   ],
+   "83": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "84": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "side C",
+     "p": 0.3
+    }
+   ],
+   "85": [
+    {
+     "h": [
+      1,
       0,
       0,
       0,
@@ -1327,6 +1618,22 @@
      ],
      "n": "standard",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fF"
+     ],
+     "n": "front F",
+     "p": 0.5
     }
    ],
    "89": [
@@ -1343,7 +1650,8 @@
      "x": [
       "pD",
       "pEb",
-      "pF"
+      "pF",
+      "sE"
      ],
      "n": "standard",
      "p": 0
@@ -1351,8 +1659,8 @@
     {
      "h": [
       1,
-      1,
       0,
+      1,
       0,
       0,
       0,
@@ -1362,7 +1670,7 @@
       "fF"
      ],
      "n": "front F",
-     "p": 0.5
+     "p": 0.3
     }
    ],
    "90": [
@@ -1380,9 +1688,132 @@
       "pD",
       "pEb",
       "pF",
+      "sE",
       "hFs"
      ],
      "n": "standard",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fF",
+      "sBb"
+     ],
+     "n": "front F, no high F♯ key",
+     "p": 0.4
+    }
+   ],
+   "91": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "92": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "93": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "94": [
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sC",
+      "sBb"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "95": [
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "96": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "altissimo",
      "p": 0
     }
    ]
@@ -2819,7 +3250,236 @@
    ]
   }
  },
- "overrides": {},
+ "overrides": {
+  "ssax": {
+   "90": [
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "pF",
+      "sE",
+      "hFs"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "94": [],
+   "95": [
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sC",
+      "sBb"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ]
+  },
+  "tsax": {
+   "90": [
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "pF",
+      "sE",
+      "hFs"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "91": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sBb",
+      "hFs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "92": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "94": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "tGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "95": [],
+   "96": [
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "sC",
+      "sBb"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ]
+  },
+  "bsax": {
+   "90": [
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "pF",
+      "sE",
+      "hFs"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "91": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sBb",
+      "hFs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "94": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "tGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "95": [],
+   "96": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "sE"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ]
+  }
+ },
  "meta": {
   "xaph": {
    "sources": [
@@ -2828,6 +3488,21 @@
     },
     {
      "title": "The Water Is Wide, Xaphoon songbook page (notes and fingerings)"
+    }
+   ],
+   "reviewed": null
+  },
+  "sax": {
+   "sources": [
+    {
+     "title": "The Woodwind Fingering Guide (Timothy Reichard): saxophone basic charts (first and second octave) and alternate charts (second octave, lower and middle altissimo)",
+     "url": "https://www.wfg.woodwind.org/sax/",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Sax Teacher UK: interactive saxophone fingering chart and altissimo charts for alto, tenor, baritone and soprano",
+     "url": "https://saxteacheruk.com/tutorials/saxophone-fingering-chart.html",
+     "accessed": "2026-11-22"
     }
    ],
    "reviewed": null
