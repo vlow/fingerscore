@@ -96,7 +96,7 @@ Page bar chip (§2.2): imported song → as today; JSON file → document icon +
 4. Print stays the primary menu action until PDF generation exists.
 5. Opening a JSON file from the File menu adds it to the library too, like dropping it on the start page, and opens it.
 6. No unsaved-changes prompt.
-7. Deleting a saved sheet, from the gallery or from the File menu, shows the same toast with Undo for 6 seconds; there is no confirmation dialog.
+7. Deleting a saved sheet, from the gallery or from the File menu, shows the same toast with Undo for 6 seconds; there is no confirmation dialog. The 6 seconds run from the moment the toast appears. They pause only while the pointer is over the toast and restart in full when it leaves. Focus on Undo does not pause them.
 
 ## 6. Left to the builder
 

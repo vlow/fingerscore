@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useSyncExternalStore, type FocusEvent, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useRef, useSyncExternalStore, type KeyboardEvent } from 'react';
 import s from './Toast.module.css';
 
 interface ToastAction { label: string; run(): void }
@@ -34,15 +34,14 @@ function subscribe(l: () => void) {
 }
 
 /**
- * One toast. Its timer pauses while the pointer is over it or focus is inside it, and restarts with
- * the full duration when both have left. A toast with an action takes focus on its action button and
- * gives focus back when it goes away; Esc dismisses it without running the action.
+ * One toast. Its timer runs from the moment it appears and pauses only while the pointer is over it;
+ * it restarts with the full duration when the pointer leaves. Focus does not pause it. A toast with an
+ * action takes focus on its action button and gives focus back when it goes away; Esc dismisses it
+ * without running the action.
  */
 function ToastView({ toast }: { toast: Toast }) {
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const hover = useRef(false);
-  const focus = useRef(false);
 
   // Layout effect: its cleanup runs while the toast is still in the page, so it can see where focus is.
   useLayoutEffect(() => {
@@ -55,16 +54,10 @@ function ToastView({ toast }: { toast: Toast }) {
     };
   }, [toast]);
 
-  function hold() {
+  function hover(over: boolean) {
     if (current !== toast) return;
-    if (hover.current || focus.current) clearTimeout(timer);
+    if (over) clearTimeout(timer);
     else startTimer();
-  }
-
-  function onBlur(e: FocusEvent<HTMLDivElement>) {
-    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-    focus.current = false;
-    hold();
   }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -76,8 +69,7 @@ function ToastView({ toast }: { toast: Toast }) {
 
   return (
     <div ref={ref} className={s.toast} onKeyDown={onKey}
-      onMouseEnter={() => { hover.current = true; hold(); }} onMouseLeave={() => { hover.current = false; hold(); }}
-      onFocus={() => { focus.current = true; hold(); }} onBlur={onBlur}>
+      onMouseEnter={() => hover(true)} onMouseLeave={() => hover(false)}>
       <span className={s.message}>{toast.message}</span>
       {toast.action && (
         <button ref={buttonRef} type="button" className={s.action} onClick={() => { const run = toast.action!.run; set(null); run(); }}>

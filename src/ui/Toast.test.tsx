@@ -35,7 +35,7 @@ describe('keyboard and pointer', () => {
     return before;
   }
 
-  it('a: the timer pauses while hovered or focused and restarts in full when both have left', () => {
+  it('a: the timer pauses only while hovered and restarts in full when the pointer leaves', () => {
     vi.useFakeTimers();
     setup();
     act(() => showToast({ message: 'Hi' }));   // no action: focus stays outside
@@ -53,17 +53,27 @@ describe('keyboard and pointer', () => {
     act(() => showToast({ message: 'Undoable', action: { label: 'Undo', run() {} } }));
     const undo = screen.getByRole('button', { name: 'Undo' });
     expect(undo).toHaveFocus();
-    act(() => vi.advanceTimersByTime(20_000));
-    expect(undo).toBeInTheDocument();                       // focus inside: paused
+    act(() => vi.advanceTimersByTime(3000));
     fireEvent.mouseEnter(undo.parentElement!);
-    act(() => screen.getByRole('button', { name: 'After' }).focus());
     act(() => vi.advanceTimersByTime(20_000));
-    expect(undo).toBeInTheDocument();                       // still hovered: paused
+    expect(undo).toBeInTheDocument();                       // hovered: paused
     fireEvent.mouseLeave(undo.parentElement!);
     act(() => vi.advanceTimersByTime(5999));
-    expect(undo).toBeInTheDocument();
+    expect(undo).toBeInTheDocument();                       // full 6 s again after the pointer left
     act(() => vi.advanceTimersByTime(1));
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+
+  it('a: focus on the action does not pause the timer; focus goes back when the toast times out', () => {
+    vi.useFakeTimers();
+    const before = setup();
+    act(() => showToast({ message: 'Deleted "A"', action: { label: 'Undo', run() {} } }));
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus();
+    act(() => vi.advanceTimersByTime(5999));
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText('Deleted "A"')).toBeNull();
+    expect(before).toHaveFocus();
   });
 
   it('b: an action takes focus and gives it back after the action, the timeout or a dismissal', async () => {
