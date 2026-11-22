@@ -26,12 +26,13 @@ function readTextLists(bytes: Uint8Array, ppq: number): TextLists[] {
   });
 }
 
+/** @tonejs/midi names the MAJOR key of the signature's sharps/flats, even when `scale` is minor. */
 function keyFromSignature(key: string, scale: string): { tonicPc: number; mode: 'major' | 'minor' } | null {
   const m = /^([A-G])([#b]?)$/.exec(key);
   if (!m) return null;
   const base: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-  const tonicPc = (base[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12) % 12;
-  return { tonicPc, mode: scale === 'minor' ? 'minor' : 'major' };
+  const majorPc = (base[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12) % 12;
+  return scale === 'minor' ? { tonicPc: (majorPc + 9) % 12, mode: 'minor' } : { tonicPc: majorPc, mode: 'major' };
 }
 
 const onsetCount = (list: Lyric[], notes: { start: number }[]) =>

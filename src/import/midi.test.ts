@@ -58,6 +58,14 @@ describe('parseMidi', () => {
     expect(s.tracks[0].notes).toEqual([{ start: 0, dur: 1, midi: 60 }, { start: 1, dur: 1, midi: 62 }]);
   });
 
+  it('reads a minor key signature with its minor tonic', () => {
+    const ks = (key: number) => midiBytes([track([meta('keySignature', { key, scale: 1 })], note(0, 60))]);
+    expect(parseMidi('am.mid', ks(0)).key).toEqual({ tonicPc: 9, mode: 'minor' });
+    expect(parseMidi('em.mid', ks(1)).key).toEqual({ tonicPc: 4, mode: 'minor' });
+    expect(parseMidi('dm.mid', ks(-1)).key).toEqual({ tonicPc: 2, mode: 'minor' });
+    expect(parseMidi('g.mid', midiBytes([track([meta('keySignature', { key: 1, scale: 0 })], note(0, 60))])).key).toEqual({ tonicPc: 7, mode: 'major' });
+  });
+
   it('refuses 5/4', () => {
     const bytes = midiBytes([track([meta('timeSignature', { numerator: 5, denominator: 4, metronome: 24, thirtyseconds: 8 })], note(0, 60))]);
     expect(() => parseMidi('five.mid', bytes)).toThrowError(ImportError);
