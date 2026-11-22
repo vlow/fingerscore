@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Footer from './ui/Footer';
 import Header from './ui/Header';
+import { ToastHost } from './ui/Toast';
 import SheetPage from './pages/SheetPage';
 import Start from './pages/Start';
 import Tracks from './pages/Tracks';
@@ -23,6 +24,7 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
+      <ToastHost />
     </div>
   );
 }

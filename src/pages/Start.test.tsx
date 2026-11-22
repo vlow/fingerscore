@@ -168,3 +168,17 @@ it('subline names the formats version 1 reads', () => {
   renderStart();
   expect(screen.getByText(/^Upload a MIDI or MusicXML file\./)).toBeInTheDocument();
 });
+
+it('says when a linked sheet is no longer saved', () => {
+  render(
+    <MemoryRouter initialEntries={[{ pathname: '/', state: { missingSheet: true } }]}>
+      <Start />
+    </MemoryRouter>,
+  );
+  expect(screen.getByRole('alert')).toHaveTextContent('That sheet is no longer saved in this browser.');
+});
+
+it('shows no missing-sheet alert without that state', () => {
+  renderStart();
+  expect(screen.queryByText('That sheet is no longer saved in this browser.')).toBeNull();
+});

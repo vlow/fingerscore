@@ -1,0 +1,51 @@
+/* Bottom-centre toast (one at a time); the empty host takes no space and lets clicks through. */
+.host {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 24px;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 520px;
+  padding: 8px 8px 8px 16px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #ffffff;
+  font-size: 14px;
+  box-shadow: 0 16px 40px rgba(20, 22, 28, 0.18);
+  pointer-events: auto;
+}
+
+.message {
+  overflow-wrap: anywhere;
+}
+
+.action {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.action:focus-visible {
+  outline: 2px solid #5fd3c6;
+  outline-offset: 2px;
+}

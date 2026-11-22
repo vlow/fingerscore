@@ -7,8 +7,14 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
+import { serializeFile } from '../domain/persistence';
+import { listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
+import { downloadText } from '../ui/download';
+import { ToastHost } from '../ui/Toast';
 import SheetPage from './SheetPage';
+
+vi.mock('../ui/download', () => ({ downloadText: vi.fn() }));
 
 const fakePlayer = vi.hoisted(() => ({
   play: vi.fn(), stop: vi.fn(), playing: false,
@@ -25,13 +31,14 @@ function Probe() {
 }
 const currentPath = () => path;
 
-function renderSheet() {
+function renderSheet(url = '/sheet') {
   return render(
-    <MemoryRouter initialEntries={['/sheet']}>
+    <MemoryRouter initialEntries={[url]}>
       <Routes>
         <Route path="/sheet" element={<><SheetPage /><Probe /></>} />
         <Route path="*" element={<Probe />} />
       </Routes>
+      <ToastHost />
     </MemoryRouter>,
   );
 }
@@ -44,6 +51,9 @@ const open = (id: InstId, patch: Partial<Doc> = {}) => {
 
 beforeEach(() => {
   sessionStorage.clear();
+  localStorage.clear();
+  useApp.setState({ libraryId: null, savedSnapshot: null, saveError: null });
+  vi.mocked(downloadText).mockClear();
   fakePlayer.play.mockReset();
   fakePlayer.stop.mockReset();
   fakePlayer.playing = false;
@@ -218,7 +228,7 @@ it('range meter: the xaphoon has no extended band; the alto sax has one', () => 
   expect(screen.getByText('Extended (hard)')).toBeInTheDocument();
 });
 
-it('page bar: steps, file chip, no Change track without a song, Print', async () => {
+it('page bar: steps, file chip, no Change track without a song, Print in the File menu', async () => {
   const print = vi.fn();
   vi.stubGlobal('print', print);
   open('asax');
@@ -226,9 +236,160 @@ it('page bar: steps, file chip, no Change track without a song, Print', async ()
   const notes = derive(sampleDoc('asax'), DEFAULT_PREFS).counts.notes;
   expect(screen.getByText(`sample · track 1 Melody of 4 · ${notes} notes`)).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Change track' })).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Print' }));
+  await user.click(screen.getByRole('button', { name: /File/ }));
+  await user.click(screen.getByRole('menuitem', { name: 'Print' }));
   expect(print).toHaveBeenCalled();
   vi.unstubAllGlobals();
+});
+
+describe('save and the File menu', () => {
+  it('save status and Save', async () => {
+    open('asax');
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(listEntries()).toHaveLength(1);
+    await user.click(screen.getByLabelText('Lyrics'));
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+    await user.keyboard('{Control>}s{/Control}');
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(listEntries()).toHaveLength(1);
+  });
+
+  it('a failed save shows the storage message', async () => {
+    open('asax');
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    spy.mockRestore();
+    expect(screen.getByRole('alert')).toHaveTextContent('This browser blocks local storage. Use "Download JSON" instead.');
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+  });
+
+  it('file menu: items, keyboard, close', async () => {
+    open('asax');
+    const btn = screen.getByRole('button', { name: /File/ });
+    expect(btn).toHaveAttribute('aria-haspopup', 'menu');
+    expect(btn).toHaveAttribute('aria-expanded', 'false');
+    await user.click(btn);
+    const menu = screen.getByRole('menu');
+    expect(btn).toHaveAttribute('aria-expanded', 'true');
+    expect(within(menu).getAllByRole('menuitem').slice(0, 4).map(i => i.textContent)).toEqual(['Print', 'Download JSON', 'Open JSON file…', 'New sheet']);
+    expect(within(menu).getByText('No saved sheets yet.')).toBeInTheDocument();
+    expect(within(menu).getByText(/Sheets are stored only on this device/)).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(btn).toHaveFocus();
+  });
+
+  it('file menu: arrow keys, Home and End move focus; Tab and outside click close', async () => {
+    open('asax');
+    const btn = screen.getByRole('button', { name: /File/ });
+    btn.focus();
+    await user.keyboard('{ArrowDown}');
+    const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
+    expect(items[0]).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(items[1]).toHaveFocus();
+    await user.keyboard('{ArrowUp}{ArrowUp}');
+    expect(items[items.length - 1]).toHaveFocus();
+    await user.keyboard('{Home}');
+    expect(items[0]).toHaveFocus();
+    await user.keyboard('{End}');
+    expect(items[items.length - 1]).toHaveFocus();
+    await user.keyboard('{Tab}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    await user.click(btn);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    await user.click(screen.getByText('Detected in file'));
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('menu keys do not reach the sheet', async () => {
+    open('asax');
+    const doc = sampleDoc('asax');
+    await user.click(document.querySelector(`[data-hit="${doc.score[2].ev[1].id}"]`)!);
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.keyboard('{ArrowDown}{Home}{End}{ArrowUp}{Escape}');
+    expect(document.querySelector('[data-selected="true"]')?.getAttribute('data-ev')).toBe(doc.score[2].ev[1].id);
+    expect(fakePlayer.play).not.toHaveBeenCalled();
+  });
+
+  it('Print moved into the menu', async () => {
+    open('asax');
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    expect(screen.queryByRole('button', { name: 'Print' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Print' }));
+    expect(print).toHaveBeenCalled();
+    expect(screen.queryByRole('menu')).toBeNull();
+    print.mockRestore();
+  });
+
+  it('Download JSON writes the file', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Download JSON' }));
+    expect(downloadText).toHaveBeenCalledWith('the-water-is-wide.fingerscore.json', expect.stringContaining('"app": "fingerscore"'));
+  });
+
+  it('New sheet goes to the start page', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'New sheet' }));
+    expect(currentPath()).toBe('/');
+  });
+
+  it('Open JSON file: round trip and a foreign file', async () => {
+    open('asax');
+    const text = serializeFile({ ...sampleDoc('cl'), title: 'From file' });
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Open JSON file…' }));
+    await user.upload(screen.getByLabelText('Open JSON file', { selector: 'input' }), new File([text], 'from-file.fingerscore.json', { type: 'application/json' }));
+    expect(await screen.findByRole('textbox', { name: 'Sheet title' })).toHaveValue('From file');
+    expect(screen.getByText(/from-file\.fingerscore\.json · fingerscore sheet/)).toBeInTheDocument();
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(screen.queryByText('Change track')).toBeNull();
+    expect(screen.queryByRole('navigation', { name: 'Steps' })).toBeNull();
+    await user.upload(screen.getByLabelText('Open JSON file', { selector: 'input' }), new File(['{"name":"x"}'], 'package.json', { type: 'application/json' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('"package.json" isn\'t a fingerscore sheet.');
+    expect(screen.getByRole('textbox', { name: 'Sheet title' })).toHaveValue('From file');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('saved list: open another sheet, delete with undo', async () => {
+    saveEntry({ ...sampleDoc('fl'), title: 'Other' }, null);
+    open('asax');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    const menu = screen.getByRole('menu');
+    expect(within(menu).getByText('The Water Is Wide').closest('[aria-current="true"]')).not.toBeNull();
+    expect(within(menu).getByText('Flute in C · saved just now')).toBeInTheDocument();
+    await user.click(within(menu).getByRole('menuitem', { name: 'Open Other' }));
+    expect(screen.getByRole('textbox', { name: 'Sheet title' })).toHaveValue('Other');
+    expect(screen.getByText(/Other · saved in this browser/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete Other' }));
+    expect(listEntries().map(e => e.title)).toEqual(['The Water Is Wide']);
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+    expect(screen.getByText('Deleted "Other"')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(listEntries().map(e => e.title)).toContain('Other');
+    expect(screen.queryByText('Deleted "Other"')).toBeNull();
+  });
+
+  it('/sheet?id opens a saved sheet without a current doc; an unknown id goes to the start page', async () => {
+    const r = saveEntry({ ...sampleDoc('cl'), title: 'Linked' }, null);
+    if (!r.ok) throw new Error(r.message);
+    useApp.setState({ doc: null });
+    renderSheet(`/sheet?id=${r.entry.id}`);
+    expect(await screen.findByRole('textbox', { name: 'Sheet title' })).toHaveValue('Linked');
+    expect(currentPath()).toBe('/sheet');
+    cleanup();
+    useApp.setState({ doc: null });
+    renderSheet('/sheet?id=nope');
+    expect(currentPath()).toBe('/');
+  });
 });
 
 describe('playback', () => {

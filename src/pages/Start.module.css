@@ -91,6 +91,8 @@
   background: var(--page);
 }
 
+/* A /sheet?id= link to a sheet that is gone (design 4.4). */
+.missing,
 .error {
   margin: 0;
   padding: 10px 14px;

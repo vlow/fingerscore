@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { displayName, inst } from '../domain/instruments';
 import { buildDoc } from '../import/buildDoc';
 import { defaultBuildOptions, parseFile } from '../import';
@@ -26,6 +26,7 @@ export default function Start() {
   const setSong = useApp(st => st.setSong);
   const setDoc = useApp(st => st.setDoc);
   const navigate = useNavigate();
+  const missingSheet = (useLocation().state as { missingSheet?: boolean } | null)?.missingSheet === true;
   const [error, setError] = useState<string | null>(null);
 
   /** A new song replaces the previous one and drops its sheet. */
@@ -69,6 +70,8 @@ export default function Start() {
           under every note.
         </p>
       </div>
+
+      {missingSheet && <p role="alert" className={s.missing}>That sheet is no longer saved in this browser.</p>}
 
       <InstrumentPicker value={instId} onChange={setInstrument} />
 

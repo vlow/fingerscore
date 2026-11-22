@@ -1,24 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPlayer, type Player } from '../audio/player';
 import { derive, type DerivedEvent } from '../domain/derive';
 import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
 import { keySignature, spell } from '../domain/keys';
+import { fileName, importMessage, parseFileText, serializeFile } from '../domain/persistence';
 import { buildSchedule, firstTickOf, sliceSchedule } from '../domain/playback';
 import { barCap } from '../domain/time';
 import type { Doc } from '../domain/types';
 import { usableTracks } from '../import/melody';
 import { SHEET, layoutSheet } from '../render/layout';
 import { Paper } from '../render/Paper';
-import { useApp } from '../state/store';
+import { deleteEntry, listEntries, restoreEntry } from '../state/library';
+import { saveStatus, useApp } from '../state/store';
 import AltFingeringPopover, { popoverWidth } from '../ui/AltFingeringPopover';
 import Banners from '../ui/Banners';
+import { downloadText } from '../ui/download';
+import FileMenu from '../ui/FileMenu';
 import KeyBridge from '../ui/KeyBridge';
 import PageBar from '../ui/PageBar';
 import RangeMeter from '../ui/RangeMeter';
+import SaveControls from '../ui/SaveControls';
 import ShowToggles from '../ui/ShowToggles';
 import Steps from '../ui/Steps';
+import { showToast } from '../ui/Toast';
 import Transport from '../ui/Transport';
 import '../styles/print.css';
 import s from './SheetPage.module.css';
@@ -27,9 +33,24 @@ const SIMPLIFIED = 'Rhythm simplified: triplets and notes shorter than a sixteen
 const SHEET_LABEL = 'Sheet music. Arrow keys select a note, Enter plays from it.';
 /** Keys pressed here keep their own meaning: the title inputs, the pills and the alternate-fingering popover. */
 const OWN_KEYS = 'input, textarea, select, button, a, [role="dialog"]';
+const MISSING = 'That sheet is no longer saved in this browser.';
+/** Sources that went through the import steps; a sheet opened from a file or the library did not. */
+const IMPORTED: Doc['source']['format'][] = ['MIDI', 'MusicXML', 'sample'];
 
 export default function SheetPage() {
   const doc = useApp(st => st.doc);
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const id = params.get('id');
+
+  // /sheet?id=… opens a saved sheet, then drops the query; an unknown id goes to the start page.
+  useEffect(() => {
+    if (id === null) return;
+    if (useApp.getState().openEntry(id)) navigate('/sheet', { replace: true });
+    else navigate('/', { replace: true, state: { missingSheet: true } });
+  }, [id, navigate]);
+
+  if (id !== null) return null;
   if (!doc) return <Navigate to="/" replace />;
   return <Sheet doc={doc} />;
 }
@@ -65,6 +86,10 @@ function Sheet({ doc }: { doc: Doc }) {
   const patchDoc = useApp(st => st.patchDoc);
   const setFingering = useApp(st => st.setFingering);
   const resetFingerings = useApp(st => st.resetFingerings);
+  const libraryId = useApp(st => st.libraryId);
+  const savedSnapshot = useApp(st => st.savedSnapshot);
+  const saveError = useApp(st => st.saveError);
+  const navigate = useNavigate();
 
   const derived = useMemo(() => derive(doc, prefs), [doc, prefs]);
   const layout = useMemo(() => layoutSheet(doc, derived), [doc, derived]);
@@ -168,6 +193,64 @@ function Sheet({ doc }: { doc: Doc }) {
     window.print();
   }
 
+  // Saving and files (design 4.4). fileError is the line under the page bar; the next successful action clears it.
+  const status = useMemo(() => saveStatus({ doc, libraryId, savedSnapshot }), [doc, libraryId, savedSnapshot]);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [libraryChanged, setLibraryChanged] = useState(0);
+  // The menu lists the library as it is after the last save, open, delete or undo on this page.
+  const entries = useMemo(() => listEntries(), [libraryId, savedSnapshot, libraryChanged]);
+
+  const save = useCallback(() => {
+    if (useApp.getState().saveSheet()) setFileError(null);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        save();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [save]);
+
+  function download() {
+    downloadText(fileName(doc.title), serializeFile(doc));
+    setFileError(null);
+  }
+
+  async function openFile(file: File) {
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setFileError(importMessage(file.name, 'not-a-sheet'));
+      return;
+    }
+    const r = parseFileText(text);
+    if (!r.ok) { setFileError(importMessage(file.name, r.reason)); return; }
+    if (useApp.getState().openImported(r.doc, file.name)) setFileError(null);
+  }
+
+  function openSaved(id: string) {
+    if (useApp.getState().openEntry(id)) { setFileError(null); return; }
+    setFileError(MISSING);
+    setLibraryChanged(n => n + 1);
+  }
+
+  function deleteSaved(id: string) {
+    const entry = deleteEntry(id);
+    setLibraryChanged(n => n + 1);
+    if (!entry) return;
+    useApp.getState().forgetEntry(id);
+    setFileError(null);
+    showToast({
+      message: `Deleted "${entry.title}"`,
+      action: { label: 'Undo', run: () => { restoreEntry(entry); setLibraryChanged(n => n + 1); } },
+    });
+  }
+
   // Alternate fingerings: one popover at a time, anchored to its pill.
   const [openAlt, setOpenAlt] = useState<string | null>(null);
   const anchorRef = useRef<HTMLButtonElement | null>(null);
@@ -220,29 +303,40 @@ function Sheet({ doc }: { doc: Doc }) {
       <div data-print-hide="">
         <PageBar
           left={
-            <>
-              <Steps current="sheet" />
+            IMPORTED.includes(doc.source.format) ? (
+              <>
+                <Steps current="sheet" />
+                <div className={s.chip}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                  </svg>
+                  <span className={s.chipFile}>{doc.source.file}</span>
+                  <span className={s.chipMeta}>
+                    {`${doc.source.format} · track ${doc.source.track} of ${doc.source.trackCount} · ${derived.counts.notes} notes`}
+                  </span>
+                  {changeTrack && <Link to="/tracks" className={s.chipLink}>Change track</Link>}
+                </div>
+              </>
+            ) : (
               <div className={s.chip}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                  <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6" />
                 </svg>
-                <span className={s.chipFile}>{doc.source.file}</span>
-                <span className={s.chipMeta}>
-                  {`${doc.source.format} · track ${doc.source.track} of ${doc.source.trackCount} · ${derived.counts.notes} notes`}
+                <span className={s.chipSaved}>
+                  {`${doc.source.file} · ${doc.source.format === 'file' ? 'fingerscore sheet' : 'saved in this browser'} · ${derived.counts.notes} notes`}
                 </span>
-                {changeTrack && <Link to="/tracks" className={s.chipLink}>Change track</Link>}
               </div>
-            </>
+            )
           }
           right={
-            <button type="button" className={s.print} onClick={print}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 9V3h12v6" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v7H6z" />
-              </svg>
-              Print
-            </button>
+            <div className={s.barRight}>
+              <SaveControls status={status} error={saveError} onSave={save} />
+              <FileMenu entries={entries} currentId={libraryId} onPrint={print} onDownload={download}
+                onOpenFile={file => void openFile(file)} onNew={() => navigate('/')} onOpen={openSaved} onDelete={deleteSaved} />
+            </div>
           }
         />
+        {fileError && <p role="alert" className={s.fileError}>{fileError}</p>}
       </div>
 
       <div className={s.body}>

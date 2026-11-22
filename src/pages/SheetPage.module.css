@@ -51,24 +51,24 @@
   text-decoration: underline;
 }
 
-.print {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--border-2);
-  border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+.chipSaved {
+  overflow-wrap: anywhere;
 }
 
-.print:hover {
-  background: var(--page);
+/* Save status, Save and File ▾ on the right of the page bar. */
+.barRight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* An unreadable or foreign JSON file: one line under the page bar. */
+.fileError {
+  margin: -16px 0 16px;
+  color: var(--red);
+  font-size: 14px;
 }
 
 .body {
