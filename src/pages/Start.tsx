@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { displayName, inst } from '../domain/instruments';
 import { buildDoc } from '../import/buildDoc';
@@ -27,7 +27,16 @@ export default function Start() {
   const setSong = useApp(st => st.setSong);
   const setDoc = useApp(st => st.setDoc);
   const navigate = useNavigate();
-  const missingSheet = (useLocation().state as { missingSheet?: boolean } | null)?.missingSheet === true;
+  // The missing-sheet alert shows once: its history state is cleared, so a reload or Back does not show it
+  // again, but it stays on screen until the page is left.
+  const location = useLocation();
+  const missingInState = (location.state as { missingSheet?: boolean } | null)?.missingSheet === true;
+  const [missingSheet, setMissingSheet] = useState(missingInState);
+  if (missingInState && !missingSheet) setMissingSheet(true);
+  useEffect(() => {
+    if (!missingInState) return;
+    navigate({ pathname: location.pathname, search: location.search, hash: location.hash }, { replace: true, state: null });
+  }, [missingInState, location.pathname, location.search, location.hash, navigate]);
   const [error, setError] = useState<string | null>(null);
   const [libraryVersion, setLibraryVersion] = useState(0);
   const dropInput = useRef<HTMLInputElement>(null);

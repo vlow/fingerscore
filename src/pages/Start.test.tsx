@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { writeMidi, type MidiEvent } from 'midi-file';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -15,8 +15,11 @@ const demoBytes = () => new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.
 const demoFile = () => new File([demoBytes()], 'Auld_Lang_Syne.mid');
 
 let path = '';
+let locationState: unknown;
 function Probe() {
-  path = useLocation().pathname;
+  const loc = useLocation();
+  path = loc.pathname;
+  locationState = loc.state;
   return null;
 }
 const currentPath = () => path;
@@ -222,6 +225,15 @@ it('a foreign JSON file is refused and nothing is added (review focus 1)', async
 });
 
 it('the missing-sheet alert', () => { renderStart({ state: { missingSheet: true } }); expect(screen.getByRole('alert')).toHaveTextContent('That sheet is no longer saved in this browser.'); });
+
+it('the missing-sheet alert is shown once: the history entry loses its state, the alert stays until the page is left', () => {
+  renderStart({ state: { missingSheet: true } });
+  expect(locationState).toBeNull();
+  expect(screen.getByRole('alert')).toHaveTextContent('That sheet is no longer saved in this browser.');
+  cleanup();
+  renderStart({ state: locationState });   // a reload or Back restores the entry's (now empty) state
+  expect(screen.queryByRole('alert')).toBeNull();
+});
 
 it('deleting the open sheet\'s entry unlinks it; undo links it again', async () => {
   useApp.getState().setDoc({ ...sampleDoc('asax'), title: 'Open one' });
