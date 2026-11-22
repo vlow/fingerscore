@@ -303,6 +303,11 @@
     5,
     "throat"
    ],
+   "lpCs": [
+    -15,
+    32,
+    "lp"
+   ],
    "lpE": [
     -15,
     38,
@@ -338,6 +343,11 @@
     58,
     "side"
    ],
+   "slB": [
+    6,
+    57.5,
+    "sliver"
+   ],
    "rpE": [
     10,
     70,
@@ -351,6 +361,11 @@
    "rpGs": [
     10,
     82,
+    "rp"
+   ],
+   "rpFs": [
+    10,
+    88,
     "rp"
    ]
   },
@@ -440,6 +455,10 @@
   "trill": [
    4,
    5
+  ],
+  "sliver": [
+   3,
+   5
   ]
  },
  "LEGEND": {
@@ -484,7 +503,10 @@
   "fCs": "rp",
   "fC": "rp",
   "tD": "rside",
-  "tDs": "rside"
+  "tDs": "rside",
+  "lpCs": "lp",
+  "rpFs": "rp",
+  "slB": "R3"
  },
  "tables": {
   "xaph": {
@@ -1906,8 +1928,25 @@
      "x": [
       "lpFs"
      ],
-     "n": "standard",
+     "n": "left pinky F♯",
      "p": 0
+    },
+    {
+     "h": [
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "rpFs"
+     ],
+     "n": "right pinky F♯",
+     "p": 0.1
     }
    ],
    "55": [
@@ -2027,7 +2066,7 @@
       0
      ],
      "x": [
-      "lpFs"
+      "lpCs"
      ],
      "n": "standard",
      "p": 0
@@ -2116,7 +2155,7 @@
       0
      ],
      "x": [],
-     "n": "thumb off, 1",
+     "n": "standard",
      "p": 0
     },
     {
@@ -2134,8 +2173,8 @@
       "s3",
       "s4"
      ],
-     "n": "thumb + side 3 & 4",
-     "p": 0.6
+     "n": "thumb + side keys 3 and 4",
+     "p": 0.4
     }
    ],
    "67": [
@@ -2208,7 +2247,7 @@
      "x": [
       "kA"
      ],
-     "n": "A key + register",
+     "n": "standard",
      "p": 0
     },
     {
@@ -2226,8 +2265,541 @@
       "kA",
       "s2"
      ],
-     "n": "A key + side 2",
+     "n": "A key + side key 2",
      "p": 0.3
+    }
+   ],
+   "71": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "lpE"
+     ],
+     "n": "left pinky B",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "rpE"
+     ],
+     "n": "right pinky B",
+     "p": 0.1
+    }
+   ],
+   "72": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "rpF"
+     ],
+     "n": "right pinky C",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "lpF"
+     ],
+     "n": "left pinky C",
+     "p": 0.1
+    }
+   ],
+   "73": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "lpFs"
+     ],
+     "n": "left pinky C♯",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "rpFs"
+     ],
+     "n": "right pinky C♯",
+     "p": 0.1
+    }
+   ],
+   "74": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "75": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "rpGs"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "76": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "77": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "78": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "79": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "80": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "lpCs"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "81": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "82": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "s4"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "83": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "84": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "85": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "86": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "rpGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "87": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "slB",
+      "rpGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "88": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "rpGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "89": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "lpCs",
+      "rpGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "90": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "rpGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "91": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "rpGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "92": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "slB",
+      "rpGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "93": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "rpF"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "94": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "kGs",
+      "lpCs",
+      "rpGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "95": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "kGs"
+     ],
+     "n": "altissimo",
+     "p": 0
+    }
+   ],
+   "96": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "kGs",
+      "rpFs"
+     ],
+     "n": "altissimo",
+     "p": 0
     }
    ]
   },
@@ -3502,6 +4074,26 @@
     {
      "title": "Sax Teacher UK: interactive saxophone fingering chart and altissimo charts for alto, tenor, baritone and soprano",
      "url": "https://saxteacheruk.com/tutorials/saxophone-fingering-chart.html",
+     "accessed": "2026-11-22"
+    }
+   ],
+   "reviewed": null
+  },
+  "cl": {
+   "sources": [
+    {
+     "title": "The Woodwind Fingering Guide (Timothy Reichard): Boehm-system clarinet basic charts (chalumeau, clarion, lower altissimo) and upper altissimo alternate chart",
+     "url": "https://www.wfg.woodwind.org/clarinet/",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Tomplay: interactive clarinet fingering chart, Boehm system (written E3–A6)",
+     "url": "https://tomplay.com/fingering-charts/clarinet",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Sax Teacher UK: clarinet fingering chart (written E3–C7)",
+     "url": "https://saxteacheruk.com/tutorials/clarinet-fingering-chart.html",
      "accessed": "2026-11-22"
     }
    ],
