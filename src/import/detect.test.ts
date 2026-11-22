@@ -85,8 +85,8 @@ describe('buildDoc with detected chords', () => {
     const s = demo();
     const doc = buildDoc(s, { trackId: s.tracks[0].id, keep: 'top', lyricsFrom: null, chordsFrom: s.tracks[1].id, instId: 'asax', prefs: DEFAULT_PREFS });
     expect(Object.keys(doc.chords).length).toBeGreaterThan(4);
-    const first = doc.score.flatMap(b => b.ev).find(e => e.c);
-    expect(first!.c).toBe('F');
+    const first = doc.score.flatMap(b => b.ev).find(e => doc.imported.chords[e.id]);
+    expect(doc.imported.chords[first!.id]).toBe('F');
     expect(doc.chords[first!.id].raw).toBe('F');
   });
 });

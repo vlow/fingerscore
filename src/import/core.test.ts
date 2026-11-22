@@ -149,6 +149,7 @@ describe('buildDoc', () => {
     const song = mkSong([n(0, 1, 62), n(1, 1, 64)], { lyrics: [{ at: 1.2, text: 'near' }, { at: 0.5, text: 'far' }] });
     const doc = buildDoc(song, opts({ lyricsFrom: 't1' }));
     expect(doc.score[0].ev.map(e => e.l)).toEqual(['', 'near', '']);
+    expect(doc.imported.lyrics).toEqual({ [doc.score[0].ev[1].id]: 'near' });
   });
   it('lyrics skip rests and tied continuations', () => {
     const song = mkSong([n(1, 5, 62)], { lyrics: [{ at: 0, text: 'a' }, { at: 4, text: 'b' }, { at: 1, text: 'c' }] });
@@ -160,8 +161,7 @@ describe('buildDoc', () => {
     const song = mkSong([n(0, 2, 62), n(2, 2, 64)], { chords: [{ at: 1, text: 'D' }, { at: 2, text: 'G' }], key: { tonicPc: 2, mode: 'major' } });
     const doc = buildDoc(song, opts({ chordsFrom: 'file' }));
     const [a, b] = doc.score[0].ev;
-    expect(a.c).toBe('D');
-    expect(b.c).toBe('G');
+    expect(doc.imported.chords).toEqual({ [a.id]: 'D', [b.id]: 'G' });
     expect(doc.chords[a.id]).toMatchObject({ raw: 'D', ok: true, tk: 0 });
     expect(Object.keys(doc.chords)).toHaveLength(2);
   });

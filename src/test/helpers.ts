@@ -12,11 +12,11 @@ export function mkDoc(bars: BarSpec[], timeSig: TimeSig = [4, 4]): Doc {
     rs: b.rs ?? false,
     re: b.re ?? false,
     volta: b.volta ?? '',
-    ev: b.ev.map(([m, d, o]): Ev => ({ id: `t${++n}`, m, d, r: m === 0, tie: o?.tie ?? false, l: '', c: '' })),
+    ev: b.ev.map(([m, d, o]): Ev => ({ id: `t${++n}`, m, d, r: m === 0, tie: o?.tie ?? false, l: '' })),
   }));
   return {
     score, timeSig, originalTonicPc: 0, originalMode: 'major', tempo: 100, inst: 'xc', shift: 0,
-    fingering: {}, chords: {}, title: '', subtitle: '', chartStyle: 'compact', recorderSystem: 'baroque',
+    fingering: {}, chords: {}, imported: { lyrics: {}, chords: {} }, title: '', subtitle: '', chartStyle: 'compact', recorderSystem: 'baroque',
     show: { fingerings: true, chords: true, lyrics: true, raiseExtensions: true },
     source: { file: '', format: 'sample', track: '', trackCount: 1, simplified: false },
   };

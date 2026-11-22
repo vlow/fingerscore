@@ -13,16 +13,23 @@ function sampleScore(): Bar[] {
     rs: b.rs,
     re: b.re,
     volta: b.volta.replace('.', '') as Bar['volta'], // the file labels endings "1." / "2."
-    ev: b.ev.map(e => ({ id: `e${++n}`, m: e.m, d: e.d * EIGHTH, r: e.r, tie: e.tie, l: e.l, c: e.c })),
+    ev: b.ev.map(e => ({ id: `e${++n}`, m: e.m, d: e.d * EIGHTH, r: e.r, tie: e.tie, l: e.l })),
   }));
 }
 
 export function sampleDoc(instId: InstId = DEFAULT_INST): Doc {
   const score = sampleScore();
+  const raw = sample.bars.flatMap(b => b.ev);
+  const events = score.flatMap(b => b.ev);
   const ranked = rankShifts(scoringPitches(score), inst(instId), sample.originalTonicPc, 'major', DEFAULT_PREFS);
   // The file spells chords 3 semitones above the stored pitches.
   const chords: Doc['chords'] = {};
-  for (const bar of score) for (const e of bar.ev) if (e.c) chords[e.id] = parseChord(e.c, 3);
+  const imported: Doc['imported'] = { lyrics: {}, chords: {} };
+  events.forEach((e, k) => {
+    if (e.l) imported.lyrics[e.id] = e.l;
+    const text = raw[k].c;
+    if (text) { chords[e.id] = parseChord(text, 3); imported.chords[e.id] = text; }
+  });
   return {
     score,
     timeSig: [4, 4],
@@ -33,6 +40,7 @@ export function sampleDoc(instId: InstId = DEFAULT_INST): Doc {
     shift: ranked[0].shift,
     fingering: {},
     chords,
+    imported,
     title: sample.title,
     subtitle: sample.subtitle,
     chartStyle: 'compact',

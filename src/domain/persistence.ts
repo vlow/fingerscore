@@ -65,10 +65,10 @@ const isReservedId = (id: string): boolean => id === 'prototype' || id in Object
 
 function validEvent(v: unknown): Ev | null {
   if (!isObject(v)) return null;
-  const { id, m, d, r, tie, l, c } = v;
+  const { id, m, d, r, tie, l } = v;
   if (!isStr(id) || id === '' || isReservedId(id) || !isInt(m, 0, 127) || !isNum(d) || !(DURATIONS as readonly number[]).includes(d)) return null;
-  if (!isBool(r) || !isBool(tie) || !isStr(l) || !isStr(c)) return null;
-  return { id, m, d, r, tie, l, c };
+  if (!isBool(r) || !isBool(tie) || !isStr(l)) return null;
+  return { id, m, d, r, tie, l };
 }
 
 function validBar(v: unknown, maxCap: number, ids: Set<string>): Bar | null {
@@ -151,9 +151,18 @@ export function validateDoc(value: unknown): Doc | null {
     }
   }
 
+  const imported: Doc['imported'] = { lyrics: {}, chords: {} };
+  if (isObject(value.imported)) {
+    for (const key of ['lyrics', 'chords'] as const) {
+      const map = value.imported[key];
+      if (!isObject(map)) continue;
+      for (const [evId, text] of Object.entries(map)) if (events.has(evId) && isStr(text)) imported[key][evId] = text;
+    }
+  }
+
   return {
     score: bars, timeSig: sig, originalTonicPc, originalMode: originalMode as Mode,
-    tempo: Math.max(40, Math.min(200, tempo)), inst: id, shift, fingering, chords,
+    tempo: Math.max(40, Math.min(200, tempo)), inst: id, shift, fingering, chords, imported,
     title: isStr(value.title) ? value.title : '',
     subtitle: isStr(value.subtitle) ? value.subtitle : '',
     chartStyle: value.chartStyle === 'full' ? 'full' : 'compact',

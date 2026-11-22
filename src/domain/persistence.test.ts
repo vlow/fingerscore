@@ -73,7 +73,7 @@ describe('sheet file', () => {
 
   it('refuses a bar with more than 64 events as damaged', () => {
     expect(broken(d => {
-      d.score[1].ev = Array.from({ length: 65 }, (_, k) => ({ id: `x${k}`, m: 60, d: 3, r: false, tie: false, l: '', c: '' }));
+      d.score[1].ev = Array.from({ length: 65 }, (_, k) => ({ id: `x${k}`, m: 60, d: 3, r: false, tie: false, l: '' }));
     })).toEqual({ ok: false, reason: 'damaged' });
   });
 
@@ -119,6 +119,35 @@ describe('sheet file', () => {
     expect(r.doc.source.format).toBe('file');
   });
 
+  it('opens a document without imported maps and with stray c fields, with empty maps', () => {
+    const r = broken(d => {
+      delete d.imported;
+      for (const bar of d.score) for (const e of bar.ev) e.c = 'C';
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.doc.imported).toEqual({ lyrics: {}, chords: {} });
+    expect('c' in r.doc.score[0].ev[0]).toBe(false);
+  });
+
+  it('keeps imported texts of existing events only', () => {
+    const r = broken(d => {
+      const [a, b] = [d.score[0].ev[0].id, d.score[0].ev[1].id];
+      d.imported = { lyrics: { [a]: 'la', nope: 'x', [b]: 3 }, chords: 'bad' };
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.doc.imported).toEqual({ lyrics: { [r.doc.score[0].ev[0].id]: 'la' }, chords: {} });
+  });
+
+  it('the sample keeps its lyrics and chord texts as imported', () => {
+    const d = doc();
+    const first = d.score.flatMap(b => b.ev).find(e => e.l)!;
+    expect(d.imported.lyrics[first.id]).toBe(first.l);
+    expect(Object.keys(d.imported.chords)).toEqual(Object.keys(d.chords));
+    expect(Object.values(d.imported.chords)).toEqual(Object.values(d.chords).map(c => c.raw));
+  });
+
   it('keeps a valid override and drops one that no longer fits', () => {
     const d = doc();
     const withAlt = findAltEvent(d);
@@ -150,7 +179,7 @@ describe('sheet file', () => {
   it('canonical ignores key order', () => {
     const d = doc();
     const shuffled = JSON.parse(JSON.stringify(d, Object.keys(d).reverse())) as Doc;
-    expect(canonical({ ...shuffled, score: d.score, fingering: d.fingering, chords: d.chords, show: d.show, source: d.source })).toBe(canonical(d));
+    expect(canonical({ ...shuffled, score: d.score, fingering: d.fingering, chords: d.chords, imported: d.imported, show: d.show, source: d.source })).toBe(canonical(d));
   });
 
   it('canonical sees every change', () => {

@@ -63,6 +63,7 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
   }
 
   const chords: Doc['chords'] = {};
+  const importedChords: Record<string, string> = {};
   let chordList: { at: number; text: string }[] = [];
   if (o.chordsFrom === 'file') {
     chordList = track.chords;
@@ -74,11 +75,14 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
   for (const ch of chordList) {
     const tick = Math.round(ch.at * TPQ);
     const hit = placed.find(p => p.start <= tick && tick < p.start + p.ev.d);
-    if (hit && !hit.ev.c) {
-      hit.ev.c = ch.text;
+    if (hit && !(hit.ev.id in importedChords)) {
+      importedChords[hit.ev.id] = ch.text;
       chords[hit.ev.id] = parseChord(ch.text, 0);
     }
   }
+
+  const importedLyrics: Record<string, string> = {};
+  for (const p of placed) if (p.ev.l) importedLyrics[p.ev.id] = p.ev.l;
 
   const melodyRaw = melody.map(n => ({ start: n.start / TPQ, dur: n.dur / TPQ, midi: n.midi }));
   const key = !song.key ? estimateKey(melodyRaw)
@@ -96,6 +100,7 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
     shift,
     fingering: {},
     chords,
+    imported: { lyrics: importedLyrics, chords: importedChords },
     title: titleFrom(song.file),
     subtitle: '',
     chartStyle: 'compact',

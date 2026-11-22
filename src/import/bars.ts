@@ -21,7 +21,7 @@ export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: 
     const barEnd = barStart + cap;
     const ev: Ev[] = [];
     const rest = (len: number) => {
-      for (const d of splitDuration(len)) ev.push({ id: newId(), m: lastPitch, d, r: true, tie: false, l: '', c: '' });
+      for (const d of splitDuration(len)) ev.push({ id: newId(), m: lastPitch, d, r: true, tie: false, l: '' });
     };
     for (;;) {
       const n = sorted[next];
@@ -35,7 +35,7 @@ export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: 
       const parts = splitDuration(pieceEnd - start);
       const continues = stop > barEnd;
       parts.forEach((d, i) => {
-        ev.push({ id: newId(), m: n.midi, d, r: false, tie: i < parts.length - 1 || continues, l: '', c: '' });
+        ev.push({ id: newId(), m: n.midi, d, r: false, tie: i < parts.length - 1 || continues, l: '' });
       });
       lastPitch = n.midi;
       cursor = pieceEnd;
