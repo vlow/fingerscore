@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, 
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPlayer, type Player } from '../audio/player';
 import { derive, type DerivedEvent } from '../domain/derive';
+import { locate } from '../domain/edit';
 import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
 import { keySignature, spell } from '../domain/keys';
@@ -14,18 +15,21 @@ import { SHEET, layoutSheet } from '../render/layout';
 import { Paper } from '../render/Paper';
 import { deleteWithUndo } from '../state/deleteWithUndo';
 import { listEntries } from '../state/library';
-import { saveStatus, useApp } from '../state/store';
+import { canRedo, canUndo, saveStatus, useApp } from '../state/store';
 import AltFingeringPopover, { popoverWidth } from '../ui/AltFingeringPopover';
 import Banners from '../ui/Banners';
 import { downloadText } from '../ui/download';
 import FileMenu from '../ui/FileMenu';
 import KeyBridge from '../ui/KeyBridge';
+import { ModeSwitch, type Mode } from '../ui/ModeSwitch';
 import PageBar from '../ui/PageBar';
 import RangeMeter from '../ui/RangeMeter';
 import SaveControls from '../ui/SaveControls';
 import ShowToggles from '../ui/ShowToggles';
 import Steps from '../ui/Steps';
 import Transport from '../ui/Transport';
+import { UndoRedo } from '../ui/UndoRedo';
+import { useSheetShortcuts } from '../ui/useSheetShortcuts';
 import '../styles/print.css';
 import s from './SheetPage.module.css';
 
@@ -36,6 +40,11 @@ const OWN_KEYS = 'input, textarea, select, button, a, [role="dialog"]';
 const MISSING = 'That sheet is no longer saved in this browser.';
 /** Sources that went through the import steps; a sheet opened from a file or the library did not. */
 const IMPORTED: Doc['source']['format'][] = ['MIDI', 'MusicXML', 'sample'];
+const PANEL: Record<Exclude<Mode, 'view'>, string> = { notes: 'Edit notes panel', lyrics: 'Lyrics panel', chords: 'Chords panel' };
+/** Width of an editing panel under a system (prototype .edp). */
+const PANEL_WIDTH = 360;
+/** A note that can carry a syllable: not a rest, not a tied continuation. */
+const takesSyllable = (ev: DerivedEvent) => !ev.rest && !ev.tiedFrom;
 
 export default function SheetPage() {
   const doc = useApp(st => st.doc);
@@ -87,6 +96,8 @@ function Sheet({ doc }: { doc: Doc }) {
   const setFingering = useApp(st => st.setFingering);
   const resetFingerings = useApp(st => st.resetFingerings);
   const libraryId = useApp(st => st.libraryId);
+  const undoable = useApp(canUndo);
+  const redoable = useApp(canRedo);
   const savedSnapshot = useApp(st => st.savedSnapshot);
   const saveError = useApp(st => st.saveError);
   const navigate = useNavigate();
@@ -97,6 +108,7 @@ function Sheet({ doc }: { doc: Doc }) {
 
   // Selection: one event, UI state only. Ids are stable across instrument, key and tempo changes;
   // an id the document no longer has counts as no selection, and loading another sheet clears it.
+  const [mode, setMode] = useState<Mode>('view');
   const [selection, setSelection] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const selectedId = selection !== null && derived.byId[selection] ? selection : null;
@@ -106,7 +118,18 @@ function Sheet({ doc }: { doc: Doc }) {
   useEffect(() => { setSelection(null); setAnnouncement(''); }, [sheetGen]);
   const firstBar = doc.score.length > 0 && doc.score[0].cap < barCap(doc.timeSig) ? 0 : 1;
 
-  function select(id: string | null, byKeyboard = false) {
+  /** In Lyrics mode a rest or tied continuation hands the selection to the next note that can carry a syllable. */
+  function landing(id: string, m: Mode): string {
+    if (m !== 'lyrics' || takesSyllable(derived.byId[id])) return id;
+    const k = derived.events.indexOf(derived.byId[id]);
+    const notes = derived.events.flatMap((ev, j) => (takesSyllable(ev) ? [{ id: ev.id, j }] : []));
+    // At the end of the song there is no next note: the nearest earlier one takes the syllable.
+    const to = notes.find(n => n.j > k) ?? notes.filter(n => n.j < k).pop();
+    return to ? to.id : id;
+  }
+
+  function select(picked: string | null, byKeyboard = false) {
+    const id = picked === null ? null : landing(picked, mode);
     setSelection(id);
     scrollToSelection.current = byKeyboard && id !== null;
     if (id === null) { setAnnouncement('Selection cleared'); return; }
@@ -122,9 +145,18 @@ function Sheet({ doc }: { doc: Doc }) {
     el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }, [selectedId]);
 
-  // Keyboard order: every event in score order, rests included, tied continuations skipped.
+  function changeMode(m: Mode) {
+    setMode(m);
+    if (m === 'lyrics' && selectedId !== null && landing(selectedId, m) !== selectedId) select(landing(selectedId, m));
+  }
+
+  // Keyboard order: every event in score order. Edit notes and Chords mode include tied continuations
+  // (they can be edited); View skips them; Lyrics mode stops only on notes that can carry a syllable.
   // Positions are indices into derived.events, so a clicked continuation still has neighbours.
-  const stops = useMemo(() => derived.events.flatMap((ev, k) => (ev.tiedFrom ? [] : [{ id: ev.id, k }])), [derived]);
+  const stops = useMemo(() => derived.events.flatMap((ev, k) => {
+    const stop = mode === 'notes' || mode === 'chords' ? true : mode === 'lyrics' ? takesSyllable(ev) : !ev.tiedFrom;
+    return stop ? [{ id: ev.id, k }] : [];
+  }), [derived, mode]);
 
   function onSheetKey(e: KeyboardEvent<HTMLDivElement>) {
     if (e.target instanceof Element && e.target.closest(OWN_KEYS)) return;
@@ -205,17 +237,15 @@ function Sheet({ doc }: { doc: Doc }) {
     if (useApp.getState().saveSheet()) setFileError(null);
   }, []);
 
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      // e.code covers layouts whose S key types another letter (Cyrillic, Greek, …).
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key.toLowerCase() === 's' || e.code === 'KeyS')) {
-        e.preventDefault();
-        save();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [save]);
+  // Undo and redo leave the selection alone unless its event is gone from the document they bring back.
+  function travel(step: 'undo' | 'redo') {
+    const st = useApp.getState();
+    st[step]();
+    const now = useApp.getState().doc;
+    if (selection !== null && (!now || locate(now, selection) === null)) setSelection(null);
+  }
+
+  useSheetShortcuts({ onSave: save, onUndo: () => travel('undo'), onRedo: () => travel('redo') });
 
   function download() {
     downloadText(fileName(doc.title), serializeFile(doc));
@@ -283,6 +313,28 @@ function Sheet({ doc }: { doc: Doc }) {
     );
   };
 
+  // Where each event sits: its system and its x in system coordinates, for the editing panel.
+  const place = useMemo(() => {
+    const m = new Map<string, { system: number; x: number }>();
+    for (const system of layout.systems) for (const bar of system.bars) for (const e of bar.events) m.set(e.id, { system: system.index, x: e.x });
+    return m;
+  }, [layout]);
+
+  // The editing panel of the current mode, directly under the system that holds the selected event.
+  // Tasks 4–6 fill it; Esc closes it by clearing the selection.
+  const renderUnderSystem = (systemIndex: number) => {
+    const at = selectedId === null ? undefined : place.get(selectedId);
+    if (mode === 'view' || !at || at.system !== systemIndex) return null;
+    const left = Math.round(Math.max(0, Math.min(SHEET.systemWidth - PANEL_WIDTH, at.x - PANEL_WIDTH / 2)));
+    return <div role="group" aria-label={PANEL[mode]} className={s.panel} style={{ left }} />;
+  };
+
+  function onToolbarKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Escape' || e.defaultPrevented || selectedId === null) return;
+    e.preventDefault();
+    select(null);
+  }
+
   const sounding = doc.score.flatMap(b => b.ev).filter(e => !e.r).map(e => e.m);
   const origSig = keySignature(doc.originalTonicPc, doc.originalMode);
   const origRange = sounding.length
@@ -324,6 +376,7 @@ function Sheet({ doc }: { doc: Doc }) {
           }
           right={
             <div className={s.barRight}>
+              <UndoRedo canUndo={undoable} canRedo={redoable} onUndo={() => travel('undo')} onRedo={() => travel('redo')} />
               <SaveControls status={status} error={saveError} onSave={save} />
               <FileMenu entries={entries} currentId={libraryId} onPrint={print} onDownload={download}
                 onOpenFile={file => void openFile(file)} onNew={() => navigate('/')} onOpen={openSaved} onDelete={deleteSaved}
@@ -393,17 +446,21 @@ function Sheet({ doc }: { doc: Doc }) {
           <div data-print-hide="" className={s.banners}>
             <Banners doc={doc} derived={derived} onShift={setShift} />
           </div>
-          <div className={s.toolbar} data-print-hide="">
-            {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
-            <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo })} />
+          <div className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
+            <ModeSwitch mode={mode} onMode={changeMode} />
+            <div className={s.toolbarEnd}>
+              {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
+              <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')} />
+            </div>
           </div>
           <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL}
             onKeyDown={onSheetKey}>
             <p className={s.srOnly} aria-live="polite">{announcement}</p>
             <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}
               selectedId={selectedId} onSelect={id => select(id)}
-              onTitle={title => patchDoc({ title })} onSubtitle={subtitle => patchDoc({ subtitle })}
-              renderUnderChart={renderUnderChart} />
+              onTitle={title => patchDoc({ title }, 'title')} onSubtitle={subtitle => patchDoc({ subtitle }, 'subtitle')}
+              renderUnderChart={renderUnderChart}
+              forceShow={{ lyrics: mode === 'lyrics', chords: mode === 'chords' }} renderUnderSystem={renderUnderSystem} />
           </div>
         </div>
       </div>

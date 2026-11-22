@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo, type ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import type { Doc } from '../domain/types';
 import type { SheetLayout } from './layout';
@@ -12,6 +12,10 @@ export interface PaperProps {
   selectedId: string | null; onSelect(id: string | null): void;
   onTitle(title: string): void; onSubtitle(subtitle: string): void;
   renderUnderChart?: UnderChart;   // slot for the alt-fingering pill (Task 20)
+  /** Bands drawn although their Show toggle is off (Lyrics and Chords mode); display only, not printed. */
+  forceShow?: { lyrics?: boolean; chords?: boolean };
+  /** HTML directly below system i (the editing panels); not printed. */
+  renderUnderSystem?(systemIndex: number): ReactNode;
 }
 
 /** The printed sheet: editable heading, tempo and key line, systems, legend. */
@@ -19,8 +23,15 @@ export function Paper(p: PaperProps): JSX.Element {
   const { doc, derived, layout } = p;
   const ties = useMemo(() => tieSegments(derived, layout), [derived, layout]);
   const last = layout.systems.length - 1;
+  const forcedLyrics = !!p.forceShow?.lyrics && !doc.show.lyrics;
+  const forcedChords = !!p.forceShow?.chords && !doc.show.chords;
+  const show = useMemo(
+    () => (forcedLyrics || forcedChords ? { ...doc.show, lyrics: doc.show.lyrics || forcedLyrics, chords: doc.show.chords || forcedChords } : doc.show),
+    [doc.show, forcedLyrics, forcedChords],
+  );
   return (
-    <article className={`paper ${styles.paper}`} data-testid="paper">
+    <article className={`paper ${styles.paper}`} data-testid="paper"
+      data-forced-lyrics={forcedLyrics ? '' : undefined} data-forced-chords={forcedChords ? '' : undefined}>
       <header className={styles.heading}>
         <h1 className={styles.h1}>
           <input className={`${styles.ttl} ${styles.title}`} data-print-plain="" type="text" aria-label="Sheet title" value={doc.title}
@@ -33,10 +44,16 @@ export function Paper(p: PaperProps): JSX.Element {
         <span>♩ = {doc.tempo}</span>
         <span>{derived.inst.name} · {derived.headerKeys}</span>
       </div>
-      {layout.systems.map(s => (
-        <SystemView key={s.index} doc={doc} derived={derived} system={s} beams={layout.beams} ties={ties[s.index]}
-          playingId={p.playingId} selectedId={p.selectedId} onSelect={p.onSelect} lastSystem={s.index === last} renderUnderChart={p.renderUnderChart} />
-      ))}
+      {layout.systems.map(s => {
+        const under = p.renderUnderSystem?.(s.index);
+        return (
+          <Fragment key={s.index}>
+            <SystemView doc={doc} show={show} derived={derived} system={s} beams={layout.beams} ties={ties[s.index]}
+              playingId={p.playingId} selectedId={p.selectedId} onSelect={p.onSelect} lastSystem={s.index === last} renderUnderChart={p.renderUnderChart} />
+            {under != null && under !== false && <div className={styles.underSystem} data-under-system="" data-print-hide="">{under}</div>}
+          </Fragment>
+        );
+      })}
       <footer className={styles.legend}>
         <span>{derived.legend}</span>
         <span>fingerscore.eu</span>

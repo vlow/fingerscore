@@ -56,6 +56,12 @@
     box-shadow: none !important;
   }
 
+  /* Bands shown only because Lyrics or Chords mode forces them: print follows the Show toggles. */
+  [data-forced-lyrics] [data-lyric],
+  [data-forced-chords] [data-chord] {
+    display: none;
+  }
+
   /* Playback highlight and selected-column marker. */
   [data-print-paper] [data-mark] {
     display: none;

@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { Player } from '../audio/player';
@@ -7,6 +7,7 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
+import { addBarAfter, toggleRest } from '../domain/edit';
 import { serializeFile } from '../domain/persistence';
 import { listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
@@ -45,9 +46,11 @@ function renderSheet(url = '/sheet') {
 
 const user = userEvent.setup();
 const open = (id: InstId, patch: Partial<Doc> = {}) => {
-  useApp.setState({ doc: { ...sampleDoc(id), ...patch }, instId: id, song: null, prefs: DEFAULT_PREFS });
+  useApp.setState({ doc: { ...sampleDoc(id), ...patch }, instId: id, song: null, prefs: DEFAULT_PREFS, past: [], future: [] });
   return renderSheet();
 };
+/** The Undo button of the "Deleted …" toast (the page bar has its own Undo for the document). */
+const toastUndo = () => within(screen.getByText(/^Deleted "/).parentElement!).getByRole('button', { name: 'Undo' });
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -421,7 +424,7 @@ describe('save and the File menu', () => {
     expect(listEntries().map(e => e.title)).toEqual(['The Water Is Wide']);
     expect(screen.getByText('Not saved yet')).toBeInTheDocument();
     expect(screen.getByText('Deleted "Other"')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await user.click(toastUndo());
     expect(listEntries().map(e => e.title)).toContain('Other');
     expect(screen.queryByText('Deleted "Other"')).toBeNull();
   });
@@ -433,7 +436,7 @@ describe('save and the File menu', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Delete The Water Is Wide' }));
     expect(screen.getByText('Not saved yet')).toBeInTheDocument();
     expect(listEntries()).toHaveLength(0);
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await user.click(toastUndo());
     expect(screen.getByText('Saved')).toBeInTheDocument();
     expect(listEntries()).toHaveLength(1);
   });
@@ -445,7 +448,7 @@ describe('save and the File menu', () => {
     await user.click(screen.getByRole('button', { name: /File/ }));
     await user.click(screen.getByRole('menuitem', { name: 'Delete The Water Is Wide' }));
     await user.click(screen.getByLabelText('Lyrics'));
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await user.click(toastUndo());
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(screen.getByText('Saved')).toBeInTheDocument();
@@ -458,7 +461,7 @@ describe('save and the File menu', () => {
     open('asax');
     await user.click(screen.getByRole('button', { name: /File/ }));
     await user.click(screen.getByRole('menuitem', { name: 'Delete Other' }));
-    expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus();
+    expect(toastUndo()).toHaveFocus();
     await user.keyboard('{Enter}');
     expect(listEntries().map(e => e.title)).toEqual(['Other']);
     expect(screen.getByRole('button', { name: /File/ })).toHaveFocus();
@@ -470,7 +473,7 @@ describe('save and the File menu', () => {
     await user.click(screen.getByRole('button', { name: /File/ }));
     await user.click(screen.getByRole('menuitem', { name: 'Delete Other' }));
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await user.click(toastUndo());
     spy.mockRestore();
     expect(screen.getByRole('alert')).toHaveTextContent('This browser blocks local storage. Use "Download JSON" instead.');
     expect(listEntries()).toHaveLength(0);
@@ -482,7 +485,7 @@ describe('save and the File menu', () => {
     await user.click(screen.getByRole('button', { name: /File/ }));
     await user.click(screen.getByRole('menuitem', { name: 'Delete The Water Is Wide' }));
     act(() => useApp.getState().setDoc({ ...sampleDoc('fl'), title: 'New song' }));
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await user.click(toastUndo());
     expect(listEntries()).toHaveLength(1);
     expect(screen.getByText('Not saved yet')).toBeInTheDocument();
   });
@@ -670,6 +673,292 @@ describe('select a note and play from there', () => {
     expect(selected()).toBe(afterChain);
     act(() => useApp.getState().setDoc({ ...sampleDoc('fl'), source: { ...doc.source, file: 'other.mid' } }));
     expect(selected()).toBeNull();
+  });
+});
+
+describe('modes, undo and redo', () => {
+  const doc = sampleDoc('asax');
+  const events = derive(doc, DEFAULT_PREFS).events;
+  const firstEventId = () => events[0].id;
+  const hit = (id: string) => document.querySelector(`[data-hit="${id}"]`)!;
+  const clickEvent = (id: string) => user.click(hit(id));
+  const selected = () => document.querySelector('[data-selected="true"]')?.getAttribute('data-ev') ?? null;
+  const sheet = () => screen.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter plays from it.' });
+  const syllable = (k: number) => !events[k].rest && !events[k].tiedFrom;
+  const tied = doc.score[1].ev[1].id;                // starts a chain over the next two events
+  const afterChain = doc.score[2].ev[1].id;
+  /** The sample with the first plain note after the tie chain turned into a rest, the note after it, and that rest. */
+  const withRest = () => {
+    const from = events.findIndex(e => e.id === afterChain);
+    const k = events.findIndex((e, j) => j > from && syllable(j) && !e.tieTo);
+    const restDoc = toggleRest(doc, events[k].id)!;
+    const next = events.find((_, j) => j > k && syllable(j))!;
+    return { score: restDoc.score, rest: events[k].id, next: next.id };
+  };
+  const press = (init: KeyboardEventInit) => {
+    const e = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+    act(() => { (document.activeElement ?? document.body).dispatchEvent(e); });
+    return e;
+  };
+
+  it('mode switch: four modes, hint, View by default', async () => {
+    open('asax');
+    const g = screen.getByRole('radiogroup', { name: 'Mode' });
+    expect(within(g).getAllByRole('radio').map(r => r.textContent)).toEqual(['View', 'Edit notes', 'Lyrics', 'Chords']);
+    expect(within(g).getByRole('radio', { name: 'View' })).toBeChecked();
+    expect(screen.getByText('Click a note to choose where playback starts.')).toBeInTheDocument();
+    await user.click(within(g).getByRole('radio', { name: 'Edit notes' }));
+    expect(within(g).getByRole('radio', { name: 'Edit notes' })).toBeChecked();
+    expect(within(g).getByRole('radio', { name: 'View' })).not.toBeChecked();
+    expect(screen.getByText('Click a note or rest, then change its pitch or length. Arrow keys work too.')).toBeInTheDocument();
+    await user.click(within(g).getByRole('radio', { name: 'Lyrics' }));
+    expect(screen.getByText('Click a note and type. Enter moves to the next note.')).toBeInTheDocument();
+    await user.click(within(g).getByRole('radio', { name: 'Chords' }));
+    expect(screen.getByText('Click a note or rest and type a chord, for example Am7 or F♯m7♭5.')).toBeInTheDocument();
+  });
+
+  it('mode switch: one tab stop, arrow keys move the choice', async () => {
+    open('asax');
+    const radios = within(screen.getByRole('radiogroup', { name: 'Mode' })).getAllByRole('radio');
+    expect(radios.map(r => r.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1']);
+    radios[0].focus();
+    await user.keyboard('{ArrowRight}');
+    expect(radios[1]).toBeChecked();
+    expect(radios[1]).toHaveFocus();
+    await user.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(radios[3]).toBeChecked();
+    expect(radios[3]).toHaveFocus();
+  });
+
+  it('the mode switch sits left of the playback controls', () => {
+    open('asax');
+    const modes = screen.getByRole('radiogroup', { name: 'Mode' });
+    const playback = screen.getByRole('group', { name: 'Playback' });
+    expect(modes.compareDocumentPosition(playback) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('a panel appears under the selected note\'s system in edit modes only', async () => {
+    open('asax');
+    const first = firstEventId();
+    await clickEvent(first);
+    expect(screen.queryByRole('group', { name: /panel/ })).toBeNull();
+    await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
+    const panel = screen.getByRole('group', { name: 'Edit notes panel' });
+    expect(panel.closest('[data-print-hide]')).not.toBeNull();
+    const system = document.querySelector(`[data-hit="${first}"]`)!.closest('svg')!.parentElement!;
+    expect(system.nextElementSibling).toContainElement(panel);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: /panel/ })).toBeNull();
+    expect(selected()).toBeNull();
+  });
+
+  it('the panel follows the selection to a later system and names the mode', async () => {
+    open('asax');
+    await user.click(screen.getByRole('radio', { name: 'Chords' }));
+    const last = events[events.length - 1].id;
+    await clickEvent(last);
+    const panel = screen.getByRole('group', { name: 'Chords panel' });
+    const systems = screen.getAllByTestId('system');
+    expect(systems[systems.length - 1].parentElement!.nextElementSibling).toContainElement(panel);
+    expect(screen.getAllByRole('group', { name: /panel/ })).toHaveLength(1);
+  });
+
+  it('undo and redo buttons and shortcuts', async () => {
+    open('asax');
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    const redo = screen.getByRole('button', { name: 'Redo' });
+    expect(undo).toBeDisabled();
+    expect(redo).toBeDisabled();
+    await user.click(screen.getByLabelText('Lyrics', { selector: 'input[type=checkbox]' }));
+    expect(undo).toBeEnabled();
+    await user.click(undo);
+    expect(useApp.getState().doc!.show.lyrics).toBe(true);
+    expect(redo).toBeEnabled();
+    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    expect(useApp.getState().doc!.show.lyrics).toBe(false);
+    await user.keyboard('{Control>}z{/Control}');
+    expect(useApp.getState().doc!.show.lyrics).toBe(true);
+    await user.keyboard('{Control>}y{/Control}');
+    expect(useApp.getState().doc!.show.lyrics).toBe(false);
+  });
+
+  it('undo and redo sit left of the save status, with the shortcut in the tooltip', () => {
+    open('asax');
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    expect(undo).toHaveAttribute('title', 'Undo (Ctrl+Z)');
+    expect(screen.getByRole('button', { name: 'Redo' })).toHaveAttribute('title', 'Redo (Ctrl+Shift+Z)');
+    expect(undo.compareDocumentPosition(screen.getByText('Not saved yet')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shortcuts match the key code on other layouts, prevent the default, and ⌘ works too', () => {
+    open('asax');
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    const z = press({ key: 'я', code: 'KeyZ', ctrlKey: true });
+    expect(z.defaultPrevented).toBe(true);
+    expect(useApp.getState().doc!.tempo).toBe(100);
+    const y = press({ key: 'н', code: 'KeyY', ctrlKey: true });
+    expect(y.defaultPrevented).toBe(true);
+    expect(useApp.getState().doc!.tempo).toBe(120);
+    press({ key: 'z', code: 'KeyZ', metaKey: true });
+    expect(useApp.getState().doc!.tempo).toBe(100);
+    press({ key: 'Z', code: 'KeyZ', metaKey: true, shiftKey: true });
+    expect(useApp.getState().doc!.tempo).toBe(120);
+  });
+
+  it('on a German layout the Z key undoes although its code is KeyY', () => {
+    open('asax');
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    press({ key: 'z', code: 'KeyY', ctrlKey: true });
+    expect(useApp.getState().doc!.tempo).toBe(100);
+    press({ key: 'y', code: 'KeyZ', ctrlKey: true });
+    expect(useApp.getState().doc!.tempo).toBe(120);
+  });
+
+  it('Alt or a plain Z does not undo', () => {
+    open('asax');
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    expect(press({ key: 'z', code: 'KeyZ', ctrlKey: true, altKey: true }).defaultPrevented).toBe(false);
+    expect(press({ key: 'z', code: 'KeyZ' }).defaultPrevented).toBe(false);
+    expect(useApp.getState().doc!.tempo).toBe(120);
+  });
+
+  it('typing a title is one undo step and Ctrl+Z works inside the field', async () => {
+    open('asax');
+    const t = screen.getByRole('textbox', { name: 'Sheet title' });
+    await user.clear(t);
+    await user.type(t, 'Waly');
+    await user.keyboard('{Control>}z{/Control}');
+    expect(t).toHaveValue('The Water Is Wide');
+    expect(t).toHaveFocus();
+    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    expect(t).toHaveValue('Waly');
+  });
+
+  it('subtitle edits are one step; the tempo slider coalesces', async () => {
+    open('asax');
+    const sub = screen.getByRole('textbox', { name: 'Sheet subtitle' });
+    await user.type(sub, 'ab');
+    const slider = screen.getByLabelText(/♩ =/);
+    fireEvent.change(slider, { target: { value: '101' } });
+    fireEvent.change(slider, { target: { value: '102' } });
+    expect(useApp.getState().doc!.tempo).toBe(102);
+    expect(useApp.getState().past).toHaveLength(2);
+    await user.keyboard('{Control>}z{/Control}');
+    expect(useApp.getState().doc!.tempo).toBe(100);
+    await user.keyboard('{Control>}z{/Control}');
+    expect(useApp.getState().doc!.subtitle).toBe(doc.subtitle);
+  });
+
+  it('Ctrl+Z while the toast\'s Undo has focus undoes the document, not the delete', async () => {
+    saveEntry({ ...sampleDoc('fl'), title: 'Other' }, null);
+    open('asax');
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete Other' }));
+    expect(toastUndo()).toHaveFocus();
+    await user.keyboard('{Control>}z{/Control}');
+    expect(useApp.getState().doc!.tempo).toBe(100);
+    expect(listEntries()).toHaveLength(0);
+    expect(screen.getByText('Deleted "Other"')).toBeInTheDocument();
+  });
+
+  it('lyrics mode shows lyrics even when the toggle is off; chords mode shows chords', async () => {
+    open('xc', { show: { fingerings: true, chords: false, lyrics: false, raiseExtensions: true } });
+    expect(screen.queryByText('wat-')).toBeNull();
+    await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
+    expect(screen.getByText('wat-')).toBeInTheDocument();
+    expect(useApp.getState().doc!.show.lyrics).toBe(false);
+    expect(screen.getByLabelText('Lyrics', { selector: 'input[type=checkbox]' })).not.toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Chords' }));
+    expect(document.querySelectorAll('[data-chord]').length).toBeGreaterThan(0);
+    expect(screen.queryByText('wat-')).toBeNull();
+    expect(useApp.getState().doc!.show.chords).toBe(false);
+    expect(useApp.getState().past).toHaveLength(0);
+  });
+
+  it('undo clears a selection whose note is gone', async () => {
+    open('asax');
+    await clickEvent(afterChain);
+    let added = '';
+    act(() => {
+      const st = useApp.getState();
+      const r = addBarAfter(st.doc!, 2);
+      added = r.selectId;
+      st.applyEdit(r.doc);
+    });
+    await clickEvent(added);
+    expect(selected()).toBe(added);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(document.querySelector('[data-selected]')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(document.querySelector(`[data-hit="${added}"]`)).not.toBeNull();
+    expect(document.querySelector('[data-selected]')).toBeNull();
+  });
+
+  it('undo keeps a selection whose note still exists', async () => {
+    open('asax');
+    await clickEvent(afterChain);
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    await user.keyboard('{Control>}z{/Control}');
+    expect(selected()).toBe(afterChain);
+  });
+
+  it('play from selected still works in every mode', async () => {
+    open('asax');
+    for (const mode of ['View', 'Edit notes', 'Lyrics', 'Chords']) {
+      await user.click(screen.getByRole('radio', { name: mode }));
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+      await clickEvent(afterChain);
+      expect(selected()).toBe(afterChain);
+      expect(screen.getByRole('button', { name: 'Play from selected' })).toBeInTheDocument();
+      await clickEvent(afterChain);
+      expect(selected()).toBeNull();
+    }
+  });
+
+  it('arrow keys include tied continuations in Edit notes and Chords mode', async () => {
+    const k = events.findIndex(e => e.id === tied);
+    for (const mode of ['Edit notes', 'Chords']) {
+      open('asax');
+      await user.click(screen.getByRole('radio', { name: mode }));
+      await clickEvent(tied);
+      await user.keyboard('{ArrowRight}');
+      expect(selected()).toBe(events[k + 1].id);
+      expect(events[k + 1].tiedFrom).toBe(true);
+      await user.keyboard('{ArrowLeft}');
+      expect(selected()).toBe(tied);
+      cleanup();
+    }
+  });
+
+  it('Lyrics mode: arrows and clicks land on notes that can carry a syllable', async () => {
+    const r = withRest();
+    open('asax', { score: r.score });
+    await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
+    await clickEvent(r.rest);
+    expect(selected()).toBe(r.next);
+    const k = events.findIndex(e => e.id === tied);
+    await clickEvent(events[k + 1].id);   // a tied continuation
+    expect(selected()).toBe(events.find((_, j) => j > k && syllable(j))!.id);
+    sheet().focus();
+    await user.keyboard('{Home}');
+    const firstNote = events.find((_, j) => syllable(j))!.id;
+    expect(selected()).toBe(firstNote);
+    for (let n = 0; n < 6; n++) {
+      await user.keyboard('{ArrowRight}');
+      const at = events.findIndex(e => e.id === selected());
+      expect(syllable(at)).toBe(true);
+    }
+  });
+
+  it('switching to Lyrics mode moves a selected rest to the next note', async () => {
+    const r = withRest();
+    open('asax', { score: r.score });
+    await clickEvent(r.rest);
+    expect(selected()).toBe(r.rest);
+    await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
+    expect(selected()).toBe(r.next);
+    expect(screen.getByRole('group', { name: 'Lyrics panel' })).toBeInTheDocument();
   });
 });
 

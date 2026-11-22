@@ -1,0 +1,28 @@
+/* Undo and redo in the sheet page bar, after the prototype (Editor.dc.html, "History" group). */
+.group {
+  display: flex;
+  gap: 4px;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--page);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

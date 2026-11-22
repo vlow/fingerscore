@@ -72,6 +72,40 @@ describe('Paper', () => {
     expect(container.querySelectorAll('[data-chord]').length).toBeGreaterThan(0);
   });
 
+  it('forceShow draws lyrics or chords whose toggles are off, and marks them for print', () => {
+    const off = { fingerings: true, chords: false, lyrics: false, raiseExtensions: true };
+    const { container, unmount } = renderDoc({ ...sampleDoc('xc'), show: off }, null, { forceShow: { lyrics: true } });
+    expect(screen.getByText('wat-')).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-chord]')).toHaveLength(0);
+    expect(screen.getByTestId('paper')).toHaveAttribute('data-forced-lyrics');
+    expect(screen.getByTestId('paper')).not.toHaveAttribute('data-forced-chords');
+    unmount();
+    const second = renderDoc({ ...sampleDoc('xc'), show: off }, null, { forceShow: { chords: true } });
+    expect(second.container.querySelectorAll('[data-chord]').length).toBeGreaterThan(0);
+    expect(screen.queryByText('wat-')).toBeNull();
+    expect(screen.getByTestId('paper')).toHaveAttribute('data-forced-chords');
+  });
+
+  it('forceShow on a band that is already shown marks nothing', () => {
+    setup('xc');
+    expect(screen.getByTestId('paper')).not.toHaveAttribute('data-forced-lyrics');
+    const doc = sampleDoc('xc');
+    renderDoc(doc, null, { forceShow: { lyrics: true, chords: true } });
+    expect(screen.getAllByTestId('paper')[1]).not.toHaveAttribute('data-forced-lyrics');
+    expect(screen.getAllByTestId('paper')[1]).not.toHaveAttribute('data-forced-chords');
+  });
+
+  it('renderUnderSystem puts HTML directly below its system, hidden in print', () => {
+    const under = vi.fn((i: number) => (i === 1 ? <p>under one</p> : null));
+    renderDoc(sampleDoc('xc'), null, { renderUnderSystem: under });
+    const systems = screen.getAllByTestId('system');
+    expect(under.mock.calls.map(c => c[0])).toEqual(systems.map((_, i) => i));
+    const slot = screen.getByText('under one').parentElement!;
+    expect(systems[1].parentElement!.nextElementSibling).toBe(slot);
+    expect(slot).toHaveAttribute('data-print-hide');
+    expect(document.querySelectorAll('[data-under-system]')).toHaveLength(1);
+  });
+
   it('playing note is highlighted', () => {
     const doc = sampleDoc('xc');
     const first = doc.score[0].ev[0].id;

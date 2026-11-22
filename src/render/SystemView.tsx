@@ -148,6 +148,8 @@ function Beams(p: { group: BeamGroup; notes: Placed[] }) {
 
 export interface SystemViewProps {
   doc: Doc; derived: Derived; system: SystemLayout; beams: BeamGroup[]; ties: TieSegment[];
+  /** What to draw; defaults to doc.show (Paper widens it in Lyrics and Chords mode). */
+  show?: Doc['show'];
   playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
   selectedId: string | null; onSelect(id: string | null): void;
 }
@@ -155,6 +157,7 @@ export interface SystemViewProps {
 /** One system: staff, header, bars, notes, beams, ties, and the slot under each chart. */
 export function SystemView(p: SystemViewProps): JSX.Element {
   const { doc, derived, system } = p;
+  const show = p.show ?? doc.show;
   const end = systemEnd(system);
   const nAcc = Math.abs(derived.sig);
   const accPos = derived.sig > 0 ? SHARP_POS : FLAT_POS;
@@ -167,15 +170,15 @@ export function SystemView(p: SystemViewProps): JSX.Element {
     const evs = doc.score[bar.bar].ev;
     return evs.length === 1 && evs[0].r && evs[0].d === full && doc.score[bar.bar].cap === full;
   };
-  const charted = (ev: DerivedEvent) => doc.show.fingerings && !ev.rest && !ev.tiedFrom && ev.options.length > 0;
+  const charted = (ev: DerivedEvent) => show.fingerings && !ev.rest && !ev.tiedFrom && ev.options.length > 0;
   const under = p.renderUnderChart;
   const band = (items: LyricItem[], fontPx?: number) =>
     new Map<string, TextSpot>(placeLyrics(items, 0, end, fontPx).map(({ id, ...spot }) => [id, spot]));
-  const lyrics = band(doc.show.lyrics ? placed.filter(n => !n.ev.rest && n.ev.lyric !== '').map(n => ({ id: n.ev.id, x: n.x, text: n.ev.lyric })) : []);
+  const lyrics = band(show.lyrics ? placed.filter(n => !n.ev.rest && n.ev.lyric !== '').map(n => ({ id: n.ev.id, x: n.x, text: n.ev.lyric })) : []);
   const columns = system.bars.flatMap(hitColumns);
   const selectedColumn = columns.find(c => c.id === p.selectedId);
   const selectedPlaced = selectedColumn && byId.get(selectedColumn.id);
-  const chords = band(doc.show.chords ? placed.filter(n => n.ev.chord !== null).map(n => ({ id: n.ev.id, x: n.x, text: n.ev.chord! })) : [], CHORD_FONT_PX);
+  const chords = band(show.chords ? placed.filter(n => n.ev.chord !== null).map(n => ({ id: n.ev.id, x: n.x, text: n.ev.chord! })) : [], CHORD_FONT_PX);
 
   return (
     <div className={styles.system}>
@@ -195,7 +198,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
         {system.bars.map(bar => <Barlines key={bar.bar} bar={bar} doc={doc} />)}
         {system.bars.map(bar => bar.events.map(e => (
           <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}
-            show={doc.show} playing={p.playingId === e.id} selected={p.selectedId === e.id}
+            show={show} playing={p.playingId === e.id} selected={p.selectedId === e.id}
             beamed={beamed.has(e.id)} fullBarRest={fullBarRest(bar)} />
         )))}
         {groups.map(g => <Beams key={g.ids[0]} group={g} notes={g.ids.map(id => byId.get(id)!)} />)}
