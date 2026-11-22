@@ -42,7 +42,7 @@ Full feature set per SPEC.md remains the target. Version 2 adds the rest.
 - The app lives at the repo root (`/Users/f.engel/Code/fingerscore`). `fingerscore-handoff/` stays as read-only reference. Data files are copied to `src/data/` and edited there.
 - `fingerscore-handoff/reference/` and the zip are git-ignored and must stay unpublished.
 - Output is a static `dist/` folder. English UI only. Copy comes from SPEC.md.
-- Music limits per §1 and §5.1: single staff, treble clef, 4/4, eighth-note grid, durations 1, 2, 3, 4, 6, 8.
+- Music limits: single staff, treble clef, one time signature per song. Rhythm support is wider than §1 and §5.1; see 5.2a.
 
 ## 4. Approaches considered
 
@@ -68,17 +68,39 @@ Decided by the owner: tables must be accurate, looked up in full, not derived.
 - If a source needs a key the current `SATS` layout lacks, add the key to `SATS` (position per §8.2) rather than dropping the fingering.
 - The legend keeps " · fingering data: draft" for a kind until its `reviewed` flag is set. Only the owner or a player he names sets it. Xaphoon gets the suffix too until reviewed (deviation from §7.4, because its upper register was derived).
 - A unit test asserts that every pitch `lo..ext` of every instrument either has at least one option or appears in a gap list kept beside the data. An undocumented gap fails the test; a documented one is reported.
+- **Xaphoon** (decided by the owner): the source is the maker's official chart, https://cdn.shopify.com/s/files/1/0267/3777/0547/files/fingeringchart.pdf?v=1590460154 (read 2026-11-22). It gives one fingering for each of the 25 semitones C4–C6 over nine positions (top hole, thumb, seven finger holes), including half-holes for C♯4 and G♯5, and marks G♯5–C6 as "second register – use higher overtone". Transcribe it exactly; the existing `XA` table and its octave rule are wrong above C5 and are dropped. In `instruments.json`, both Xaphoons get `hi = 84`, `ext = 84` (C6) and `easyTop = 79` (G5, the last note before overblowing). The second source for the cross-check is the handoff's songbook page for C4–C5; no second source is required above that.
 - Existing status of the data, for orientation: sax "draft from memory", clarinet verified only for the low register, flute first and third octave from woodwind.org, recorder draft, Xaphoon 14 notes from a songbook chart.
 
 ### 5.2 Domain core (§3, §6, §7.3, §8.4)
 
 Instruments, spelling and key signatures, transposition scoring, range states, fingering lookup, Viterbi chooser with manual overrides as fixed points, chord parse/transpose/format (display only), playback schedule including repeats and voltas. Unit-tested. Acceptance checks 1–5 of §16 run as Vitest tests against `sample-song.json` ("The Water Is Wide").
 
+The new Xaphoon range changes checks 1 and 2 (computed with the §6.3 formula on the fixture):
+
+- Check 1: Xaphoon C now suggests **+10 → C major written, G4–G5**, all playable, score 10. F major (+3, C4–C5) is second with 11, G major (+5) third with 13. Xaphoon B♭ suggests +8 (C major written), then +1 (F), then +3 (G). The reason text "low register only" of §6.4 applies when no note is above `easyTop`, which still holds.
+- Check 2: unchanged in substance (shift 0: 8 notes below C4).
+- Checks 3–5: unchanged.
+
 **Minor keys** (decided by the owner; extends the spec, which names major keys only). The document stores `originalMode: "major" | "minor"` beside `originalTonicPc`, which holds the tonic of the song's actual key (A for A minor). Key signatures and note spelling use the relative major, so §6.3 and §7.3 work unchanged. Every key label names the key in the song's mode: "Detected in file", both key-bridge selects and their options, "Keys that fit", banners and the printed header read "A minor", not "C major". Import takes the mode from the file where given (MIDI key-signature event, MusicXML `<mode>`) and otherwise estimates it. The sample fixture is major, so §16 checks 1–4 are unaffected.
 
 Check 5 asserts 73 sounded notes and the duration the schedule computes (262 eighths, 78.6 s at ♩ = 100). The "≈ 76 s" in §16 is treated as a rounding slip. Rule for a tie into a first ending: on the second pass the tied note ends at the bar line and the second-ending note is struck anew.
 
 `sample-song.json` is a fixture, not the document format: its events lack IDs and its chords are spelled 3 semitones above the stored pitches (`chordSpellingOffset`). A loader converts it into the §13.1 document model.
+
+### 5.2a Meters and sixteenths (decided by the owner; extends the spec)
+
+The spec limits v1 to 4/4 on an eighth-note grid (§1, §5.1, §17). The owner lifted that limit, because he tests on real songs.
+
+- **Time unit.** Durations and bar capacities are integers in **ticks, 12 per quarter note**: sixteenth 3, eighth 6, dotted eighth 9, quarter 12, dotted quarter 18, half 24, dotted half 36, whole 48. This replaces "eighths" everywhere the spec uses them (`d`, `cap`, §13.1). The unit also fits triplets (triplet eighth = 4), so version 2 can add them without a model change.
+- **Time signatures.** 4/4, 3/4, 2/4 and 6/8, one per song, stored in the document as `timeSig: [beats, unit]`. Bar capacity: 48, 36, 24, 36 ticks. A pickup bar has a smaller `cap`. Any other signature, or a signature change inside the song, is refused: "{file} is in 5/4. fingerscore reads 4/4, 3/4, 2/4 and 6/8 for now."
+- **Allowed durations.** The eight values above. A duration that fits no single value is split into tied notes.
+- **Drawing.** Time-signature digits; sixteenth flags and double beams; dotted eighths; a sixteenth rest. `glyphs.json` has no sixteenth rest and no digits: extract them from GNU FreeSerif the same way as the existing glyphs, or set digits as text in a serif face if extraction fails (builder's call). Beam groups follow the meter: per quarter beat in 4/4, 3/4 and 2/4; per dotted-quarter beat in 6/8. Mixed eighth/sixteenth groups get a partial second beam. This generalises §7.2 ("beams for eighth pairs starting on a beat").
+- **Whole-bar rest.** A centred whole rest in every meter.
+- **System breaks.** The spec fixes four bars per system (§7.1). Fingering charts need a minimum horizontal pitch (the widest chart of the current instrument and style plus a gap; builder derives the number from `LAYOUT`/`SATS`). Fill each system greedily with up to four bars; when the bars' charts would not fit at that pitch, the system takes fewer bars. Bars in a system then get widths in proportion to their need, not equal widths. A single bar that does not fit alone compresses its pitch to fit. A song with only eighths and longer in 4/4 must still lay out exactly as §7.1 describes, so the sample fixture matches the prototype.
+- **Tempo and playback.** Tempo stays in quarter notes per minute in every meter, shown as "♩ = n". (6/8 shows the same label; a dotted-quarter display can come later.)
+- **Triplets and anything finer than a sixteenth.** Not drawn in version 1. Both importers snap such notes to the sixteenth grid and the "Detected in file" card says "Rhythm simplified: triplets and notes shorter than a sixteenth were rounded." Version 2 adds triplets, reliable from MusicXML first.
+- **Fixture.** The `sample-song.json` loader multiplies `d` and `cap` by 6.
+- **Version 2 note.** The bar-fill rules of §9.3 and the length buttons of the editor need the same generalisation.
 
 ### 5.3 Renderer (§7, §8.1–8.3)
 
@@ -102,11 +124,8 @@ Title and subtitle are editable inline in version 1 (§9.6), because an imported
 - Lyrics: MIDI lyric meta events, MusicXML `<lyric>` (first verse only). Chords: MusicXML `<harmony>`, or detected from a chosen harmony track per §5.2.
 - Original key: from the file's key signature when present, otherwise estimated from the melody's pitch classes (builder's call on the method).
 - Repeats and voltas: read from MusicXML barlines and endings. MIDI has none.
-- Files outside the music limits:
-  - Time signature other than 4/4 → refuse with "{file} is in 3/4. fingerscore reads 4/4 songs only for now." (number filled in).
-  - Rhythms finer than eighths or triplets → quantise to the eighth grid and say so in the "Detected in file" card ("Rhythm simplified to eighth notes").
-  - Notes longer than a bar → split into tied notes (§5.1).
-  - A pickup bar is detected and stored with its reduced `cap`.
+- Quantise to the sixteenth grid. Meters, refusals and rounding notices per 5.2a.
+- Notes longer than a bar are split into tied notes (§5.1). A pickup bar is detected and stored with its reduced `cap`.
 
 ### 5.6 Demo song
 
@@ -146,15 +165,18 @@ Print button → `window.print()` with a print stylesheet: paper only (title, sy
 
 ## 7. Version 2 (not planned here)
 
-Editing modes and undo/redo; library, Save, File menu, JSON files, gallery; Scales page; `.mscz` and ABC import; generated PDF; About, Imprint, Privacy; nav and footer links; accessibility audit; full Playwright acceptance suite (§16 checks 6–10); deployment to the owner's server.
+Triplets; editing modes and undo/redo; library, Save, File menu, JSON files, gallery; Scales page; `.mscz` and ABC import; generated PDF; About, Imprint, Privacy; nav and footer links; accessibility audit; full Playwright acceptance suite (§16 checks 6–10); deployment to the owner's server.
 
 ## 8. Calls made by the author, not yet confirmed by the owner
 
-1. Non-4/4 files are refused rather than forced into 4/4.
-2. Finer rhythms are quantised with a notice rather than refused.
+1. Songs in a meter other than 4/4, 3/4, 2/4 or 6/8, or with a meter change, are refused.
+2. Triplets and notes shorter than a sixteenth are rounded with a notice; triplets are not drawn in version 1, also not from MusicXML.
 3. Title and subtitle editing moves into version 1.
 4. `sessionStorage` keeps the current sheet across a reload.
 5. Xaphoon also carries the "draft" suffix until reviewed.
+12. Tempo is counted in quarter notes in 6/8 too.
+13. Systems hold fewer than four bars where sixteenths would make the charts overlap.
+14. With the new Xaphoon range, the sample song's suggested key on Xaphoon C becomes C major (G4–G5); F major (C4–C5) drops to second.
 6. Nav and footer links to missing pages are left out rather than shown disabled.
 7. Version 1 is not hosted publicly, because the Imprint is missing.
 8. "The Water Is Wide" is a test fixture only; the visible demo is Auld Lang Syne.
