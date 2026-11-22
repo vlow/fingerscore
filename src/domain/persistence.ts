@@ -57,13 +57,16 @@ const isBool = (v: unknown): v is boolean => typeof v === 'boolean';
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isInt = (v: unknown, lo: number, hi: number): v is number => isNum(v) && Number.isInteger(v) && v >= lo && v <= hi;
 
-/** Event ids key the fingering and chords maps; these would reach the object prototype instead. */
-const RESERVED_IDS = ['__proto__', 'constructor', 'prototype'];
+/**
+ * Event ids key the fingering and chords maps. An id that names something every object inherits
+ * (`__proto__`, `constructor`, `toString`, `valueOf`, …) would read that inherited value instead.
+ */
+const isReservedId = (id: string): boolean => id === 'prototype' || id in Object.prototype;
 
 function validEvent(v: unknown): Ev | null {
   if (!isObject(v)) return null;
   const { id, m, d, r, tie, l, c } = v;
-  if (!isStr(id) || id === '' || RESERVED_IDS.includes(id) || !isInt(m, 0, 127) || !isNum(d) || !(DURATIONS as readonly number[]).includes(d)) return null;
+  if (!isStr(id) || id === '' || isReservedId(id) || !isInt(m, 0, 127) || !isNum(d) || !(DURATIONS as readonly number[]).includes(d)) return null;
   if (!isBool(r) || !isBool(tie) || !isStr(l) || !isStr(c)) return null;
   return { id, m, d, r, tie, l, c };
 }

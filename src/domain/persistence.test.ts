@@ -86,7 +86,7 @@ describe('sheet file', () => {
     expect((await readSheet(ok)).ok).toBe(true);
   });
 
-  it.each(['__proto__', 'constructor', 'prototype'])('refuses the event id %s as damaged', id => {
+  it.each(['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty'])('refuses the event id %s as damaged', id => {
     const f: any = JSON.parse(serializeFile(doc()));
     const old = f.doc.score[0].ev[0].id;
     f.doc.score[0].ev[0].id = id;
