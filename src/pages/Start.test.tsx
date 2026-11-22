@@ -348,6 +348,30 @@ it('a failed delete shows the storage message and keeps the card', async () => {
   expect(cardLink('Stuck')).toBeInTheDocument();
 });
 
+it('the gallery storage alert clears on the next library change: a successful delete, or a drop-zone import', async () => {
+  saveSheets('Stuck', 'Other');
+  renderStart();
+  const region = () => screen.getByRole('region', { name: 'Your sheets' });
+  const fail = () => vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string) {
+    if (k === 'fingerscore.library.v1') throw new DOMException('full', 'QuotaExceededError');
+  });
+
+  let spy = fail();
+  await user.click(screen.getByRole('button', { name: 'Delete Stuck' }));
+  expect(within(region()).getByRole('alert')).toHaveTextContent(FULL_MESSAGE);
+  spy.mockRestore();
+  drop(sheetFile('Fresh'));
+  await screen.findByText('✓ "Fresh" added to your sheets');
+  expect(within(region()).queryByRole('alert')).toBeNull();
+
+  spy = fail();
+  await user.click(screen.getByRole('button', { name: 'Delete Stuck' }));
+  expect(within(region()).getByRole('alert')).toHaveTextContent(FULL_MESSAGE);
+  spy.mockRestore();
+  await user.click(screen.getByRole('button', { name: 'Delete Other' }));
+  expect(within(region()).queryByRole('alert')).toBeNull();
+});
+
 describe('keyboard focus in the gallery', () => {
   it('after a delete: Undo, then the next card; Undo returns to the restored card', async () => {
     saveSheets('A', 'B', 'C');

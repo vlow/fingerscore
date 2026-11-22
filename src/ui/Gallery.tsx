@@ -26,6 +26,9 @@ export default function Gallery({ version = 0, emptyFocus }: Props) {
   // The time-ago text is computed when the library is read: on mount and after each change.
   const { entries, now } = useMemo(() => ({ entries: listEntries(), now: new Date() }), [version, changed]);
 
+  // A change from outside (a drop-zone import) is a successful library write: the storage alert is stale.
+  useEffect(() => { setError(null); }, [version]);
+
   useEffect(() => {
     if (focusId === null) return;
     links.current.get(focusId)?.focus();
