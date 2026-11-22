@@ -1,5 +1,5 @@
 {
- "_doc": "Fingering data. tables[kind] maps a key to an array of options (first = standard). rec and recGerman are keyed by written pitch minus the instrument's base (soprano and alto recorder share one table; recGerman holds only the notes where the German system differs); every other table is keyed by written MIDI pitch. overrides[instId][pitch] replaces the kind table's entry for that instrument; an empty array there means that instrument has no sourced fingering for the pitch (listed in fingering-gaps.json). meta[kind] = {sources: [{title, url, accessed}], reviewed}; reviewed null = draft. Pitches with no published fingering have no entry and are listed in fingering-gaps.json. Entries come from published charts only. LAYOUT[kind] = main holes/keys of the vertical column: [dx, dyTop, size(px), double?] relative to the chart centre x and chart top (px at 1x). Values in an option's 'h' array follow that order: 1 = closed/pressed, 0 = open, 0.5 = half-hole (or, for recorder double holes, only the larger hole closed). Xaphoon order: top hole, thumb, holes 3-9. SATS[kind] = satellite keys: id -> [centreX, centreY, cluster]. SHAPE[cluster] = [w,h] in the full key map (compact mode draws 5px dots). Option objects: {h, x: [satellite ids pressed], n: name, p: penalty used by the fingering chooser (0 = standard)}. FINGER maps satellite ids to the finger that operates them (used to penalise same-finger slides).",
+ "_doc": "Fingering data. tables[kind] maps a key to an array of options (first = standard). rec and recGerman are keyed by written pitch minus the instrument's base (soprano and alto recorder share one table; recGerman holds only the notes where the German system differs; an empty array there means no sourced German fingering, so no chart is shown); every other table is keyed by written MIDI pitch. overrides[instId][pitch] replaces the kind table's entry for that instrument; an empty array there means that instrument has no sourced fingering for the pitch (listed in fingering-gaps.json). meta[kind] = {sources: [{title, url, accessed}], reviewed}; reviewed null = draft. Pitches with no published fingering have no entry and are listed in fingering-gaps.json. Entries come from published charts only. LAYOUT[kind] = main holes/keys of the vertical column: [dx, dyTop, size(px), double?] relative to the chart centre x and chart top (px at 1x). Values in an option's 'h' array follow that order: 1 = closed/pressed, 0 = open, 0.5 = half-hole (or, for recorder double holes, only the larger hole closed). Xaphoon order: top hole, thumb, holes 3-9. SATS[kind] = satellite keys: id -> [centreX, centreY, cluster]. SHAPE[cluster] = [w,h] in the full key map (compact mode draws 5px dots). Option objects: {h, x: [satellite ids pressed], n: name, p: penalty used by the fingering chooser (0 = standard)}. FINGER maps satellite ids to the finger that operates them (used to penalise same-finger slides).",
  "LAYOUT": {
   "xaph": [
    [
@@ -3710,6 +3710,21 @@
      "x": [],
      "n": "standard",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "alternative (2 3)",
+     "p": 0.3
     }
    ],
    "12": [
@@ -3943,10 +3958,10 @@
       1,
       0,
       1,
-      1
+      0
      ],
      "x": [],
-     "n": "standard",
+     "n": "standard; close the bell end (for example on the knee)",
      "p": 0
     }
    ],
@@ -3960,6 +3975,57 @@
       1,
       0,
       1,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "29": [
+    {
+     "h": [
+      0.5,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard; close the bell end (for example on the knee)",
+     "p": 0
+    }
+   ],
+   "30": [
+    {
+     "h": [
+      0.5,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "31": [
+    {
+     "h": [
+      0.5,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
       0
      ],
      "x": [],
@@ -3986,40 +4052,10 @@
      "p": 0
     }
    ],
-   "6": [
-    {
-     "h": [
-      1,
-      1,
-      1,
-      1,
-      0,
-      1,
-      1,
-      1
-     ],
-     "x": [],
-     "n": "standard",
-     "p": 0
-    }
-   ],
-   "17": [
-    {
-     "h": [
-      0.5,
-      1,
-      1,
-      1,
-      1,
-      0,
-      0,
-      0
-     ],
-     "x": [],
-     "n": "standard",
-     "p": 0
-    }
-   ]
+   "6": [],
+   "8": [],
+   "17": [],
+   "18": []
   }
  },
  "overrides": {
@@ -4250,6 +4286,9 @@
      "p": 0
     }
    ]
+  },
+  "ra": {
+   "87": []
   }
  },
  "meta": {
@@ -4319,6 +4358,36 @@
     {
      "title": "flutetunes.com: basic flute fingerings (states that the basic fingerings are also valid for piccolo and alto flute)",
      "url": "https://www.flutetunes.com/fingerings/basic-fingerings.php",
+     "accessed": "2026-11-22"
+    }
+   ],
+   "reviewed": null
+  },
+  "rec": {
+   "sources": [
+    {
+     "title": "The Woodwind Fingering Guide (Timothy Reichard): basic recorder chart (English and German models) and third-octave alternate chart",
+     "url": "https://www.wfg.woodwind.org/recorder/",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Dolmetsch Online (Brian Blood): Baroque/English fingerings for the recorder in text format, recorders in C and in F",
+     "url": "https://www.dolmetsch.com/textfingeringchart.htm",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Tomplay: interactive baroque soprano and alto recorder fingering chart",
+     "url": "https://tomplay.com/fingering-charts/recorder",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Wikipedia, \"Recorder (musical instrument)\", section German fingering, citing A. Rowland-Jones, Recorder Technique (German F: 0 123 4 – – –)",
+     "url": "https://en.wikipedia.org/wiki/Recorder_(musical_instrument)",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Wikipedia (de), \"Blockflöte\", section Deutsche Griffweise, citing H.-M. Linde, Handbuch des Blockflötenspiels, Schott 2003, p. 36 (German 4th degree with the right index finger only)",
+     "url": "https://de.wikipedia.org/wiki/Blockfl%C3%B6te",
      "accessed": "2026-11-22"
     }
    ],

@@ -1,5 +1,5 @@
 import { inst, ORDER } from './instruments';
-import { optionsFor, legend, hasSatellites, coverageGaps, documentedGaps, LAYOUT, SATS } from './fingerings';
+import { optionsFor, legend, hasSatellites, coverageGaps, documentedGaps, rawGaps, meta, LAYOUT, SATS } from './fingerings';
 
 it('xaphoon covers C4–C6 from the official chart', () => {
   for (let w = 60; w <= 84; w++) expect(optionsFor('xc', w, 'baroque').length, String(w)).toBeGreaterThan(0);
@@ -88,3 +88,27 @@ it('satellite keys exist for sax, clarinet and flute only', () => {
   expect(['xaph', 'sax', 'cl', 'fl', 'rec'].filter(k => hasSatellites(k as 'sax'))).toEqual(['sax', 'cl', 'fl']);
 });
 
+it('gap list is short and sourced', () => {
+  const gaps = documentedGaps();
+  for (const g of rawGaps()) expect(g.checked.length, `${g.inst ?? g.kind}:${g.pitch}`).toBeGreaterThanOrEqual(2);
+  expect(gaps.filter(g => g.pitch <= inst(g.inst).hi)).toEqual([]);     // nothing missing inside the normal range
+});
+
+it('named alternates exist', () => {
+  expect(optionsFor('asax', 70, 'baroque').map(o => o.x.join())).toEqual(expect.arrayContaining(['bis', 'sBb']));
+  expect(optionsFor('asax', 72, 'baroque').length).toBeGreaterThanOrEqual(2);
+  expect(optionsFor('cl', 52, 'baroque').map(o => o.x.join())).toEqual(expect.arrayContaining(['lpE', 'rpE']));
+  expect(optionsFor('fl', 70, 'baroque').length).toBeGreaterThanOrEqual(2);
+});
+
+it('every kind records two sources', () => { for (const k of ['xaph','sax','cl','fl','rec'] as const) expect(meta(k).sources.length).toBeGreaterThanOrEqual(2); });
+
+it('an empty German entry shows no chart instead of the baroque fingering', () => {
+  expect(optionsFor('rs', 66, 'baroque').length).toBeGreaterThan(0);
+  expect(optionsFor('rs', 66, 'german')).toEqual([]);
+});
+
+it('an empty override hides the kind table for one instrument only', () => {
+  expect(optionsFor('asax', 95, 'baroque').length).toBeGreaterThan(0);
+  expect(optionsFor('tsax', 95, 'baroque')).toEqual([]);
+});
