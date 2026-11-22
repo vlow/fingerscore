@@ -2,9 +2,9 @@
 
 Turns a song file into sheet music with a fingering chart under every note, for woodwinds. It runs in the browser only. Nothing leaves your machine.
 
-This is version 1. It answers one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files?
+Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files first.
 
-## What version 1 does
+## What it does
 
 - Reads MIDI and MusicXML files.
 - Finds the melody track and lets you pick another one.
@@ -17,16 +17,26 @@ This is version 1. It answers one question: does the path from a song file to a 
 - Covers 12 instruments: Xaphoon, saxophones, clarinet, flutes, recorders.
 - Ships a sample song, Auld Lang Syne. Regenerate it with `npm run demo`.
 
+### Saving and files
+
+- Save keeps the sheet in your browser's local storage. Press the Save button or Ctrl/⌘+S. The sheet page shows "Not saved yet", "Unsaved changes" or "Saved".
+- Sheets live only in this browser on this device. Clearing site data deletes them.
+- The start page lists your saved sheets under "Your sheets". Open one with a click. Delete one and Undo brings it back for a few seconds.
+- To back up a sheet or move it to another computer, choose File, then Download JSON. Open it there with File, then Open JSON file…, or drop it on the start page. The start page drop zone takes songs (MIDI, MusicXML) and saved-sheet files (.json).
+- The File menu also lists your saved sheets.
+
+The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The app validates every file on import and refuses anything else. No compatibility promise holds before the public release: a later version may change the format and reject older files.
+
 ### Rhythm rules
 
 - Meters: 4/4, 3/4, 2/4 and 6/8. One meter per song. Any other meter, or a meter change inside the song, is refused with a message.
 - Note lengths: whole down to sixteenth, with dotted values. Longer lengths that fit no single value become tied notes.
 - Triplets and notes shorter than a sixteenth are rounded to the sixteenth grid. The "Detected in file" card says so.
 
-## What version 1 does not do
+## What it does not do
 
-- Edit notes, lyrics or chords. No undo.
-- Save songs, keep a library, or import and export JSON.
+- Edit notes, lyrics or chords. No undo or redo.
+- Sync sheets between browsers or devices. Use Download JSON.
 - Scales page.
 - MuseScore (`.mscz`) and ABC import.
 - Triplets.
