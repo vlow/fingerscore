@@ -1,0 +1,76 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { sampleDoc } from '../domain/fixture';
+import { BLOCKED_MESSAGE, FULL_MESSAGE, deleteEntry, getEntry, listEntries, restoreEntry, saveEntry } from './library';
+
+beforeEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
+const T = (s: string) => new Date(s);
+
+describe('library', () => {
+  it('saves, lists newest first and updates in place', () => {
+    const a = saveEntry(sampleDoc('asax'), null, T('2026-11-22T10:00:00Z'));
+    const b = saveEntry({ ...sampleDoc('cl'), title: 'B' }, null, T('2026-11-22T11:00:00Z'));
+    expect(a.ok && b.ok).toBe(true);
+    if (!a.ok || !b.ok) return;
+    expect(listEntries().map(e => e.title)).toEqual(['B', 'The Water Is Wide']);
+    expect(listEntries()[1]).toMatchObject({ inst: 'Alto sax in E♭', savedAt: '2026-11-22T10:00:00.000Z' });
+    const again = saveEntry({ ...sampleDoc('asax'), tempo: 80 }, a.entry.id, T('2026-11-22T12:00:00Z'));
+    expect(again.ok && again.entry.id).toBe(a.entry.id);
+    expect(listEntries().map(e => e.id)).toEqual([a.entry.id, b.entry.id]);
+    expect(listEntries()).toHaveLength(2);
+    expect(getEntry(a.entry.id)!.doc.tempo).toBe(80);
+    expect(getEntry('nope')).toBeNull();
+  });
+
+  it('untitled sheets get a name', () => {
+    const r = saveEntry({ ...sampleDoc('fl'), title: '  ' }, null);
+    expect(r.ok && r.entry.title).toBe('Untitled sheet');
+  });
+
+  it('an unknown id creates a new entry (deleted in another tab)', () => {
+    const r = saveEntry(sampleDoc('fl'), 'gone');
+    expect(r.ok && r.entry.id).not.toBe('gone');
+    expect(listEntries()).toHaveLength(1);
+  });
+
+  it('delete returns the entry and restore puts it back in order', () => {
+    const a = saveEntry(sampleDoc('asax'), null, T('2026-11-22T10:00:00Z')) as any;
+    const b = saveEntry(sampleDoc('cl'), null, T('2026-11-22T11:00:00Z')) as any;
+    const removed = deleteEntry(a.entry.id)!;
+    expect(listEntries().map(e => e.id)).toEqual([b.entry.id]);
+    expect(restoreEntry(removed)).toBe(true);
+    expect(listEntries().map(e => e.id)).toEqual([b.entry.id, a.entry.id]);
+    expect(deleteEntry('nope')).toBeNull();
+  });
+
+  it('skips corrupt entries and survives corrupt storage', () => {
+    const good = saveEntry(sampleDoc('asax'), null) as any;
+    const raw = JSON.parse(localStorage.getItem('fingerscore.library.v1')!);
+    raw.push({ id: 'x', title: 'bad', inst: '?', savedAt: 'x', doc: { score: 'no' } }, 42);
+    localStorage.setItem('fingerscore.library.v1', JSON.stringify(raw));
+    expect(listEntries().map(e => e.id)).toEqual([good.entry.id]);
+    localStorage.setItem('fingerscore.library.v1', '{oops');
+    expect(listEntries()).toEqual([]);
+    localStorage.setItem('fingerscore.library.v1', '{"a":1}');
+    expect(listEntries()).toEqual([]);
+  });
+
+  it('reports full storage', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, _k: string, v: string) {
+      if (v.length > 200) throw new DOMException('quota');
+    });
+    expect(saveEntry(sampleDoc('asax'), null)).toEqual({ ok: false, message: FULL_MESSAGE });
+    spy.mockRestore();
+    expect(listEntries()).toEqual([]);
+  });
+
+  it('reports blocked storage', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
+    expect(saveEntry(sampleDoc('asax'), null)).toEqual({ ok: false, message: BLOCKED_MESSAGE });
+    spy.mockRestore();
+  });
+
+  it('leaves no probe key behind', () => {
+    saveEntry(sampleDoc('asax'), null);
+    expect(localStorage.length).toBe(1);
+  });
+});

@@ -3,15 +3,25 @@ import { inst, ORDER } from '../domain/instruments';
 import { DEFAULT_PREFS, rankShifts, scoringPitches, type Prefs } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
 import type { ParsedSong } from '../import/types';
+import { canonical } from '../domain/persistence';
+import { getEntry, saveEntry } from './library';
 import { readJSON, remove, writeJSON } from './storage';
 
 const KEY_INST = 'fingerscore.inst';
 const KEY_PREFS = 'fingerscore.prefs';
 const KEY_SONG = 'fingerscore.song';
 const KEY_DOC = 'fingerscore.doc';
+const KEY_SHEET = 'fingerscore.sheet';
 
 export interface AppState {
   instId: InstId; prefs: Prefs; song: ParsedSong | null; doc: Doc | null;
+  libraryId: string | null;
+  savedSnapshot: string | null;                    // canonical(doc) at the last save or open
+  saveError: string | null;
+  saveSheet(): boolean;
+  openEntry(id: string): boolean;
+  openImported(doc: Doc, fileName: string): boolean;
+  forgetEntry(id: string): void;
   setInstrument(id: InstId): void;
   setPrefs(p: Partial<Prefs>): void;
   setSong(s: ParsedSong | null): void;
@@ -26,6 +36,18 @@ function bestShift(doc: Doc, instId: InstId, prefs: Prefs): number {
   return rankShifts(scoringPitches(doc.score), inst(instId), doc.originalTonicPc, doc.originalMode, prefs)[0].shift;
 }
 
+export type SaveStatus = 'new' | 'dirty' | 'saved';
+
+export function saveStatus(s: Pick<AppState, 'doc' | 'libraryId' | 'savedSnapshot'>): SaveStatus {
+  if (!s.libraryId || !s.doc) return 'new';
+  return canonical(s.doc) === s.savedSnapshot ? 'saved' : 'dirty';
+}
+
+/** The sheet as opened from storage: it is no parsed song any more. */
+function opened(doc: Doc, file: string, format: 'file' | 'library'): Doc {
+  return { ...doc, source: { file, format, track: '', trackCount: 0, simplified: false } };
+}
+
 /** The one place that applies a doc change: a new shift, instrument or recorder system clears fingering overrides. */
 function changed(doc: Doc, patch: Partial<Doc>): Doc {
   const next = { ...doc, ...patch };
@@ -38,6 +60,42 @@ export const useApp = create<AppState>()((set, get) => ({
   prefs: DEFAULT_PREFS,
   song: null,
   doc: null,
+  libraryId: null,
+  savedSnapshot: null,
+  saveError: null,
+
+  saveSheet() {
+    const { doc, libraryId } = get();
+    if (!doc) return false;
+    const r = saveEntry(doc, libraryId);
+    if (!r.ok) { set({ saveError: r.message }); return false; }
+    set({ libraryId: r.entry.id, savedSnapshot: canonical(doc), saveError: null });
+    return true;
+  },
+
+  openEntry(id) {
+    const entry = getEntry(id);
+    if (!entry) return false;
+    const doc = opened(entry.doc, entry.title, 'library');
+    remove('session', KEY_SONG);
+    set({ doc, instId: doc.inst, song: null, libraryId: entry.id, savedSnapshot: canonical(doc), saveError: null });
+    return true;
+  },
+
+  openImported(imported, fileName) {
+    const r = saveEntry(imported, null);
+    if (!r.ok) { set({ saveError: r.message }); return false; }
+    const doc = opened(r.entry.doc, fileName, 'file');
+    remove('session', KEY_SONG);
+    set({ doc, instId: doc.inst, song: null, libraryId: r.entry.id, savedSnapshot: canonical(doc), saveError: null });
+    return true;
+  },
+
+  forgetEntry(id) {
+    if (get().libraryId !== id) return;
+    remove('session', KEY_SHEET);
+    set({ libraryId: null, savedSnapshot: null });
+  },
 
   setInstrument(id) {
     writeJSON('local', KEY_INST, id);
@@ -65,7 +123,8 @@ export const useApp = create<AppState>()((set, get) => ({
 
   setDoc(d) {
     if (d === null) remove('session', KEY_DOC);
-    set({ doc: d });
+    remove('session', KEY_SHEET);
+    set({ doc: d, libraryId: null, savedSnapshot: null, saveError: null });
   },
 
   setShift(shift) {
@@ -104,6 +163,9 @@ const mirror = (key: string, value: unknown) => {
 useApp.subscribe((state, prev) => {
   if (state.song && state.song !== prev.song) mirror(KEY_SONG, state.song);
   if (state.doc && state.doc !== prev.doc) mirror(KEY_DOC, state.doc);
+  if (state.libraryId && (state.libraryId !== prev.libraryId || state.savedSnapshot !== prev.savedSnapshot)) {
+    mirror(KEY_SHEET, { libraryId: state.libraryId, savedSnapshot: state.savedSnapshot });
+  }
 });
 
 function isDoc(v: unknown): v is Doc {
@@ -121,6 +183,7 @@ export function hydrate(): void {
   const storedPrefs = readJSON<Partial<Prefs>>('local', KEY_PREFS);
   const song = readJSON<unknown>('session', KEY_SONG);
   const doc = readJSON<unknown>('session', KEY_DOC);
+  const sheet = readJSON<{ libraryId?: unknown; savedSnapshot?: unknown }>('session', KEY_SHEET);
   const patch: Partial<AppState> = {};
   if (storedInst && ORDER.includes(storedInst)) patch.instId = storedInst;
   if (storedPrefs && typeof storedPrefs === 'object') {
@@ -130,6 +193,11 @@ export function hydrate(): void {
     };
   }
   if (isSong(song)) patch.song = song;
-  if (isDoc(doc)) { patch.doc = doc; patch.instId = doc.inst; }
+  if (isDoc(doc)) {
+    patch.doc = doc; patch.instId = doc.inst;
+    if (sheet && typeof sheet.libraryId === 'string' && typeof sheet.savedSnapshot === 'string') {
+      patch.libraryId = sheet.libraryId; patch.savedSnapshot = sheet.savedSnapshot;
+    }
+  }
   useApp.setState(patch);
 }

@@ -31,3 +31,15 @@ export function remove(a: Area, key: string): void {
     // storage blocked: nothing to remove
   }
 }
+
+/** True when a value can be written and removed; false when storage is blocked. Never throws. */
+export function probe(a: Area, key: string): boolean {
+  try {
+    const s = area(a);
+    s.setItem(key, '1');
+    s.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -5,7 +5,8 @@ import { inst } from '../domain/instruments';
 import { DEFAULT_PREFS, rankShifts, scoringPitches } from '../domain/transpose';
 import type { ParsedSong } from '../import/types';
 import { readJSON } from './storage';
-import { hydrate, useApp } from './store';
+import { BLOCKED_MESSAGE, deleteEntry, listEntries } from './library';
+import { hydrate, saveStatus, useApp } from './store';
 
 const best = (d: ReturnType<typeof sampleDoc>, prefs = DEFAULT_PREFS) =>
   rankShifts(scoringPitches(d.score), inst(d.inst), d.originalTonicPc, d.originalMode, prefs)[0].shift;
@@ -14,7 +15,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
   sessionStorage.clear();
-  useApp.setState({ instId: 'asax', prefs: DEFAULT_PREFS, song: null, doc: null });
+  useApp.setState({ instId: 'asax', prefs: DEFAULT_PREFS, song: null, doc: null, libraryId: null, savedSnapshot: null, saveError: null });
 });
 
 describe('store', () => {
@@ -241,5 +242,104 @@ describe('store', () => {
     sessionStorage.setItem('fingerscore.doc', '{oops');
     expect(() => hydrate()).not.toThrow();
     expect(useApp.getState().doc).toBeNull();
+  });
+});
+
+describe('library state', () => {
+  it('save status follows the document', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    expect(saveStatus(useApp.getState())).toBe('new');
+    expect(useApp.getState().saveSheet()).toBe(true);
+    expect(saveStatus(useApp.getState())).toBe('saved');
+    useApp.getState().patchDoc({ tempo: 90 });
+    expect(saveStatus(useApp.getState())).toBe('dirty');
+    useApp.getState().patchDoc({ tempo: sampleDoc('asax').tempo });
+    expect(saveStatus(useApp.getState())).toBe('saved');
+    useApp.getState().saveSheet();
+    expect(listEntries()).toHaveLength(1);
+  });
+
+  it('a failed save keeps the sheet and reports it', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
+    expect(useApp.getState().saveSheet()).toBe(false);
+    spy.mockRestore();
+    expect(useApp.getState().saveError).toBe(BLOCKED_MESSAGE);
+    expect(saveStatus(useApp.getState())).toBe('new');
+    expect(useApp.getState().doc).not.toBeNull();
+    expect(useApp.getState().saveSheet()).toBe(true);
+    expect(useApp.getState().saveError).toBeNull();
+  });
+
+  it('opening an entry replaces the sheet, clears the song and is saved', () => {
+    useApp.getState().setDoc({ ...sampleDoc('cl'), title: 'Mine' });
+    useApp.getState().saveSheet();
+    const id = useApp.getState().libraryId!;
+    useApp.setState({ song: {} as any });
+    useApp.getState().setDoc(sampleDoc('fl'));
+    expect(useApp.getState().openEntry(id)).toBe(true);
+    expect(useApp.getState()).toMatchObject({ song: null, libraryId: id, instId: 'cl' });
+    expect(useApp.getState().doc!.source).toMatchObject({ format: 'library', file: 'Mine' });
+    expect(saveStatus(useApp.getState())).toBe('saved');
+    expect(useApp.getState().openEntry('nope')).toBe(false);
+  });
+
+  it('opening an entry keeps its shift and overrides', () => {
+    const d = sampleDoc('cl');
+    useApp.getState().setDoc({ ...d, shift: d.shift + 2 });
+    useApp.getState().saveSheet();
+    const id = useApp.getState().libraryId!;
+    useApp.getState().openEntry(id);
+    expect(useApp.getState().doc!.shift).toBe(d.shift + 2);
+  });
+
+  it('an imported file is added and opened', () => {
+    expect(useApp.getState().openImported({ ...sampleDoc('xc'), title: 'Dropped' }, 'dropped.fingerscore.json')).toBe(true);
+    expect(listEntries()[0].title).toBe('Dropped');
+    expect(useApp.getState().doc!.source).toMatchObject({ format: 'file', file: 'dropped.fingerscore.json' });
+    expect(saveStatus(useApp.getState())).toBe('saved');
+  });
+
+  it('a failed import keeps the current sheet', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
+    expect(useApp.getState().openImported(sampleDoc('xc'), 'a.fingerscore.json')).toBe(false);
+    spy.mockRestore();
+    expect(useApp.getState().doc!.inst).toBe('asax');
+    expect(useApp.getState().saveError).toBe(BLOCKED_MESSAGE);
+  });
+
+  it('forgetting the current entry makes the sheet new again', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    useApp.getState().saveSheet();
+    const id = useApp.getState().libraryId!;
+    deleteEntry(id);
+    useApp.getState().forgetEntry(id);
+    expect(saveStatus(useApp.getState())).toBe('new');
+  });
+
+  it('forgetting another entry changes nothing', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    useApp.getState().saveSheet();
+    useApp.getState().forgetEntry('other');
+    expect(saveStatus(useApp.getState())).toBe('saved');
+  });
+
+  it('library link survives a reload', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    useApp.getState().saveSheet();
+    const id = useApp.getState().libraryId;
+    useApp.setState({ doc: null, libraryId: null, savedSnapshot: null });
+    hydrate();
+    expect(useApp.getState().libraryId).toBe(id);
+    expect(saveStatus(useApp.getState())).toBe('saved');
+  });
+
+  it('a new sheet from an import is not linked', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    useApp.getState().saveSheet();
+    useApp.getState().setDoc(sampleDoc('fl'));
+    expect(useApp.getState().libraryId).toBeNull();
+    expect(useApp.getState().savedSnapshot).toBeNull();
   });
 });
