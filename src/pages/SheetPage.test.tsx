@@ -7,7 +7,7 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
-import { addBarAfter, locate, toggleRest } from '../domain/edit';
+import { addBarAfter, locate, setLetter, toggleRest } from '../domain/edit';
 import { inst } from '../domain/instruments';
 import { mod12, signatureLetters } from '../domain/keys';
 import { serializeFile } from '../domain/persistence';
@@ -1212,6 +1212,59 @@ describe('Edit notes panel and keys', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
     sheet().focus();
     fireEvent.keyDown(sheet(), { key: 'r' });
+    expect(current()).toBe(d0);
+  });
+
+  it('a clicked panel button leaves the keys with the sheet (Task 4 review I1)', async () => {
+    await edit();
+    const n = current().score[2].ev[1];
+    await clickEvent(n.id);
+    await user.click(button('Semitone up'));
+    expect(ev(n.id).m).toBe(n.m + 1);
+    expect(sheet()).toHaveFocus();
+    await user.keyboard('{ArrowUp}');
+    expect(ev(n.id).m).toBe(n.m + 2);
+    await user.click(button('Eighth'));
+    expect(ev(n.id).d).toBe(6);
+    await user.keyboard('r');
+    expect(ev(n.id).r).toBe(true);
+    await user.keyboard('{Escape}');
+    expect(selectedId()).toBeNull();
+  });
+
+  it('a panel button used from the keyboard: Enter activates, Esc clears the selection (Task 4 review I1)', async () => {
+    await edit();
+    const n = current().score[2].ev[1];
+    await clickEvent(n.id);
+    button('Semitone up').focus();
+    await user.keyboard('{Enter}');
+    expect(ev(n.id).m).toBe(n.m + 1);
+    expect(button('Semitone up')).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(selectedId()).toBeNull();
+    expect(sheet()).toHaveFocus();
+  });
+
+  it('a keyboard-activated panel button that becomes disabled hands the focus to the sheet (Task 4 review I1)', async () => {
+    const score = sampleDoc('asax').score.slice(2, 4);
+    await edit('asax', { score });
+    await clickEvent(score[0].ev[0].id);
+    button('Remove bar').focus();
+    await user.keyboard('{Enter}');
+    expect(current().score).toHaveLength(1);
+    expect(button('Remove bar')).toBeDisabled();
+    expect(sheet()).toHaveFocus();
+    await user.keyboard('r');
+    expect(ev(score[1].ev[0].id).r).toBe(!score[1].ev[0].r);
+  });
+
+  it('a key without a character is no letter (Task 4 review M4)', async () => {
+    await edit();
+    const n = current().score.flatMap(b => b.ev).find(e => !e.r && setLetter(current(), e.id, 0, 'nearest') !== current())!;
+    await clickEvent(n.id);
+    sheet().focus();
+    const d0 = current();
+    fireEvent.keyDown(sheet(), { key: '' });   // React reports an empty key as "Unidentified"; the guard does not rely on that
     expect(current()).toBe(d0);
   });
 

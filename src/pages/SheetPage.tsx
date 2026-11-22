@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPlayer, type Player } from '../audio/player';
 import { derive, type DerivedEvent } from '../domain/derive';
-import { BASE_LENGTHS, locate, setLength, setLetter, shiftPitch, toggleRest, toggleTie } from '../domain/edit';
+import { BASE_LENGTHS, lengthName, locate, setLength, setLetter, shiftPitch, toggleDotted, toggleRest, toggleTie } from '../domain/edit';
 import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
 import { keySignature, spell } from '../domain/keys';
@@ -25,7 +25,7 @@ import FileMenu from '../ui/FileMenu';
 import KeyBridge from '../ui/KeyBridge';
 import LyricPanel from '../ui/LyricPanel';
 import { ModeSwitch, type Mode } from '../ui/ModeSwitch';
-import NotePanel, { lengthName, toggleDotted } from '../ui/NotePanel';
+import NotePanel from '../ui/NotePanel';
 import PageBar from '../ui/PageBar';
 import RangeMeter from '../ui/RangeMeter';
 import SaveControls from '../ui/SaveControls';
@@ -190,7 +190,7 @@ function Sheet({ doc }: { doc: Doc }) {
       next = shiftPitch(doc, id, (key === 'ArrowUp' ? 1 : -1) * (octave ? 12 : 1));
     } else if (octave) {
       return false;
-    } else if (LETTERS.includes(key)) {
+    } else if (key.length === 1 && LETTERS.includes(key)) {
       next = setLetter(doc, id, LETTERS.indexOf(key), 'nearest');
     } else if (key >= '2' && key <= '6' && key.length === 1) {
       next = setLength(doc, id, BASE_LENGTHS[Number(key) - 2]);
@@ -403,6 +403,31 @@ function Sheet({ doc }: { doc: Doc }) {
 
   const applyTextEdit = (next: Doc | null, coalesceKey?: string) => { useApp.getState().applyEdit(next, coalesceKey); };
 
+  // Panel buttons never take the focus from a click: it stays on the sheet (Edit notes keys keep working) or in the
+  // Lyric/Chord field. A button reached by Tab keeps it; Esc there clears the selection like on the sheet.
+  function keepFocusOffButtons(e: MouseEvent<HTMLDivElement>) {
+    if (e.target instanceof Element && e.target.closest('button')) e.preventDefault();
+  }
+
+  function onPanelKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Escape' || e.defaultPrevented || !(e.target instanceof Element && e.target.closest('button'))) return;
+    e.preventDefault();
+    closePanel();
+  }
+
+  // A focused panel button that became disabled or disappeared hands the focus to the sheet. Focus that moves
+  // anywhere else (a click outside, Tab) ends the watch.
+  const panelFocus = useRef(false);
+  const gone = (el: EventTarget) => el instanceof HTMLButtonElement && (el.disabled || !el.isConnected);
+  useEffect(() => {
+    if (!panelFocus.current) return;
+    const a = document.activeElement;
+    const lost = a === null || a === document.body || !a.isConnected || (a instanceof HTMLButtonElement && a.disabled);
+    if (!lost) return;
+    panelFocus.current = false;
+    paperRef.current?.focus({ preventScroll: true });
+  });
+
   // The editing panel of the current mode, directly under the system that holds the selected event.
   // Esc closes a panel by clearing the selection.
   const renderUnderSystem = (systemIndex: number) => {
@@ -410,7 +435,9 @@ function Sheet({ doc }: { doc: Doc }) {
     if (mode === 'view' || selectedId === null || !at || at.system !== systemIndex) return null;
     const left = Math.round(Math.max(0, Math.min(SHEET.systemWidth - PANEL_WIDTH, at.x - PANEL_WIDTH / 2)));
     return (
-      <div role="group" aria-label={PANEL[mode]} className={s.panel} style={{ left }}>
+      <div role="group" aria-label={PANEL[mode]} className={s.panel} style={{ left }}
+        onMouseDown={keepFocusOffButtons} onKeyDown={onPanelKey} onFocus={() => { panelFocus.current = true; }}
+        onBlur={e => { if (!gone(e.target)) panelFocus.current = false; }}>
         {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
         {mode === 'chords' && (
           <ChordPanel doc={doc} derived={derived} id={selectedId} focus={fieldFocus === selectedId}

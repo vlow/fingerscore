@@ -1,29 +1,20 @@
 import type { ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import {
-  addBarAfter, BASE_LENGTHS, canTie, dottedOf, fits, locate, removeBar, setLength, shiftPitch, splitLength, toggleRest, toggleTie,
+  addBarAfter, BASE_LENGTHS, canTie, dottedOf, fits, LENGTH_NAMES, locate, removeBar, setLength, shiftPitch, splitLength, toggleDotted,
+  toggleRest, toggleTie,
 } from '../domain/edit';
 import type { Doc } from '../domain/types';
 import s from './NotePanel.module.css';
 
-const BASE_NAMES: Record<number, string> = { 3: 'Sixteenth', 6: 'Eighth', 12: 'Quarter', 24: 'Half', 48: 'Whole' };
+/** Button names: "Sixteenth" … "Whole". */
+const BASE_NAMES: Record<number, string> = Object.fromEntries(
+  Object.entries(LENGTH_NAMES).map(([d, name]) => [d, name[0].toUpperCase() + name.slice(1)]),
+);
 
-/** The spoken length of an event: "eighth", "dotted quarter". */
-export function lengthName(d: number): string {
-  const { base, dotted } = splitLength(d);
-  const name = (BASE_NAMES[base] ?? '').toLowerCase();
-  return dotted ? `dotted ${name}` : name;
-}
-
-/** The dot toggle: a dotted length goes back to its base, a base length gets its dot; null when that is not allowed. */
-export function toggleDotted(doc: Doc, id: string): Doc | null {
-  const at = locate(doc, id);
-  if (!at) return null;
-  const { base, dotted } = splitLength(at.ev.d);
-  if (dotted) return setLength(doc, id, base);
-  const longer = dottedOf(base);
-  return longer === null ? null : setLength(doc, id, longer);
-}
+/** Tooltips with the key hints only where there is a pointer that hovers; elsewhere the accessible name alone is read. */
+const tip = (text: string) =>
+  (typeof window.matchMedia === 'function' && window.matchMedia('(hover: hover)').matches ? text : undefined);
 
 /** Note symbols for the length buttons (after the prototype's icons): filled heads with flags, open heads. */
 const ICONS: Record<number, ReactNode> = {
@@ -51,9 +42,8 @@ export default function NotePanel(p: Props): JSX.Element | null {
   const ev = at.ev;
   const { base, dotted } = splitLength(ev.d);
   const longer = dottedOf(base);
-  const pitchOff = (step: number) => ev.r || ev.m + step < 0 || ev.m + step > 127;
   const pitch = (step: number, name: string, label: string, title: string) => (
-    <button type="button" className={s.symb} aria-label={name} title={title} disabled={pitchOff(step)}
+    <button type="button" className={s.symb} aria-label={name} title={tip(title)} disabled={shiftPitch(doc, id, step) === null}
       onClick={() => onEdit(shiftPitch(doc, id, step))}>{label}</button>
   );
 
@@ -70,17 +60,17 @@ export default function NotePanel(p: Props): JSX.Element | null {
       <div className={`${s.label} ${s.gap}`} aria-hidden="true">Length</div>
       <div role="group" aria-label="Length" className={s.row}>
         {BASE_LENGTHS.map(d => (
-          <button key={d} type="button" className={s.symb} aria-label={BASE_NAMES[d]} title={`${BASE_NAMES[d]} (${KEY_OF_LENGTH[d]})`}
+          <button key={d} type="button" className={s.symb} aria-label={BASE_NAMES[d]} title={tip(`${BASE_NAMES[d]} (${KEY_OF_LENGTH[d]})`)}
             aria-pressed={base === d} disabled={!fits(doc, id, d)} onClick={() => onEdit(setLength(doc, id, d))}>
             <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true">{ICONS[d]}</svg>
           </button>
         ))}
-        <button type="button" className={s.symb} aria-label="Dotted" title="Dotted (.)" aria-pressed={dotted}
+        <button type="button" className={s.symb} aria-label="Dotted" title={tip('Dotted (.)')} aria-pressed={dotted}
           disabled={!dotted && (longer === null || !fits(doc, id, longer))} onClick={() => onEdit(toggleDotted(doc, id))}>
           <svg width="8" height="20" viewBox="0 0 8 20" aria-hidden="true"><circle cx="4" cy="12" r="2.6" fill="currentColor" /></svg>
         </button>
         <span className={s.spacer} />
-        <button type="button" className={s.symb} aria-label="Tie" title="Tie (T)" aria-pressed={ev.tie}
+        <button type="button" className={s.symb} aria-label="Tie" title={tip('Tie (T)')} aria-pressed={ev.tie}
           disabled={!ev.tie && !canTie(doc, id)} onClick={() => onEdit(toggleTie(doc, id))}>⁀</button>
       </div>
       <div className={s.actions}>

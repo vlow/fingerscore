@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { mkDoc, type EvSpec } from '../test/helpers';
 import { parseChord } from './chords';
 import {
-  addBarAfter, canTie, dottedOf, eventOrder, fits, locate, nextEvent, removeBar, setLength, setLetter, shiftPitch,
-  splitLength, toggleRest, toggleTie,
+  addBarAfter, canTie, dottedOf, eventOrder, fits, lengthName, locate, nextEvent, removeBar, setLength, setLetter, shiftPitch,
+  splitLength, toggleDotted, toggleRest, toggleTie,
 } from './edit';
 import { sampleDoc } from './fixture';
 import { validateDoc } from './persistence';
@@ -223,5 +223,22 @@ describe('every edit result', () => {
       expect(validateDoc(JSON.parse(JSON.stringify(r)))).not.toBeNull();
     }
     expect(JSON.stringify(d)).toBe(before);
+  });
+});
+
+describe('length names and the dot toggle', () => {
+  it('names every allowed length', () => {
+    expect(DURATIONS.map(lengthName)).toEqual(['whole', 'dotted half', 'half', 'dotted quarter', 'quarter', 'dotted eighth', 'eighth', 'sixteenth']);
+  });
+
+  it('toggles the dot when it fits; null otherwise', () => {
+    const d = mkDoc([{ ev: [[60, 12], [62, 12], [64, 24]] }]);
+    const [a, , c] = d.score[0].ev.map(e => e.id);
+    const dotted = toggleDotted(d, a)!;
+    expect(locate(dotted, a)!.ev.d).toBe(18);
+    expect(locate(toggleDotted(dotted, a)!, a)!.ev.d).toBe(12);
+    expect(toggleDotted(d, c)).toBeNull();                         // a dotted half does not fit
+    expect(toggleDotted(mkDoc([{ ev: [[60, 48]] }]), 't1')).toBeNull();   // no dotted whole
+    expect(toggleDotted(d, 'nope')).toBeNull();
   });
 });

@@ -51,6 +51,15 @@ export function dottedOf(base: number): number | null {
   return DOTTED[base] ?? null;
 }
 
+export const LENGTH_NAMES: Record<number, string> = { 3: 'sixteenth', 6: 'eighth', 12: 'quarter', 24: 'half', 48: 'whole' };
+
+/** The spoken length of an event: "eighth", "dotted quarter". */
+export function lengthName(d: number): string {
+  const { base, dotted } = splitLength(d);
+  const name = LENGTH_NAMES[base] ?? '';
+  return dotted ? `dotted ${name}` : name;
+}
+
 // ---- helpers ----------------------------------------------------------------------------------
 
 function withoutKeys<T>(map: Record<string, T>, drop: Set<string>): Record<string, T> {
@@ -242,4 +251,14 @@ export function removeBar(doc: Doc, barIndex: number): { doc: Doc; selectId: str
   const lastBefore = before.length > 0 ? before[before.length - 1].id : undefined;
   const select = score[barIndex] ?? score[barIndex - 1];
   return { doc: fixTies(forget({ ...doc, score }, removed), [lastBefore]), selectId: select.ev[0].id };
+}
+
+/** The dot toggle: a dotted length goes back to its base, a base length gets its dot; null when that is not allowed. */
+export function toggleDotted(doc: Doc, id: string): Doc | null {
+  const at = locate(doc, id);
+  if (!at) return null;
+  const { base, dotted } = splitLength(at.ev.d);
+  if (dotted) return setLength(doc, id, base);
+  const longer = dottedOf(base);
+  return longer === null ? null : setLength(doc, id, longer);
 }
