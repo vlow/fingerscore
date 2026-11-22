@@ -400,7 +400,9 @@ describe('save and the File menu', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await user.click(screen.getByRole('button', { name: /File/ }));
     const menu = screen.getByRole('menu');
-    expect(within(menu).getByText('The Water Is Wide').closest('[aria-current="true"]')).not.toBeNull();
+    expect(within(menu).getByRole('menuitem', { name: 'Open The Water Is Wide (currently open)' })).toBeInTheDocument();
+    expect(within(menu).queryByRole('menuitem', { name: /Other \(currently open\)/ })).toBeNull();
+    expect(menu.querySelector('[aria-current]')).toBeNull();
     expect(within(menu).getByText('Flute in C · saved just now')).toBeInTheDocument();
     await user.click(within(menu).getByRole('menuitem', { name: 'Open Other' }));
     expect(screen.getByRole('textbox', { name: 'Sheet title' })).toHaveValue('Other');

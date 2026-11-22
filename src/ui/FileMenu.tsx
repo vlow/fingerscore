@@ -130,12 +130,12 @@ export default function FileMenu(p: Props) {
           ) : (
             <div role="group" aria-labelledby={`${menuId}-saved`} className={s.list}>
               {p.entries.map(e => (
-                <div key={e.id} className={s.entry} aria-current={e.id === p.currentId ? 'true' : undefined}>
+                <div key={e.id} className={s.entry} data-current={e.id === p.currentId || undefined}>
                   <div className={s.entryText}>
                     <div className={s.entryTitle}>{e.title}</div>
                     <div className={s.entryMeta}>{`${e.inst} · saved ${timeAgo(e.savedAt)}`}</div>
                   </div>
-                  <button type="button" role="menuitem" tabIndex={-1} className={s.open} aria-label={`Open ${e.title}`}
+                  <button type="button" role="menuitem" tabIndex={-1} className={s.open} aria-label={e.id === p.currentId ? `Open ${e.title} (currently open)` : `Open ${e.title}`}
                     onClick={choose(() => p.onOpen(e.id))}>
                     Open
                   </button>
