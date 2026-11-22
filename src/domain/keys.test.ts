@@ -1,4 +1,4 @@
-import { accidental, keyName, keySignature, mod12, sigText, signatureLetters, spell, staffPos, tonicName } from './keys';
+import { accidental, keyName, keySignature, mod12, sigText, signatureLetters, spell, spelledName, staffPos, tonicName, type Spelled } from './keys';
 
 it('signatures', () => {
   expect(keySignature(2,'major')).toBe(2); expect(keySignature(6,'major')).toBe(-6);
@@ -45,4 +45,21 @@ it('spelled fields', () => {
 it('accidental flat and natural in flat keys', () => {
   expect(accidental(spell(71,-2), -2)).toBe('natural');   // B♮ in B♭ major
   expect(accidental(spell(73,-2), -2)).toBe('flat');      // D♭ in B♭ major
+});
+
+it('spelled names, double accidentals included', () => {
+  expect(spelledName(3, 1)).toBe('F♯');
+  expect(spelledName(3, 2)).toBe('F𝄪');
+  expect(spelledName(6, -2)).toBe('B𝄫');
+  expect(spelledName(6, -1, 4)).toBe('B♭4');
+  expect(spelledName(0, 0)).toBe('C');
+  expect(spelledName(0, 0, 5)).toBe('C5');
+});
+it('accidentals for double sharps and double flats', () => {
+  const fx: Spelled = { letter: 3, alter: 2, octave: 5, name: 'F𝄪5' };
+  expect(accidental(fx, 5)).toBe('doubleSharp');           // F𝄪 in E major / G♯ minor
+  expect(accidental(fx, 0)).toBe('doubleSharp');
+  const bbb: Spelled = { letter: 6, alter: -2, octave: 4, name: 'B𝄫4' };
+  expect(accidental(bbb, -2)).toBe('doubleFlat');
+  expect(accidental(bbb, 0)).toBe('doubleFlat');
 });

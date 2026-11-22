@@ -12,7 +12,7 @@ const TOP = SHEET.staffTop;
 const PATHS = glyphs.paths as Record<string, string>;
 
 const ALL = {
-  trebleClef: 1, flat: 1, sharp: 1, natural: 1,
+  trebleClef: 1, flat: 1, sharp: 1, natural: 1, doubleSharp: 1, doubleFlat: 1,
   restWhole: 1, restHalf: 1, restQuarter: 1, restEighth: 1, restSixteenth: 1,
 } satisfies Record<GlyphName, 1>;
 const NAMES = Object.keys(ALL) as GlyphName[];
@@ -68,6 +68,22 @@ describe('glyph geometry in sheet pixels', () => {
     const { el, box } = placed(name, noteX - 9 - glyphInk(name).right, noteY);
     const counter = boxOf(el, PATHS[name].split(/(?=M)/)[1]);   // inner contour: the bowl of the flat, the box of sharp and natural
     expect((counter.y1 + counter.y2) / 2).toBeCloseTo(noteY, 0);
+    expect(box.x2).toBeCloseTo(noteX - 9, 5);
+  });
+
+  it('double sharp: ink centred on the note, right edge 9px left of it', () => {
+    const noteX = 200, noteY = 90;
+    const { box } = placed('doubleSharp', noteX - 9 - glyphInk('doubleSharp').right, noteY);
+    expect((box.y1 + box.y2) / 2).toBeCloseTo(noteY, 0);
+    expect(box.x2).toBeCloseTo(noteX - 9, 5);
+  });
+
+  it('double flat: bowls centred on the note like the flat, right edge 9px left of it', () => {
+    const noteX = 200, noteY = 90;
+    const { el, box } = placed('doubleFlat', noteX - 9 - glyphInk('doubleFlat').right, noteY);
+    const bowls = PATHS.doubleFlat.split(/(?=M)/).slice(1).map(d => boxOf(el, d));
+    expect(bowls.length).toBeGreaterThan(0);
+    for (const b of bowls) expect((b.y1 + b.y2) / 2).toBeCloseTo(noteY, 0);
     expect(box.x2).toBeCloseTo(noteX - 9, 5);
   });
 

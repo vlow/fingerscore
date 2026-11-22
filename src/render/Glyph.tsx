@@ -2,7 +2,7 @@ import glyphs from '../data/glyphs.json';
 import type { TimeSig } from '../domain/types';
 
 export type GlyphName =
-  | 'trebleClef' | 'flat' | 'sharp' | 'natural'
+  | 'trebleClef' | 'flat' | 'sharp' | 'natural' | 'doubleSharp' | 'doubleFlat'
   | 'restWhole' | 'restHalf' | 'restQuarter' | 'restEighth' | 'restSixteenth';
 export type DigitName = `digit${0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`;
 type AnyGlyph = GlyphName | DigitName;
@@ -21,7 +21,7 @@ export const GLYPH_SCALE = 10 / 250;
  */
 const ORIGIN_DY: Record<GlyphName, number> = {
   trebleClef: -10,                               // G line
-  flat: 0, sharp: 0, natural: 0,                 // notehead centre
+  flat: 0, sharp: 0, natural: 0, doubleSharp: 0, doubleFlat: 0,   // notehead centre
   restWhole: -30,                                // hangs from the 4th line
   restHalf: -20, restQuarter: -20, restEighth: -20, restSixteenth: -20,   // middle line
 };

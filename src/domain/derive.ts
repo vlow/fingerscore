@@ -2,13 +2,13 @@ import { chooseFingerings, type ChooserItem } from './chooser';
 import { chordText } from './chords';
 import { legend, optionsFor, type FingeringOption } from './fingerings';
 import { inst, isTransposing, rangeState, type Instrument, type RangeState } from './instruments';
-import { accidental, keyName, keySignature, mod12, spell, staffPos, type Spelled } from './keys';
+import { accidental, keyName, keySignature, mod12, spell, staffPos, type AccidentalName, type Spelled } from './keys';
 import { evalShift, rankShifts, scoringPitches, type Prefs, type ShiftScore } from './transpose';
 import type { Doc } from './types';
 
 export interface DerivedEvent {
   id: string; bar: number; index: number; tick: number; d: number; rest: boolean; tiedFrom: boolean; tieTo: boolean;
-  written: number; spelled: Spelled; pos: number; accidental: 'sharp' | 'flat' | 'natural' | null; state: RangeState;
+  written: number; spelled: Spelled; pos: number; accidental: AccidentalName | null; state: RangeState;
   options: FingeringOption[]; chosen: number | null; auto: number | null; overridden: boolean;
   lyric: string; chord: string | null; chordOk: boolean;
 }

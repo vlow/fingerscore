@@ -27,18 +27,25 @@ export function sigText(sig: number): string {
   return sig > 0 ? `${sig} ♯` : `${-sig} ♭`;
 }
 
-/** letter 0=C..6=B */
-export interface Spelled { letter: number; alter: -1 | 0 | 1; octave: number; name: string }
+export type Alter = -2 | -1 | 0 | 1 | 2;
+
+/** letter 0=C..6=B; alter −2..2 (sheets only produce −1..1, scales may need a double sharp or flat). */
+export interface Spelled { letter: number; alter: Alter; octave: number; name: string }
 
 const LETTER_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const ALTER_MARKS: Record<Alter, string> = { [-2]: '𝄫', [-1]: '♭', 0: '', 1: '♯', 2: '𝄪' };
+
+/** "F♯", "F𝄪", "B𝄫", "C"; with the octave appended when given ("B♭4"). */
+export function spelledName(letter: number, alter: Alter, octave?: number): string {
+  return `${LETTER_NAMES[letter]}${ALTER_MARKS[alter]}${octave ?? ''}`;
+}
 const SHARP_SPELLING: [number, 0 | 1][] = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [3, 0], [3, 1], [4, 0], [4, 1], [5, 0], [5, 1], [6, 0]];
 const FLAT_SPELLING: [number, 0 | -1][] = [[0, 0], [1, -1], [1, 0], [2, -1], [2, 0], [3, 0], [4, -1], [4, 0], [5, -1], [5, 0], [6, -1], [6, 0]];
 
 export function spell(midi: number, sig: number): Spelled {
   const [letter, alter] = (sig >= 0 ? SHARP_SPELLING : FLAT_SPELLING)[mod12(midi)];
   const octave = Math.floor(midi / 12) - 1;
-  const mark = alter === 1 ? '♯' : alter === -1 ? '♭' : '';
-  return { letter, alter, octave, name: `${LETTER_NAMES[letter]}${mark}${octave}` };
+  return { letter, alter, octave, name: spelledName(letter, alter, octave) };
 }
 
 /** Diatonic steps above E4 (bottom line): E4 = 0. */
@@ -55,8 +62,19 @@ export function signatureLetters(sig: number): number[] {
   return [];
 }
 
-export function accidental(s: Spelled, sig: number): 'sharp' | 'flat' | 'natural' | null {
-  const implied = signatureLetters(sig).includes(s.letter) ? (sig > 0 ? 1 : -1) : 0;
-  if (s.alter === implied) return null;
-  return s.alter === 1 ? 'sharp' : s.alter === -1 ? 'flat' : 'natural';
+export type AccidentalName = 'doubleSharp' | 'sharp' | 'natural' | 'flat' | 'doubleFlat';
+const ACCIDENTAL_NAMES: Record<Alter, AccidentalName> = { [-2]: 'doubleFlat', [-1]: 'flat', 0: 'natural', 1: 'sharp', 2: 'doubleSharp' };
+
+/** The glyph that makes a letter sound with this alteration. */
+export function accidentalName(alter: Alter): AccidentalName {
+  return ACCIDENTAL_NAMES[alter];
+}
+
+/** Alteration the key signature gives a letter. */
+export function signatureAlter(letter: number, sig: number): Alter {
+  return signatureLetters(sig).includes(letter) ? (sig > 0 ? 1 : -1) : 0;
+}
+
+export function accidental(s: Spelled, sig: number): AccidentalName | null {
+  return s.alter === signatureAlter(s.letter, sig) ? null : accidentalName(s.alter);
 }
