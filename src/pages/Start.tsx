@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { displayName, inst } from '../domain/instruments';
 import { buildDoc } from '../import/buildDoc';
@@ -30,6 +30,7 @@ export default function Start() {
   const missingSheet = (useLocation().state as { missingSheet?: boolean } | null)?.missingSheet === true;
   const [error, setError] = useState<string | null>(null);
   const [libraryVersion, setLibraryVersion] = useState(0);
+  const dropInput = useRef<HTMLInputElement>(null);
 
   /** A new song replaces the previous one and drops its sheet. */
   function acceptSong(song: ParsedSong) {
@@ -75,7 +76,7 @@ export default function Start() {
 
       {missingSheet && <p role="alert" className={s.missing}>That sheet is no longer saved in this browser.</p>}
 
-      <Gallery version={libraryVersion} />
+      <Gallery version={libraryVersion} emptyFocus={() => dropInput.current} />
 
       <InstrumentPicker value={instId} onChange={setInstrument} />
 
@@ -84,6 +85,7 @@ export default function Start() {
         onSong={acceptSong}
         onContinue={() => { const song = useApp.getState().song; if (song) continueWith(song); }}
         onSheet={() => setLibraryVersion(n => n + 1)}
+        inputRef={dropInput}
       />
 
       <fieldset className={s.prefs}>

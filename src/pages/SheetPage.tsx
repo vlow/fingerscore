@@ -12,7 +12,8 @@ import type { Doc } from '../domain/types';
 import { usableTracks } from '../import/melody';
 import { SHEET, layoutSheet } from '../render/layout';
 import { Paper } from '../render/Paper';
-import { deleteEntry, listEntries, restoreEntry, writeFailureMessage } from '../state/library';
+import { deleteWithUndo } from '../state/deleteWithUndo';
+import { listEntries } from '../state/library';
 import { saveStatus, useApp } from '../state/store';
 import AltFingeringPopover, { popoverWidth } from '../ui/AltFingeringPopover';
 import Banners from '../ui/Banners';
@@ -24,7 +25,6 @@ import RangeMeter from '../ui/RangeMeter';
 import SaveControls from '../ui/SaveControls';
 import ShowToggles from '../ui/ShowToggles';
 import Steps from '../ui/Steps';
-import { showToast } from '../ui/Toast';
 import Transport from '../ui/Transport';
 import '../styles/print.css';
 import s from './SheetPage.module.css';
@@ -240,21 +240,11 @@ function Sheet({ doc }: { doc: Doc }) {
   }
 
   function deleteSaved(id: string) {
-    const entry = deleteEntry(id);
-    setLibraryChanged(n => n + 1);
-    if (!entry) return;
-    // Edits keep doc.source; loading another sheet replaces it.
-    const openSource = useApp.getState().libraryId === id ? doc.source : null;
-    useApp.getState().forgetEntry(id);
-    setFileError(null);
-    const undo = () => {
-      if (!restoreEntry(entry)) { setFileError(writeFailureMessage()); return; }
-      // Link the open sheet again only if it is still the one whose entry was deleted.
-      const now = useApp.getState();
-      if (openSource && now.libraryId === null && now.doc?.source === openSource) now.relinkEntry(id);
-      setLibraryChanged(n => n + 1);
-    };
-    showToast({ message: `Deleted "${entry.title}"`, action: { label: 'Undo', run: undo } });
+    deleteWithUndo(id, {
+      onChanged: () => setLibraryChanged(n => n + 1),
+      onDeleted: () => setFileError(null),
+      onFailed: setFileError,
+    });
   }
 
   // Alternate fingerings: one popover at a time, anchored to its pill.

@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { sampleDoc } from '../domain/fixture';
 import { serializeFile } from '../domain/persistence';
 import { DEFAULT_PREFS } from '../domain/transpose';
-import { listEntries, saveEntry } from '../state/library';
+import { FULL_MESSAGE, listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
 import { ToastHost } from '../ui/Toast';
 import Start from './Start';
@@ -40,7 +40,7 @@ beforeEach(() => {
   useApp.setState({ instId: 'asax', prefs: DEFAULT_PREFS, song: null, doc: null });
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 it('picker: family selects its default type and persists', async () => {
   renderStart();
@@ -233,4 +233,124 @@ it('deleting the open sheet\'s entry unlinks it; undo links it again', async () 
   await user.click(screen.getByRole('button', { name: 'Undo' }));
   expect(useApp.getState().libraryId).toBe(id);
   expect(screen.getByRole('region', { name: 'Your sheets' })).toHaveTextContent('Open one');
+});
+
+const sheetFile = (title: string, name = `${title}.fingerscore.json`) =>
+  new File([serializeFile({ ...sampleDoc('fl'), title })], name, { type: 'application/json' });
+const cardLink = (title: string) =>
+  within(screen.getByRole('region', { name: 'Your sheets' })).getByRole('link', { name: new RegExp(`^${title}`) });
+/** Saves sheets so that the first title is the newest (the library lists the last save first). */
+function saveSheets(...titles: string[]) {
+  [...titles].reverse().forEach((title, i) => saveEntry({ ...sampleDoc('asax'), title }, null, new Date(Date.UTC(2026, 10, 22, 10, i))));
+}
+
+it('the count is singular for one sheet', () => {
+  saveSheets('Only');
+  renderStart();
+  expect(screen.getByText('1 sheet · saved in this browser')).toBeInTheDocument();
+});
+
+it('an upper-case .JSON name takes the saved-sheet path', async () => {
+  renderStart();
+  drop(sheetFile('Loud', 'LOUD.JSON'));
+  expect(await screen.findByText('✓ "Loud" added to your sheets')).toBeInTheDocument();
+  expect(listEntries().map(e => e.title)).toEqual(['Loud']);
+});
+
+it('a storage failure shows the storage message and leaves the library unchanged', async () => {
+  saveSheets('Before');
+  const setItem = Storage.prototype.setItem;
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+    if (k === 'fingerscore.library.v1') throw new DOMException('full', 'QuotaExceededError');
+    setItem.call(this, k, v);
+  });
+  renderStart();
+  drop(sheetFile('Too much'));
+  expect(await screen.findByRole('alert')).toHaveTextContent(FULL_MESSAGE);
+  expect(listEntries().map(e => e.title)).toEqual(['Before']);
+});
+
+it('a second file is read after a success and after an error', async () => {
+  renderStart();
+  drop(sheetFile('First'));
+  await screen.findByText('✓ "First" added to your sheets');
+  drop(new File(['{}'], 'other.json'));
+  expect(await screen.findByRole('alert')).toHaveTextContent('"other.json" isn\'t a fingerscore sheet.');
+  drop(sheetFile('Second'));
+  expect(await screen.findByText('✓ "Second" added to your sheets')).toBeInTheDocument();
+  expect(listEntries().map(e => e.title)).toEqual(['Second', 'First']);
+});
+
+it('a .json file dropped on a song result is added as a sheet', async () => {
+  renderStart();
+  await user.upload(screen.getByLabelText(/drop a song/i), demoFile());
+  await screen.findByText(/Auld_Lang_Syne.mid — Ready/);
+  expect(drop(sheetFile('Over the song'))).toBe(false);
+  expect(await screen.findByText('✓ "Over the song" added to your sheets')).toBeInTheDocument();
+  expect(screen.getByRole('region', { name: 'Your sheets' })).toHaveTextContent('Over the song');
+});
+
+it('a failed delete shows the storage message and keeps the card', async () => {
+  saveSheets('Stuck');
+  renderStart();
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string) {
+    if (k === 'fingerscore.library.v1') throw new DOMException('full', 'QuotaExceededError');
+  });
+  await user.click(screen.getByRole('button', { name: 'Delete Stuck' }));
+  expect(within(screen.getByRole('region', { name: 'Your sheets' })).getByRole('alert')).toHaveTextContent(FULL_MESSAGE);
+  expect(cardLink('Stuck')).toBeInTheDocument();
+});
+
+describe('keyboard focus in the gallery', () => {
+  it('after a delete: Undo, then the next card; Undo returns to the restored card', async () => {
+    saveSheets('A', 'B', 'C');
+    renderStart();
+    await user.click(screen.getByRole('button', { name: 'Delete B' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' }));
+    await user.keyboard('{Escape}');
+    expect(document.activeElement).toBe(cardLink('C'));
+
+    await user.click(screen.getByRole('button', { name: 'Delete A' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(document.activeElement).toBe(cardLink('A'));
+  });
+
+  it('deleting the last card in the list moves focus to the previous card', async () => {
+    saveSheets('A', 'B');
+    renderStart();
+    await user.click(screen.getByRole('button', { name: 'Delete B' }));
+    await user.keyboard('{Escape}');
+    expect(document.activeElement).toBe(cardLink('A'));
+  });
+
+  it('deleting the only card moves focus to the drop zone; Undo brings the card back focused', async () => {
+    saveSheets('Only');
+    renderStart();
+    await user.click(screen.getByRole('button', { name: 'Delete Only' }));
+    expect(screen.queryByRole('region', { name: 'Your sheets' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(document.activeElement).toBe(cardLink('Only'));
+
+    await user.click(screen.getByRole('button', { name: 'Delete Only' }));
+    await user.keyboard('{Escape}');
+    expect(document.activeElement).toBe(screen.getByLabelText(/drop a song or a saved sheet/i));
+  });
+
+  it('Show all moves focus to the first revealed card', async () => {
+    saveSheets('S6', 'S5', 'S4', 'S3', 'S2', 'S1');
+    renderStart();
+    await user.click(screen.getByRole('button', { name: 'Show all 6' }));
+    expect(document.activeElement).toBe(cardLink('S2'));
+  });
+
+  it('deleting the last revealed card moves focus to the card before it', async () => {
+    saveSheets('S6', 'S5', 'S4', 'S3', 'S2', 'S1');
+    renderStart();
+    await user.click(screen.getByRole('button', { name: 'Show all 6' }));
+    await user.click(screen.getByRole('button', { name: 'Delete S1' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' }));
+    await user.keyboard('{Escape}');
+    expect(document.activeElement).toBe(cardLink('S2'));
+  });
 });

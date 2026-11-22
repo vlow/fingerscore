@@ -50,7 +50,8 @@
   flex-direction: column;
   gap: 3px;
   min-height: 44px;
-  padding: 46px 14px 12px;
+  /* The right padding keeps every line clear of the delete button (36px + 6px inset + 6px gap). */
+  padding: 46px 48px 12px 14px;
   border-radius: var(--radius-card);
   color: var(--ink);
   text-decoration: none;
@@ -68,7 +69,6 @@
 
 .title {
   overflow: hidden;
-  padding-right: 24px;
   font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -76,6 +76,7 @@
 
 .inst {
   color: var(--text);
+  overflow-wrap: anywhere;
   font-size: 13px;
 }
 
@@ -121,4 +122,13 @@
 
 .more:hover {
   background: var(--page);
+}
+
+.error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--red-bg);
+  color: var(--red);
+  font-weight: 600;
 }

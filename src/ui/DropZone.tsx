@@ -1,4 +1,4 @@
-import { useId, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useId, useState, type ChangeEvent, type DragEvent, type Ref } from 'react';
 import { Link } from 'react-router-dom';
 import { importMessage, parseFileText } from '../domain/persistence';
 import { ACCEPT, parseFile } from '../import';
@@ -13,6 +13,8 @@ interface Props {
   onContinue(): void;
   /** A saved sheet (.json) was added to the library. */
   onSheet?(entry: LibraryEntry): void;
+  /** The file input, present while the zone is idle. */
+  inputRef?: Ref<HTMLInputElement>;
 }
 
 type State =
@@ -42,7 +44,7 @@ async function addSheet(file: File): Promise<{ entry: LibraryEntry } | { error: 
   return saved.ok ? { entry: saved.entry } : { error: saved.message };
 }
 
-export default function DropZone({ instrumentName, onSong, onContinue, onSheet }: Props) {
+export default function DropZone({ instrumentName, onSong, onContinue, onSheet, inputRef }: Props) {
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [drag, setDrag] = useState(false);
   const titleId = useId();
@@ -115,7 +117,7 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet }
             </div>
           </div>
           <input
-            type="file" accept={ACCEPT} className={s.input}
+            ref={inputRef} type="file" accept={ACCEPT} className={s.input}
             aria-labelledby={titleId} aria-describedby={hintId}
             onChange={onChange}
           />
