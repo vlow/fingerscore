@@ -68,7 +68,7 @@ function validBar(v: unknown, maxCap: number, ids: Set<string>): Bar | null {
 function validChord(v: unknown): ChordSym | null {
   if (!isObject(v)) return null;
   const { raw, ok, pc, rest, bass, tk } = v;
-  if (!isStr(raw) || !isBool(ok) || !isNum(pc) || !isStr(rest) || !(bass === null || isNum(bass)) || !isNum(tk)) return null;
+  if (!isStr(raw) || !isBool(ok) || !isInt(pc, 0, 11) || !isStr(rest) || !(bass === null || isInt(bass, 0, 11)) || !isInt(tk, 0, 11)) return null;
   return { raw, ok, pc, rest, bass, tk };
 }
 

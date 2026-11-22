@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { sampleDoc } from './fixture';
 import { inst } from './instruments';
 import { optionsFor } from './fingerings';
+import { derive } from './derive';
+import { DEFAULT_PREFS } from './transpose';
 import { canonical, fileName, importMessage, parseFile, parseFileText, serializeFile, toFile } from './persistence';
 import type { Doc, Ev } from './types';
 
@@ -90,6 +92,25 @@ describe('sheet file', () => {
     expect((parseFile(f) as any).doc.fingering).toEqual({ [withAlt.id]: 1 });
     f.doc.fingering[withAlt.id] = 57;
     expect((parseFile(f) as any).doc.fingering).toEqual({});
+  });
+
+  it.each([
+    ['fractional pc', { pc: 0.5, tk: 7 }],
+    ['pc above 11', { pc: 12 }],
+    ['negative tk', { tk: -1 }],
+    ['fractional bass', { bass: 2.5, tk: 7 }],
+    ['bass above 11', { bass: 12 }],
+    ['ok not boolean', { ok: 1 }],
+    ['raw not a string', { raw: 3 }],
+  ])('drops a chord with a bad shape (%s) and still opens the document', (_n, patch) => {
+    const r = broken(d => {
+      const [a, b] = [d.score[0].ev[0].id, d.score[0].ev[1].id];
+      d.chords = { [a]: { raw: 'C', ok: true, pc: 0, rest: '', bass: null, tk: 0, ...patch }, [b]: { raw: 'G/B', ok: true, pc: 7, rest: '', bass: 11, tk: 0 } };
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(Object.keys(r.doc.chords)).toEqual([r.doc.score[0].ev[1].id]);
+    expect(() => derive(r.doc, DEFAULT_PREFS)).not.toThrow();
   });
 
   it('canonical ignores key order', () => {
