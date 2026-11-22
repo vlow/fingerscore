@@ -2816,6 +2816,7 @@
       1
      ],
      "x": [
+      "fCs",
       "fC"
      ],
      "n": "standard",
@@ -3106,6 +3107,204 @@
      "p": 0
     }
    ],
+   "76": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "77": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "78": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "79": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "80": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fGs",
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "81": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "82": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "1 + 1",
+     "p": 0
+    },
+    {
+     "h": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fBb",
+      "fEb"
+     ],
+     "n": "thumb B♭",
+     "p": 0.2
+    }
+   ],
+   "83": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "84": [
+    {
+     "h": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "85": [
+    {
+     "h": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fEb"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
    "86": [
     {
      "h": [
@@ -3264,7 +3463,8 @@
       0
      ],
      "x": [
-      "tD"
+      "tD",
+      "fEb"
      ],
      "n": "standard",
      "p": 0
@@ -4094,6 +4294,31 @@
     {
      "title": "Sax Teacher UK: clarinet fingering chart (written E3–C7)",
      "url": "https://saxteacheruk.com/tutorials/clarinet-fingering-chart.html",
+     "accessed": "2026-11-22"
+    }
+   ],
+   "reviewed": null
+  },
+  "fl": {
+   "sources": [
+    {
+     "title": "The Woodwind Fingering Guide (Timothy Reichard): basic fingering chart for flute and piccolo (first, second and third octave); states that the basic fingerings apply to piccolo, concert flute and alto flute",
+     "url": "https://www.wfg.woodwind.org/flute/",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Tomplay: interactive flute fingering chart (written C4–C7)",
+     "url": "https://tomplay.com/fingering-charts/flute",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Sax Teacher UK: flute fingering chart (written C4–G7)",
+     "url": "https://saxteacheruk.com/tutorials/flute-fingering-chart.html",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "flutetunes.com: basic flute fingerings (states that the basic fingerings are also valid for piccolo and alto flute)",
+     "url": "https://www.flutetunes.com/fingerings/basic-fingerings.php",
      "accessed": "2026-11-22"
     }
    ],

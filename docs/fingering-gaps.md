@@ -12,7 +12,6 @@ An empty array in `overrides[instId][pitch]` hides the kind table's entry for th
 - Tenor sax: written 95 (B6, altissimo). Checked: WFG saxophone charts, Sax Teacher UK tenor altissimo chart. No fingering appears in both.
 - Baritone sax: written 95 (B6, altissimo). Checked: WFG saxophone charts, Sax Teacher UK baritone altissimo chart. No fingering appears in both.
 - Not yet looked up (Task 7 in progress):
-  - Flute (flute, piccolo, alto flute): written 76–85 (second-octave E5–C♯6). Not yet looked up.
   - Soprano recorder: written 87–91 (table indices 27–31). Not yet looked up.
   - Alto recorder: written 92–96 (table indices 27–31). Not yet looked up.
 
@@ -50,3 +49,15 @@ Sources: The Woodwind Fingering Guide Boehm clarinet charts (basic chalumeau, cl
 - A6: Tomplay prints 2 3 + left F♯ + right G♯, which the WFG does not list. Sax Teacher UK and the WFG agree on 2 3 + right F/C. Entered.
 - B♭6, B6, C7: Tomplay stops at A6. The table uses Sax Teacher UK's main fingering, which is the first one the WFG lists for each note.
 - Not entered: the E♭/B♭ sliver alternates for E♭4/B♭5 and the B/F♯ sliver alternates for B3/F♯5 (the WFG and Tomplay print them, but the table carries only the pinky, F♯4 and throat B♭ alternates); Sax Teacher UK's throat-key alternates for B4 and C5 (no other source prints them).
+
+## Flute, piccolo, alto flute: source differences
+
+Sources: The Woodwind Fingering Guide basic flute and piccolo chart, the Tomplay interactive flute chart (one fingering per note, C4–C7) and the Sax Teacher UK flute chart. All three agree on every note from C♯4 to A6 and on B6, except where listed below.
+
+- Piccolo and alto flute: the WFG states that its basic fingerings apply to all sizes of flute; flutetunes.com says the same of its basic chart. No piccolo or alto flute chart that differs was found, so `overrides` holds nothing for `picc` and `afl`.
+- Low C4: the WFG marks only the low C key; Tomplay and Sax Teacher UK mark the low C and C♯ keys together. The table follows the two charts that agree (C and C♯ keys).
+- B♭6: the WFG omits the E♭ key; Tomplay and Sax Teacher UK hold it. The table follows the two that agree (E♭ key held).
+- C7: Sax Teacher UK adds the E♭ key; the WFG (C-foot fingering) and Tomplay do not. The table follows the WFG and Tomplay.
+- B♭4/B♭5: 1 + 1 (all three) and thumb B♭ (WFG and Sax Teacher UK) are entered. The right-hand B♭ trill lever fingering is a trill fingering in the WFG and is left out.
+- F♯4/F♯5 with the middle finger: the WFG prints it only as a trill fingering; not entered.
+- Tomplay's older chart script (sheets/main.js) adds the G♯ key to F♯6; the flute page itself (visual-instruments/flute.min.js) does not. The table uses the flute page's data, which matches the WFG and Sax Teacher UK.
