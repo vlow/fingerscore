@@ -848,8 +848,24 @@
       1
      ],
      "x": [],
-     "n": "standard · marked * on the chart, same holes as G5",
+     "n": "as G5, with less lip pressure (marked * on the chart)",
      "p": 0
+    },
+    {
+     "h": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ],
+     "x": [],
+     "n": "as F5, with more lip pressure to bend the note up",
+     "p": 0.3
     }
    ],
    "79": [
@@ -2770,6 +2786,24 @@
    ]
   },
   "fl": {
+   "60": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "fC"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
    "61": [
     {
      "h": [
@@ -4227,6 +4261,9 @@
     },
     {
      "title": "The Water Is Wide, Xaphoon songbook page (notes and fingerings)"
+    },
+    {
+     "title": "Xaphoon handbook, note on F♯ (quoted by the owner, 2026-11-22)"
     }
    ],
    "reviewed": null

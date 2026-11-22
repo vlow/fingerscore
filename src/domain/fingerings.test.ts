@@ -100,7 +100,7 @@ it('satellite keys exist for sax, clarinet and flute only', () => {
 
 // Normal-range gaps where the charts disagree; each waits for an owner decision (docs/fingering-gaps.md, "Waiting for the owner").
 const OWNER_PENDING = [
-  'ra:87:baroque', 'fl:60:baroque', 'afl:60:baroque',
+  'ra:87:baroque',
   'rs:66:german', 'rs:68:german', 'rs:77:german', 'rs:78:german',
   'ra:71:german', 'ra:73:german', 'ra:82:german', 'ra:83:german',
 ];

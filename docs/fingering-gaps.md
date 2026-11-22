@@ -11,7 +11,6 @@ Gaps inside the normal range (`lo`..`hi`) where the charts disagree. The test "g
 | Instrument | Written | Note | WFG | Second chart(s) |
 |---|---|---|---|---|
 | Alto recorder (baroque) | 87 | E♭6 (index 22) | thumb pinched, 1 2 \| 4 5 6 | Dolmetsch: thumb pinched, 1 2 \| 5 6. Tomplay alto: thumb pinched, 1 2 \| 5 6 + half 7 |
-| Flute, alto flute | 60 | C4 | T 1 2 3 \| 1 2 3 + low C key | Tomplay and Sax Teacher UK: T 1 2 3 \| 1 2 3 + low C and low C♯ keys |
 | Soprano / alto recorder (German) | 66 / 71 | F♯ / B (index 6) | T 1 2 3 \| – 5 6 7 | none: Dolmetsch prints baroque only; Tomplay's German chart is a PDF only |
 | Soprano / alto recorder (German) | 68 / 73 | G♯ / C♯ (index 8) | T 1 2 – \| 4 5 – – | none (as above) |
 | Soprano / alto recorder (German) | 77 / 82 | upper F / upper B♭ (index 17) | thumb pinched, 1 2 3 \| 4 – – – | none (as above) |
@@ -23,10 +22,10 @@ On a German recorder these four notes show no chart; the app does not fall back 
 
 | Kind | Sources | Notes with a fingering | Alternates | Gaps | Reviewed |
 |---|---|---|---|---|---|
-| Xaphoon | official Xaphoon chart; "The Water Is Wide" songbook page | 25 (C4–C6) | 0 | 0 | no |
+| Xaphoon | official Xaphoon chart; "The Water Is Wide" songbook page | 25 (C4–C6) | 1 (F♯5) | 0 | no |
 | Saxophone | WFG saxophone charts; Sax Teacher UK saxophone and altissimo charts | 39 (B♭3–C7, alto altissimo; soprano, tenor, baritone altissimo via overrides) | 12 | 3 (all altissimo) | no |
 | Clarinet | WFG Boehm clarinet charts; Tomplay clarinet chart; Sax Teacher UK clarinet chart | 45 (E3–C7) | 7 | 0 | no |
-| Flute, piccolo, alto flute | WFG flute and piccolo chart; Tomplay flute chart; Sax Teacher UK flute chart; flutetunes.com (sizes) | 35 of 37 (C4–C7; C4 and B♭6 missing) | 2 | 2 (C4 inside the normal range, waiting for the owner; B♭6 extended) | no |
+| Flute, piccolo, alto flute | WFG flute and piccolo chart; Tomplay flute chart; Sax Teacher UK flute chart; flutetunes.com (sizes) | 36 of 37 (C4–C7; B♭6 missing) | 2 | 1 (B♭6, extended range) | no |
 | Recorder (baroque) | WFG recorder charts; Dolmetsch Online text chart; Tomplay recorder chart | 30 of 32 table indices | 1 | 5 (1 inside the normal range: alto E♭6, waiting for the owner) | no |
 | Recorder (German) | WFG recorder chart; Wikipedia citing Rowland-Jones and Linde | 1 note differs from baroque (F) | 0 | 4 German notes per recorder without a second source (waiting for the owner) | no |
 
@@ -55,7 +54,7 @@ Every fingering the songbook page prints (C4, D4, E4, F4, G4, A4, B♭4, C5) mat
 
 ## Xaphoon: chart notes
 
-- F♯5 carries an asterisk on the official chart, but the chart prints no footnote for it. The chart prints the same holes for F♯5 and G5 (top hole open, everything else closed). The table follows the chart; a Xaphoon player should confirm.
+- F♯5: the official chart prints the same holes as G5 and marks the note with an asterisk. The owner confirmed on 2026-11-22, from the Xaphoon handbook, that F♯5 is played either with the G5 fingering and less lip pressure, or with the high F fingering and more lip pressure. Both are entered; the G5 fingering is the standard one because the chart prints it.
 - G♯4: the thumb dot is partly covered by the neighbouring photo on the chart. The visible part is solid, so the table records the thumb as closed.
 
 ## Saxophone: source differences
@@ -87,7 +86,7 @@ Sources: The Woodwind Fingering Guide Boehm clarinet charts (basic chalumeau, cl
 Sources: The Woodwind Fingering Guide basic flute and piccolo chart, the Tomplay interactive flute chart (one fingering per note, C4–C7) and the Sax Teacher UK flute chart. All three agree on every note from C♯4 to A6 and on B6, except where listed below. Where the WFG and both other charts disagree, the pitch stays empty.
 
 - Piccolo and alto flute: the WFG states that its basic fingerings apply to all sizes of flute; flutetunes.com says the same of its basic chart. No piccolo or alto flute chart that differs was found, so `overrides` holds nothing for `picc` and `afl`.
-- Low C4: the WFG marks only the low C key; Tomplay and Sax Teacher UK mark the low C and C♯ keys together. Left empty; waiting for the owner.
+- Low C4: the WFG marks only the low C key; Tomplay and Sax Teacher UK mark the low C and C♯ keys together. The owner decided on 2026-11-22 to follow the WFG: the C key also closes the C♯ pad, so a player presses the C key alone.
 - B♭6: the WFG omits the E♭ key; Tomplay and Sax Teacher UK hold it. Left empty (extended range).
 - C7: Sax Teacher UK adds the E♭ key; the WFG (C-foot fingering) and Tomplay do not. The table follows the WFG and Tomplay.
 - B♭4/B♭5: 1 + 1 (all three) and thumb B♭ (WFG and Sax Teacher UK) are entered. The right-hand B♭ trill lever fingering is a trill fingering in the WFG and is left out.

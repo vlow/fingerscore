@@ -80,16 +80,6 @@
   },
   {
    "kind": "fl",
-   "pitch": 60,
-   "note": "C4: WFG T 123|123 + low C key only; Tomplay and Sax Teacher UK T 123|123 + low C and C♯ keys. Charts disagree; waiting for the owner.",
-   "checked": [
-    "WFG flute basic chart (C key only)",
-    "Tomplay flute chart (C and C♯ keys)",
-    "Sax Teacher UK flute chart (C and C♯ keys)"
-   ]
-  },
-  {
-   "kind": "fl",
    "pitch": 94,
    "note": "B♭6: WFG T ---|1 + D trill key, no E♭ key; Tomplay and Sax Teacher UK the same plus the E♭ key. Charts disagree.",
    "checked": [

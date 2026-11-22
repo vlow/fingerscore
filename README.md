@@ -70,7 +70,7 @@ No owner has reviewed any table yet.
 
 Source titles, URLs and access dates are in the `meta` block of `src/data/fingerings.json`.
 
-Known gaps, with the sources checked for each, are in [docs/fingering-gaps.md](docs/fingering-gaps.md). Its section "Waiting for the owner" lists the gaps inside the normal range, such as flute C4 and four German recorder notes. A player who knows the right fingering can settle them.
+Known gaps, with the sources checked for each, are in [docs/fingering-gaps.md](docs/fingering-gaps.md). Its section "Waiting for the owner" lists the gaps inside the normal range, such as alto recorder E♭6 and four German recorder notes. A player who knows the right fingering can settle them.
 
 ## Credits
 
