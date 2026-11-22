@@ -7,7 +7,9 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
-import { addBarAfter, toggleRest } from '../domain/edit';
+import { addBarAfter, locate, toggleRest } from '../domain/edit';
+import { inst } from '../domain/instruments';
+import { mod12, signatureLetters } from '../domain/keys';
 import { serializeFile } from '../domain/persistence';
 import { listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
@@ -959,6 +961,271 @@ describe('modes, undo and redo', () => {
     await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
     expect(selected()).toBe(r.next);
     expect(screen.getByRole('group', { name: 'Lyrics panel' })).toBeInTheDocument();
+  });
+});
+
+describe('Edit notes panel and keys', () => {
+  const hit = (id: string) => document.querySelector(`[data-hit="${id}"]`)!;
+  const clickEvent = (id: string) => user.click(hit(id));
+  const selectedId = () => document.querySelector('[data-selected="true"]')?.getAttribute('data-ev') ?? null;
+  const sheet = () => screen.getByRole('group', { name: /Sheet music/ });
+  const live = () => sheet().querySelector('[aria-live="polite"]')!;
+  const panel = () => screen.getByRole('group', { name: 'Edit notes panel' });
+  const button = (name: string) => within(panel()).getByRole('button', { name });
+  const current = () => useApp.getState().doc!;
+  const ev = (id: string) => locate(current(), id)!.ev;
+  const firstNote = () => current().score.flatMap(b => b.ev).find(e => !e.r)!;
+  const edit = async (id: InstId = 'asax', patch: Partial<Doc> = {}) => {
+    open(id, patch);
+    await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
+  };
+  /** The concert pitch class of a written G with the written key signature's alteration. */
+  const expectedPcOfGInKey = () => {
+    const d = current();
+    const sig = derive(d, DEFAULT_PREFS).sig;
+    const alter = signatureLetters(sig).includes(4) ? Math.sign(sig) : 0;
+    return mod12(7 + alter - d.shift - inst(d.inst).off);
+  };
+
+  it('check 6: quarter → eighth leaves an eighth rest; undo restores; the key does not change', async () => {
+    await edit();
+    const d0 = current();
+    const q = d0.score.flatMap(b => b.ev).find(e => !e.r && e.d === 12)!;
+    await clickEvent(q.id);
+    expect(button('Quarter')).toHaveAttribute('aria-pressed', 'true');
+    await user.click(button('Eighth'));
+    const d1 = current();
+    const bar = d1.score.find(b => b.ev.some(e => e.id === q.id))!;
+    const i = bar.ev.findIndex(e => e.id === q.id);
+    expect(bar.ev[i].d).toBe(6);
+    expect(bar.ev[i + 1]).toMatchObject({ r: true, d: 6 });
+    expect(d1.shift).toBe(d0.shift);
+    expect(button('Eighth')).toHaveAttribute('aria-pressed', 'true');
+    expect(button('Quarter')).toHaveAttribute('aria-pressed', 'false');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(useApp.getState().doc).toBe(d0);
+  });
+
+  it('lengths that do not fit are disabled', async () => {
+    await edit();
+    const pickup = current().score[0].ev;
+    const last = pickup[pickup.length - 1];   // the pickup bar ends with a quarter
+    expect(last).toMatchObject({ r: false, d: 12 });
+    await clickEvent(last.id);
+    for (const name of ['Half', 'Whole', 'Dotted']) expect(button(name)).toBeDisabled();
+    for (const name of ['Sixteenth', 'Eighth', 'Quarter']) expect(button(name)).toBeEnabled();
+    await user.click(button('Half'));
+    expect(ev(last.id).d).toBe(12);
+  });
+
+  it('pitch buttons and note name', async () => {
+    await edit();
+    const n = firstNote();
+    await clickEvent(n.id);
+    const name = () => derive(current(), DEFAULT_PREFS).byId[n.id].spelled.name;
+    expect(within(panel()).getByText(name())).toBeInTheDocument();
+    const before = name();
+    await user.click(button('Semitone up'));
+    expect(ev(n.id).m).toBe(n.m + 1);
+    expect(name()).not.toBe(before);
+    expect(within(panel()).getByText(name())).toBeInTheDocument();
+    await user.click(button('Semitone down'));
+    expect(ev(n.id).m).toBe(n.m);
+    await user.click(button('Octave up'));
+    expect(ev(n.id).m).toBe(n.m + 12);
+    await user.click(button('Octave down'));
+    expect(ev(n.id).m).toBe(n.m);
+    await user.click(button('Turn into rest'));
+    for (const b of ['Octave down', 'Semitone down', 'Semitone up', 'Octave up']) expect(button(b)).toBeDisabled();
+    expect(within(panel()).getByText('rest')).toBeInTheDocument();
+  });
+
+  it('pitch buttons are disabled at the ends of MIDI 0..127', async () => {
+    const base = sampleDoc('asax');
+    const n = base.score[0].ev[0];
+    const score = base.score.map((b, k) => (k === 0 ? { ...b, ev: b.ev.map((e, j) => (j === 0 ? { ...e, m: 127 } : e)) } : b));
+    await edit('asax', { score });
+    await clickEvent(n.id);
+    expect(button('Semitone up')).toBeDisabled();
+    expect(button('Octave up')).toBeDisabled();
+    expect(button('Semitone down')).toBeEnabled();
+    expect(button('Octave down')).toBeEnabled();
+  });
+
+  it('dotted, tie, rest toggles', async () => {
+    await edit();
+    const s = current().score;
+    const dotted = s[2].ev[2];          // a dotted quarter
+    expect(dotted.d).toBe(18);
+    await clickEvent(dotted.id);
+    expect(button('Quarter')).toHaveAttribute('aria-pressed', 'true');
+    expect(button('Dotted')).toHaveAttribute('aria-pressed', 'true');
+    await user.click(button('Dotted'));
+    expect(ev(dotted.id).d).toBe(12);
+    expect(button('Dotted')).toHaveAttribute('aria-pressed', 'false');
+    await user.click(button('Dotted'));
+    expect(ev(dotted.id).d).toBe(18);
+
+    const tied = s[1].ev[1];            // tied into the next note
+    await clickEvent(tied.id);
+    expect(button('Tie')).toHaveAttribute('aria-pressed', 'true');
+    await user.click(button('Tie'));
+    expect(ev(tied.id).tie).toBe(false);
+    expect(button('Tie')).toHaveAttribute('aria-pressed', 'false');
+    expect(button('Tie')).toBeEnabled();  // the next note still has the same pitch
+
+    const before = s[0].ev[0];          // the next note has another pitch
+    await clickEvent(before.id);
+    expect(button('Tie')).toBeDisabled();
+    expect(button('Tie')).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(button('Turn into rest'));
+    expect(ev(before.id).r).toBe(true);
+    await user.click(button('Turn into note'));
+    expect(ev(before.id)).toMatchObject({ r: false, m: before.m });
+    expect(button('Turn into rest')).toBeInTheDocument();
+  });
+
+  it('bars: add after and remove', async () => {
+    await edit();
+    const count = current().score.length;
+    const n = current().score[2].ev[1];
+    await clickEvent(n.id);
+    await user.click(button('+ Bar after'));
+    expect(current().score).toHaveLength(count + 1);
+    const added = current().score[3].ev;
+    expect(added).toHaveLength(1);
+    expect(added[0].r).toBe(true);
+    expect(selectedId()).toBe(added[0].id);
+    expect(sheet()).toContainElement(document.activeElement as HTMLElement);   // the keys still reach the sheet
+    await user.click(button('Remove bar'));
+    expect(current().score).toHaveLength(count);
+    expect(selectedId()).toBe(current().score[3].ev[0].id);
+    cleanup();
+
+    await edit('asax', { score: [sampleDoc('asax').score[2]] });
+    await clickEvent(current().score[0].ev[0].id);
+    expect(button('Remove bar')).toBeDisabled();
+    expect(button('+ Bar after')).toBeEnabled();
+  });
+
+  it('keyboard: arrows, letters, digits, dot, R, T, Delete', async () => {
+    await edit('fl');
+    const n = firstNote();
+    await clickEvent(n.id);
+    sheet().focus();
+    await user.keyboard('{ArrowUp}');
+    expect(ev(n.id).m).toBe(n.m + 1);
+    await user.keyboard('{Control>}{ArrowDown}{/Control}');
+    expect(ev(n.id).m).toBe(n.m + 1 - 12);
+    await user.keyboard('{Meta>}{ArrowUp}{/Meta}');
+    expect(ev(n.id).m).toBe(n.m + 1);
+    await user.keyboard('{ArrowDown}');
+    expect(ev(n.id).m).toBe(n.m);
+    await user.keyboard('3');
+    expect(ev(n.id).d).toBe(6);
+    await user.keyboard('.');
+    expect(ev(n.id).d).toBe(9);
+    await user.keyboard('2');
+    expect(ev(n.id).d).toBe(3);
+    await user.keyboard('4');
+    expect(ev(n.id).d).toBe(12);
+    await user.keyboard('r');
+    expect(ev(n.id).r).toBe(true);
+    await user.keyboard('R');
+    expect(ev(n.id).r).toBe(false);
+    await user.keyboard('{Delete}');
+    expect(ev(n.id).r).toBe(true);
+    const rest = current();
+    await user.keyboard('{Backspace}');
+    expect(current()).toBe(rest);           // Delete on a rest does nothing
+    await user.keyboard('g');
+    expect(ev(n.id).r).toBe(false);
+    expect(ev(n.id).m % 12).toBe(expectedPcOfGInKey());
+    expect(live()).toHaveTextContent(`${derive(current(), DEFAULT_PREFS).byId[n.id].spelled.name}, quarter, pickup bar`);
+    await user.keyboard('{ArrowRight}');
+    expect(selectedId()).not.toBe(n.id);
+  });
+
+  it('keyboard: T ties to a next note of the same pitch; disabled keys do nothing', async () => {
+    await edit();
+    const s = current().score;
+    const a = s[0].ev[1];               // the next note has the same pitch
+    await clickEvent(a.id);
+    sheet().focus();
+    await user.keyboard('t');
+    expect(ev(a.id).tie).toBe(true);
+    await user.keyboard('T');
+    expect(ev(a.id).tie).toBe(false);
+    const b = s[0].ev[0];               // the next note has another pitch
+    await clickEvent(b.id);
+    const d = current();
+    await user.keyboard('t6');           // tie not allowed; a whole does not fit in the pickup bar
+    expect(current()).toBe(d);
+    expect(useApp.getState().past).toHaveLength(2);
+  });
+
+  it('a keyboard edit is announced with name, length and bar', async () => {
+    await edit();
+    const n = current().score[2].ev[1];   // a quarter in bar 2
+    await clickEvent(n.id);
+    sheet().focus();
+    await user.keyboard('3');
+    expect(live()).toHaveTextContent(`${derive(current(), DEFAULT_PREFS).byId[n.id].spelled.name}, eighth, bar 2`);
+    await user.keyboard('.');
+    expect(live()).toHaveTextContent(/, dotted eighth, bar 2$/);
+    await user.keyboard('r');
+    expect(live()).toHaveTextContent('rest, dotted eighth, bar 2');
+  });
+
+  it('keys do nothing in View mode and while typing in the title', async () => {
+    open('asax');
+    const n = current().score[2].ev[1];
+    await clickEvent(n.id);
+    sheet().focus();
+    const d0 = current();
+    await user.keyboard('r3.t{Delete}g{ArrowUp}');
+    expect(current()).toBe(d0);
+    expect(selectedId()).toBe(n.id);
+
+    await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
+    await clickEvent(n.id);
+    const title = screen.getByPlaceholderText('Add a title');
+    await user.clear(title);
+    await user.type(title, 'radar 3.');
+    expect(current().title).toBe('radar 3.');
+    expect(ev(n.id)).toEqual(n);
+    expect(current().score).toBe(d0.score);
+  });
+
+  it('keys with Alt or Shift, or while a menu or popover is open, do nothing', async () => {
+    await edit();
+    const n = current().score[2].ev[1];
+    await clickEvent(n.id);
+    sheet().focus();
+    const d0 = current();
+    await user.keyboard('{Alt>}r{/Alt}{Shift>}{ArrowUp}{/Shift}{Alt>}{ArrowUp}{/Alt}');
+    expect(current()).toBe(d0);
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    sheet().focus();
+    fireEvent.keyDown(sheet(), { key: 'r' });
+    expect(current()).toBe(d0);
+  });
+
+  it('an edit during playback stops it and keeps the selection (review focus 5)', async () => {
+    await edit();
+    const n = current().score[2].ev[1];
+    await clickEvent(n.id);
+    fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
+    await user.click(screen.getByRole('button', { name: 'Play from selected' }));
+    expect(fakePlayer.play).toHaveBeenCalledTimes(1);
+    fakePlayer.stop.mockClear();
+    await user.click(button('Semitone up'));
+    expect(fakePlayer.stop).toHaveBeenCalled();
+    expect(selectedId()).toBe(n.id);
+    expect(ev(n.id).m).toBe(n.m + 1);
+    expect(panel()).toBeInTheDocument();
   });
 });
 

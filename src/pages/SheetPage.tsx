@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, 
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPlayer, type Player } from '../audio/player';
 import { derive, type DerivedEvent } from '../domain/derive';
-import { locate } from '../domain/edit';
+import { BASE_LENGTHS, locate, setLength, setLetter, shiftPitch, toggleRest, toggleTie } from '../domain/edit';
 import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
 import { keySignature, spell } from '../domain/keys';
@@ -22,6 +22,7 @@ import { downloadText } from '../ui/download';
 import FileMenu from '../ui/FileMenu';
 import KeyBridge from '../ui/KeyBridge';
 import { ModeSwitch, type Mode } from '../ui/ModeSwitch';
+import NotePanel, { lengthName, toggleDotted } from '../ui/NotePanel';
 import PageBar from '../ui/PageBar';
 import RangeMeter from '../ui/RangeMeter';
 import SaveControls from '../ui/SaveControls';
@@ -37,6 +38,10 @@ const SIMPLIFIED = 'Rhythm simplified: triplets and notes shorter than a sixteen
 const SHEET_LABEL = 'Sheet music. Arrow keys select a note, Enter plays from it.';
 /** Keys pressed here keep their own meaning: the title inputs, the pills and the alternate-fingering popover. */
 const OWN_KEYS = 'input, textarea, select, button, a, [role="dialog"]';
+/** While one of these is open, editing keys on the sheet do nothing. */
+const OPEN_LAYERS = '[role="dialog"], [role="menu"]';
+/** Letter keys in the order setLetter numbers them (0 = C … 6 = B). */
+const LETTERS = 'cdefgab';
 const MISSING = 'That sheet is no longer saved in this browser.';
 /** Sources that went through the import steps; a sheet opened from a file or the library did not. */
 const IMPORTED: Doc['source']['format'][] = ['MIDI', 'MusicXML', 'sample'];
@@ -128,22 +133,76 @@ function Sheet({ doc }: { doc: Doc }) {
     return to ? to.id : id;
   }
 
+  const barLabel = (ev: DerivedEvent) => (ev.bar + firstBar === 0 ? 'pickup bar' : `bar ${ev.bar + firstBar}`);
+
   function select(picked: string | null, byKeyboard = false) {
     const id = picked === null ? null : landing(picked, mode);
     setSelection(id);
     scrollToSelection.current = byKeyboard && id !== null;
     if (id === null) { setAnnouncement('Selection cleared'); return; }
     const ev = derived.byId[id];
-    const bar = ev.bar + firstBar === 0 ? 'pickup bar' : `bar ${ev.bar + firstBar}`;
-    setAnnouncement(`Selected: ${ev.rest ? 'rest' : ev.spelled.name}, ${bar}`);
+    setAnnouncement(`Selected: ${ev.rest ? 'rest' : ev.spelled.name}, ${barLabel(ev)}`);
   }
 
   useEffect(() => {
     if (!scrollToSelection.current || selectedId === null) return;
     scrollToSelection.current = false;
-    const el = paperRef.current?.querySelector(`[data-hit="${selectedId}"]`);
+    const paper = paperRef.current;
+    const el = paper?.querySelector(`[data-hit="${selectedId}"]`);
     el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    // A bar edit can move the panel to another system; the clicked button is gone, so the sheet takes the keys again.
+    if (paper && !paper.contains(document.activeElement)) paper.focus({ preventScroll: true });
   }, [selectedId]);
+
+  // Edits from the Edit notes panel and keys (design 4.3). The edited event is announced once the document has changed.
+  const announceEdit = useRef<string | null>(null);
+  useEffect(() => {
+    const id = announceEdit.current;
+    announceEdit.current = null;
+    const ev = id === null ? undefined : derived.byId[id];
+    if (ev) setAnnouncement(`${ev.rest ? 'rest' : ev.spelled.name}, ${lengthName(ev.d)}, ${barLabel(ev)}`);
+  }, [derived]);
+
+  function applyNoteEdit(next: Doc | null, selectId?: string) {
+    if (selectedId === null || !useApp.getState().applyEdit(next)) return;
+    if (selectId !== undefined) {
+      setSelection(selectId);
+      scrollToSelection.current = true;
+    }
+    announceEdit.current = selectId ?? selectedId;
+  }
+
+  /** The Edit notes keys; true when the key is one of them (handled, or doing nothing because its edit is disabled). */
+  function noteKey(e: KeyboardEvent<HTMLDivElement>): boolean {
+    if (mode !== 'notes' || selectedId === null || e.altKey || e.shiftKey || e.nativeEvent.isComposing) return false;
+    if (openAlt !== null || document.querySelector(OPEN_LAYERS)) return false;
+    const id = selectedId;
+    const octave = e.ctrlKey || e.metaKey;
+    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    let next: Doc | null;
+    if (key === 'ArrowUp' || key === 'ArrowDown') {
+      next = shiftPitch(doc, id, (key === 'ArrowUp' ? 1 : -1) * (octave ? 12 : 1));
+    } else if (octave) {
+      return false;
+    } else if (LETTERS.includes(key)) {
+      next = setLetter(doc, id, LETTERS.indexOf(key), 'nearest');
+    } else if (key >= '2' && key <= '6' && key.length === 1) {
+      next = setLength(doc, id, BASE_LENGTHS[Number(key) - 2]);
+    } else if (key === '.') {
+      next = toggleDotted(doc, id);
+    } else if (key === 'r') {
+      next = toggleRest(doc, id);
+    } else if (key === 't') {
+      next = toggleTie(doc, id);
+    } else if (key === 'Delete' || key === 'Backspace') {
+      next = derived.byId[id].rest ? null : toggleRest(doc, id);
+    } else {
+      return false;
+    }
+    e.preventDefault();
+    applyNoteEdit(next);
+    return true;
+  }
 
   function changeMode(m: Mode) {
     setMode(m);
@@ -160,6 +219,7 @@ function Sheet({ doc }: { doc: Doc }) {
 
   function onSheetKey(e: KeyboardEvent<HTMLDivElement>) {
     if (e.target instanceof Element && e.target.closest(OWN_KEYS)) return;
+    if (noteKey(e)) return;
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if (stops.length === 0) return;
     const at = selectedId === null ? -1 : derived.events.indexOf(derived.byId[selectedId]);
@@ -321,12 +381,16 @@ function Sheet({ doc }: { doc: Doc }) {
   }, [layout]);
 
   // The editing panel of the current mode, directly under the system that holds the selected event.
-  // Tasks 4–6 fill it; Esc closes it by clearing the selection.
+  // Tasks 5–6 fill the Lyrics and Chords panels; Esc closes a panel by clearing the selection.
   const renderUnderSystem = (systemIndex: number) => {
     const at = selectedId === null ? undefined : place.get(selectedId);
-    if (mode === 'view' || !at || at.system !== systemIndex) return null;
+    if (mode === 'view' || selectedId === null || !at || at.system !== systemIndex) return null;
     const left = Math.round(Math.max(0, Math.min(SHEET.systemWidth - PANEL_WIDTH, at.x - PANEL_WIDTH / 2)));
-    return <div role="group" aria-label={PANEL[mode]} className={s.panel} style={{ left }} />;
+    return (
+      <div role="group" aria-label={PANEL[mode]} className={s.panel} style={{ left }}>
+        {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
+      </div>
+    );
   };
 
   function onToolbarKey(e: KeyboardEvent<HTMLDivElement>) {
