@@ -66,7 +66,7 @@ export function createPlayer(): Player {
     playing = true;
     notify = onEvent;
 
-    function schedule(n: Schedule['notes'][number]) {
+    function schedule(n: Schedule['notes'][number], following: Schedule['notes'][number] | undefined) {
       const start = t0 + secs(n.start);
       const end = start + secs(n.dur);
       const osc = c.createOscillator();
@@ -87,12 +87,17 @@ export function createPlayer(): Player {
       osc.onended = () => { nodes = nodes.filter(x => x !== osc); };
       const delay = (t: number) => Math.max(0, (t - c.currentTime) * 1000);
       eventTimers.push(setTimeout(() => { if (playing) onEvent(n.evId); }, delay(start)));
-      eventTimers.push(setTimeout(() => { if (playing) onEvent(null); }, delay(end)));
+      // The last note's end is signalled by the song-end timer; a note that runs straight into the
+      // next one gets no null, so a late timer cannot clear the next note's highlight.
+      if (following && following.start > n.start + n.dur) {
+        eventTimers.push(setTimeout(() => { if (playing) onEvent(null); }, delay(end)));
+      }
     }
 
     function pump() {
       while (next < s.notes.length && t0 + secs(s.notes[next].start) < c.currentTime + LOOKAHEAD) {
-        schedule(s.notes[next++]);
+        schedule(s.notes[next], s.notes[next + 1]);
+        next++;
       }
       if (next >= s.notes.length && timer) { clearInterval(timer); timer = null; }
     }

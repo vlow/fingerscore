@@ -53,12 +53,24 @@ describe('playback schedule', () => {
 
   it('a tie cut by a jump ends at the bar line; the next bar restarts', () => {
     const d = mkDoc([
-      { rs: true, ev: [[60, 48]] },
-      { re: true, volta: '1', ev: [[62, 48, { tie: true }]] },
-      { volta: '2', ev: [[62, 48]] },
+      { rs: true, ev: [[60, 48, { tie: true }]] },
+      { re: true, volta: '1', ev: [[60, 48]] },
+      { volta: '2', ev: [[60, 48]] },
     ]);
     const s = buildSchedule(d);
-    expect(s.notes.map(n => [n.midi, n.dur])).toEqual([[60, 48], [62, 48], [60, 48], [62, 48]]);
+    // pass 1: bars 0 and 1 merge; pass 2: bar 0 stays alone, bar 2 starts a new note
+    expect(s.notes.map(n => [n.start, n.dur])).toEqual([[0, 96], [96, 48], [144, 48]]);
+  });
+
+  it('a tie out of the first-ending bar is cut by the jump back', () => {
+    const d = mkDoc([
+      { rs: true, ev: [[60, 48]] },
+      { re: true, volta: '1', ev: [[62, 48, { tie: true }]] },
+      { volta: '2', ev: [[64, 48]] },
+    ]);
+    d.score[0].ev[0].m = 62; // the jump target starts on the tied pitch
+    const s = buildSchedule(d);
+    expect(s.notes.map(n => [n.midi, n.start, n.dur])).toEqual([[62, 0, 48], [62, 48, 48], [62, 96, 48], [64, 144, 48]]);
   });
 
   it('a repeat without a start mark jumps back to bar 0', () => {
