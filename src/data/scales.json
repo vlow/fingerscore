@@ -1,0 +1,270 @@
+{
+ "_doc": "Scale definitions: deg = [semitones above tonic, scale degree index 0..6]. The degree index drives letter spelling (letter = tonic letter + degree). minor=true → key signature of the relative major (tonic+3). melodic minor descends as natural minor (down).",
+ "maj": {
+  "name": "major",
+  "minor": false,
+  "deg": [
+   [
+    0,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    4,
+    2
+   ],
+   [
+    5,
+    3
+   ],
+   [
+    7,
+    4
+   ],
+   [
+    9,
+    5
+   ],
+   [
+    11,
+    6
+   ]
+  ]
+ },
+ "nmin": {
+  "name": "natural minor",
+  "minor": true,
+  "deg": [
+   [
+    0,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    2
+   ],
+   [
+    5,
+    3
+   ],
+   [
+    7,
+    4
+   ],
+   [
+    8,
+    5
+   ],
+   [
+    10,
+    6
+   ]
+  ]
+ },
+ "hmin": {
+  "name": "harmonic minor",
+  "minor": true,
+  "deg": [
+   [
+    0,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    2
+   ],
+   [
+    5,
+    3
+   ],
+   [
+    7,
+    4
+   ],
+   [
+    8,
+    5
+   ],
+   [
+    11,
+    6
+   ]
+  ]
+ },
+ "mmin": {
+  "name": "melodic minor",
+  "minor": true,
+  "deg": [
+   [
+    0,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    2
+   ],
+   [
+    5,
+    3
+   ],
+   [
+    7,
+    4
+   ],
+   [
+    9,
+    5
+   ],
+   [
+    11,
+    6
+   ]
+  ],
+  "down": "nmin"
+ },
+ "pmaj": {
+  "name": "major pentatonic",
+  "minor": false,
+  "deg": [
+   [
+    0,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    4,
+    2
+   ],
+   [
+    7,
+    4
+   ],
+   [
+    9,
+    5
+   ]
+  ]
+ },
+ "pmin": {
+  "name": "minor pentatonic",
+  "minor": true,
+  "deg": [
+   [
+    0,
+    0
+   ],
+   [
+    3,
+    2
+   ],
+   [
+    5,
+    3
+   ],
+   [
+    7,
+    4
+   ],
+   [
+    10,
+    6
+   ]
+  ]
+ },
+ "blues": {
+  "name": "blues",
+  "minor": true,
+  "deg": [
+   [
+    0,
+    0
+   ],
+   [
+    3,
+    2
+   ],
+   [
+    5,
+    3
+   ],
+   [
+    6,
+    4
+   ],
+   [
+    7,
+    4
+   ],
+   [
+    10,
+    6
+   ]
+  ]
+ },
+ "chrom": {
+  "name": "chromatic",
+  "minor": false,
+  "chromatic": true,
+  "spelling": "sharps ascending (flats in flat keys), flats descending"
+ },
+ "majorTonicSpelling": [
+  "C",
+  "D♭",
+  "D",
+  "E♭",
+  "E",
+  "F",
+  "G♭",
+  "G",
+  "A♭",
+  "A",
+  "B♭",
+  "B"
+ ],
+ "minorTonicSpelling": [
+  "C",
+  "C♯",
+  "D",
+  "E♭",
+  "E",
+  "F",
+  "F♯",
+  "G",
+  "G♯",
+  "A",
+  "B♭",
+  "B"
+ ],
+ "keySignatureByMajorTonicPc": {
+  "0": 0,
+  "1": -5,
+  "2": 2,
+  "3": -3,
+  "4": 4,
+  "5": -1,
+  "6": -6,
+  "7": 1,
+  "8": -4,
+  "9": 3,
+  "10": -2,
+  "11": 5
+ }
+}
