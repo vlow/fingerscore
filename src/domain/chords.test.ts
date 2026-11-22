@@ -29,6 +29,10 @@ describe('chords', () => {
   it('fixture chords', () => {
     const d = sampleDoc('xc');
     expect(Object.keys(d.chords).length).toBeGreaterThan(0);
-    expect(d.chords[d.score[0].ev[0].id]).toMatchObject({ raw: 'Am', tk: 3 });
+    // Spelled in the original key (D major), like an import; the file's "Am" (F major) shows again 3 semitones up.
+    const first = d.chords[d.score[0].ev[0].id];
+    expect(first).toMatchObject({ raw: 'F♯m', tk: 0 });
+    expect(chordText(first, 3, -1)).toBe('Am');
+    expect(d.imported.chords[d.score[0].ev[0].id]).toBe('F♯m');
   });
 });

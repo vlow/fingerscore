@@ -1,0 +1,101 @@
+/* "Lyrics & chords" card body, after the prototype (Editor.dc.html, "Type or paste a verse"). */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.label {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.verse {
+  padding: 10px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.primary,
+.button,
+.small {
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  min-height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--teal);
+  color: #ffffff;
+  font-size: 13px;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--teal-hover);
+}
+
+.button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.edits {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted-2);
+  font-size: 12px;
+}
+
+.small {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.button:hover:not(:disabled),
+.small:hover:not(:disabled) {
+  background: var(--pagebar);
+}
+
+.verse:focus-visible,
+.primary:focus-visible,
+.button:focus-visible,
+.small:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.primary:disabled,
+.button:disabled,
+.small:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

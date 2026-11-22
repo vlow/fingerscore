@@ -18,9 +18,11 @@ import { listEntries } from '../state/library';
 import { canRedo, canUndo, saveStatus, useApp } from '../state/store';
 import AltFingeringPopover, { popoverWidth } from '../ui/AltFingeringPopover';
 import Banners from '../ui/Banners';
+import BulkCard from '../ui/BulkCard';
 import { downloadText } from '../ui/download';
 import FileMenu from '../ui/FileMenu';
 import KeyBridge from '../ui/KeyBridge';
+import LyricPanel from '../ui/LyricPanel';
 import { ModeSwitch, type Mode } from '../ui/ModeSwitch';
 import NotePanel, { lengthName, toggleDotted } from '../ui/NotePanel';
 import PageBar from '../ui/PageBar';
@@ -115,6 +117,8 @@ function Sheet({ doc }: { doc: Doc }) {
   // an id the document no longer has counts as no selection, and loading another sheet clears it.
   const [mode, setMode] = useState<Mode>('view');
   const [selection, setSelection] = useState<string | null>(null);
+  /** The event whose Lyric or Chord field takes focus: set by a click on the sheet and by Enter/Tab in the field. */
+  const [fieldFocus, setFieldFocus] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const selectedId = selection !== null && derived.byId[selection] ? selection : null;
   const paperRef = useRef<HTMLDivElement | null>(null);
@@ -138,6 +142,7 @@ function Sheet({ doc }: { doc: Doc }) {
   function select(picked: string | null, byKeyboard = false) {
     const id = picked === null ? null : landing(picked, mode);
     setSelection(id);
+    setFieldFocus(byKeyboard ? null : id);
     scrollToSelection.current = byKeyboard && id !== null;
     if (id === null) { setAnnouncement('Selection cleared'); return; }
     const ev = derived.byId[id];
@@ -206,7 +211,10 @@ function Sheet({ doc }: { doc: Doc }) {
 
   function changeMode(m: Mode) {
     setMode(m);
-    if (m === 'lyrics' && selectedId !== null && landing(selectedId, m) !== selectedId) select(landing(selectedId, m));
+    if (m === 'lyrics' && selectedId !== null && landing(selectedId, m) !== selectedId) {
+      select(landing(selectedId, m));
+      setFieldFocus(null);   // the mode switch keeps the focus
+    }
   }
 
   // Keyboard order: every event in score order. Edit notes and Chords mode include tied continuations
@@ -380,8 +388,22 @@ function Sheet({ doc }: { doc: Doc }) {
     return m;
   }, [layout]);
 
+  /** Enter or Tab in a panel's field: the selection moves and the field keeps the focus. */
+  function moveField(id: string) {
+    select(id, true);
+    setFieldFocus(id);
+  }
+
+  /** Esc in a panel's field clears the selection; the sheet takes the keys again. */
+  function closePanel() {
+    select(null);
+    paperRef.current?.focus({ preventScroll: true });
+  }
+
+  const applyTextEdit = (next: Doc | null, coalesceKey?: string) => { useApp.getState().applyEdit(next, coalesceKey); };
+
   // The editing panel of the current mode, directly under the system that holds the selected event.
-  // Tasks 5–6 fill the Lyrics and Chords panels; Esc closes a panel by clearing the selection.
+  // Esc closes a panel by clearing the selection.
   const renderUnderSystem = (systemIndex: number) => {
     const at = selectedId === null ? undefined : place.get(selectedId);
     if (mode === 'view' || selectedId === null || !at || at.system !== systemIndex) return null;
@@ -389,6 +411,9 @@ function Sheet({ doc }: { doc: Doc }) {
     return (
       <div role="group" aria-label={PANEL[mode]} className={s.panel} style={{ left }}>
         {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
+        {mode === 'lyrics' && (
+          <LyricPanel doc={doc} id={selectedId} focus={fieldFocus === selectedId} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} />
+        )}
       </div>
     );
   };
@@ -499,6 +524,10 @@ function Sheet({ doc }: { doc: Doc }) {
 
           <Card heading={<h2 id="range-h" className={s.cardTitle}>Range check</h2>} labelledBy="range-h">
             <RangeMeter derived={derived} />
+          </Card>
+
+          <Card heading={<h2 id="text-h" className={s.cardTitle}>Lyrics &amp; chords</h2>} labelledBy="text-h">
+            <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
           </Card>
 
           <Card heading={<h2 id="show-h" className={s.cardTitle}>Show on sheet</h2>} labelledBy="show-h">
