@@ -206,7 +206,8 @@ function Sheet({ doc }: { doc: Doc }) {
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+      // e.code covers layouts whose S key types another letter (Cyrillic, Greek, …).
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key.toLowerCase() === 's' || e.code === 'KeyS')) {
         e.preventDefault();
         save();
       }

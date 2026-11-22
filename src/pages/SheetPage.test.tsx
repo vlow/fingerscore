@@ -256,6 +256,15 @@ describe('save and the File menu', () => {
     expect(listEntries()).toHaveLength(1);
   });
 
+  it('Ctrl+S saves on a non-Latin keyboard layout (matched by key code)', () => {
+    open('asax');
+    const e = new KeyboardEvent('keydown', { key: 'ы', code: 'KeyS', ctrlKey: true, bubbles: true, cancelable: true });
+    act(() => { window.dispatchEvent(e); });
+    expect(e.defaultPrevented).toBe(true);
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(listEntries()).toHaveLength(1);
+  });
+
   it('a failed save shows the storage message', async () => {
     open('asax');
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
