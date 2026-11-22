@@ -1,0 +1,177 @@
+import { Fragment, type ReactNode } from 'react';
+import type { Derived, DerivedEvent } from '../domain/derive';
+import { barCap } from '../domain/time';
+import type { Doc } from '../domain/types';
+import { Glyph, TimeSigDigits } from './Glyph';
+import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout } from './layout';
+import { FONT, INK, NoteView, STEM, stemUp, yOfPos } from './NoteView';
+import styles from './Paper.module.css';
+
+const STAFF = '#2A2D33';
+const MUTED = '#5B616E';
+const { staffTop, staffBottom } = SHEET;
+const STAFF_H = staffBottom - staffTop + 1;
+const DOT_YS = [90, 100];                       // repeat dots sit in the two middle spaces
+const SHARP_POS = [8, 5, 9, 6, 3, 7, 4];        // key-signature staff positions, prototype order
+const FLAT_POS = [4, 7, 3, 6, 2, 5, 1];
+
+export type UnderChart = (ev: DerivedEvent, x: number, y: number, systemIndex: number, lastSystem: boolean) => ReactNode;
+
+export interface TieSegment { x1: number; x2: number; y: number; below: boolean }
+
+/** Right end of a system's staff: the end of its last bar. */
+function systemEnd(s: SystemLayout): number {
+  const last = s.bars[s.bars.length - 1];
+  return last ? last.x + last.width : s.headerWidth;
+}
+
+/** Tie arcs per system; a tie into the next system is drawn as two halves (prototype geometry). */
+export function tieSegments(d: Derived, layout: SheetLayout): TieSegment[][] {
+  const placed = new Map<string, { x: number; y: number; system: SystemLayout }>();
+  for (const system of layout.systems) for (const bar of system.bars) for (const e of bar.events) placed.set(e.id, { ...e, system });
+  const out: TieSegment[][] = layout.systems.map(() => []);
+  d.events.forEach((ev, i) => {
+    const next = d.events[i + 1];
+    if (!ev.tieTo || !next || next.rest) return;
+    const a = placed.get(ev.id);
+    const b = placed.get(next.id);
+    if (!a || !b) return;
+    const below = stemUp(ev);
+    const yA = below ? a.y + 5 : a.y - 12;
+    if (a.system === b.system) {
+      out[a.system.index].push({ x1: a.x + 6, x2: a.x + 6 + Math.max(6, b.x - a.x - 12), y: yA, below });
+      return;
+    }
+    out[a.system.index].push({ x1: a.x + 6, x2: a.x + 6 + Math.max(6, systemEnd(a.system) - a.x - 8), y: yA, below });
+    const start = b.system.headerWidth - 4;
+    out[b.system.index].push({ x1: start, x2: start + Math.max(6, b.x - b.system.headerWidth - 2), y: below ? b.y + 5 : b.y - 12, below });
+  });
+  return out;
+}
+
+function Tie(p: TieSegment) {
+  const rx = (p.x2 - p.x1) / 2;
+  const d = p.below
+    ? `M${p.x1} ${p.y + 2}A${rx} 5 0 0 0 ${p.x2} ${p.y + 2}`
+    : `M${p.x1} ${p.y + 5}A${rx} 5 0 0 1 ${p.x2} ${p.y + 5}`;
+  return <path data-tie="" d={d} fill="none" stroke={INK} strokeWidth={1.5} />;
+}
+
+const line = (x: number, w: number) => <rect x={x} y={staffTop} width={w} height={STAFF_H} fill={INK} />;
+const dots = (x: number) => DOT_YS.map(y => <circle key={y} cx={x} cy={y} r={2} fill={INK} />);
+
+function Barlines(p: { bar: BarLayout; doc: Doc }) {
+  const b = p.doc.score[p.bar.bar];
+  const x0 = p.bar.x;
+  const x1 = x0 + p.bar.width;
+  const last = p.bar.bar === p.doc.score.length - 1;
+  return (
+    <>
+      {b.rs && <g data-repeat="start">{line(x0 - 1, 4)}{line(x0 + 6, 1)}{dots(x0 + 12)}</g>}
+      {b.re ? <g data-repeat="end">{dots(x1 - 13)}{line(x1 - 9, 1)}{line(x1 - 4, 4)}</g>
+        : last ? <g data-final="">{line(x1 - 9, 1)}{line(x1 - 4, 4)}</g>
+          : line(x1 - 1, 1)}
+      {b.volta !== '' && (
+        <g data-volta="">
+          <path d={`M${x0 + 2.5} ${SHEET.voltaY + 14}V${SHEET.voltaY + 0.5}H${x0 + p.bar.width - 10}`} fill="none" stroke={INK} strokeWidth={1} />
+          <text x={x0 + 7} y={SHEET.voltaY + 11} fontSize={11} fontWeight={700} fontFamily={FONT} fill={INK}>{b.volta}.</text>
+        </g>
+      )}
+    </>
+  );
+}
+
+interface Placed { ev: DerivedEvent; x: number; y: number }
+
+/** Horizontal beams over a group's stems; direction by the group's average staff position. */
+function Beams(p: { group: BeamGroup; notes: Placed[] }) {
+  const { notes } = p;
+  const up = notes.reduce((s, n) => s + n.ev.pos, 0) / notes.length < 4;
+  const ys = notes.map(n => n.y);
+  const tip = up ? Math.min(...ys) - 30 : Math.max(...ys) + 30;
+  const sx = (n: Placed) => n.x + (up ? STEM.upDx : STEM.downDx);
+  const level = (k: number) => (up ? tip + 6 * k : tip - 4 - 6 * k);
+  const beam = (from: number, to: number, k: number, key: string, attr: object = { 'data-beam': '' }) => (
+    <rect key={key} {...attr} x={from} y={level(k)} width={to - from} height={4} fill={INK} />
+  );
+  const span = (i: number, j: number, k: number) => beam(sx(notes[i]), sx(notes[j]) + STEM.width, k, `${k}-${i}`);
+
+  const second: JSX.Element[] = [];
+  if (p.group.beams === 2) second.push(span(0, notes.length - 1, 1));
+  if (p.group.beams === 'mixed') {
+    // second beam over each run of sixteenths; a lone sixteenth gets a stub towards its neighbour
+    for (let i = 0; i < notes.length; i++) {
+      if (notes[i].ev.d !== 3) continue;
+      let j = i;
+      while (j + 1 < notes.length && notes[j + 1].ev.d === 3) j++;
+      if (j > i) second.push(span(i, j, 1));
+      else {
+        const x = sx(notes[i]);
+        const left = i === notes.length - 1;
+        second.push(beam(left ? x - 8 : x, left ? x + STEM.width : x + 8, 1, `stub-${i}`, { 'data-beam-stub': '' }));
+      }
+      i = j;
+    }
+  }
+  return (
+    <g data-beam-group="">
+      {notes.map(n => (
+        <rect key={n.ev.id} data-stem="" x={sx(n)} y={up ? tip : n.y} width={STEM.width} height={Math.abs(n.y - tip)} fill={INK} />
+      ))}
+      {span(0, notes.length - 1, 0)}
+      {second}
+    </g>
+  );
+}
+
+export interface SystemViewProps {
+  doc: Doc; derived: Derived; system: SystemLayout; beams: BeamGroup[]; ties: TieSegment[];
+  playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
+}
+
+/** One system: staff, header, bars, notes, beams, ties, and the slot under each chart. */
+export function SystemView(p: SystemViewProps): JSX.Element {
+  const { doc, derived, system } = p;
+  const end = systemEnd(system);
+  const nAcc = Math.abs(derived.sig);
+  const accPos = derived.sig > 0 ? SHARP_POS : FLAT_POS;
+  const placed: Placed[] = system.bars.flatMap(bar => bar.events.map(e => ({ ev: derived.byId[e.id], x: e.x, y: e.y })));
+  const byId = new Map(placed.map(n => [n.ev.id, n]));
+  const groups = p.beams.filter(g => byId.has(g.ids[0]));
+  const beamed = new Set(groups.flatMap(g => g.ids));
+  const full = barCap(doc.timeSig);
+  const fullBarRest = (bar: BarLayout) => {
+    const evs = doc.score[bar.bar].ev;
+    return evs.length === 1 && evs[0].r && evs[0].d === full && doc.score[bar.bar].cap === full;
+  };
+  const charted = (ev: DerivedEvent) => doc.show.fingerings && !ev.rest && !ev.tiedFrom && ev.options.length > 0;
+  const under = p.renderUnderChart;
+
+  return (
+    <div className={styles.system}>
+      <svg data-testid="system" width={SHEET.systemWidth} height={SHEET.systemHeight}
+        viewBox={`0 0 ${SHEET.systemWidth} ${SHEET.systemHeight}`} aria-hidden="true">
+        {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={STAFF} />)}
+        <Glyph name="trebleClef" x={0} y={staffBottom} />
+        {Array.from({ length: nAcc }, (_, k) => (
+          <Glyph key={k} name={derived.sig > 0 ? 'sharp' : 'flat'} x={HEADER.clef + k * HEADER.accidental} y={yOfPos(accPos[k])} />
+        ))}
+        {system.showTimeSig && <TimeSigDigits ts={doc.timeSig} x={HEADER.clef + nAcc * HEADER.accidental + HEADER.timeSig / 2} y={staffBottom} />}
+        {system.barNumber !== null && (
+          <text data-bar-number="" x={0} y={65} fontSize={11} fontFamily={FONT} fill={MUTED}>{system.barNumber}</text>
+        )}
+        {line(0, 1)}
+        {system.bars.map(bar => <Barlines key={bar.bar} bar={bar} doc={doc} />)}
+        {system.bars.map(bar => bar.events.map(e => (
+          <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} inst={derived.inst} chartStyle={doc.chartStyle}
+            show={doc.show} playing={p.playingId === e.id} beamed={beamed.has(e.id)} fullBarRest={fullBarRest(bar)} />
+        )))}
+        {groups.map(g => <Beams key={g.ids[0]} group={g} notes={g.ids.map(id => byId.get(id)!)} />)}
+        {p.ties.map((t, i) => <Tie key={i} {...t} />)}
+      </svg>
+      {under && placed.filter(n => charted(n.ev)).map(n => (
+        <Fragment key={n.ev.id}>{under(n.ev, n.x, SHEET.chartY + SHEET.altButtonDy, system.index, p.lastSystem)}</Fragment>
+      ))}
+    </div>
+  );
+}

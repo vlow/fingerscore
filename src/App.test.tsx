@@ -16,3 +16,13 @@ it('renders the shell on every route', () => {
   ).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Imprint' })).toBeNull(); // version 2
 });
+
+it('dev build: /dev/sheet previews the renderer for the fixture', async () => {
+  render(
+    <MemoryRouter initialEntries={['/dev/sheet?inst=asax&shift=0']}>
+      <App />
+    </MemoryRouter>,
+  );
+  expect(await screen.findByTestId('paper')).toBeInTheDocument();
+  expect(screen.getByText(/you read B major · sounds D major/)).toBeInTheDocument();
+});
