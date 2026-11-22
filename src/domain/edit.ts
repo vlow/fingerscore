@@ -224,6 +224,7 @@ export function toggleTie(doc: Doc, id: string): Doc | null {
 
 /** Inserts a bar of the song's meter holding one whole-bar rest after the given bar, and selects that rest. */
 export function addBarAfter(doc: Doc, barIndex: number): { doc: Doc; selectId: string } {
+  if (!Number.isInteger(barIndex) || barIndex < 0 || barIndex >= doc.score.length) throw new RangeError(`No bar ${barIndex}`);
   const prev = doc.score[barIndex];
   const lastId = prev && prev.ev.length > 0 ? prev.ev[prev.ev.length - 1].id : undefined;
   const cap = barCap(doc.timeSig);

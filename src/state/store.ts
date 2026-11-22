@@ -3,7 +3,7 @@ import { inst, ORDER } from '../domain/instruments';
 import { DEFAULT_PREFS, rankShifts, scoringPitches, type Prefs } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
 import type { ParsedSong } from '../import/types';
-import { canonical } from '../domain/persistence';
+import { canonical, validateDoc } from '../domain/persistence';
 import { getEntry, saveEntry } from './library';
 import { readJSON, remove, writeJSON } from './storage';
 
@@ -72,6 +72,15 @@ export type ImportResult = { saved: true } | { saved: false; message: string };
 export function saveStatus(s: Pick<AppState, 'doc' | 'libraryId' | 'savedSnapshot'>): SaveStatus {
   if (!s.libraryId || !s.doc) return 'new';
   return canonical(s.doc) === s.savedSnapshot ? 'saved' : 'dirty';
+}
+
+/** True when every patched field already has that value (show compared flag by flag). */
+function samePatch(doc: Doc, p: Partial<Doc>): boolean {
+  return (Object.keys(p) as (keyof Doc)[]).every(k => {
+    if (k !== 'show') return p[k] === doc[k];
+    const show = p.show!;
+    return (Object.keys(show) as (keyof Doc['show'])[]).every(f => show[f] === doc.show[f]);
+  });
 }
 
 /** The sheet as opened from storage: it is no parsed song any more. */
@@ -193,7 +202,7 @@ export const useApp = create<AppState>()((set, get) => {
     setInstrument(id) {
       writeJSON('local', KEY_INST, id);
       const { doc, prefs } = get();
-      if (!doc) { set({ instId: id }); return; }
+      if (!doc || doc.inst === id) { set({ instId: id }); return; }
       commit(changed(doc, { inst: id, shift: bestShift(doc, id, prefs) }), undefined, { instId: id });
     },
 
@@ -207,8 +216,9 @@ export const useApp = create<AppState>()((set, get) => {
       const prefs = { ...prev.prefs, ...p };
       writeJSON('local', KEY_PREFS, prefs);
       const { doc } = prev;
-      if (doc && doc.shift === bestShift(doc, doc.inst, prev.prefs)) {
-        commit(changed(doc, { shift: bestShift(doc, doc.inst, prefs) }), undefined, { prefs });
+      const repicked = doc && doc.shift === bestShift(doc, doc.inst, prev.prefs) ? bestShift(doc, doc.inst, prefs) : null;
+      if (doc && repicked !== null && repicked !== doc.shift) {
+        commit(changed(doc, { shift: repicked }), undefined, { prefs });
       } else {
         set({ prefs });
       }
@@ -229,17 +239,18 @@ export const useApp = create<AppState>()((set, get) => {
       const { doc } = get();
       if (!doc || !Number.isFinite(shift)) return;
       const clamped = Math.max(-24, Math.min(24, Math.round(shift)));
+      if (clamped === doc.shift) return;
       commit(changed(doc, { shift: clamped }));
     },
 
     patchDoc(p, coalesceKey) {
       const { doc } = get();
-      if (doc) commit(changed(doc, p), coalesceKey);
+      if (doc && !samePatch(doc, p)) commit(changed(doc, p), coalesceKey);
     },
 
     setFingering(evId, index) {
       const { doc } = get();
-      if (!doc) return;
+      if (!doc || (index === null ? !(evId in doc.fingering) : doc.fingering[evId] === index)) return;
       const fingering = { ...doc.fingering };
       if (index === null) delete fingering[evId];
       else fingering[evId] = index;
@@ -248,7 +259,7 @@ export const useApp = create<AppState>()((set, get) => {
 
     resetFingerings() {
       const { doc } = get();
-      if (doc) commit({ ...doc, fingering: {} });
+      if (doc && Object.keys(doc.fingering).length > 0) commit({ ...doc, fingering: {} });
     },
   };
 });
@@ -267,9 +278,12 @@ useApp.subscribe((state, prev) => {
   }
 });
 
-function isDoc(v: unknown): v is Doc {
-  const d = v as Doc | null;
-  return !!d && typeof d === 'object' && Array.isArray(d.score) && ORDER.includes(d.inst) && typeof d.shift === 'number';
+/** A stored session document, validated like a sheet file; its source is kept as stored. Null when damaged. */
+function sessionDoc(v: unknown): Doc | null {
+  const doc = validateDoc(v);
+  if (!doc) return null;
+  const source = (v as { source?: unknown }).source;
+  return typeof source === 'object' && source !== null ? { ...doc, source: source as Doc['source'] } : doc;
 }
 
 function isSong(v: unknown): v is ParsedSong {
@@ -281,7 +295,9 @@ export function hydrate(): void {
   const storedInst = readJSON<InstId>('local', KEY_INST);
   const storedPrefs = readJSON<Partial<Prefs>>('local', KEY_PREFS);
   const song = readJSON<unknown>('session', KEY_SONG);
-  const doc = readJSON<unknown>('session', KEY_DOC);
+  const stored = readJSON<unknown>('session', KEY_DOC);
+  const doc = stored === null ? null : sessionDoc(stored);
+  if (stored !== null && !doc) { remove('session', KEY_DOC); remove('session', KEY_SHEET); }
   const sheet = readJSON<{ libraryId?: unknown; savedSnapshot?: unknown }>('session', KEY_SHEET);
   const patch: Partial<AppState> = {};
   if (storedInst && ORDER.includes(storedInst)) patch.instId = storedInst;
@@ -292,7 +308,7 @@ export function hydrate(): void {
     };
   }
   if (isSong(song)) patch.song = song;
-  if (isDoc(doc)) {
+  if (doc) {
     patch.doc = doc; patch.instId = doc.inst;
     if (sheet && typeof sheet.libraryId === 'string' && typeof sheet.savedSnapshot === 'string') {
       patch.libraryId = sheet.libraryId; patch.savedSnapshot = sheet.savedSnapshot;

@@ -157,7 +157,34 @@ describe('pitches, rests and ties', () => {
   });
 });
 
+describe('minor keys and compound meter', () => {
+  it('letters in a minor key use its signature', () => {
+    // E minor (one sharp, F♯) on a flute: written = concert
+    const d = { ...mkDoc([{ ev: [[64, 48]] }]), inst: 'fl' as const, originalTonicPc: 4, originalMode: 'minor' as const, shift: 0 };
+    const id = d.score[0].ev[0].id;
+    expect(ok(setLetter(d, id, 3, 'nearest')).score[0].ev[0].m).toBe(66);   // F → F♯4, 2 above E4
+    expect(ok(setLetter(d, id, 2, 'nearest')).score[0].ev[0].m).toBe(64);   // E → E4 itself
+    // D minor (one flat, B♭): B → B♭
+    const dm = { ...d, originalTonicPc: 2 };
+    expect(ok(setLetter(dm, id, 6, 'nearest')).score[0].ev[0].m).toBe(70);  // B♭4, 6 above E4 (B♭3 is unplayable)
+  });
+  it('lengths inside a 6/8 bar', () => {
+    const d = mkDoc([{ ev: [[60, 18], [62, 6], [64, 6], [65, 6]] }], [6, 8]); const [a, , , last] = d.score[0].ev;
+    expect(d.score[0].cap).toBe(36);
+    expect(shape(ok(setLength(d, a.id, 24)))).toEqual(['n24', 'n6', 'n6']);
+    expect(shape(ok(setLength(d, a.id, 36)))).toEqual(['n36']);
+    expect(fits(d, a.id, 48)).toBe(false); expect(setLength(d, a.id, 48)).toBeNull();
+    expect(shape(ok(setLength(d, a.id, 6)))).toEqual(['n6', 'r12', 'n6', 'n6', 'n6']);
+    expect(fits(d, last.id, 9)).toBe(false); expect(fits(d, last.id, 3)).toBe(true);
+  });
+});
+
 describe('bars', () => {
+  it('addBarAfter refuses a bar index that does not exist', () => {
+    const d = mkDoc([{ ev: [[60, 48]] }]);
+    expect(() => addBarAfter(d, 1)).toThrow(RangeError); expect(() => addBarAfter(d, -1)).toThrow(RangeError);
+    expect(() => addBarAfter(d, 0.5)).toThrow(RangeError);
+  });
   it('bars: add and remove', () => {
     const d = mkDoc([{ ev: [[60, 48]], rs: true }, { ev: [[62, 48]], re: true, volta: '1' }]);
     const a = addBarAfter(d, 0); expect(a.doc.score.map(b => [b.rs, b.re, b.volta])).toEqual([[true, false, ''], [false, false, ''], [false, true, '1']]);

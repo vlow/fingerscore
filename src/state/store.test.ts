@@ -136,12 +136,12 @@ describe('store', () => {
   it('every mutation returns a new doc object', () => {
     useApp.getState().setDoc(sampleDoc('asax'));
     const steps: (() => void)[] = [
+      () => useApp.getState().setPrefs({ easyRegister: false, fewAccidentals: false }),   // moves the best shift (see above)
       () => useApp.getState().setShift(3),
       () => useApp.getState().patchDoc({ title: 'X' }),
       () => useApp.getState().setFingering('e1', 2),
       () => useApp.getState().resetFingerings(),
       () => useApp.getState().setInstrument('fl'),
-      () => useApp.getState().setPrefs({ easyRegister: false }),
     ];
     for (const step of steps) {
       const before = useApp.getState().doc;
@@ -428,8 +428,8 @@ describe('history', () => {
   });
   it('every document action is undoable', () => {
     const s = useApp.getState; s().setDoc(sampleDoc('asax'));
-    const steps = [() => s().setShift(3), () => s().patchDoc({ title: 'X' }), () => s().setFingering('e1', 2), () => s().resetFingerings(),
-      () => s().setInstrument('fl'), () => s().setPrefs({ easyRegister: false })];
+    const steps = [() => s().setPrefs({ easyRegister: false, fewAccidentals: false }), () => s().setShift(3), () => s().patchDoc({ title: 'X' }), () => s().setFingering('e1', 2), () => s().resetFingerings(),
+      () => s().setInstrument('fl')];
     steps.forEach((step, k) => { step(); expect(s().past).toHaveLength(k + 1); });
   });
   it('coalesces changes to one field within 1.5 s (review focus 4)', () => {
@@ -468,5 +468,61 @@ describe('history', () => {
     const s = useApp.getState; s().setDoc(sampleDoc('fl')); s().patchDoc({ tempo: 90 });
     expect(Object.keys(sessionStorage).join() + Object.keys(localStorage).join()).not.toMatch(/past|future|history/i);
     useApp.setState({ doc: null, past: [], future: [] }); hydrate(); expect(useApp.getState().past).toEqual([]);
+  });
+});
+
+describe('no empty undo steps', () => {
+  /** Makes one real change, undoes it, runs the action, and checks that neither stack moved. */
+  function expectNoStep(prepare: () => void, action: () => void) {
+    const s = useApp.getState; prepare();
+    s().patchDoc({ title: 'step' }); s().undo();
+    const { doc, past, future } = s();
+    action();
+    expect(s().doc).toBe(doc); expect(s().past).toBe(past); expect(s().future).toBe(future); expect(future).toHaveLength(1);
+  }
+  const open = (patch: Partial<ReturnType<typeof sampleDoc>> = {}) => () => useApp.getState().setDoc({ ...sampleDoc('asax'), ...patch });
+
+  it('patchDoc with the current values', () => {
+    const d = sampleDoc('asax');
+    expectNoStep(open(), () => useApp.getState().patchDoc({ tempo: d.tempo, title: d.title, show: { ...d.show } }));
+  });
+  it('patchDoc with a changed show flag is a step', () => {
+    const s = useApp.getState; s().setDoc(sampleDoc('asax')); s().patchDoc({ show: { ...s().doc!.show, lyrics: false } }); expect(s().past).toHaveLength(1);
+  });
+  it('setFingering with the current value, or removing an absent one', () => {
+    expectNoStep(open({ fingering: { e1: 0 } }), () => { useApp.getState().setFingering('e1', 0); useApp.getState().setFingering('e2', null); });
+  });
+  it('resetFingerings without overrides', () => { expectNoStep(open(), () => useApp.getState().resetFingerings()); });
+  it('setInstrument with the current instrument', () => { expectNoStep(open(), () => useApp.getState().setInstrument('asax')); });
+  it('setShift to the current shift', () => { expectNoStep(open(), () => useApp.getState().setShift(useApp.getState().doc!.shift)); });
+  it('setPrefs that re-picks the same shift updates prefs only', () => {
+    expectNoStep(open(), () => useApp.getState().setPrefs({ easyRegister: DEFAULT_PREFS.easyRegister }));
+    expect(useApp.getState().prefs).toEqual(DEFAULT_PREFS);
+  });
+});
+
+describe('session document on load', () => {
+  it('a stored document without imported maps and with stray c fields hydrates with empty maps and can be edited', () => {
+    const stored: any = JSON.parse(JSON.stringify(sampleDoc('asax')));
+    delete stored.imported;
+    for (const bar of stored.score) for (const e of bar.ev) e.c = 'C';
+    sessionStorage.setItem('fingerscore.doc', JSON.stringify(stored));
+    hydrate();
+    const doc = useApp.getState().doc!;
+    expect(doc.imported).toEqual({ lyrics: {}, chords: {} });
+    expect('c' in doc.score[0].ev[0]).toBe(false);
+    expect(doc.source).toEqual(stored.source);
+    expect(useApp.getState().applyEdit(removeBar(doc, 2)!.doc)).toBe(true);
+  });
+  it('a stored document that fails validation hydrates to no document and drops the sheet link', () => {
+    const stored: any = JSON.parse(JSON.stringify(sampleDoc('asax')));
+    stored.score[1].ev[0].d = 5;
+    sessionStorage.setItem('fingerscore.doc', JSON.stringify(stored));
+    sessionStorage.setItem('fingerscore.sheet', JSON.stringify({ libraryId: 'x', savedSnapshot: 'y' }));
+    hydrate();
+    expect(useApp.getState().doc).toBeNull();
+    expect(useApp.getState().libraryId).toBeNull();
+    expect(sessionStorage.getItem('fingerscore.doc')).toBeNull();
+    expect(sessionStorage.getItem('fingerscore.sheet')).toBeNull();
   });
 });
