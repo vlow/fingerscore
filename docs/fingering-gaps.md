@@ -27,7 +27,7 @@ Nothing. Every note inside the normal range has a fingering, and `OWNER_PENDING`
 
 | Kind | Sources | Notes with a fingering | Alternates | Gaps | Reviewed |
 |---|---|---|---|---|---|
-| Xaphoon | official Xaphoon chart; "The Water Is Wide" songbook page | 25 (C4–C6) | 1 | 0 | no |
+| Xaphoon | official Xaphoon chart; "The Water Is Wide" songbook page | 25 (C4–C6) | 1 | 0 | yes, by the owner on 2026-11-22 |
 | Saxophone | WFG saxophone charts; Sax Teacher UK basic and altissimo charts | 39 (B♭3–C7, alto altissimo; soprano, tenor, baritone via overrides) | 62 in the alto table; soprano, tenor and baritone carry their own lists for E6–C7 | 3 (all altissimo) | no |
 | Clarinet | WFG Boehm clarinet charts; Tomplay clarinet chart; Sax Teacher UK clarinet chart | 45 (E3–C7) | 16 | 0 | no |
 | Flute, piccolo, alto flute | WFG flute and piccolo chart; Tomplay flute chart; Sax Teacher UK flute chart; flutetunes.com; Yamaha flute chart; *Flute For Dummies* chart | 37 (C4–C7) | 5 | 0 | no |

@@ -91,7 +91,10 @@ it('override wins over the kind table', async () => {
   }
 });
 
-it('legend carries the draft suffix until reviewed', () => { expect(legend('xc')).toMatch(/ · fingering data: draft$/); });
+it('legend carries the draft suffix until reviewed', () => {
+  expect(legend('asax')).toMatch(/ · fingering data: draft$/);
+  expect(legend('xc')).not.toMatch(/draft/);          // signed off by the owner on 2026-11-22
+});
 
 it('satellite keys exist for sax, clarinet and flute only', () => {
   expect(['xaph', 'sax', 'cl', 'fl', 'rec'].filter(k => hasSatellites(k as 'sax'))).toEqual(['sax', 'cl', 'fl']);

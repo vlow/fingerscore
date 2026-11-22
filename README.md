@@ -57,11 +57,11 @@ The app uses real paths (`/tracks`, `/sheet`). The server must serve `index.html
 
 Every fingering comes from published charts. Where charts print different fingerings for a note, the first is the standard one and the others are offered as alternates, unless the evidence shows a variant is probably wrong. Where no fingering is sourced, the app shows no chart for that note. It never guesses.
 
-No owner has reviewed any table yet.
+The owner has reviewed the Xaphoon table. The other tables are drafts until a player of that instrument has reviewed them; the sheet's legend says so.
 
 | Kind | Sources | Reviewed |
 |---|---|---|
-| Xaphoon | Official Xaphoon chart; "The Water Is Wide" songbook page | no |
+| Xaphoon | Official Xaphoon chart; "The Water Is Wide" songbook page; Xaphoon handbook | yes (owner, 2026-11-22) |
 | Saxophone | The Woodwind Fingering Guide; Sax Teacher UK saxophone and altissimo charts | no |
 | Clarinet | The Woodwind Fingering Guide; Tomplay clarinet chart; Sax Teacher UK clarinet chart | no |
 | Flute, piccolo, alto flute | The Woodwind Fingering Guide; Tomplay flute chart; Sax Teacher UK flute chart; flutetunes.com; Yamaha flute chart; *Flute For Dummies* chart | no |
