@@ -5,7 +5,7 @@ import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
 import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout } from './layout';
 import { placeLyrics, type LyricItem } from './lyrics';
-import { CHORD_FONT_PX, FONT, INK, NoteView, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
+import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, INK, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
 
 const STAFF = '#2A2D33';
@@ -88,6 +88,23 @@ function Barlines(p: { bar: BarLayout; doc: Doc }) {
 
 interface Placed { ev: DerivedEvent; x: number; y: number }
 
+/** Smallest hit area, so short notes stay an easy target. */
+const MIN_HIT = 16;
+
+/**
+ * Click columns for one bar's events: each reaches halfway to its neighbours, the first and last
+ * to the bar's edges, so the columns tile the bar without overlapping. A column narrower than
+ * MIN_HIT is widened around the event.
+ */
+export function hitColumns(bar: BarLayout): { id: string; x: number; width: number }[] {
+  const evs = bar.events;
+  return evs.map((e, j) => {
+    const left = j === 0 ? bar.x : (evs[j - 1].x + e.x) / 2;
+    const right = j === evs.length - 1 ? bar.x + bar.width : (e.x + evs[j + 1].x) / 2;
+    return right - left >= MIN_HIT ? { id: e.id, x: left, width: right - left } : { id: e.id, x: e.x - MIN_HIT / 2, width: MIN_HIT };
+  });
+}
+
 /** Horizontal beams over a group's stems; direction by the group's average staff position. */
 function Beams(p: { group: BeamGroup; notes: Placed[] }) {
   const { notes } = p;
@@ -132,6 +149,7 @@ function Beams(p: { group: BeamGroup; notes: Placed[] }) {
 export interface SystemViewProps {
   doc: Doc; derived: Derived; system: SystemLayout; beams: BeamGroup[]; ties: TieSegment[];
   playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
+  selectedId: string | null; onSelect(id: string | null): void;
 }
 
 /** One system: staff, header, bars, notes, beams, ties, and the slot under each chart. */
@@ -154,12 +172,16 @@ export function SystemView(p: SystemViewProps): JSX.Element {
   const band = (items: LyricItem[], fontPx?: number) =>
     new Map<string, TextSpot>(placeLyrics(items, 0, end, fontPx).map(({ id, ...spot }) => [id, spot]));
   const lyrics = band(doc.show.lyrics ? placed.filter(n => !n.ev.rest && n.ev.lyric !== '').map(n => ({ id: n.ev.id, x: n.x, text: n.ev.lyric })) : []);
+  const columns = system.bars.flatMap(hitColumns);
+  const selectedColumn = columns.find(c => c.id === p.selectedId);
+  const selectedPlaced = selectedColumn && byId.get(selectedColumn.id);
   const chords = band(doc.show.chords ? placed.filter(n => n.ev.chord !== null).map(n => ({ id: n.ev.id, x: n.x, text: n.ev.chord! })) : [], CHORD_FONT_PX);
 
   return (
     <div className={styles.system}>
       <svg data-testid="system" width={SHEET.systemWidth} height={SHEET.systemHeight}
         viewBox={`0 0 ${SHEET.systemWidth} ${SHEET.systemHeight}`} aria-hidden="true">
+        {selectedColumn && selectedPlaced && <SelectedMarker x={selectedPlaced.x} columnWidth={selectedColumn.width} />}
         {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={STAFF} />)}
         <Glyph name="trebleClef" x={HEADER.clefInset} y={staffBottom} />
         {Array.from({ length: nAcc }, (_, k) => (
@@ -173,10 +195,15 @@ export function SystemView(p: SystemViewProps): JSX.Element {
         {system.bars.map(bar => <Barlines key={bar.bar} bar={bar} doc={doc} />)}
         {system.bars.map(bar => bar.events.map(e => (
           <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}
-            show={doc.show} playing={p.playingId === e.id} beamed={beamed.has(e.id)} fullBarRest={fullBarRest(bar)} />
+            show={doc.show} playing={p.playingId === e.id} selected={p.selectedId === e.id}
+            beamed={beamed.has(e.id)} fullBarRest={fullBarRest(bar)} />
         )))}
         {groups.map(g => <Beams key={g.ids[0]} group={g} notes={g.ids.map(id => byId.get(id)!)} />)}
         {p.ties.map((t, i) => <Tie key={i} {...t} />)}
+        {columns.map(c => (
+          <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={SHEET.chordY} width={c.width} height={COLUMN_BOTTOM - SHEET.chordY}
+            fill="transparent" onClick={() => p.onSelect(p.selectedId === c.id ? null : c.id)} />
+        ))}
       </svg>
       {under && placed.filter(n => charted(n.ev)).map(n => (
         <Fragment key={n.ev.id}>{under(n.ev, n.x, SHEET.chartY + SHEET.altButtonDy, system.index, p.lastSystem)}</Fragment>

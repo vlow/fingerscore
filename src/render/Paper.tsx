@@ -8,6 +8,8 @@ import { SystemView, tieSegments, type UnderChart } from './SystemView';
 export interface PaperProps {
   doc: Doc; derived: Derived; layout: SheetLayout;
   playingId: string | null;
+  /** The selected event (SheetPage UI state); clicking an event reports it, clicking it again reports null. */
+  selectedId: string | null; onSelect(id: string | null): void;
   onTitle(title: string): void; onSubtitle(subtitle: string): void;
   renderUnderChart?: UnderChart;   // slot for the alt-fingering pill (Task 20)
 }
@@ -33,7 +35,7 @@ export function Paper(p: PaperProps): JSX.Element {
       </div>
       {layout.systems.map(s => (
         <SystemView key={s.index} doc={doc} derived={derived} system={s} beams={layout.beams} ties={ties[s.index]}
-          playingId={p.playingId} lastSystem={s.index === last} renderUnderChart={p.renderUnderChart} />
+          playingId={p.playingId} selectedId={p.selectedId} onSelect={p.onSelect} lastSystem={s.index === last} renderUnderChart={p.renderUnderChart} />
       ))}
       <footer className={styles.legend}>
         <span>{derived.legend}</span>

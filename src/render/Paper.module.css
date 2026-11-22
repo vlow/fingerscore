@@ -88,6 +88,11 @@
   overflow: visible;
 }
 
+/* Invisible click column over each event (chord band to chart). */
+.hit {
+  cursor: pointer;
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;

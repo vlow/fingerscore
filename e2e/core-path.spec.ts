@@ -32,6 +32,19 @@ test('core path: sample → track → sheet → instruments → alternate → pl
   await page.getByRole('button', { name: 'Stop' }).click();
   await expect(page.locator('[data-playing="true"]')).toHaveCount(0);
 
+  // Select a note in the second system and play from there.
+  const second = page.getByTestId('system').nth(1);
+  const id = await second.evaluate(svg => [...svg.querySelectorAll('[data-hit]')]
+    .map(r => r.getAttribute('data-hit')!)
+    .find(ev => !svg.querySelector(`[data-ev="${ev}"]`)!.hasAttribute('data-tied')));
+  await second.locator(`[data-hit="${id}"]`).click();
+  await page.getByRole('button', { name: 'Play from selected' }).click();
+  await expect(page.locator('[data-playing="true"]')).toHaveCount(1);
+  await expect(second.locator('[data-playing="true"]')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Stop' }).click();
+  await expect(page.locator('[data-playing="true"]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Play from selected' })).toBeVisible();
+
   await page.reload();
   await expect(title).toHaveValue('Auld Lang Syne'); // session survives reload
   expect(errors).toEqual([]);

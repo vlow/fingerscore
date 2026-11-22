@@ -2,14 +2,16 @@ import s from './Transport.module.css';
 
 interface Props {
   playing: boolean; tempo: number;
+  /** An event is selected on the sheet: Play starts there. */
+  fromSelected?: boolean;
   onToggle(): void; onTempo(tempo: number): void;
 }
 
 export const TEMPO_MIN = 40;
 export const TEMPO_MAX = 200;
 
-/** Playback controls (SPEC §11): Play/Stop and the tempo slider. */
-export default function Transport({ playing, tempo, onToggle, onTempo }: Props) {
+/** Playback controls (SPEC §11): Play (or Play from selected)/Stop and the tempo slider. */
+export default function Transport({ playing, fromSelected = false, tempo, onToggle, onTempo }: Props) {
   return (
     <div role="group" aria-label="Playback" className={s.transport}>
       <button type="button" className={s.play} onClick={onToggle}>
@@ -18,7 +20,7 @@ export default function Transport({ playing, tempo, onToggle, onTempo }: Props) 
         ) : (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
         )}
-        {playing ? 'Stop' : 'Play'}
+        {playing ? 'Stop' : fromSelected ? 'Play from selected' : 'Play'}
       </button>
       <label className={s.tempo}>
         ♩ = {tempo}

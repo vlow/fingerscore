@@ -12,6 +12,22 @@ const BAD = '#B91C1C';
 const WARN = '#B45309';
 const TEAL = '#0E6E68';
 const TEXT = '#2A2D33';
+const SELECTED_FILL = '#E3F4F2';
+
+/** Bottom of an event's column: just below the fingering chart, above the alternate-fingering pill. */
+export const COLUMN_BOTTOM = SHEET.chartY + 88;
+/** Widest the selected-column marker gets; narrower when the event's hit area is narrower. */
+const MARKER_MAX = 30;
+
+/**
+ * The selected event's column: light teal with a teal outline. SystemView draws it beneath the
+ * staff so staff lines and glyphs stay visible; the playing highlight is drawn above it.
+ */
+export function SelectedMarker(p: { x: number; columnWidth: number }): JSX.Element {
+  const w = Math.min(MARKER_MAX, p.columnWidth);
+  return <rect data-mark="selected" x={p.x - w / 2} y={0.75} width={w} height={COLUMN_BOTTOM - 0.75} rx={6}
+    fill={SELECTED_FILL} stroke={TEAL} strokeWidth={1.5} />;
+}
 export const CHORD_FONT_PX = 13;
 export const FONT = "'Atkinson Hyperlegible', system-ui, sans-serif";
 
@@ -121,15 +137,16 @@ export interface TextSpot { x: number; textLength?: number }
 export interface NoteViewProps {
   ev: DerivedEvent; x: number; y: number; lyricAt?: TextSpot; chordAt?: TextSpot;
   inst: Instrument; chartStyle: Doc['chartStyle']; show: Doc['show'];
-  playing: boolean; beamed: boolean; fullBarRest: boolean;
+  playing: boolean; selected: boolean; beamed: boolean; fullBarRest: boolean;
 }
 
 /** One event: highlight, chord, lyric, note or rest with its marks, and its fingering chart. */
 export function NoteView(p: NoteViewProps): JSX.Element {
   const { ev, x, show } = p;
   return (
-    <g data-ev={ev.id} data-state={ev.state} data-tied={ev.tiedFrom ? '' : undefined} data-playing={p.playing ? 'true' : undefined}>
-      {p.playing && <rect x={x - 12} y={0} width={24} height={150} rx={6} fill="rgba(14,110,104,0.14)" />}
+    <g data-ev={ev.id} data-state={ev.state} data-tied={ev.tiedFrom ? '' : undefined}
+      data-playing={p.playing ? 'true' : undefined} data-selected={p.selected ? 'true' : undefined}>
+      {p.playing && <rect data-mark="playing" x={x - 12} y={0} width={24} height={150} rx={6} fill="rgba(14,110,104,0.14)" />}
       {show.chords && ev.chord !== null && (
         <Chord text={ev.chord} ok={ev.chordOk} x={p.chordAt?.x ?? x} textLength={p.chordAt?.textLength} raise={show.raiseExtensions} />
       )}

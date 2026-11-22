@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { createPlayer, type Player } from '../audio/player';
 import { derive, type DerivedEvent } from '../domain/derive';
 import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
 import { keySignature, spell } from '../domain/keys';
-import { buildSchedule } from '../domain/playback';
+import { buildSchedule, firstTickOf, sliceSchedule } from '../domain/playback';
 import { barCap } from '../domain/time';
 import type { Doc } from '../domain/types';
 import { usableTracks } from '../import/melody';
@@ -24,6 +24,9 @@ import '../styles/print.css';
 import s from './SheetPage.module.css';
 
 const SIMPLIFIED = 'Rhythm simplified: triplets and notes shorter than a sixteenth were rounded.';
+const SHEET_LABEL = 'Sheet music. Arrow keys select a note, Enter plays from it.';
+/** Keys pressed here keep their own meaning: the title inputs, the pills and the alternate-fingering popover. */
+const OWN_KEYS = 'input, textarea, select, button, a, [role="dialog"]';
 
 export default function SheetPage() {
   const doc = useApp(st => st.doc);
@@ -67,6 +70,66 @@ function Sheet({ doc }: { doc: Doc }) {
   const layout = useMemo(() => layoutSheet(doc, derived), [doc, derived]);
   const i = derived.inst;
 
+  // Selection: one event, UI state only. Ids are stable across instrument, key and tempo changes;
+  // an id the document no longer has counts as no selection, and loading another sheet clears it.
+  const [selection, setSelection] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+  const selectedId = selection !== null && derived.byId[selection] ? selection : null;
+  const paperRef = useRef<HTMLDivElement | null>(null);
+  const scrollToSelection = useRef(false);
+  useEffect(() => { setSelection(null); setAnnouncement(''); }, [doc.source]);
+  const firstBar = doc.score.length > 0 && doc.score[0].cap < barCap(doc.timeSig) ? 0 : 1;
+
+  function select(id: string | null, byKeyboard = false) {
+    setSelection(id);
+    scrollToSelection.current = byKeyboard && id !== null;
+    if (id === null) { setAnnouncement('Selection cleared'); return; }
+    const ev = derived.byId[id];
+    const bar = ev.bar + firstBar === 0 ? 'pickup bar' : `bar ${ev.bar + firstBar}`;
+    setAnnouncement(`Selected: ${ev.rest ? 'rest' : ev.spelled.name}, ${bar}`);
+  }
+
+  useEffect(() => {
+    if (!scrollToSelection.current || selectedId === null) return;
+    scrollToSelection.current = false;
+    const el = paperRef.current?.querySelector(`[data-hit="${selectedId}"]`);
+    el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [selectedId]);
+
+  // Keyboard order: every event in score order, rests included, tied continuations skipped.
+  // Positions are indices into derived.events, so a clicked continuation still has neighbours.
+  const stops = useMemo(() => derived.events.flatMap((ev, k) => (ev.tiedFrom ? [] : [{ id: ev.id, k }])), [derived]);
+
+  function onSheetKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.target instanceof Element && e.target.closest(OWN_KEYS)) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (stops.length === 0) return;
+    const at = selectedId === null ? -1 : derived.events.indexOf(derived.byId[selectedId]);
+    const after = stops.find(st => st.k > at);
+    const before = [...stops].reverse().find(st => st.k < at);
+    let next: string;
+    switch (e.key) {
+      case 'ArrowRight': next = (after ?? stops[stops.length - 1]).id; break;
+      case 'ArrowLeft': next = (selectedId === null ? stops[stops.length - 1] : before ?? stops[0]).id; break;
+      case 'Home': next = stops[0].id; break;
+      case 'End': next = stops[stops.length - 1].id; break;
+      case 'Escape':
+        if (selectedId === null) return;
+        e.preventDefault();
+        select(null);
+        return;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        togglePlay();
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+    if (next !== selectedId) select(next, true);
+  }
+
   // Playback. The player (and its AudioContext) is created on the first Play.
   const playerRef = useRef<Player | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -85,7 +148,9 @@ function Sheet({ doc }: { doc: Doc }) {
     try {
       const player = current ?? createPlayer();
       playerRef.current = player;
-      player.play(buildSchedule(doc), doc, id => {
+      const from = selectedId === null ? null : firstTickOf(doc, selectedId);
+      const full = buildSchedule(doc);
+      player.play(from === null ? full : sliceSchedule(full, from), doc, id => {
         setPlayingId(id);
         setPlaying(player.playing);
       });
@@ -111,8 +176,6 @@ function Sheet({ doc }: { doc: Doc }) {
     setOpenAlt(null);
   }, []);
   useEffect(() => setOpenAlt(null), [doc.shift, doc.inst]);
-
-  const firstBar = doc.score.length > 0 && doc.score[0].cap < barCap(doc.timeSig) ? 0 : 1;
 
   const renderUnderChart = (ev: DerivedEvent, x: number, y: number, _system: number, lastSystem: boolean) => {
     if (ev.options.length < 2) return null;
@@ -243,10 +306,13 @@ function Sheet({ doc }: { doc: Doc }) {
           </div>
           <div className={s.toolbar} data-print-hide="">
             {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
-            <Transport playing={playing} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo })} />
+            <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo })} />
           </div>
-          <div className={s.paperScroll} data-print-paper="">
+          <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL}
+            onKeyDown={onSheetKey}>
+            <p className={s.srOnly} aria-live="polite">{announcement}</p>
             <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}
+              selectedId={selectedId} onSelect={id => select(id)}
               onTitle={title => patchDoc({ title })} onSubtitle={subtitle => patchDoc({ subtitle })}
               renderUnderChart={renderUnderChart} />
           </div>

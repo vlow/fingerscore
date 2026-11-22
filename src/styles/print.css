@@ -56,8 +56,13 @@
     box-shadow: none !important;
   }
 
-  /* Playback highlight column. */
-  [data-print-paper] [data-playing] > rect:first-child {
+  /* Playback highlight and selected-column marker. */
+  [data-print-paper] [data-mark] {
     display: none;
+  }
+
+  /* The sheet's scroll container is focusable; its focus ring does not print. */
+  [data-print-paper] {
+    outline: none !important;
   }
 }

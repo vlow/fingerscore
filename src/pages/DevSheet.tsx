@@ -27,7 +27,7 @@ export default function DevSheet() {
 
   return (
     <div style={{ overflowX: 'auto' }}>
-      <Paper doc={doc} derived={derived} layout={layout} playingId={null} onTitle={setTitle} onSubtitle={setSubtitle} />
+      <Paper doc={doc} derived={derived} layout={layout} playingId={null} selectedId={null} onSelect={() => {}} onTitle={setTitle} onSubtitle={setSubtitle} />
     </div>
   );
 }

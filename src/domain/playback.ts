@@ -73,3 +73,34 @@ export function buildSchedule(doc: Doc): Schedule {
   }
   return { notes, marks, totalTicks: t };
 }
+
+/** Tick of an event's first occurrence in play order (first pass of a repeat); null for an unknown id. */
+export function firstTickOf(doc: Doc, evId: string): number | null {
+  let t = 0;
+  for (const bi of barOrder(doc)) {
+    for (const ev of doc.score[bi].ev) {
+      if (ev.id === evId) return t;
+      t += ev.d;
+    }
+  }
+  return null;
+}
+
+/**
+ * The part of a schedule from tick `from` on, shifted to start at 0. Notes that end at or before
+ * `from` are dropped; a note sounding across `from` keeps its remainder. The mark active at `from`
+ * becomes the first mark, at 0, so the highlight starts on the event sounding there.
+ */
+export function sliceSchedule(s: Schedule, from: number): Schedule {
+  const notes: SchedNote[] = [];
+  for (const n of s.notes) {
+    if (n.start + n.dur <= from) continue;
+    notes.push(n.start < from ? { ...n, start: 0, dur: n.start + n.dur - from } : { ...n, start: n.start - from });
+  }
+  let active = -1;
+  for (let k = 0; k < s.marks.length && s.marks[k].start <= from; k++) active = k;
+  const marks: SchedMark[] = [];
+  if (active >= 0) marks.push({ evId: s.marks[active].evId, start: 0 });
+  for (const m of s.marks.slice(active + 1)) if (m.start > from) marks.push({ ...m, start: m.start - from });
+  return { notes, marks, totalTicks: Math.max(0, s.totalTicks - from) };
+}

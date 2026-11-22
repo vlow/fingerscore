@@ -14,7 +14,7 @@ function renderDoc(doc: Doc, playingId: string | null = null, extra: Partial<Par
   const derived = derive(doc, DEFAULT_PREFS);
   return render(
     <Paper doc={doc} derived={derived} layout={layoutSheet(doc, derived)} playingId={playingId}
-      onTitle={() => {}} onSubtitle={() => {}} {...extra} />,
+      selectedId={null} onSelect={() => {}} onTitle={() => {}} onSubtitle={() => {}} {...extra} />,
   );
 }
 
@@ -166,6 +166,81 @@ describe('Paper', () => {
     const flat = renderDoc({ ...doc, show: { ...doc.show, raiseExtensions: false } })
       .container.querySelector(`[data-ev="${id}"] [data-ext]`)!;
     expect(flat).not.toHaveAttribute('dy');
+  });
+});
+
+describe('selection', () => {
+  const hit = (c: HTMLElement, id: string) => c.querySelector(`[data-hit="${id}"]`)!;
+
+  it('every event has a hit area; clicking one selects it', () => {
+    const doc = sampleDoc('xc');
+    const onSelect = vi.fn();
+    const { container } = renderDoc(doc, null, { onSelect });
+    const events = doc.score.flatMap(b => b.ev);
+    expect(container.querySelectorAll('[data-hit]')).toHaveLength(events.length);
+    const id = doc.score[2].ev[1].id;
+    fireEvent.click(hit(container, id));
+    expect(onSelect).toHaveBeenCalledWith(id);
+  });
+
+  it('hit areas span chord band to chart, at least 16px, without overlapping in a bar', () => {
+    const doc = mkDoc([{ ev: [[67, 3], [67, 3], [67, 6], [0, 12], [67, 24]] }]);
+    const { container } = renderDoc(doc);
+    const rects = [...container.querySelectorAll('[data-hit]')].map(r => ({
+      x: Number(r.getAttribute('x')), w: Number(r.getAttribute('width')),
+      y: Number(r.getAttribute('y')), h: Number(r.getAttribute('height')),
+    }));
+    expect(rects).toHaveLength(5);
+    for (const r of rects) {
+      expect(r.w).toBeGreaterThanOrEqual(16);
+      expect(r.y).toBeLessThanOrEqual(2);
+      expect(r.y + r.h).toBeGreaterThan(166 + 80);
+    }
+    for (let k = 1; k < rects.length; k++) expect(rects[k].x).toBeGreaterThanOrEqual(rects[k - 1].x + rects[k - 1].w - 1e-6);
+  });
+
+  it('clicking the selected event clears the selection', () => {
+    const doc = sampleDoc('xc');
+    const id = doc.score[1].ev[0].id;
+    const onSelect = vi.fn();
+    const { container } = renderDoc(doc, null, { selectedId: id, onSelect });
+    fireEvent.click(hit(container, id));
+    expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it('the selected event shows a teal marker; playing stays on top', () => {
+    const doc = sampleDoc('xc');
+    const id = doc.score[1].ev[0].id;
+    const { container } = renderDoc(doc, id, { selectedId: id });
+    const selected = container.querySelectorAll('[data-selected="true"]');
+    expect(selected).toHaveLength(1);
+    expect(selected[0]).toHaveAttribute('data-ev', id);
+    const marks = [...container.querySelectorAll('[data-mark]')];
+    expect(marks.map(m => m.getAttribute('data-mark'))).toEqual(['selected', 'playing']);   // document order: playing on top
+    expect(marks[1].parentElement).toBe(selected[0]);
+    const svg = selected[0].closest('svg')!;
+    expect(marks[0].parentElement).toBe(svg);
+    expect(svg.firstElementChild).toBe(marks[0]);                                           // beneath the staff lines
+    expect(marks[0]).toHaveAttribute('fill', '#E3F4F2');
+    expect(marks[0]).toHaveAttribute('stroke', '#0E6E68');
+    expect(marks[0]).toHaveAttribute('stroke-width', '1.5');
+    expect(marks[0]).toHaveAttribute('rx', '6');
+  });
+
+  it('no marker without a selection', () => {
+    const { container } = setup('xc');
+    expect(container.querySelectorAll('[data-selected]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-mark="selected"]')).toHaveLength(0);
+  });
+
+  it('clicking the alternate-fingering pill does not select', () => {
+    const onSelect = vi.fn();
+    renderDoc(sampleDoc('asax'), null, {
+      onSelect,
+      renderUnderChart: ev => <button type="button">pill {ev.id}</button>,
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: /^pill / })[0]);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });
 

@@ -1,7 +1,8 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { Player } from '../audio/player';
+import { buildSchedule, type Schedule } from '../domain/playback';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
@@ -276,6 +277,119 @@ describe('playback', () => {
     const slider = screen.getByLabelText(/♩ =/);
     expect(slider).toHaveAttribute('min', '40');
     expect(slider).toHaveAttribute('max', '200');
+  });
+});
+
+describe('select a note and play from there', () => {
+  const doc = sampleDoc('asax');
+  const name = (id: string) => derive(doc, DEFAULT_PREFS).byId[id].spelled.name;
+  const hit = (id: string) => document.querySelector(`[data-hit="${id}"]`)!;
+  const selected = () => document.querySelector('[data-selected="true"]')?.getAttribute('data-ev') ?? null;
+  const sheet = () => screen.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter plays from it.' });
+  const live = () => sheet().querySelector('[aria-live="polite"]')!;
+  const tied = doc.score[1].ev[1].id;               // starts a chain over the next two events
+  const afterChain = doc.score[2].ev[1].id;          // bar 2, after the chain's continuations
+
+  it('the sheet is a focusable group with a polite live line', () => {
+    open('asax');
+    expect(sheet()).toHaveAttribute('tabindex', '0');
+    expect(live()).toHaveTextContent('');
+  });
+
+  it('clicking a note selects it and renames Play; clicking it again clears', async () => {
+    open('asax');
+    await user.click(hit(afterChain));
+    expect(selected()).toBe(afterChain);
+    expect(screen.getByRole('button', { name: 'Play from selected' })).toBeInTheDocument();
+    expect(live()).toHaveTextContent(`Selected: ${name(afterChain)}, bar 2`);
+    await user.click(hit(afterChain));
+    expect(selected()).toBeNull();
+    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    expect(live()).toHaveTextContent('Selection cleared');
+  });
+
+  it('the pickup is announced as the pickup bar', async () => {
+    open('asax');
+    await user.click(hit(doc.score[0].ev[0].id));
+    expect(live()).toHaveTextContent(`Selected: ${name(doc.score[0].ev[0].id)}, pickup bar`);
+  });
+
+  it('Play from selected plays a sliced schedule; the selection stays after Stop', async () => {
+    open('asax');
+    await user.click(hit(afterChain));
+    fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
+    await user.click(screen.getByRole('button', { name: 'Play from selected' }));
+    const sched = fakePlayer.play.mock.calls[0][0] as Schedule;
+    expect(sched.totalTicks).toBeLessThan(buildSchedule(doc).totalTicks);
+    expect(sched.marks[0]).toEqual({ evId: afterChain, start: 0 });
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
+    fakePlayer.stop.mockImplementation(() => { fakePlayer.playing = false; fakePlayer.play.mock.calls[0][2](null); });
+    await user.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(selected()).toBe(afterChain);
+    expect(screen.getByRole('button', { name: 'Play from selected' })).toBeInTheDocument();
+  });
+
+  it('Play without a selection plays the whole song', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: 'Play' }));
+    expect(fakePlayer.play.mock.calls[0][0]).toEqual(buildSchedule(doc));
+  });
+
+  it('Esc clears the selection', async () => {
+    open('asax');
+    await user.click(hit(afterChain));
+    expect(sheet()).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(selected()).toBeNull();
+    expect(live()).toHaveTextContent('Selection cleared');
+  });
+
+  it('arrow keys move through events in score order, skipping tied continuations', async () => {
+    open('asax');
+    sheet().focus();
+    await user.keyboard('{ArrowRight}');
+    expect(selected()).toBe(doc.score[0].ev[0].id);
+    await user.click(hit(tied));
+    await user.keyboard('{ArrowRight}');
+    expect(selected()).toBe(afterChain);
+    await user.keyboard('{ArrowLeft}');
+    expect(selected()).toBe(tied);
+    await user.keyboard('{End}');
+    const lastBar = doc.score[doc.score.length - 1].ev;
+    expect(selected()).toBe(lastBar[lastBar.length - 1].id);
+    await user.keyboard('{Home}');
+    expect(selected()).toBe(doc.score[0].ev[0].id);
+    await user.keyboard('{Escape}{ArrowLeft}');
+    expect(selected()).toBe(lastBar[lastBar.length - 1].id);
+  });
+
+  it('Enter plays from the selection, and stops while playing', async () => {
+    open('asax');
+    await user.click(hit(afterChain));
+    fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
+    await user.keyboard('{Enter}');
+    expect(fakePlayer.play).toHaveBeenCalledTimes(1);
+    expect((fakePlayer.play.mock.calls[0][0] as Schedule).marks[0].evId).toBe(afterChain);
+    await user.keyboard(' ');
+    expect(fakePlayer.stop).toHaveBeenCalled();
+  });
+
+  it('keys typed in the title do not move the selection or play', async () => {
+    open('asax');
+    await user.click(hit(afterChain));
+    await user.click(screen.getByPlaceholderText('Add a title'));
+    await user.keyboard('{ArrowRight}{ArrowLeft}{Home}{End} x{Enter}{Escape}');
+    expect(selected()).toBe(afterChain);
+    expect(fakePlayer.play).not.toHaveBeenCalled();
+  });
+
+  it('the selection survives an instrument change and clears when another sheet loads', async () => {
+    open('asax');
+    await user.click(hit(afterChain));
+    await user.selectOptions(screen.getByLabelText(/Fingerings for/), 'cl');
+    expect(selected()).toBe(afterChain);
+    act(() => useApp.getState().setDoc({ ...sampleDoc('fl'), source: { ...doc.source, file: 'other.mid' } }));
+    expect(selected()).toBeNull();
   });
 });
 
