@@ -3432,6 +3432,24 @@
      "p": 0
     }
    ],
+   "94": [
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "tD"
+     ],
+     "n": "standard",
+     "p": 0
+    }
+   ],
    "95": [
     {
      "h": [
@@ -3944,6 +3962,40 @@
      "p": 0
     }
    ],
+   "27": [
+    {
+     "h": [
+      0.5,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "28": [
+    {
+     "h": [
+      0.5,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "standard; close the bell end (for example on the knee)",
+     "p": 0
+    }
+   ],
    "29": [
     {
      "h": [
@@ -4014,10 +4066,58 @@
      "p": 0
     }
    ],
-   "6": [],
+   "6": [
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
    "8": [],
-   "17": [],
-   "18": []
+   "17": [
+    {
+     "h": [
+      0.5,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ],
+   "18": [
+    {
+     "h": [
+      0.5,
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1
+     ],
+     "x": [],
+     "n": "standard",
+     "p": 0
+    }
+   ]
   }
  },
  "overrides": {
@@ -4248,9 +4348,6 @@
      "p": 0
     }
    ]
-  },
-  "ra": {
-   "87": []
   }
  },
  "meta": {
@@ -4324,6 +4421,16 @@
      "title": "flutetunes.com: basic flute fingerings (states that the basic fingerings are also valid for piccolo and alto flute)",
      "url": "https://www.flutetunes.com/fingerings/basic-fingerings.php",
      "accessed": "2026-11-22"
+    },
+    {
+     "title": "Yamaha Musical Instrument Guide: flute fingering chart (B♭6 = thumb, right index finger, D trill key; E♭ key not pressed)",
+     "url": "https://www.yamaha.com/en/musical_instrument_guide/common/images/flute/fingering.pdf",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Flute For Dummies basic flute fingering chart (Wiley), hosted by the National Flute Association (B♭6 with the E♭ key; dissenting)",
+     "url": "https://www.nfaonline.org/docs/default-source/membership-benefits/basic-flute-fingering-chart---for-dummies.pdf",
+     "accessed": "2026-11-22"
     }
    ],
    "reviewed": null
@@ -4353,6 +4460,51 @@
     {
      "title": "Wikipedia (de), \"Blockflöte\", section Deutsche Griffweise, citing H.-M. Linde, Handbuch des Blockflötenspiels, Schott 2003, p. 36 (German 4th degree with the right index finger only)",
      "url": "https://de.wikipedia.org/wiki/Blockfl%C3%B6te",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Yamaha Musical Instrument Guide: soprano recorder (Baroque) fingering chart",
+     "url": "https://www.yamaha.com/en/musical_instrument_guide/common/images/recorder/fingering_baroque.pdf",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Yamaha Musical Instrument Guide: alto recorder fingering chart (baroque)",
+     "url": "https://www.yamaha.com/en/musical_instrument_guide/common/images/recorder/fingering_alto.pdf",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Yamaha Musical Instrument Guide: soprano recorder (German) fingering chart",
+     "url": "https://www.yamaha.com/en/musical_instrument_guide/common/images/recorder/fingering_german.pdf",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Dolmetsch Musical Instruments: German Recorder Fingering Chart (all C and F recorders), 2001",
+     "url": "https://www.dolmetsch.com/gfingeringchart.pdf",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Philippe Bolton, recorder maker: baroque fingering tables for recorders in F and C (three octaves)",
+     "url": "https://flute-a-bec.com/tablaturgb.html",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Philippe Bolton, recorder maker: German recorder fingerings for recorders in F and C (PDF)",
+     "url": "https://www.flute-a-bec.com/tablature-doigtes-allemands-gb.pdf",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "American Recorder Society: fingering charts for soprano and alto recorder, baroque (English) fingering",
+     "url": "https://americanrecorder.org/recorder_fingering_charts.php",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Blockis recorder fingerings (Winfried Bauer): English and German fingering charts for soprano and alto, with maker charts (Yamaha, Aulos)",
+     "url": "https://blockfloetengriffe.de/en/",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Prescott Workshop: fingerings for baroque recorders in C and in F (index 22 printed as 1 2 | 5 6 + half 7; dissenting)",
+     "url": "http://www.prescottworkshop.com/bar_finger_f.pdf",
      "accessed": "2026-11-22"
     }
    ],

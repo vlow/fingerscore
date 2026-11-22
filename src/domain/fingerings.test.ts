@@ -99,11 +99,7 @@ it('satellite keys exist for sax, clarinet and flute only', () => {
 });
 
 // Normal-range gaps where the charts disagree; each waits for an owner decision (docs/fingering-gaps.md, "Waiting for the owner").
-const OWNER_PENDING = [
-  'ra:87:baroque',
-  'rs:66:german', 'rs:68:german', 'rs:77:german', 'rs:78:german',
-  'ra:71:german', 'ra:73:german', 'ra:82:german', 'ra:83:german',
-];
+const OWNER_PENDING = ['rs:68:german', 'ra:73:german'];
 
 it('gap list is short and sourced', () => {
   const gaps = documentedGaps();
@@ -123,8 +119,8 @@ it('named alternates exist', () => {
 it('every kind records two sources', () => { for (const k of ['xaph','sax','cl','fl','rec'] as const) expect(meta(k).sources.length).toBeGreaterThanOrEqual(2); });
 
 it('an empty German entry shows no chart instead of the baroque fingering', () => {
-  expect(optionsFor('rs', 66, 'baroque').length).toBeGreaterThan(0);
-  expect(optionsFor('rs', 66, 'german')).toEqual([]);
+  expect(optionsFor('rs', 68, 'baroque').length).toBeGreaterThan(0);
+  expect(optionsFor('rs', 68, 'german')).toEqual([]);
 });
 
 it('an empty override hides the kind table for one instrument only', () => {

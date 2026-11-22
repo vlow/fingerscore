@@ -8,15 +8,11 @@ Every entry in the tables is printed by at least two independent charts (see `me
 
 Gaps inside the normal range (`lo`..`hi`) where the charts disagree. The test "gap list is short and sourced" allows exactly these (`OWNER_PENDING`); any other normal-range gap fails it.
 
-| Instrument | Written | Note | WFG | Second chart(s) |
-|---|---|---|---|---|
-| Alto recorder (baroque) | 87 | E♭6 (index 22) | thumb pinched, 1 2 \| 4 5 6 | Dolmetsch: thumb pinched, 1 2 \| 5 6. Tomplay alto: thumb pinched, 1 2 \| 5 6 + half 7 |
-| Soprano / alto recorder (German) | 66 / 71 | F♯ / B (index 6) | T 1 2 3 \| – 5 6 7 | none: Dolmetsch prints baroque only; Tomplay's German chart is a PDF only |
-| Soprano / alto recorder (German) | 68 / 73 | G♯ / C♯ (index 8) | T 1 2 – \| 4 5 – – | none (as above) |
-| Soprano / alto recorder (German) | 77 / 82 | upper F / upper B♭ (index 17) | thumb pinched, 1 2 3 \| 4 – – – | none (as above) |
-| Soprano / alto recorder (German) | 78 / 83 | upper F♯ / upper B (index 18) | thumb pinched, 1 2 3 \| – 5 – 7 | none (as above) |
+| Instrument | Written | Note | T 1 2 – \| 4 5 – – | T 1 2 – \| 4 5 + half 6 | T 1 2 – \| 4 5 6 – |
+|---|---|---|---|---|---|
+| Soprano / alto recorder (German) | 68 / 73 | G♯ / C♯ (index 8) | WFG, Bolton, Blockis general chart | Yamaha German chart; Bolton and Blockis as alternative | Dolmetsch German chart; Aulos (as transcribed by Blockis) |
 
-On a German recorder these four notes show no chart; the app does not fall back to the baroque fingering.
+On a German recorder this note shows no chart; the app does not fall back to the baroque fingering. Three charts print the open hole 6, but every chart from a maker of German-system recorders (Yamaha, Dolmetsch, Aulos) covers hole 6 at least half.
 
 ## Summary
 
@@ -25,26 +21,21 @@ On a German recorder these four notes show no chart; the app does not fall back 
 | Xaphoon | official Xaphoon chart; "The Water Is Wide" songbook page | 25 (C4–C6) | 1 (F♯5) | 0 | no |
 | Saxophone | WFG saxophone charts; Sax Teacher UK saxophone and altissimo charts | 39 (B♭3–C7, alto altissimo; soprano, tenor, baritone altissimo via overrides) | 12 | 3 (all altissimo) | no |
 | Clarinet | WFG Boehm clarinet charts; Tomplay clarinet chart; Sax Teacher UK clarinet chart | 45 (E3–C7) | 7 | 0 | no |
-| Flute, piccolo, alto flute | WFG flute and piccolo chart; Tomplay flute chart; Sax Teacher UK flute chart; flutetunes.com (sizes) | 36 of 37 (C4–C7; B♭6 missing) | 2 | 1 (B♭6, extended range) | no |
-| Recorder (baroque) | WFG recorder charts; Dolmetsch Online text chart; Tomplay recorder chart | 30 of 32 table indices | 1 | 5 (1 inside the normal range: alto E♭6, waiting for the owner) | no |
-| Recorder (German) | WFG recorder chart; Wikipedia citing Rowland-Jones and Linde | 1 note differs from baroque (F) | 0 | 4 German notes per recorder without a second source (waiting for the owner) | no |
+| Flute, piccolo, alto flute | WFG flute and piccolo chart; Tomplay flute chart; Sax Teacher UK flute chart; flutetunes.com; Yamaha flute chart | 37 (C4–C7) | 2 | 0 | no |
+| Recorder (baroque) | WFG recorder charts; Dolmetsch Online text chart; Tomplay recorder chart; Yamaha soprano and alto charts; Philippe Bolton charts; American Recorder Society charts; Blockis | 32 of 32 table indices | 1 | 0 | no |
+| Recorder (German) | WFG recorder chart; Wikipedia citing Rowland-Jones and Linde; Yamaha German chart; Dolmetsch German chart; Philippe Bolton German chart; Blockis | 4 notes differ from baroque (index 5, 6, 17, 18) | 0 | 1 per recorder (index 8, waiting for the owner) | no |
 
 ## Open gaps
 
-Inside the normal range: see "Waiting for the owner". The soprano recorder entry at index 22 (B♭) is printed by the WFG and Tomplay's soprano chart and stays.
+Inside the normal range: see "Waiting for the owner".
 
 Extended range (`hi+1`..`ext`):
 
 - Soprano sax: written 94 (B♭6, altissimo). Checked: WFG saxophone charts, Sax Teacher UK soprano altissimo chart. No fingering appears in both.
 - Tenor sax: written 95 (B6, altissimo). Checked: WFG saxophone charts, Sax Teacher UK tenor altissimo chart. No fingering appears in both.
 - Baritone sax: written 95 (B6, altissimo). Checked: WFG saxophone charts, Sax Teacher UK baritone altissimo chart. No fingering appears in both.
-- Soprano recorder: written 87 and 88 (D♯ and E, table indices 27 and 28). WFG half-holes hole 6, Dolmetsch closes it; Tomplay stops at index 26.
-- Alto recorder: written 92 and 93 (G♯ and A, table indices 27 and 28). Same disagreement as the soprano.
-- Flute and piccolo: written 94 (B♭6). WFG T – – – | 1 + D trill key without the E♭ key; Tomplay and Sax Teacher UK hold the E♭ key. Alto flute ends at 93.
 
 German recorder gaps are entries with `"system": "german"` in `fingering-gaps.json`; they are listed under "Waiting for the owner".
-
-- Table indices 6, 8, 17 and 18 (soprano F♯, G♯, upper F, upper F♯; alto B, C♯, upper B♭, upper B). The WFG prints German fingerings for them (T 1 2 3 | – 5 6 7, T 1 2 – | 4 5 – –, t 1 2 3 | 4 – – –, t 1 2 3 | – 5 – 7), but no second chart with German fingerings could be read: Dolmetsch's text chart is baroque only, and Tomplay offers German only as a PDF.
 
 ## Xaphoon: source differences
 
@@ -83,11 +74,11 @@ Sources: The Woodwind Fingering Guide Boehm clarinet charts (basic chalumeau, cl
 
 ## Flute, piccolo, alto flute: source differences
 
-Sources: The Woodwind Fingering Guide basic flute and piccolo chart, the Tomplay interactive flute chart (one fingering per note, C4–C7) and the Sax Teacher UK flute chart. All three agree on every note from C♯4 to A6 and on B6, except where listed below. Where the WFG and both other charts disagree, the pitch stays empty.
+Sources: The Woodwind Fingering Guide basic flute and piccolo chart, the Tomplay interactive flute chart (one fingering per note, C4–C7), the Sax Teacher UK flute chart, flutetunes.com and the Yamaha flute chart (B♭6 only). All three agree on every note from C♯4 to A6 and on B6, except where listed below. Where the WFG and both other charts disagree, the pitch stays empty.
 
 - Piccolo and alto flute: the WFG states that its basic fingerings apply to all sizes of flute; flutetunes.com says the same of its basic chart. No piccolo or alto flute chart that differs was found, so `overrides` holds nothing for `picc` and `afl`.
 - Low C4: the WFG marks only the low C key; Tomplay and Sax Teacher UK mark the low C and C♯ keys together. The owner decided on 2026-11-22 to follow the WFG: the C key also closes the C♯ pad, so a player presses the C key alone.
-- B♭6: the WFG omits the E♭ key; Tomplay and Sax Teacher UK hold it. Left empty (extended range).
+- B♭6: thumb + right first finger + D trill key, without the E♭ key. The WFG, flutetunes.com and Yamaha's flute chart print it so; Tomplay, Sax Teacher UK and Wiley's *Flute For Dummies* chart (hosted by the National Flute Association) add the E♭ key. With the right first finger down and fingers 2 and 3 up, the open F and E holes already vent the tube below, so the E♭ key changes little; players keep the little finger on it for balance, as on most notes. The table follows the maker chart and the WFG.
 - C7: Sax Teacher UK adds the E♭ key; the WFG (C-foot fingering) and Tomplay do not. The table follows the WFG and Tomplay.
 - B♭4/B♭5: 1 + 1 (all three) and thumb B♭ (WFG and Sax Teacher UK) are entered. The right-hand B♭ trill lever fingering is a trill fingering in the WFG and is left out.
 - F♯4/F♯5 with the middle finger: the WFG prints it only as a trill fingering; not entered.
@@ -95,12 +86,18 @@ Sources: The Woodwind Fingering Guide basic flute and piccolo chart, the Tomplay
 
 ## Recorder: source differences
 
-Sources: the WFG basic recorder chart (one chart for C and F recorders, English and German models) and its third-octave alternate chart, the Dolmetsch Online text chart (baroque/English, C and F recorders) and the Tomplay soprano and alto charts (indices 0–26, baroque). `0.5` on hole 6 or 7 means only the larger hole of the pair is covered (the half-hole of the WFG and the `a` hole of Dolmetsch); `0.5` on the thumb means a pinched thumb hole.
+Sources: the WFG basic recorder chart (one chart for C and F recorders, English and German models) and its third-octave alternate chart, the Dolmetsch Online text chart (baroque/English, C and F recorders) and the Tomplay soprano and alto charts (indices 0–26, baroque). Added for index 22, 27, 28 and the German notes: Yamaha's soprano (baroque and German) and alto charts, Dolmetsch's German chart, Philippe Bolton's baroque and German charts, the American Recorder Society soprano and alto charts, the Prescott Workshop charts and Blockis (blockfloetengriffe.de). `0.5` on hole 6 or 7 means only the larger hole of the pair is covered (the half-hole of the WFG and the `a` hole of Dolmetsch); `0.5` on the thumb means a pinched thumb hole.
 
 - The WFG and Dolmetsch agree on every index from 0 to 26 except 22, and on 29, 30 and 31.
 - Index 8 (soprano G♯, alto C♯): Tomplay closes both holes of 6; the WFG and Dolmetsch cover only the larger one. The table follows the WFG and Dolmetsch.
 - Indices 25 and 26 (soprano C♯ and D, third octave): Tomplay adds hole 7 and, at 26, leaves out the closed bell. The table follows the WFG and Dolmetsch.
 - Indices 25 and 29 need the bell end closed (for example on the knee). The diagram cannot show this; the option name says it.
-- Index 22: see Open gaps. The soprano B♭ follows the WFG and Tomplay's soprano chart (1 2 | 4 5 6).
+- Index 22 (soprano B♭, alto E♭): thumb pinched, 1 2 | 4 5 6, for both sizes. Printed by the WFG, Yamaha's soprano and alto charts, Bolton (C and F) and Blockis, and by Tomplay's soprano chart. Thumb pinched, 1 2 | 5 6 + half 7 is printed by the American Recorder Society and Prescott Workshop charts (both sizes) and Tomplay's alto chart; Bolton lists 1 2 | 4 5 6 + half 7 as its alternative; Dolmetsch prints 1 2 | 5 6. These are tuning variants for different instruments and are not entered.
+- Index 27 (soprano D♯, alto G♯): thumb pinched, – 2 3 | – 5 6 (both holes of 6 closed), printed by Dolmetsch, Bolton and the American Recorder Society. The WFG covers only the larger hole of 6.
+- Index 28 (soprano E, alto A): thumb pinched, – 2 3 | – 5 6 with the bell end closed, printed by Dolmetsch, Bolton and Blockis. The WFG covers only the larger hole of 6.
 - Alternate at index 11 (soprano B, alto E): thumb + 2 3, printed by the WFG and Dolmetsch.
 - German F (index 5): T 1 2 3 | 4 – – –, printed by the WFG and quoted from Rowland-Jones (English Wikipedia) and Linde (German Wikipedia).
+- German F♯ (index 6): T 1 2 3 | – 5 6 7, printed by the WFG, Yamaha, Dolmetsch, Blockis and Aulos (via Blockis). Bolton prints the baroque T 1 2 3 | – 5 6 –.
+- German upper F (index 17): thumb pinched, 1 2 3 | 4 – – –, printed by the WFG, Yamaha, Dolmetsch, Bolton and Blockis.
+- German upper F♯ (index 18): thumb pinched, 1 2 3 | – 5 – 7, printed by the WFG, Yamaha, Dolmetsch and Aulos (via Blockis). Bolton and Blockis's general chart print the baroque thumb pinched, 1 2 3 | – 5 – – (Blockis lists – 5 – 7 as alternative); Yamaha lists – 5 + half 6 as alternative.
+- German G♯ (index 8): see "Waiting for the owner".

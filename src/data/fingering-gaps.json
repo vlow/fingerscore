@@ -30,93 +30,16 @@
   },
   {
    "inst": "rs",
-   "pitch": 87,
-   "note": "D♯/E♭ third octave (index 27): WFG half-holes hole 6, Dolmetsch closes it fully; Tomplay stops at D",
-   "checked": [
-    "WFG recorder charts (wfg.woodwind.org/recorder/)",
-    "Dolmetsch Online text fingering chart",
-    "Tomplay recorder chart"
-   ]
-  },
-  {
-   "inst": "rs",
-   "pitch": 88,
-   "note": "E third octave (index 28): WFG half-holes hole 6, Dolmetsch closes it fully; Tomplay stops at D",
-   "checked": [
-    "WFG recorder charts (wfg.woodwind.org/recorder/)",
-    "Dolmetsch Online text fingering chart",
-    "Tomplay recorder chart"
-   ]
-  },
-  {
-   "inst": "ra",
-   "pitch": 87,
-   "note": "E♭ second octave (index 22): WFG 1 2 | 4 5 6, Dolmetsch 1 2 | 5 6, Tomplay alto 1 2 | 5 6 + half 7; no two agree",
-   "checked": [
-    "WFG recorder charts (wfg.woodwind.org/recorder/)",
-    "Dolmetsch Online text fingering chart",
-    "Tomplay recorder chart"
-   ]
-  },
-  {
-   "inst": "ra",
-   "pitch": 92,
-   "note": "G♯/A♭ third octave (index 27): WFG half-holes hole 6, Dolmetsch closes it fully; Tomplay stops at G",
-   "checked": [
-    "WFG recorder charts (wfg.woodwind.org/recorder/)",
-    "Dolmetsch Online text fingering chart",
-    "Tomplay recorder chart"
-   ]
-  },
-  {
-   "inst": "ra",
-   "pitch": 93,
-   "note": "A third octave (index 28): WFG half-holes hole 6, Dolmetsch closes it fully; Tomplay stops at G",
-   "checked": [
-    "WFG recorder charts (wfg.woodwind.org/recorder/)",
-    "Dolmetsch Online text fingering chart",
-    "Tomplay recorder chart"
-   ]
-  },
-  {
-   "kind": "fl",
-   "pitch": 94,
-   "note": "B♭6: WFG T ---|1 + D trill key, no E♭ key; Tomplay and Sax Teacher UK the same plus the E♭ key. Charts disagree.",
-   "checked": [
-    "WFG flute basic chart (no E♭)",
-    "Tomplay flute chart (E♭ held)",
-    "Sax Teacher UK flute chart (E♭ held)"
-   ]
-  },
-  {
-   "inst": "rs",
-   "pitch": 66,
-   "system": "german",
-   "note": "German F♯ (index 6): only the WFG prints a German fingering (T 123|–567).",
-   "checked": [
-    "WFG basic recorder chart (prints a German fingering)",
-    "Dolmetsch Online text chart (baroque only)",
-    "Tomplay recorder chart (German only as PDF, not read)"
-   ]
-  },
-  {
-   "inst": "ra",
-   "pitch": 71,
-   "system": "german",
-   "note": "German B (index 6): only the WFG prints a German fingering (T 123|–567).",
-   "checked": [
-    "WFG basic recorder chart (prints a German fingering)",
-    "Dolmetsch Online text chart (baroque only)",
-    "Tomplay recorder chart (German only as PDF, not read)"
-   ]
-  },
-  {
-   "inst": "rs",
    "pitch": 68,
    "system": "german",
-   "note": "German G♯ (index 8): only the WFG prints a German fingering (T 12–|45––).",
+   "note": "German G♯ (index 8): charts print three fingerings. T 12–|45–– (WFG, Bolton, Blockis general chart); T 12–|45 + half 6 (Yamaha German chart; Bolton and Blockis as alternative); T 12–|456– (Dolmetsch German chart, Aulos via Blockis). The makers of German-system recorders all cover hole 6 at least half.",
    "checked": [
-    "WFG basic recorder chart (prints a German fingering)",
+    "WFG basic recorder chart (T 12–|45––)",
+    "Philippe Bolton German fingering chart (T 12–|45––; alternative half 6)",
+    "Blockis German fingering chart (T 12–|45––; alternative half 6)",
+    "Yamaha soprano recorder (German) chart (T 12–|45 + half 6)",
+    "Dolmetsch German Recorder Fingering Chart (T 12–|456–)",
+    "Aulos German chart as transcribed by Blockis (T 12–|456–)",
     "Dolmetsch Online text chart (baroque only)",
     "Tomplay recorder chart (German only as PDF, not read)"
    ]
@@ -125,53 +48,14 @@
    "inst": "ra",
    "pitch": 73,
    "system": "german",
-   "note": "German C♯ (index 8): only the WFG prints a German fingering (T 12–|45––).",
+   "note": "German C♯ (index 8): charts print three fingerings. T 12–|45–– (WFG, Bolton, Blockis general chart); T 12–|45 + half 6 (Yamaha German chart; Bolton and Blockis as alternative); T 12–|456– (Dolmetsch German chart, Aulos via Blockis). The makers of German-system recorders all cover hole 6 at least half.",
    "checked": [
-    "WFG basic recorder chart (prints a German fingering)",
-    "Dolmetsch Online text chart (baroque only)",
-    "Tomplay recorder chart (German only as PDF, not read)"
-   ]
-  },
-  {
-   "inst": "rs",
-   "pitch": 77,
-   "system": "german",
-   "note": "German upper F (index 17): only the WFG prints a German fingering (t 123|4–––).",
-   "checked": [
-    "WFG basic recorder chart (prints a German fingering)",
-    "Dolmetsch Online text chart (baroque only)",
-    "Tomplay recorder chart (German only as PDF, not read)"
-   ]
-  },
-  {
-   "inst": "ra",
-   "pitch": 82,
-   "system": "german",
-   "note": "German upper B♭ (index 17): only the WFG prints a German fingering (t 123|4–––).",
-   "checked": [
-    "WFG basic recorder chart (prints a German fingering)",
-    "Dolmetsch Online text chart (baroque only)",
-    "Tomplay recorder chart (German only as PDF, not read)"
-   ]
-  },
-  {
-   "inst": "rs",
-   "pitch": 78,
-   "system": "german",
-   "note": "German upper F♯ (index 18): only the WFG prints a German fingering (t 123|–5–7).",
-   "checked": [
-    "WFG basic recorder chart (prints a German fingering)",
-    "Dolmetsch Online text chart (baroque only)",
-    "Tomplay recorder chart (German only as PDF, not read)"
-   ]
-  },
-  {
-   "inst": "ra",
-   "pitch": 83,
-   "system": "german",
-   "note": "German upper B (index 18): only the WFG prints a German fingering (t 123|–5–7).",
-   "checked": [
-    "WFG basic recorder chart (prints a German fingering)",
+    "WFG basic recorder chart (T 12–|45––)",
+    "Philippe Bolton German fingering chart (T 12–|45––; alternative half 6)",
+    "Blockis German fingering chart (T 12–|45––; alternative half 6)",
+    "Yamaha soprano recorder (German) chart (T 12–|45 + half 6)",
+    "Dolmetsch German Recorder Fingering Chart (T 12–|456–)",
+    "Aulos German chart as transcribed by Blockis (T 12–|456–)",
     "Dolmetsch Online text chart (baroque only)",
     "Tomplay recorder chart (German only as PDF, not read)"
    ]
