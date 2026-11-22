@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { FingeringChart, MissingChart } from './FingeringChart';
-import { Glyph, TimeSigDigits } from './Glyph';
+import { Glyph, TimeSigDigits, type GlyphName } from './Glyph';
 import { SATS } from '../domain/fingerings';
+import type { TimeSig } from '../domain/types';
 
 const opt = (h: number[], x: string[] = []) => ({ h, x, n: '', p: 0 });
 
@@ -50,11 +51,20 @@ describe('FingeringChart', () => {
 });
 
 describe('Glyph', () => {
-  it('renders a path with the placement transform', () => {
+  it('renders a path with the SMuFL placement transform', () => {
     const { container } = render(<svg><Glyph name="restQuarter" x={10} y={100} /></svg>);
     const path = container.querySelector('path')!;
     expect(path.getAttribute('d')).toMatch(/^M/);
-    expect(path.getAttribute('transform')).toBe('translate(10, 96.7) scale(0.0467,-0.0467)');
+    expect(path.getAttribute('transform')).toBe('translate(10, 80) scale(0.04, -0.04)');   // origin on the middle line
+  });
+
+  it('puts the clef origin on the G line, the whole rest on the 4th line, accidentals on the note', () => {
+    const t = (name: GlyphName, y: number) =>
+      render(<svg><Glyph name={name} x={0} y={y} /></svg>).container.querySelector('path')!.getAttribute('transform');
+    expect(t('trebleClef', 115)).toBe('translate(0, 105) scale(0.04, -0.04)');
+    expect(t('restWhole', 115)).toBe('translate(0, 85) scale(0.04, -0.04)');
+    expect(t('restHalf', 115)).toBe('translate(0, 95) scale(0.04, -0.04)');
+    expect(t('flat', 90)).toBe('translate(0, 90) scale(0.04, -0.04)');
   });
 
   it('has a sixteenth rest', () => {
@@ -62,9 +72,15 @@ describe('Glyph', () => {
     expect(container.querySelector('path')!.getAttribute('d')).toContain('Z');
   });
 
-  it('time signature digits sit on the middle and bottom lines', () => {
+  it('time signature digits sit on the 4th and 2nd lines', () => {
     const { container } = render(<svg><TimeSigDigits ts={[6, 8]} x={5} y={115} /></svg>);
-    const t = [...container.querySelectorAll('text')];
-    expect(t.map(e => [e.textContent, e.getAttribute('y')])).toEqual([['6', '95'], ['8', '115']]);
+    const digits = [...container.querySelectorAll('[data-timesig="6/8"] path')];
+    expect(digits.map(e => e.getAttribute('data-digit'))).toEqual(['digit6', 'digit8']);
+    expect(digits.map(e => e.getAttribute('transform')!.match(/translate\([^,]+, ([^)]+)\)/)![1])).toEqual(['85', '105']);
+  });
+
+  it('two-digit numbers draw one path per digit', () => {
+    const { container } = render(<svg><TimeSigDigits ts={[12, 8] as unknown as TimeSig} x={5} y={115} /></svg>);
+    expect([...container.querySelectorAll('path')].map(e => e.getAttribute('data-digit'))).toEqual(['digit1', 'digit2', 'digit8']);
   });
 });

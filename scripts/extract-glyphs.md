@@ -1,31 +1,48 @@
 # Glyph sources
 
-Notation glyphs live in `src/data/glyphs.json` (`paths`, font units 1000/em, y up) and render through `src/render/Glyph.tsx`.
+Every music glyph the app draws comes from Bravura, the SMuFL reference font by Steinberg, licensed under the SIL Open Font License 1.1. The licence text ships in `licenses/Bravura-OFL.txt`, because the OFL requires it to accompany the outlines.
 
-## Extracted from GNU FreeSerif
+The outlines live in `src/data/glyphs.json` and render through `src/render/Glyph.tsx`. The app never loads the font at runtime.
 
-`trebleClef`, `flat`, `sharp`, `natural`, `restWhole`, `restHalf`, `restQuarter`, `restEighth`.
-Source: GNU FreeFont, GPL with font exception (credit it in the About page). Extraction tool: fontTools `SVGPathPen` over the glyph set, one path per glyph. The font is not committed.
+## Regenerate
 
-## `restSixteenth` (composed, not extracted)
+```sh
+npm install
+npm run glyphs        # tsx scripts/extract-glyphs.ts
+```
 
-The font was not downloaded. The glyph is the `restEighth` path plus a copy of it shifted down-left by one staff space. One staff space is 10px, which is 214 font units at the rest transform's scale (0.0467). Shift: dx = -214, dy = -214 (y up). Every coordinate of the second subpath is offset by that amount; the two subpaths share the common rest transform.
+`scripts/extract-glyphs.ts` reads `files/bravura-latin-400-normal.woff` from the devDependency `@fontsource/bravura` with `opentype.js` (also a devDependency). It writes `paths`, `bbox` (ink box), `advance` and `placement` for each glyph. It exits with an error if a code point maps to `.notdef` or an empty outline. No file is downloaded outside npm.
 
-## Time-signature digits (no glyph paths)
+## Glyphs
 
-Digits are SVG `<text>`, not paths. `TimeSigDigits` in `src/render/Glyph.tsx` draws them with:
+| App name | SMuFL name | Code point |
+|---|---|---|
+| `trebleClef` | gClef | U+E050 |
+| `flat` | accidentalFlat | U+E260 |
+| `natural` | accidentalNatural | U+E261 |
+| `sharp` | accidentalSharp | U+E262 |
+| `restWhole` | restWhole | U+E4E3 |
+| `restHalf` | restHalf | U+E4E4 |
+| `restQuarter` | restQuarter | U+E4E5 |
+| `restEighth` | rest8th | U+E4E6 |
+| `restSixteenth` | rest16th | U+E4E7 |
+| `digit0` … `digit9` | timeSig0 … timeSig9 | U+E080 … U+E089 |
 
-- `font-family: "Times New Roman", Times, "Nimbus Roman", serif; font-weight: 700`
-- font size 30px, which gives a digit height of about 20px (two staff spaces)
-- upper digit baseline on the middle staff line, lower digit baseline on the bottom line
-- `y` = bottom staff line, `x` = centre
+Units: 1000 per em, y up, one staff space = 250 units.
 
-`GlyphName` has no `digit*` members and `glyphs.json` has no digit paths.
+## Placement
 
-## Open item
+One transform for every glyph: `translate(x, y) scale(0.04, -0.04)`, since one staff space is 10px. The glyph origin sits on a staff position, per the SMuFL registration. `B` is the y of the bottom staff line.
 
-Exact FreeSerif outlines for the sixteenth rest (U+1D13F) and the digits 2, 3, 4, 6, 8 are not extracted. Doing so needs the owner's permission to download the font. Planned steps once granted:
+| Glyph | Origin y | Origin x |
+|---|---|---|
+| `trebleClef` | G line, `B - 10` | 4 (`HEADER.clefInset`) |
+| `flat`, `sharp`, `natural` | notehead centre | right ink edge 9px left of the notehead centre |
+| key-signature accidentals | line or space of the accidental | `34 + 11k` |
+| `restWhole` | 4th line, `B - 30` (hangs from it) | ink centred on the event x |
+| `restHalf` | middle line, `B - 20` (sits on it) | ink centred on the event x |
+| `restQuarter`, `restEighth`, `restSixteenth` | middle line, `B - 20` | ink centred on the event x |
+| time-signature numerator | 4th line, `B - 30` | number's ink centred on the slot |
+| time-signature denominator | 2nd line, `B - 10` | number's ink centred on the slot |
 
-1. Download `FreeSerif.otf` from the GNU FreeFont release to a fresh, empty directory outside the repo.
-2. Run, with `python3 -I`: fontTools `TTFont`, `font.getGlyphSet()`, `SVGPathPen`, for the glyphs above.
-3. Replace `restSixteenth` in `glyphs.json`, add `digit2`..`digit8`, scale digits to 20px tall, and swap `TimeSigDigits` to paths.
+Bravura digits are two staff spaces tall and vertically centred on their origin, so the numerator fills the upper half of the staff and the denominator the lower half. `Glyph` adds the origin offset itself: callers pass the bottom staff line for clef and rests and the note y for accidentals. `src/render/Glyph.test.tsx` checks the resulting pixel boxes.

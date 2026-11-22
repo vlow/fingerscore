@@ -3,7 +3,7 @@ import type { DerivedEvent } from '../domain/derive';
 import type { Instrument } from '../domain/instruments';
 import type { Doc } from '../domain/types';
 import { FingeringChart, MissingChart } from './FingeringChart';
-import { Glyph, type GlyphName } from './Glyph';
+import { Glyph, glyphInk, type GlyphName } from './Glyph';
 import { SHEET } from './layout';
 import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
 
@@ -149,11 +149,15 @@ export function NoteView(p: NoteViewProps): JSX.Element {
   );
 }
 
+/** Right ink edge of an accidental sits this far left of the notehead centre. */
+const ACCIDENTAL_GAP = 9;
+
 function Rest(p: { ev: DerivedEvent; x: number; fullBar: boolean }) {
   const { name, dotted } = restGlyph(p.ev.d, p.fullBar);
+  const ink = glyphInk(name);
   return (
     <g data-rest={name}>
-      <Glyph name={name} x={p.x - 8} y={SHEET.staffBottom} />
+      <Glyph name={name} x={p.x - (ink.left + ink.right) / 2} y={SHEET.staffBottom} />
       {dotted && <Dot x={p.x + 12} y={90} />}
     </g>
   );
@@ -173,7 +177,7 @@ function Note(p: NoteViewProps) {
       )}
       {flags > 0 && <Flags count={flags} x={x} y={y} up={up} />}
       {DOTTED.has(ev.d) && <Dot x={x + 12} y={ev.pos % 2 === 0 ? y - 5 : y} />}
-      {ev.accidental && <Glyph name={ev.accidental} x={x - 19} y={y} fill={color} />}
+      {ev.accidental && <Glyph name={ev.accidental} x={x - ACCIDENTAL_GAP - glyphInk(ev.accidental).right} y={y} fill={color} />}
     </>
   );
 }

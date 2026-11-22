@@ -74,7 +74,7 @@ Known gaps, with the sources checked for each, are in [docs/fingering-gaps.md](d
 
 ## Credits
 
-- Treble clef, accidentals and rests: outline paths from GNU FreeSerif.
+- Music glyphs (clef, accidentals, rests, time-signature digits): outline paths from Bravura by Steinberg, SIL Open Font License 1.1 (licence in [licenses/Bravura-OFL.txt](licenses/Bravura-OFL.txt)).
 - Fingerings: The Woodwind Fingering Guide, plus the other charts listed above.
 - Typeface: Atkinson Hyperlegible by the Braille Institute.
 

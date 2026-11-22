@@ -161,7 +161,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
       <svg data-testid="system" width={SHEET.systemWidth} height={SHEET.systemHeight}
         viewBox={`0 0 ${SHEET.systemWidth} ${SHEET.systemHeight}`} aria-hidden="true">
         {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={STAFF} />)}
-        <Glyph name="trebleClef" x={0} y={staffBottom} />
+        <Glyph name="trebleClef" x={HEADER.clefInset} y={staffBottom} />
         {Array.from({ length: nAcc }, (_, k) => (
           <Glyph key={k} name={derived.sig > 0 ? 'sharp' : 'flat'} x={HEADER.clef + k * HEADER.accidental} y={yOfPos(accPos[k])} />
         ))}

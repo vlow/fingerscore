@@ -59,6 +59,6 @@ describe('layoutSheet', () => {
   it('header widths match the prototype', () => {
     expect(headerWidth(0, true)).toBe(68);
     expect(headerWidth(0, false)).toBe(42);
-    expect(headerWidth(-5, false)).toBe(87);
+    expect(headerWidth(-5, false)).toBe(97);   // 11px per Bravura key-signature accidental
   });
 });

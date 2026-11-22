@@ -4,8 +4,11 @@ import type { Doc } from '../domain/types';
 
 export const SHEET = { width: 940, pad: 40, systemWidth: 860, systemHeight: 290, staffTop: 75, staffBottom: 115, chordY: 2, lyricY: 22, voltaY: 46, chartY: 166, altButtonDy: 90, minPitch: 20, barPad: 16, barPadAfterRepeat: 26, barTail: 14 } as const;
 
-/** System header pieces, left to right: clef, key-signature accidentals, time signature (first system only), gap. */
-export const HEADER = { clef: 34, accidental: 9, timeSig: 26, gap: 8 } as const;   // prototype widths
+/**
+ * System header pieces, left to right: clef, key-signature accidentals, time signature (first system only), gap.
+ * Bravura clef ink is 26.8px wide, drawn from clefInset; key-signature sharps are 10px wide, flats 9px.
+ */
+export const HEADER = { clef: 34, clefInset: 4, accidental: 11, timeSig: 26, gap: 8 } as const;
 
 export interface EvLayout { id: string; x: number; y: number }            // y = notehead centre; rests: staff middle
 export interface BarLayout { bar: number; x: number; width: number; events: EvLayout[] }
