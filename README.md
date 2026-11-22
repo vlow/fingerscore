@@ -36,7 +36,6 @@ The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The 
 ## What it does not do
 
 - Edit notes, lyrics or chords. No undo or redo.
-- Sync sheets between browsers or devices. Use Download JSON.
 - Scales page.
 - MuseScore (`.mscz`) and ABC import.
 - Triplets.
@@ -45,6 +44,8 @@ The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The 
 - A full accessibility audit.
 
 Version 2 plans these.
+
+There is no sync between browsers or devices, and none is planned: the app has no server and sends no user data over the network. To move a sheet, use File, then Download JSON, and open the file on the other device.
 
 ## Run it
 

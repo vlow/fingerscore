@@ -54,7 +54,7 @@ test('save, reload, reopen from the gallery, export and import', async ({ page }
   const gallery = page.getByRole('region', { name: 'Your sheets' });
   await expect(gallery.getByRole('link')).toHaveCount(1);
   await gallery.getByRole('link').first().click();
-  await expect(page).toHaveURL(/\/sheet/);
+  await expect(page).toHaveURL(/\/sheet$/);
   await expect(titleBox(page)).toHaveValue(TITLE);
   await expect(page.getByText(/saved in this browser/)).toBeVisible();
   await expect(page.getByText('Change track')).toHaveCount(0);

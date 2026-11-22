@@ -382,6 +382,18 @@ describe('save and the File menu', () => {
     expect(text).not.toHaveBeenCalled();
   });
 
+  it('the chip of a sheet opened from the library shows the current title', async () => {
+    const r = saveEntry({ ...sampleDoc('fl'), title: 'Old name' }, null);
+    renderSheet(`/sheet?id=${r.ok ? r.entry.id : ''}`);
+    expect(await screen.findByText(/^Old name · saved in this browser/)).toBeInTheDocument();
+    const title = screen.getByRole('textbox', { name: 'Sheet title' });
+    await user.clear(title);
+    await user.type(title, 'New name');
+    expect(screen.getByText(/^New name · saved in this browser/)).toBeInTheDocument();
+    await user.clear(title);
+    expect(screen.getByText(/^Untitled sheet · saved in this browser/)).toBeInTheDocument();
+  });
+
   it('saved list: open another sheet, delete with undo', async () => {
     saveEntry({ ...sampleDoc('fl'), title: 'Other' }, null);
     open('asax');
