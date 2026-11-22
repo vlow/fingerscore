@@ -64,6 +64,29 @@ describe('store', () => {
     expect(useApp.getState().doc!.shift).toBe(oldBest + 1);
   });
 
+  it('a re-picked shift from setPrefs clears overrides', () => {
+    const base = sampleDoc('asax');
+    const prefs = { easyRegister: false, fewAccidentals: false };
+    expect(best(base, prefs)).not.toBe(best(base));
+    useApp.getState().setDoc({ ...base, shift: best(base), fingering: { e3: 1 } });
+    useApp.getState().setPrefs(prefs);
+    expect(useApp.getState().doc!.fingering).toEqual({});
+  });
+
+  it('switching the recorder system clears overrides; other patches keep them', () => {
+    useApp.getState().setDoc({ ...sampleDoc('rs'), fingering: { e3: 1 } });
+    useApp.getState().patchDoc({ title: 'T', recorderSystem: 'baroque' });
+    expect(useApp.getState().doc!.fingering).toEqual({ e3: 1 });
+    useApp.getState().patchDoc({ recorderSystem: 'german' });
+    expect(useApp.getState().doc!.fingering).toEqual({});
+  });
+
+  it('setShift to the same shift keeps overrides', () => {
+    useApp.getState().setDoc({ ...sampleDoc('asax'), fingering: { e3: 1 } });
+    useApp.getState().setShift(useApp.getState().doc!.shift);
+    expect(useApp.getState().doc!.fingering).toEqual({ e3: 1 });
+  });
+
   it('setPrefs merges a partial and works without a doc', () => {
     useApp.getState().setPrefs({ easyRegister: false });
     expect(useApp.getState().prefs).toEqual({ easyRegister: false, fewAccidentals: true });

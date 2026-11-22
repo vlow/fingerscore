@@ -122,7 +122,7 @@ function Sheet({ doc }: { doc: Doc }) {
     return (
       <>
         <button type="button" className={`${s.pill} ${tone}`} data-print-hide="" style={{ left: x - 13, top: y }}
-          aria-expanded={open} aria-label={`⇅ ${ev.options.length} alternate fingerings for ${ev.spelled.name}`}
+          aria-haspopup="dialog" aria-expanded={open} aria-label={`⇅ ${ev.options.length} alternate fingerings for ${ev.spelled.name}`}
           onClick={e => {
             if (open) { closeAlt(false); return; }
             anchorRef.current = e.currentTarget;
@@ -188,7 +188,8 @@ function Sheet({ doc }: { doc: Doc }) {
             <dl className={s.facts}>
               <div><dt>Key (concert)</dt><dd>{derived.originalKey}</dd></div>
               <div><dt>Range</dt><dd>{origRange}</dd></div>
-              <div><dt>Time</dt><dd>{doc.timeSig[0]}/{doc.timeSig[1]} · ♩ = {doc.tempo}</dd></div>
+              <div><dt>Time</dt><dd>{doc.timeSig[0]}/{doc.timeSig[1]}</dd></div>
+              <div><dt>Tempo</dt><dd>♩ = {doc.tempo}</dd></div>
               <div><dt>Track</dt><dd>{doc.source.track}</dd></div>
             </dl>
             {doc.source.simplified && <p className={s.notice}>{SIMPLIFIED}</p>}

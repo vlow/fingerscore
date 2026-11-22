@@ -12,7 +12,7 @@ export const TEMPO_MAX = 200;
 export default function Transport({ playing, tempo, onToggle, onTempo }: Props) {
   return (
     <div role="group" aria-label="Playback" className={s.transport}>
-      <button type="button" className={s.play} aria-pressed={playing} onClick={onToggle}>
+      <button type="button" className={s.play} onClick={onToggle}>
         {playing ? (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
         ) : (

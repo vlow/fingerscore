@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { writeMidi, type MidiEvent } from 'midi-file';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { useApp } from '../state/store';
 import Start from './Start';
@@ -90,6 +91,22 @@ it('a file with one usable track goes straight to the sheet', async () => {
   await user.click(await screen.findByRole('button', { name: 'Continue →' }));
   expect(currentPath()).toBe('/sheet');
   expect(useApp.getState().doc?.inst).toBe('asax');
+});
+
+it('a new song clears the previous doc, from a file or the sample', async () => {
+  useApp.getState().setDoc(sampleDoc('asax'));
+  expect(sessionStorage.getItem('fingerscore.doc')).not.toBeNull();
+  renderStart();
+  await user.upload(screen.getByLabelText(/drop a song/i), demoFile());
+  await screen.findByText(/Auld_Lang_Syne.mid — Ready/);
+  expect(useApp.getState().doc).toBeNull();
+  expect(sessionStorage.getItem('fingerscore.doc')).toBeNull();
+
+  useApp.getState().setDoc(sampleDoc('asax'));
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(demoBytes())));
+  await user.click(screen.getByRole('button', { name: /Try a sample/ }));
+  await vi.waitFor(() => expect(currentPath()).toBe('/tracks'));
+  expect(useApp.getState().doc).toBeNull();
 });
 
 it('Choose another file returns to the idle drop zone', async () => {

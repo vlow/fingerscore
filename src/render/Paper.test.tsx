@@ -113,6 +113,24 @@ describe('Paper', () => {
     expect(labels).toEqual(['1.', '2.']);
   });
 
+  it('a two-bar first ending has one label and one continuous bracket', () => {
+    const doc = mkDoc([
+      { rs: true, ev: [[67, 48]] },
+      { volta: '1', ev: [[67, 48]] },
+      { volta: '1', re: true, ev: [[67, 48]] },
+      { volta: '2', ev: [[67, 48]] },
+    ]);
+    const { container } = renderDoc(doc);
+    const voltas = [...container.querySelectorAll('[data-volta]')];
+    expect(voltas.map(v => v.textContent)).toEqual(['1.', '', '2.']);
+    const [first, cont] = voltas.map(v => v.querySelector('path')!.getAttribute('d')!);
+    expect(first).toMatch(/^M[\d.]+ \d+V/);          // the ending's start has a hook
+    expect(cont).not.toMatch(/V/);                   // the continuation is a plain line
+    const endX = (d: string) => Number(/H([\d.]+)$/.exec(d)![1]);
+    const startX = (d: string) => Number(/^M([\d.]+)/.exec(d)![1]);
+    expect(endX(first)).toBeGreaterThanOrEqual(startX(cont));   // open towards the next bar
+  });
+
   it('repeat barlines have dots and the last bar a final barline', () => {
     const { container } = setup('xc');
     expect(container.querySelectorAll('[data-repeat="start"]').length).toBeGreaterThan(0);

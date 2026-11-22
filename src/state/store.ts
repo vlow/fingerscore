@@ -26,6 +26,13 @@ function bestShift(doc: Doc, instId: InstId, prefs: Prefs): number {
   return rankShifts(scoringPitches(doc.score), inst(instId), doc.originalTonicPc, doc.originalMode, prefs)[0].shift;
 }
 
+/** The one place that applies a doc change: a new shift, instrument or recorder system clears fingering overrides. */
+function changed(doc: Doc, patch: Partial<Doc>): Doc {
+  const next = { ...doc, ...patch };
+  if (next.shift !== doc.shift || next.inst !== doc.inst || next.recorderSystem !== doc.recorderSystem) next.fingering = {};
+  return next;
+}
+
 export const useApp = create<AppState>()((set, get) => ({
   instId: 'asax',
   prefs: DEFAULT_PREFS,
@@ -36,7 +43,7 @@ export const useApp = create<AppState>()((set, get) => ({
     writeJSON('local', KEY_INST, id);
     const { doc, prefs } = get();
     if (!doc) { set({ instId: id }); return; }
-    set({ instId: id, doc: { ...doc, inst: id, shift: bestShift(doc, id, prefs), fingering: {} } });
+    set({ instId: id, doc: changed(doc, { inst: id, shift: bestShift(doc, id, prefs) }) });
   },
 
   setPrefs(p) {
@@ -45,7 +52,7 @@ export const useApp = create<AppState>()((set, get) => ({
     writeJSON('local', KEY_PREFS, prefs);
     const { doc } = prev;
     if (doc && doc.shift === bestShift(doc, doc.inst, prev.prefs)) {
-      set({ prefs, doc: { ...doc, shift: bestShift(doc, doc.inst, prefs) } });
+      set({ prefs, doc: changed(doc, { shift: bestShift(doc, doc.inst, prefs) }) });
     } else {
       set({ prefs });
     }
@@ -65,12 +72,12 @@ export const useApp = create<AppState>()((set, get) => ({
     const { doc } = get();
     if (!doc || !Number.isFinite(shift)) return;
     const clamped = Math.max(-24, Math.min(24, Math.round(shift)));
-    set({ doc: { ...doc, shift: clamped, fingering: {} } });
+    set({ doc: changed(doc, { shift: clamped }) });
   },
 
   patchDoc(p) {
     const { doc } = get();
-    if (doc) set({ doc: { ...doc, ...p } });
+    if (doc) set({ doc: changed(doc, p) });
   },
 
   setFingering(evId, index) {

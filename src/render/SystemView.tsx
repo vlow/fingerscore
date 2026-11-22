@@ -66,6 +66,9 @@ function Barlines(p: { bar: BarLayout; doc: Doc }) {
   const x0 = p.bar.x;
   const x1 = x0 + p.bar.width;
   const last = p.bar.bar === p.doc.score.length - 1;
+  // An ending over several bars: hook and label on its first bar only; open on the right where it continues.
+  const voltaStarts = p.doc.score[p.bar.bar - 1]?.volta !== b.volta;
+  const voltaEnd = p.doc.score[p.bar.bar + 1]?.volta === b.volta ? x1 : x0 + p.bar.width - 10;
   return (
     <>
       {b.rs && <g data-repeat="start">{line(x0 - 1, 4)}{line(x0 + 6, 1)}{dots(x0 + 12)}</g>}
@@ -74,8 +77,9 @@ function Barlines(p: { bar: BarLayout; doc: Doc }) {
           : line(x1 - 1, 1)}
       {b.volta !== '' && (
         <g data-volta="">
-          <path d={`M${x0 + 2.5} ${SHEET.voltaY + 14}V${SHEET.voltaY + 0.5}H${x0 + p.bar.width - 10}`} fill="none" stroke={INK} strokeWidth={1} />
-          <text x={x0 + 7} y={SHEET.voltaY + 11} fontSize={11} fontWeight={700} fontFamily={FONT} fill={INK}>{b.volta}.</text>
+          <path d={voltaStarts ? `M${x0 + 2.5} ${SHEET.voltaY + 14}V${SHEET.voltaY + 0.5}H${voltaEnd}` : `M${x0} ${SHEET.voltaY + 0.5}H${voltaEnd}`}
+            fill="none" stroke={INK} strokeWidth={1} />
+          {voltaStarts && <text x={x0 + 7} y={SHEET.voltaY + 11} fontSize={11} fontWeight={700} fontFamily={FONT} fill={INK}>{b.volta}.</text>}
         </g>
       )}
     </>

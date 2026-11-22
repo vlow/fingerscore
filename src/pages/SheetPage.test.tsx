@@ -70,6 +70,19 @@ it('check 4: key bridge, sounds in D → reads B', async () => {
   expect(screen.getByLabelText(/You read/)).toHaveDisplayValue('B major');
 });
 
+it('key bridge on a minor song: selects and keys that fit are named minor', () => {
+  const base = sampleDoc('asax');
+  open('asax', { originalTonicPc: (base.originalTonicPc + 9) % 12, originalMode: 'minor' });
+  for (const label of [/Sounds in/, /You read/]) {
+    const select = screen.getByLabelText(label) as HTMLSelectElement;
+    expect([...select.options].every(o => / minor$/.test(o.text))).toBe(true);
+    expect(select.selectedOptions[0].text).toMatch(/ minor$/);
+  }
+  const fits = screen.getAllByRole('button', { name: /^Sounds .* → you read / });
+  expect(fits.length).toBeGreaterThan(0);
+  expect(fits.every(b => /Sounds \S+ minor → you read \S+ minor/.test(b.textContent!))).toBe(true);
+});
+
 it('non-transposing instruments get one Key select', () => {
   open('fl');
   expect(screen.getByLabelText('Key')).toBeInTheDocument();
@@ -148,6 +161,7 @@ it('alternate fingering: pick, summary, reset', async () => {
 it('alternate fingering: picking the auto option removes the override; Esc and outside click close', async () => {
   open('asax');
   const pill = screen.getAllByRole('button', { name: /⇅/ })[0];
+  expect(pill).toHaveAttribute('aria-haspopup', 'dialog');
   await user.click(pill);
   let dialog = screen.getByRole('dialog');
   await user.click(within(dialog).getAllByRole('button').find(b => !/auto/.test(b.textContent!))!);
@@ -175,6 +189,14 @@ it('show toggles and title editing', async () => {
   await user.clear(screen.getByDisplayValue('The Water Is Wide'));
   await user.type(screen.getByPlaceholderText('Add a title'), 'Waly');
   expect(useApp.getState().doc!.title).toBe('Waly');
+});
+
+it('the detected card lists time and an editable tempo under its own label', () => {
+  open('asax');
+  const card = screen.getByRole('region', { name: 'Detected in file' });
+  const row = (term: string) => within(card).getByText(term, { selector: 'dt' }).nextElementSibling;
+  expect(row('Time')).toHaveTextContent(/^4\/4$/);
+  expect(row('Tempo')).toHaveTextContent('♩ = 100');
 });
 
 it('simplified notice', () => {
@@ -212,12 +234,12 @@ describe('playback', () => {
   it('Play starts the player, Stop stops it', async () => {
     open('asax');
     const play = screen.getByRole('button', { name: 'Play' });
-    expect(play).toHaveAttribute('aria-pressed', 'false');
+    expect(play).not.toHaveAttribute('aria-pressed');   // the label swap says the state
     fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
     await user.click(play);
     expect(fakePlayer.play).toHaveBeenCalledTimes(1);
     const stop = screen.getByRole('button', { name: 'Stop' });
-    expect(stop).toHaveAttribute('aria-pressed', 'true');
+    expect(stop).not.toHaveAttribute('aria-pressed');
     fakePlayer.stop.mockImplementation(() => { fakePlayer.playing = false; fakePlayer.play.mock.calls[0][2](null); });
     await user.click(stop);
     expect(fakePlayer.stop).toHaveBeenCalled();

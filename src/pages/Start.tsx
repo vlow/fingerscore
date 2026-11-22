@@ -28,6 +28,13 @@ export default function Start() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
+  /** A new song replaces the previous one and drops its sheet. */
+  function acceptSong(song: ParsedSong) {
+    setError(null);
+    setSong(song);
+    setDoc(null);
+  }
+
   /** One usable track goes straight to the sheet; otherwise the user picks the part. */
   function continueWith(song: ParsedSong) {
     setError(null);
@@ -46,7 +53,7 @@ export default function Start() {
       const res = await fetch(`/demo/${SAMPLE}`);
       if (!res.ok) throw new Error(res.statusText);
       const song = await parseFile(new File([await res.arrayBuffer()], SAMPLE));
-      setSong(song);
+      acceptSong(song);
       continueWith(song);
     } catch (e) {
       setError(errorMessage(e, SAMPLE));
@@ -67,7 +74,7 @@ export default function Start() {
 
       <DropZone
         instrumentName={displayName(inst(instId))}
-        onSong={song => { setError(null); setSong(song); }}
+        onSong={acceptSong}
         onContinue={() => { const song = useApp.getState().song; if (song) continueWith(song); }}
       />
 
