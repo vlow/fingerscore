@@ -104,7 +104,8 @@ function chordText(h: Element): string {
   const suffix = kindName in KIND_SUFFIX ? KIND_SUFFIX[kindName] : (kind?.getAttribute('text') ?? '');
   const bassEl = kid(h, 'bass');
   const bass = bassEl ? `/${name(bassEl, 'bass-step', 'bass-alter')}` : '';
-  return name(kid(h, 'root'), 'root-step', 'root-alter') + suffix + bass;
+  const root = name(kid(h, 'root'), 'root-step', 'root-alter');
+  return root === '' ? '' : root + suffix + bass;
 }
 
 function lyricOf(note: Element): string | null {
@@ -140,6 +141,20 @@ function firstMeasureExtent(part: Element, divisionsDefault: number): { length: 
   return { length: max, implicit: m.getAttribute('implicit') === 'yes' };
 }
 
+/** Ending numbers are a list ("1", "1,2", "1-2"). Only a plain 1 or 2 maps to a volta. */
+function voltaOf(list: string): '1' | '2' | null {
+  const numbers = new Set<number>();
+  for (const token of list.split(',')) {
+    const range = /^\s*(\d+)\s*-\s*(\d+)\s*$/.exec(token);
+    const lo = range ? Number(range[1]) : Number(token);
+    const hi = range ? Number(range[2]) : lo;
+    if (!Number.isInteger(lo) || !Number.isInteger(hi) || hi - lo > 50) return null;
+    for (let k = lo; k <= hi; k++) numbers.add(k);
+  }
+  if (numbers.size !== 1) return null;
+  return numbers.has(1) ? '1' : numbers.has(2) ? '2' : null;
+}
+
 function readPart(part: Element, info: Map<string, Element>, barLength: number, pickup: number, marks: Map<number, Mark> | null): PartResult {
   const id = part.getAttribute('id') ?? 'P1';
   const sp = info.get(id);
@@ -150,6 +165,7 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
   };
   const open = new Map<string, Map<number, RawNote>>();      // per voice: pitch → note waiting for its tie stop
   let divisions = 1;
+  let transpose = 0;      // semitones from written to concert pitch
   let measureStart = 0;
   let voltaActive: '1' | '2' | null = null;
   const mark = (bar: number): Mark => {
@@ -167,12 +183,15 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
       const name = el.localName;
       if (name === 'attributes') {
         divisions = num(text(el, 'divisions')) ?? divisions;
+        const tr = kid(el, 'transpose');
+        if (tr) transpose = (num(text(tr, 'chromatic')) ?? 0) + 12 * (num(text(tr, 'octave-change')) ?? 0);
       } else if (name === 'backup' || name === 'forward') {
         const d = (num(text(el, 'duration')) ?? 0) / divisions;
         pos += name === 'forward' ? d : -d;
       } else if (name === 'harmony') {
         const offset = (num(text(el, 'offset')) ?? 0) / divisions;
-        result.chords.push({ at: measureStart + pos + offset, text: chordText(el) });
+        const chord = chordText(el);
+        if (chord !== '') result.chords.push({ at: measureStart + pos + offset, text: chord });
       } else if (name === 'barline') {
         if (!marks) continue;
         const rep = kid(el, 'repeat')?.getAttribute('direction');
@@ -181,11 +200,10 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
         const ending = kid(el, 'ending');
         const type = ending?.getAttribute('type');
         if (ending && type === 'start') {
-          const n = (ending.getAttribute('number') ?? '').trim()[0];
-          voltaActive = n === '1' || n === '2' ? n : null;
+          voltaActive = voltaOf(ending.getAttribute('number') ?? '');
         } else if (ending && (type === 'stop' || type === 'discontinue')) endVolta = true;
       } else if (name === 'note') {
-        if (kid(el, 'grace')) continue;
+        if (kid(el, 'grace') || kid(el, 'cue')) continue;
         const dur = (num(text(el, 'duration')) ?? 0) / divisions;
         const isChord = !!kid(el, 'chord');
         const start = isChord ? lastStart : pos;
@@ -198,7 +216,7 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
         const step = STEP_PC[text(pitch, 'step') ?? ''];
         const octave = num(text(pitch, 'octave'));
         if (step === undefined || octave === null) continue;
-        const midi = (octave + 1) * 12 + step + Math.round(num(text(pitch, 'alter')) ?? 0);
+        const midi = (octave + 1) * 12 + step + Math.round(num(text(pitch, 'alter')) ?? 0) + transpose;
         const abs = measureStart + start;
 
         const voiceId = text(el, 'voice') ?? '1';
@@ -207,7 +225,8 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
         const waiting = open.get(voiceId) ?? new Map<number, RawNote>();
         open.set(voiceId, waiting);
 
-        const ties = kids(el, 'tie').map(t => t.getAttribute('type'));
+        const notations = kids(el, 'notations').flatMap(nt => kids(nt, 'tied'));
+        const ties = [...kids(el, 'tie'), ...notations].map(t => t.getAttribute('type'));
         const tieStop = ties.includes('stop');
         const tieStart = ties.includes('start');
         let target = tieStop ? waiting.get(midi) : undefined;

@@ -9,6 +9,12 @@ const raw = (name: string) => new Uint8Array(readFileSync(`src/import/fixtures/$
 const load = (name: string) => parseMusicXml(name, raw(name));
 const opts = (s: ParsedSong) => ({ trackId: s.tracks[0].id, keep: 'top' as const, lyricsFrom: null, chordsFrom: null, instId: 'asax' as const, prefs: DEFAULT_PREFS });
 
+const xmlRaw = (measures: string) => new TextEncoder().encode(
+  `<?xml version="1.0"?><score-partwise version="3.1"><part-list><score-part id="P1"><part-name>P</part-name></score-part></part-list><part id="P1">${measures}</part></score-partwise>`);
+const xml = (measureContent: string) => xmlRaw(`<measure number="1">${measureContent}</measure>`);
+const n = (step: string, octave: number, duration: number) =>
+  `<note><pitch><step>${step}</step><octave>${octave}</octave></pitch><duration>${duration}</duration><voice>1</voice></note>`;
+
 describe('parseMusicXml', () => {
   it('simple: tracks, pickup, key, lyrics, chords, repeats', async () => {
     const s = await load('simple.musicxml');
@@ -74,5 +80,62 @@ describe('parseMusicXml', () => {
     const timewise = new TextEncoder().encode('<?xml version="1.0"?><score-timewise version="3.1"/>');
     await expect(parseMusicXml('t.xml', timewise)).rejects.toMatchObject({ userMessage: '"t.xml" could not be read as a MusicXML file.' });
     await expect(parseMusicXml('z.mxl', new Uint8Array([0x50, 0x4b, 1, 2, 3]))).rejects.toBeInstanceOf(ImportError);
+  });
+
+  it('walks chord notes, forward, grace notes, rests and divisions changes across two parts', async () => {
+    const s = await load('multi.musicxml');
+    expect(s.tracks.map(t => t.id)).toEqual(['P1:1', 'P2:1']);
+    expect(s.tracks[0].notes).toEqual([
+      { start: 0, dur: 1, midi: 72 }, { start: 0, dur: 1, midi: 76 }, { start: 2, dur: 0.5, midi: 77 }, { start: 4, dur: 2, midi: 81 },
+    ]);
+    expect(s.tracks[1].notes).toEqual([{ start: 0, dur: 4, midi: 60 }, { start: 4, dur: 2, midi: 62 }]);
+  });
+
+  it('a transposing part is stored at concert pitch', async () => {
+    const s = await load('multi.musicxml');
+    expect(s.tracks[1].notes[0].midi).toBe(60);   // B-flat clarinet, written D4
+    const octave = await parseMusicXml('o.xml', xml('<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time><transpose><chromatic>0</chromatic><octave-change>-1</octave-change></transpose></attributes>' + n('C', 5, 4)));
+    expect(octave.tracks[0].notes[0].midi).toBe(60);
+  });
+
+  it('reads triplets at their sounding length, a tempo from <sound>, and buildDoc reports simplified', async () => {
+    const s = await load('triplet.musicxml');
+    expect(s.tempo).toBe(100);
+    expect(s.tracks[0].notes.map(x => x.start)).toEqual([0, 1 / 3, 2 / 3, 1]);
+    expect(s.tracks[0].notes.slice(0, 3).every(x => Math.abs(x.dur - 1 / 3) < 1e-9)).toBe(true);
+    const doc = buildDoc(s, opts(s));
+    expect(doc.source.simplified).toBe(true);
+    expect(doc.tempo).toBe(100);
+    expect(doc.score.every(b => b.ev.reduce((a, e) => a + e.d, 0) === b.cap)).toBe(true);
+  });
+
+  it('reads harmony with alter, bass, offset and a kind text fallback, and skips rootless harmonies', async () => {
+    const s = await load('harmony.musicxml');
+    expect(s.tracks[0].chords).toEqual([{ at: 0, text: 'B♭/D' }, { at: 3, text: 'Csus2' }, { at: 4, text: 'F♯m' }]);
+  });
+
+  it('a tie written only as <tied> merges', async () => {
+    const note = (type: string) => `<note><pitch><step>C</step><octave>5</octave></pitch><duration>2</duration><voice>1</voice><notations><tied type="${type}"/></notations></note>`;
+    const s = await parseMusicXml('t.xml', xml(`<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>${note('start')}${note('stop')}`));
+    expect(s.tracks[0].notes).toEqual([{ start: 0, dur: 4, midi: 72 }]);
+  });
+
+  it('skips cue notes', async () => {
+    const s = await parseMusicXml('c.xml', xml(`<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><cue/><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration></note>${n('C', 5, 4)}`));
+    expect(s.tracks[0].notes).toEqual([{ start: 0, dur: 4, midi: 72 }]);
+  });
+
+  it('reads ending numbers as lists; only plain 1 and 2 become voltas', async () => {
+    const ending = (num: string, bar: number) =>
+      `<measure number="${bar}"><barline location="left"><ending number="${num}" type="start"/></barline>${n('C', 5, 4)}<barline location="right"><ending number="${num}" type="stop"/></barline></measure>`;
+    const attrs = '<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>';
+    const body = (nums: string[]) => `<measure number="1">${attrs}${n('C', 5, 4)}</measure>` + nums.map((x, i) => ending(x, i + 2)).join('');
+    const s = await parseMusicXml('v.xml', xmlRaw(body(['1', '2', '1,2', '1-2', '3'])));
+    expect(s.marks).toEqual([{ bar: 1, volta: '1' }, { bar: 2, volta: '2' }]);
+  });
+
+  it('skips a harmony without a root', async () => {
+    const s = await parseMusicXml('h.xml', xml(`<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><harmony><function>V</function></harmony>${n('C', 5, 4)}`));
+    expect(s.tracks[0].chords).toEqual([]);
   });
 });
