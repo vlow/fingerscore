@@ -2,7 +2,7 @@
 
 Turns a song file into sheet music with a fingering chart under every note, for woodwinds. It runs in the browser only. Nothing leaves your machine.
 
-Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files first.
+Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files, then editing with undo and redo.
 
 ## What it does
 
@@ -16,6 +16,33 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Prints the sheet (A4, paper only) through the browser's print dialog.
 - Covers 12 instruments: Xaphoon, saxophones, clarinet, flutes, recorders.
 - Ships a sample song, Auld Lang Syne. Regenerate it with `npm run demo`.
+
+### Editing
+
+A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chords. Click a note or rest to select it. The panel for the mode opens under that system. Esc clears the selection.
+
+- **Edit notes:** change the pitch by semitone or octave. Set the length from sixteenth to whole, with a dot. Tie a note to the next note of the same pitch. Turn a note into a rest and back. Add a bar after the selected one, or remove it. Every bar keeps its full length.
+- **Lyrics:** type one syllable per note. Enter moves to the next note that can carry a syllable. The card "Lyrics & chords" fills a pasted verse from the selected note: `wat-er` puts "wat-" and "er" on two notes, and a lone `_` leaves a note empty. "Clear lyrics" and "Clear chords" empty them.
+- **Chords:** type a chord such as Am7 or F♯m7♭5 on any note or rest. The app stores it relative to the original key, so it follows every transposition and instrument. Text that is not a chord stays, in red, and is not transposed.
+- **Restore from file:** the card shows how many lyric and chord edits you made. "Restore from file" returns lyrics and chords to what the file had.
+- **Undo and redo:** the page bar has Undo and Redo buttons. They cover every change to the sheet, up to 200 steps. History lives in memory and starts empty when you open a sheet.
+
+| Keys | Where | Action |
+|---|---|---|
+| Ctrl/⌘+S | Sheet page | Save |
+| Ctrl/⌘+Z | Sheet page | Undo |
+| Ctrl/⌘+Shift+Z, Ctrl+Y | Sheet page | Redo |
+| ↑ / ↓ | Edit notes, sheet focused | Semitone up or down |
+| Ctrl/⌘+↑ / ↓ | Edit notes | Octave up or down |
+| A–G | Edit notes | Jump to that note name, nearest to the current pitch |
+| ← / → | Edit notes | Previous or next note or rest |
+| 2 3 4 5 6 | Edit notes | Sixteenth, eighth, quarter, half, whole |
+| . | Edit notes | Dot |
+| R | Edit notes | Note or rest |
+| T | Edit notes | Tie |
+| Delete, Backspace | Edit notes | Turn into rest |
+| Enter, Space | Edit notes | Play from the selection |
+| Esc | Edit notes | Clear the selection |
 
 ### Saving and files
 
@@ -35,7 +62,9 @@ The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The 
 
 ## What it does not do
 
-- Edit notes, lyrics or chords. No undo or redo.
+- Insert mode, copy and paste, or selecting several notes.
+- Editing repeats and endings, or changing the meter or key signature.
+- More than one verse of lyrics.
 - Scales page.
 - MuseScore (`.mscz`) and ABC import.
 - Triplets.
@@ -43,7 +72,7 @@ The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The 
 - About, Imprint and Privacy pages.
 - A full accessibility audit.
 
-Version 2 plans these.
+Later versions plan these.
 
 There is no sync between browsers or devices, and none is planned: the app has no server and sends no user data over the network. To move a sheet, use File, then Download JSON, and open the file on the other device.
 
