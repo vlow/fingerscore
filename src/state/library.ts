@@ -8,6 +8,7 @@ export type SaveResult = { ok: true; entry: LibraryEntry } | { ok: false; messag
 
 export const BLOCKED_MESSAGE = 'This browser blocks local storage. Use "Download JSON" instead.';
 export const FULL_MESSAGE = "Couldn't save — the browser storage may be full.";
+export const INCONSISTENT_MESSAGE = "This sheet can't be saved: its data is inconsistent.";
 
 const KEY = 'fingerscore.library.v1';
 const PROBE_KEY = 'fingerscore.library.probe';
@@ -41,6 +42,8 @@ export function getEntry(id: string): LibraryEntry | null {
 }
 
 export function saveEntry(doc: Doc, id: string | null, now: Date = new Date()): SaveResult {
+  // Never write an entry that listEntries would skip on the next read.
+  if (!validateDoc(JSON.parse(JSON.stringify(doc)))) return { ok: false, message: INCONSISTENT_MESSAGE };
   if (!probe('local', PROBE_KEY)) return { ok: false, message: BLOCKED_MESSAGE };
   const all = listEntries();
   const known = id !== null && all.some(e => e.id === id);

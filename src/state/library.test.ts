@@ -1,6 +1,17 @@
+import { readdirSync, readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sampleDoc } from '../domain/fixture';
-import { BLOCKED_MESSAGE, FULL_MESSAGE, deleteEntry, getEntry, listEntries, restoreEntry, saveEntry, writeFailureMessage } from './library';
+import { optionsFor } from '../domain/fingerings';
+import { inst, ORDER } from '../domain/instruments';
+import { canonical, serializeFile, validateDoc } from '../domain/persistence';
+import { DEFAULT_PREFS } from '../domain/transpose';
+import type { Doc } from '../domain/types';
+import { buildDoc } from '../import/buildDoc';
+import { defaultBuildOptions } from '../import';
+import { parseMidi } from '../import/midi';
+import { parseMusicXml } from '../import/musicxml';
+import type { ParsedSong } from '../import/types';
+import { BLOCKED_MESSAGE, FULL_MESSAGE, INCONSISTENT_MESSAGE, deleteEntry, getEntry, listEntries, restoreEntry, saveEntry, writeFailureMessage } from './library';
 
 beforeEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
 const T = (s: string) => new Date(s);
@@ -79,5 +90,51 @@ describe('library', () => {
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
     expect(writeFailureMessage()).toBe(BLOCKED_MESSAGE);
     spy.mockRestore();
+  });
+});
+
+describe('saveEntry refuses what the library could not read back', () => {
+  it('an inconsistent sheet is not written', () => {
+    const d = sampleDoc('asax');
+    const bad: Doc = { ...d, score: d.score.map((bar, k) => (k === 1 ? { ...bar, cap: bar.cap - 3 } : bar)) };   // events no longer sum to cap
+    expect(saveEntry(bad, null)).toEqual({ ok: false, message: INCONSISTENT_MESSAGE });
+    expect(INCONSISTENT_MESSAGE).toBe("This sheet can't be saved: its data is inconsistent.");
+    expect(localStorage.getItem('fingerscore.library.v1')).toBeNull();
+  });
+
+  it("every sheet the app builds survives the file round trip (12 instruments × 2 recorder systems × every fixture, overrides on every note with alternates)", async () => {
+    const songs: ParsedSong[] = [parseMidi('Auld_Lang_Syne.mid', new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid')))];
+    const dir = 'src/import/fixtures';
+    for (const name of readdirSync(dir).filter(n => n.endsWith('.musicxml')).sort()) {
+      try {
+        songs.push(await parseMusicXml(name, new Uint8Array(readFileSync(`${dir}/${name}`))));
+      } catch {
+        expect(name).toBe('seven-eight.musicxml');   // the one fixture the importer refuses (7/8)
+      }
+    }
+    expect(songs).toHaveLength(7);
+    expect(ORDER).toHaveLength(12);
+    let checked = 0;
+    let overrides = 0;
+    for (const song of songs) {
+      for (const instId of ORDER) {
+        for (const recorderSystem of ['baroque', 'german'] as const) {
+          const built = { ...buildDoc(song, defaultBuildOptions(song, instId, DEFAULT_PREFS)), recorderSystem };
+          const fingering: Doc['fingering'] = {};
+          for (const bar of built.score) for (const e of bar.ev) {
+            if (e.r) continue;
+            const n = optionsFor(instId, e.m + built.shift + inst(instId).off, recorderSystem).length;
+            if (n >= 2) fingering[e.id] = n - 1;
+          }
+          overrides += Object.keys(fingering).length;
+          const doc: Doc = { ...built, fingering };
+          const back = validateDoc(JSON.parse(serializeFile(doc)).doc);
+          expect(back && canonical(back), `${song.file} · ${instId} · ${recorderSystem}`).toBe(canonical(doc));
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBe(7 * 12 * 2);
+    expect(overrides).toBeGreaterThan(0);
   });
 });

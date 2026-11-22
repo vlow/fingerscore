@@ -61,7 +61,7 @@ User messages: `"{file}" isn't a fingerscore sheet.` for a wrong envelope or unp
 
 - localStorage key `fingerscore.library.v1`: array of `{ id, title, inst, savedAt, doc }`, newest first. `inst` is the instrument's display name; `id` is time-based plus a random suffix.
 - All access through one repository module with try/catch. Reading validates each entry with 4.2 and skips invalid ones.
-- Messages (§13.2): storage blocked → `This browser blocks local storage. Use "Download JSON" instead.`; write failed → `Couldn't save — the browser storage may be full.`
+- Messages (§13.2): storage blocked → `This browser blocks local storage. Use "Download JSON" instead.`; write failed → `Couldn't save — the browser storage may be full.`; a sheet that would fail 4.2 after a JSON round trip is not written → `This sheet can't be saved: its data is inconsistent.`
 - Blocked or full storage never stops a JSON file from opening. When the library write fails during an import, the sheet opens anyway without a library entry: status "Not saved yet", `source.format` `file`. The storage message shows in the sheet page's alert line (File menu) or under the drop-zone result (4.6).
 
 ### 4.4 Sheet page
