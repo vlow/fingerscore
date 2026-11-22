@@ -334,19 +334,25 @@ describe('library state', () => {
   });
 
   it('an imported file is added and opened', () => {
-    expect(useApp.getState().openImported({ ...sampleDoc('xc'), title: 'Dropped' }, 'dropped.fingerscore.json')).toBe(true);
+    expect(useApp.getState().openImported({ ...sampleDoc('xc'), title: 'Dropped' }, 'dropped.fingerscore.json')).toEqual({ saved: true });
     expect(listEntries()[0].title).toBe('Dropped');
     expect(useApp.getState().doc!.source).toMatchObject({ format: 'file', file: 'dropped.fingerscore.json' });
     expect(saveStatus(useApp.getState())).toBe('saved');
   });
 
-  it('a failed import keeps the current sheet', () => {
+  it('an import that cannot be saved opens anyway, unlinked, and returns the storage message', () => {
     useApp.getState().setDoc(sampleDoc('asax'));
+    useApp.getState().saveSheet();
+    expect(sessionStorage.getItem('fingerscore.sheet')).not.toBeNull();
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
-    expect(useApp.getState().openImported(sampleDoc('xc'), 'a.fingerscore.json')).toBe(false);
+    expect(useApp.getState().openImported({ ...sampleDoc('xc'), title: 'Blocked' }, 'a.fingerscore.json')).toEqual({ saved: false, message: BLOCKED_MESSAGE });
     spy.mockRestore();
-    expect(useApp.getState().doc!.inst).toBe('asax');
-    expect(useApp.getState().saveError).toBe(BLOCKED_MESSAGE);
+    const st = useApp.getState();
+    expect(st.doc).toMatchObject({ inst: 'xc', title: 'Blocked', source: { format: 'file', file: 'a.fingerscore.json' } });
+    expect(st.libraryId).toBeNull();
+    expect(saveStatus(st)).toBe('new');
+    expect(st.saveError).toBeNull();
+    expect(sessionStorage.getItem('fingerscore.sheet')).toBeNull();   // a reload does not link it to the old entry
   });
 
   it('forgetting the current entry makes the sheet new again', () => {

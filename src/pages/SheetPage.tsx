@@ -230,7 +230,8 @@ function Sheet({ doc }: { doc: Doc }) {
     }
     const r = parseFileText(text);
     if (!r.ok) { setFileError(importMessage(file.name, r.reason)); return; }
-    if (useApp.getState().openImported(r.doc, file.name)) setFileError(null);
+    const opened = useApp.getState().openImported(r.doc, file.name);
+    setFileError(opened.saved ? null : opened.message);
   }
 
   function openSaved(id: string) {

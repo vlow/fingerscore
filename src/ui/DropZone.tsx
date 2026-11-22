@@ -1,6 +1,7 @@
 import { useId, useState, type ChangeEvent, type DragEvent, type Ref } from 'react';
 import { Link } from 'react-router-dom';
 import { importMessage, parseFileText } from '../domain/persistence';
+import type { Doc } from '../domain/types';
 import { ACCEPT, parseFile } from '../import';
 import { ImportError, type ParsedSong } from '../import/types';
 import { saveEntry, type LibraryEntry } from '../state/library';
@@ -13,6 +14,8 @@ interface Props {
   onContinue(): void;
   /** A saved sheet (.json) was added to the library. */
   onSheet?(entry: LibraryEntry): void;
+  /** A saved sheet (.json) could not be added to the library: open it as the current sheet instead. */
+  onUnsavedSheet?(doc: Doc, fileName: string): void;
   /** The file input, present while the zone is idle. */
   inputRef?: Ref<HTMLInputElement>;
 }
@@ -22,6 +25,7 @@ type State =
   | { kind: 'parsing'; file: string }
   | { kind: 'ready'; file: string }
   | { kind: 'sheet'; entry: LibraryEntry }
+  | { kind: 'unsaved'; title: string; message: string }
   | { kind: 'error'; message: string };
 
 export function errorMessage(e: unknown, file: string): string {
@@ -30,8 +34,8 @@ export function errorMessage(e: unknown, file: string): string {
 
 const isSheetFile = (name: string) => name.toLowerCase().endsWith('.json');
 
-/** Reads a saved sheet and adds it to the library; the error is the message to show. */
-async function addSheet(file: File): Promise<{ entry: LibraryEntry } | { error: string }> {
+/** Reads a saved sheet and adds it to the library; a failed save returns the sheet with the storage message. */
+async function addSheet(file: File): Promise<{ entry: LibraryEntry } | { doc: Doc; message: string } | { error: string }> {
   let text: string;
   try {
     text = await file.text();
@@ -41,10 +45,10 @@ async function addSheet(file: File): Promise<{ entry: LibraryEntry } | { error: 
   const parsed = parseFileText(text);
   if (!parsed.ok) return { error: importMessage(file.name, parsed.reason) };
   const saved = saveEntry(parsed.doc, null);
-  return saved.ok ? { entry: saved.entry } : { error: saved.message };
+  return saved.ok ? { entry: saved.entry } : { doc: parsed.doc, message: saved.message };
 }
 
-export default function DropZone({ instrumentName, onSong, onContinue, onSheet, inputRef }: Props) {
+export default function DropZone({ instrumentName, onSong, onContinue, onSheet, onUnsavedSheet, inputRef }: Props) {
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [drag, setDrag] = useState(false);
   const titleId = useId();
@@ -55,6 +59,11 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
     if (isSheetFile(file.name)) {
       const r = await addSheet(file);
       if ('error' in r) { setState({ kind: 'error', message: r.error }); return; }
+      if ('doc' in r) {
+        onUnsavedSheet?.(r.doc, file.name);
+        setState({ kind: 'unsaved', title: r.doc.title.trim() || 'Untitled sheet', message: r.message });
+        return;
+      }
       onSheet?.(r.entry);
       setState({ kind: 'sheet', entry: r.entry });
       return;
@@ -147,6 +156,16 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
             <Link to={`/sheet?id=${encodeURIComponent(state.entry.id)}`} className={s.primary}>Open sheet →</Link>
             <button type="button" className={s.secondary} onClick={reset}>Add another</button>
           </div>
+        </div>
+      )}
+      {state.kind === 'unsaved' && (
+        <div className={s.content}>
+          <p className={s.result} role="status">✓ "{state.title}" opened — it could not be saved in this browser.</p>
+          <div className={s.actions}>
+            <Link to="/sheet" className={s.primary}>Open sheet →</Link>
+            <button type="button" className={s.secondary} onClick={reset}>Add another</button>
+          </div>
+          <p className={s.error} role="alert">{state.message}</p>
         </div>
       )}
       {state.kind === 'error' && (

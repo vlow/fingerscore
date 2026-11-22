@@ -61,6 +61,7 @@ User messages: `"{file}" isn't a fingerscore sheet.` for a wrong envelope or unp
 - localStorage key `fingerscore.library.v1`: array of `{ id, title, inst, savedAt, doc }`, newest first. `inst` is the instrument's display name; `id` is time-based plus a random suffix.
 - All access through one repository module with try/catch. Reading validates each entry with 4.2 and skips invalid ones.
 - Messages (§13.2): storage blocked → `This browser blocks local storage. Use "Download JSON" instead.`; write failed → `Couldn't save — the browser storage may be full.`
+- Blocked or full storage never stops a JSON file from opening. When the library write fails during an import, the sheet opens anyway without a library entry: status "Not saved yet", `source.format` `file`. The storage message shows in the sheet page's alert line (File menu) or under the drop-zone result (4.6).
 
 ### 4.4 Sheet page
 
@@ -82,7 +83,7 @@ Page bar chip (§2.2): imported song → as today; JSON file → document icon +
 ### 4.6 Start page
 
 - **"Your sheets" gallery** (§4.4), above the instrument picker, only when the library is non-empty: header "Your sheets" + "{N} sheets · saved in this browser"; responsive grid `auto-fill, minmax(220px, 1fr)`; newest first; 4 shown + "Show all {N}"; card with decorative staff lines, title, instrument, "Saved 5 min ago"; the whole card opens the sheet (`/sheet?id=`); a delete icon button removes it and shows a toast "Deleted "{title}"" with **Undo** for 6 seconds.
-- **Drop zone** (§4.3): text "Drop a song or a saved sheet here"; chip "Saved sheet .json" (teal) beside the MIDI and MusicXML chips; a `.json` file is validated, added to the library, and the result reads `✓ "{title}" added to your sheets` with [Open sheet →] and [Add another]; an invalid file shows the 4.2 message with [Try another file].
+- **Drop zone** (§4.3): text "Drop a song or a saved sheet here"; chip "Saved sheet .json" (teal) beside the MIDI and MusicXML chips; a `.json` file is validated, added to the library, and the result reads `✓ "{title}" added to your sheets` with [Open sheet →] and [Add another]; an invalid file shows the 4.2 message with [Try another file]. When the library write fails, the file becomes the session's current sheet and the result reads `✓ "{title}" opened — it could not be saved in this browser.` with [Open sheet →] (to `/sheet`) and [Add another], and the storage message (4.3) below it as `role="alert"`.
 
 ### 4.7 Time-ago text
 

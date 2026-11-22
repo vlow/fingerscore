@@ -85,6 +85,7 @@ export default function Start() {
         onSong={acceptSong}
         onContinue={() => { const song = useApp.getState().song; if (song) continueWith(song); }}
         onSheet={() => setLibraryVersion(n => n + 1)}
+        onUnsavedSheet={(doc, name) => useApp.getState().openUnsaved(doc, name)}
         inputRef={dropInput}
       />
 

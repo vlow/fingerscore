@@ -257,7 +257,7 @@ it('an upper-case .JSON name takes the saved-sheet path', async () => {
   expect(listEntries().map(e => e.title)).toEqual(['Loud']);
 });
 
-it('a storage failure shows the storage message and leaves the library unchanged', async () => {
+it('a storage failure opens the sheet unsaved and shows the storage message', async () => {
   saveSheets('Before');
   const setItem = Storage.prototype.setItem;
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
@@ -266,8 +266,12 @@ it('a storage failure shows the storage message and leaves the library unchanged
   });
   renderStart();
   drop(sheetFile('Too much'));
-  expect(await screen.findByRole('alert')).toHaveTextContent(FULL_MESSAGE);
+  expect(await screen.findByText('✓ "Too much" opened — it could not be saved in this browser.')).toBeInTheDocument();
+  expect(screen.getByRole('alert')).toHaveTextContent(FULL_MESSAGE);
+  expect(screen.getByRole('link', { name: /Open sheet/ })).toHaveAttribute('href', '/sheet');
   expect(listEntries().map(e => e.title)).toEqual(['Before']);
+  expect(useApp.getState().doc).toMatchObject({ title: 'Too much', source: { format: 'file', file: 'Too much.fingerscore.json' } });
+  expect(useApp.getState().libraryId).toBeNull();
 });
 
 it('a second file is read after a success and after an error', async () => {

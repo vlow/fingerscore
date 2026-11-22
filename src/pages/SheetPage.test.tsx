@@ -357,6 +357,22 @@ describe('save and the File menu', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('Open JSON file with blocked storage opens the sheet unsaved; the message shows in the page alert line', async () => {
+    open('asax');
+    const text = serializeFile({ ...sampleDoc('cl'), title: 'Unsaved import' });
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
+    await user.upload(screen.getByLabelText('Open JSON file', { selector: 'input' }), new File([text], 'u.fingerscore.json', { type: 'application/json' }));
+    spy.mockRestore();
+    expect(await screen.findByRole('textbox', { name: 'Sheet title' })).toHaveValue('Unsaved import');
+    expect(screen.getByText(/u\.fingerscore\.json · fingerscore sheet/)).toBeInTheDocument();
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent('This browser blocks local storage. Use "Download JSON" instead.');
+    expect(screen.getByRole('button', { name: 'Save' }).parentElement).not.toContainElement(alerts[0]);   // not beside Save
+    expect(useApp.getState().saveError).toBeNull();
+  });
+
   it('saved list: open another sheet, delete with undo', async () => {
     saveEntry({ ...sampleDoc('fl'), title: 'Other' }, null);
     open('asax');

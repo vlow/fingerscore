@@ -20,7 +20,10 @@ export interface AppState {
   saveError: string | null;
   saveSheet(): boolean;
   openEntry(id: string): boolean;
-  openImported(doc: Doc, fileName: string): boolean;
+  /** Adds an imported sheet to the library and opens it; when the save fails it opens the sheet unlinked. */
+  openImported(doc: Doc, fileName: string): ImportResult;
+  /** Opens an imported sheet without a library entry ("Not saved yet"). */
+  openUnsaved(doc: Doc, fileName: string): void;
   forgetEntry(id: string): void;
   relinkEntry(id: string): void;
   setInstrument(id: InstId): void;
@@ -38,6 +41,7 @@ function bestShift(doc: Doc, instId: InstId, prefs: Prefs): number {
 }
 
 export type SaveStatus = 'new' | 'dirty' | 'saved';
+export type ImportResult = { saved: true } | { saved: false; message: string };
 
 export function saveStatus(s: Pick<AppState, 'doc' | 'libraryId' | 'savedSnapshot'>): SaveStatus {
   if (!s.libraryId || !s.doc) return 'new';
@@ -85,11 +89,21 @@ export const useApp = create<AppState>()((set, get) => ({
 
   openImported(imported, fileName) {
     const r = saveEntry(imported, null);
-    if (!r.ok) { set({ saveError: r.message }); return false; }
+    if (!r.ok) {
+      get().openUnsaved(imported, fileName);
+      return { saved: false, message: r.message };
+    }
     const doc = opened(r.entry.doc, fileName, 'file');
     remove('session', KEY_SONG);
     set({ doc, instId: doc.inst, song: null, libraryId: r.entry.id, savedSnapshot: canonical(doc), saveError: null });
-    return true;
+    return { saved: true };
+  },
+
+  openUnsaved(imported, fileName) {
+    const doc = opened(imported, fileName, 'file');
+    remove('session', KEY_SONG);
+    remove('session', KEY_SHEET);
+    set({ doc, instId: doc.inst, song: null, libraryId: null, savedSnapshot: null, saveError: null });
   },
 
   forgetEntry(id) {
