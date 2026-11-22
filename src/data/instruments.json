@@ -27,20 +27,20 @@
       "group": "Xaphoon",
       "off": 0,
       "lo": 60,
-      "hi": 86,
-      "ext": 91,
+      "hi": 84,
+      "ext": 84,
       "kind": "xaph",
-      "easyTop": 73
+      "easyTop": 79
     },
     "xbb": {
       "name": "Xaphoon in B♭",
       "group": "Xaphoon",
       "off": 2,
       "lo": 60,
-      "hi": 86,
-      "ext": 91,
+      "hi": 84,
+      "ext": 84,
       "kind": "xaph",
-      "easyTop": 73
+      "easyTop": 79
     },
     "ssax": {
       "name": "Soprano sax (B♭)",
