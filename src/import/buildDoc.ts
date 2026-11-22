@@ -5,7 +5,7 @@ import { rankShifts, scoringPitches, type Prefs } from '../domain/transpose';
 import type { Doc, Ev, InstId } from '../domain/types';
 import { toBars } from './bars';
 import { detectChords } from './harmony';
-import { estimateKey } from './keyfind';
+import { estimateKey, majorOrRelativeMinor } from './keyfind';
 import { monophonic, quantise } from './quantise';
 import { ImportError, type ParsedSong } from './types';
 
@@ -80,7 +80,10 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
     }
   }
 
-  const key = song.key ?? estimateKey(melody.map(n => ({ start: n.start / TPQ, dur: n.dur / TPQ, midi: n.midi })));
+  const melodyRaw = melody.map(n => ({ start: n.start / TPQ, dur: n.dur / TPQ, midi: n.midi }));
+  const key = !song.key ? estimateKey(melodyRaw)
+    : song.key.mode === null ? majorOrRelativeMinor(melodyRaw, song.key.tonicPc)
+    : { tonicPc: song.key.tonicPc, mode: song.key.mode };
   const shift = rankShifts(scoringPitches(score), inst(o.instId), key.tonicPc, key.mode, o.prefs)[0].shift;
 
   return {

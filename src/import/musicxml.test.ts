@@ -156,7 +156,7 @@ describe('parseMusicXml', () => {
   it('a transposing part gives concert key, chords and notes', async () => {
     const attrs = '<attributes><divisions>1</divisions><key><fifths>2</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose></attributes>';
     const s = await parseMusicXml('cl.xml', xml(`${attrs}<harmony><root><root-step>D</root-step></root><kind>major</kind><bass><bass-step>F</bass-step><bass-alter>1</bass-alter></bass></harmony><note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice></note>`));
-    expect(s.key).toEqual({ tonicPc: 0, mode: 'major' });
+    expect(s.key).toEqual({ tonicPc: 0, mode: null });
     expect(s.tracks[0].chords).toEqual([{ at: 0, text: 'C/E' }]);
     expect(s.tracks[0].notes[0].midi).toBe(60);
   });
@@ -167,10 +167,37 @@ describe('parseMusicXml', () => {
     const file = (a: string, b: string) => new TextEncoder().encode(`<?xml version="1.0"?><score-partwise version="3.1">${list}${a}${b}</score-partwise>`);
     const clar = '<transpose><chromatic>-2</chromatic></transpose>';
     const flute = await parseMusicXml('f.xml', file(part('P1', 0, ''), part('P2', 2, clar)));
-    expect(flute.key).toEqual({ tonicPc: 0, mode: 'major' });
+    expect(flute.key).toEqual({ tonicPc: 0, mode: null });
     const clarFirst = await parseMusicXml('g.xml', file(part('P1', 2, clar), part('P2', 0, '')));
-    expect(clarFirst.key).toEqual({ tonicPc: 0, mode: 'major' });
+    expect(clarFirst.key).toEqual({ tonicPc: 0, mode: null });
     const both = await parseMusicXml('h.xml', file(part('P1', 2, clar), part('P2', 2, clar)));
-    expect(both.key).toEqual({ tonicPc: 0, mode: 'major' });
+    expect(both.key).toEqual({ tonicPc: 0, mode: null });
+  });
+
+  describe('a key without <mode>', () => {
+    const song = (mode: string, notes: string) => parseMusicXml('k.xml', xmlRaw(
+      `<measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths>${mode}</key><time><beats>4</beats><beat-type>4</beat-type></time></attributes>${notes}</measure>`));
+    const aMinor = n('A', 4, 1) + n('C', 5, 1) + n('E', 5, 1) + n('A', 4, 1) + '</measure><measure number="2">' + n('G', 4, 1) + n('B', 4, 1) + n('E', 4, 1) + n('A', 4, 1);
+    const cMajor = n('C', 5, 1) + n('E', 5, 1) + n('G', 5, 1) + n('C', 5, 1) + '</measure><measure number="2">' + n('D', 5, 1) + n('G', 4, 1) + n('B', 4, 1) + n('C', 5, 1);
+
+    it('is estimated as A minor for an A-minor melody', async () => {
+      const s = await song('', aMinor);
+      expect(s.key).toEqual({ tonicPc: 0, mode: null });
+      const doc = buildDoc(s, opts(s));
+      expect([doc.originalTonicPc, doc.originalMode]).toEqual([9, 'minor']);
+    });
+
+    it('is estimated as C major for a C-major melody', async () => {
+      const s = await song('', cMajor);
+      const doc = buildDoc(s, opts(s));
+      expect([doc.originalTonicPc, doc.originalMode]).toEqual([0, 'major']);
+    });
+
+    it('an explicit <mode> is honoured', async () => {
+      const s = await song('<mode>major</mode>', aMinor);
+      expect(s.key).toEqual({ tonicPc: 0, mode: 'major' });
+      const doc = buildDoc(s, opts(s));
+      expect([doc.originalTonicPc, doc.originalMode]).toEqual([0, 'major']);
+    });
   });
 });

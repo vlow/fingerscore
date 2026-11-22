@@ -13,7 +13,7 @@ const KIND_SUFFIX: Record<string, string> = {
 };
 const BEAT_UNITS: Record<string, number> = { whole: 4, half: 2, quarter: 1, eighth: 0.5, '16th': 0.25 };
 
-interface WrittenKey { tonicPc: number; mode: 'major' | 'minor'; transpose: number }
+interface WrittenKey { tonicPc: number; mode: 'major' | 'minor' | null; transpose: number }
 type Mark = ParsedSong['marks'][number];
 type Lyric = ParsedTrack['lyrics'][number];
 
@@ -78,8 +78,9 @@ const mod12 = (x: number): number => ((x % 12) + 12) % 12;
 function writtenKey(k: Element, transpose: number): WrittenKey | null {
   const fifths = num(text(k, 'fifths'));
   if (fifths === null) return null;
-  const minor = text(k, 'mode') === 'minor';
-  return { tonicPc: mod12(fifths * 7 + (minor ? 9 : 0)), mode: minor ? 'minor' : 'major', transpose };
+  const given = text(k, 'mode');
+  const mode = given === 'minor' ? 'minor' : given === 'major' ? 'major' : null;    // other or no mode: estimated later
+  return { tonicPc: mod12(fifths * 7 + (mode === 'minor' ? 9 : 0)), mode, transpose };
 }
 
 /** Concert key: from the first part that does not transpose, else the first part's key converted. */
