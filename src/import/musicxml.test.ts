@@ -120,9 +120,23 @@ describe('parseMusicXml', () => {
     expect(s.tracks[0].notes).toEqual([{ start: 0, dur: 4, midi: 72 }]);
   });
 
-  it('skips cue notes', async () => {
-    const s = await parseMusicXml('c.xml', xml(`<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><cue/><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration></note>${n('C', 5, 4)}`));
-    expect(s.tracks[0].notes).toEqual([{ start: 0, dur: 4, midi: 72 }]);
+  const head = '<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>';
+  const cue = (step: string, duration: number, chord = false) =>
+    `<note><cue/>${chord ? '<chord/>' : ''}<pitch><step>${step}</step><octave>5</octave></pitch><duration>${duration}</duration></note>`;
+
+  it('a cue note is not played but takes time like a rest', async () => {
+    const s = await parseMusicXml('c.xml', xml(`${head}${cue('D', 1)}${n('C', 5, 3)}`));
+    expect(s.tracks[0].notes).toEqual([{ start: 1, dur: 3, midi: 72 }]);
+  });
+
+  it('a cue note with <chord/> adds no time', async () => {
+    const s = await parseMusicXml('c.xml', xml(`${head}${n('C', 5, 1)}${cue('D', 1, true)}${n('E', 5, 2)}`));
+    expect(s.tracks[0].notes).toEqual([{ start: 0, dur: 1, midi: 72 }, { start: 1, dur: 2, midi: 76 }]);
+  });
+
+  it('a note after a rest starts after it', async () => {
+    const s = await parseMusicXml('r.xml', xml(`${head}<note><rest/><duration>2</duration><voice>1</voice></note>${n('C', 5, 2)}`));
+    expect(s.tracks[0].notes).toEqual([{ start: 2, dur: 2, midi: 72 }]);
   });
 
   it('reads ending numbers as lists; only plain 1 and 2 become voltas', async () => {

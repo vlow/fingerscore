@@ -216,7 +216,7 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
           voltaActive = voltaOf(ending.getAttribute('number') ?? '');
         } else if (ending && (type === 'stop' || type === 'discontinue')) endVolta = true;
       } else if (name === 'note') {
-        if (kid(el, 'grace') || kid(el, 'cue')) continue;
+        if (kid(el, 'grace')) continue;
         const dur = (num(text(el, 'duration')) ?? 0) / divisions;
         const isChord = !!kid(el, 'chord');
         const start = isChord ? lastStart : pos;
@@ -225,7 +225,7 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
           pos += dur;
         }
         const pitch = kid(el, 'pitch');
-        if (!pitch || kid(el, 'rest')) continue;
+        if (!pitch || kid(el, 'rest') || kid(el, 'cue')) continue;     // cue notes take time but are not played
         const step = STEP_PC[text(pitch, 'step') ?? ''];
         const octave = num(text(pitch, 'octave'));
         if (step === undefined || octave === null) continue;
