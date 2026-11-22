@@ -1,6 +1,7 @@
 import sample from '../data/sample-song.json';
 import { DEFAULT_INST, inst } from './instruments';
 import type { Bar, Doc, InstId } from './types';
+import { parseChord } from './chords';
 import { DEFAULT_PREFS, rankShifts, scoringPitches } from './transpose';
 
 const EIGHTH = 6; // ticks per eighth note
@@ -19,6 +20,9 @@ function sampleScore(): Bar[] {
 export function sampleDoc(instId: InstId = DEFAULT_INST): Doc {
   const score = sampleScore();
   const ranked = rankShifts(scoringPitches(score), inst(instId), sample.originalTonicPc, 'major', DEFAULT_PREFS);
+  // The file spells chords 3 semitones above the stored pitches.
+  const chords: Doc['chords'] = {};
+  for (const bar of score) for (const e of bar.ev) if (e.c) chords[e.id] = parseChord(e.c, 3);
   return {
     score,
     timeSig: [4, 4],
@@ -28,7 +32,7 @@ export function sampleDoc(instId: InstId = DEFAULT_INST): Doc {
     inst: instId,
     shift: ranked[0].shift,
     fingering: {},
-    chords: {},
+    chords,
     title: sample.title,
     subtitle: sample.subtitle,
     chartStyle: 'compact',
