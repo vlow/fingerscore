@@ -81,6 +81,33 @@ describe('store', () => {
     expect(useApp.getState().doc!.fingering).toEqual({});
   });
 
+  it('any instrument change clears overrides, even with an unchanged shift; the same instrument keeps them', () => {
+    const base = sampleDoc('asax');
+    const clBest = rankShifts(scoringPitches(base.score), inst('cl'), base.originalTonicPc, base.originalMode, DEFAULT_PREFS)[0].shift;
+    useApp.getState().setDoc({ ...base, shift: clBest, fingering: { e3: 1 } });
+    useApp.getState().setInstrument('cl');
+    expect(useApp.getState().doc!.shift).toBe(clBest);
+    expect(useApp.getState().doc!.fingering).toEqual({});
+
+    useApp.getState().setDoc({ ...base, shift: best(base), fingering: { e3: 1 } });
+    useApp.getState().setInstrument('asax');
+    expect(useApp.getState().doc!.fingering).toEqual({ e3: 1 });
+  });
+
+  it('setShift to another shift clears overrides', () => {
+    useApp.getState().setDoc({ ...sampleDoc('asax'), fingering: { e3: 1 } });
+    useApp.getState().setShift(useApp.getState().doc!.shift + 1);
+    expect(useApp.getState().doc!.fingering).toEqual({});
+  });
+
+  it('a prefs change that keeps the shift keeps overrides', () => {
+    const base = sampleDoc('asax');
+    useApp.getState().setDoc({ ...base, shift: best(base) + 1, fingering: { e3: 1 } });   // manual shift: not re-picked
+    useApp.getState().setPrefs({ easyRegister: false, fewAccidentals: false });
+    expect(useApp.getState().doc!.shift).toBe(best(base) + 1);
+    expect(useApp.getState().doc!.fingering).toEqual({ e3: 1 });
+  });
+
   it('setShift to the same shift keeps overrides', () => {
     useApp.getState().setDoc({ ...sampleDoc('asax'), fingering: { e3: 1 } });
     useApp.getState().setShift(useApp.getState().doc!.shift);
