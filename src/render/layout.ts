@@ -5,7 +5,7 @@ import type { Doc } from '../domain/types';
 export const SHEET = { width: 940, pad: 40, systemWidth: 860, systemHeight: 290, staffTop: 75, staffBottom: 115, chordY: 2, lyricY: 22, voltaY: 46, chartY: 166, altButtonDy: 90, minPitch: 20, barPad: 16, barPadAfterRepeat: 26, barTail: 14 } as const;
 
 /** System header pieces, left to right: clef, key-signature accidentals, time signature (first system only), gap. */
-export const HEADER = { clef: 34, accidental: 10, timeSig: 16, gap: 8 } as const;
+export const HEADER = { clef: 34, accidental: 9, timeSig: 26, gap: 8 } as const;   // prototype widths
 
 export interface EvLayout { id: string; x: number; y: number }            // y = notehead centre; rests: staff middle
 export interface BarLayout { bar: number; x: number; width: number; events: EvLayout[] }
@@ -26,11 +26,17 @@ function barPad(doc: Doc, bar: number): number {
   return doc.score[bar].rs ? SHEET.barPadAfterRepeat : SHEET.barPad;
 }
 
-/** Width a bar needs so its shortest note gets minPitch. */
-function barNeed(doc: Doc, bar: number): number {
+/** Bars whose shortest event is at least an eighth always take a quarter of the system, as in the prototype. */
+const EIGHTH = 6;
+
+/** Layout weight of a bar: a quarter of the system, or more when sixteenths need minPitch each. */
+function barWeight(doc: Doc, bar: number, avail: number): number {
+  const quarter = avail / MAX_BARS_PER_SYSTEM;
   const { cap, ev } = doc.score[bar];
   const shortest = Math.min(...ev.map(e => e.d));
-  return barPad(doc, bar) + SHEET.barTail + (cap / shortest) * SHEET.minPitch;
+  if (shortest >= EIGHTH) return quarter;
+  const need = barPad(doc, bar) + SHEET.barTail + (cap / shortest) * SHEET.minPitch;
+  return Math.min(avail, Math.max(need, quarter));
 }
 
 /** Greedy line breaking: up to 4 bars per system while their weights fit the space after the header. */
@@ -43,7 +49,7 @@ function breakSystems(doc: Doc, sig: number): { bars: number[]; widths: number[]
     const weights: number[] = [];
     let sum = 0;
     while (next < doc.score.length && bars.length < MAX_BARS_PER_SYSTEM) {
-      const weight = Math.min(avail, Math.max(barNeed(doc, next), avail / MAX_BARS_PER_SYSTEM));
+      const weight = barWeight(doc, next, avail);
       if (bars.length > 0 && sum + weight > avail + EPS) break;
       bars.push(next); weights.push(weight); sum += weight; next++;
     }

@@ -17,7 +17,23 @@ describe('layoutSheet', () => {
     const doc = mkDoc([sixteenthBar(), sixteenthBar(), sixteenthBar(), sixteenthBar()]);       // 16 × d=3 each
     const L = layoutSheet(doc, derive(doc, DEFAULT_PREFS));
     expect(L.systems[0].bars.length).toBe(2);
-    const b = L.systems[0].bars[0]; expect(b.events[1].x - b.events[0].x).toBeGreaterThanOrEqual(20);
+    expect(L.systems.every(s => s.bars.length < 4)).toBe(true);
+    for (const s of L.systems) for (const b of s.bars) {
+      for (let k = 1; k < b.events.length; k++) expect(b.events[k].x - b.events[k - 1].x).toBeGreaterThanOrEqual(20);
+    }
+  });
+  it.each([
+    ['one sharp', sampleDoc('asax'), 1],
+    ['five flats', { ...sampleDoc('asax'), shift: 2 }, -5],                 // written D♭ major
+  ])('eighth-note song with %s: four equal bars on every full system', (_, doc, sig) => {
+    const d = derive(doc, DEFAULT_PREFS); const L = layoutSheet(doc, d);
+    expect(d.sig).toBe(sig);
+    const full = L.systems.slice(0, -1);
+    expect(full.every(s => s.bars.length === 4)).toBe(true);
+    for (const s of full) {
+      const w = s.bars.map(b => b.width); expect(Math.max(...w) - Math.min(...w)).toBeLessThan(0.01);
+      expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(SHEET.systemWidth - s.headerWidth, 6);
+    }
   });
   it('beams follow the meter', () => {
     const doc68 = mkDoc([bar68of(6,6,6,6,6,6)], [6,8]);
@@ -40,8 +56,9 @@ describe('layoutSheet', () => {
     expect(b0.events[0].x).toBe(b0.x + SHEET.barPad);
     expect(b1.events[0]).toMatchObject({ x: b1.x + b1.width / 2, y: SHEET.staffBottom - 20 });
   });
-  it('header reserves room for the key signature and the first time signature', () => {
-    expect(headerWidth(3, false) - headerWidth(0, false)).toBe(30);
-    expect(headerWidth(0, true)).toBeGreaterThan(headerWidth(0, false));
+  it('header widths match the prototype', () => {
+    expect(headerWidth(0, true)).toBe(68);
+    expect(headerWidth(0, false)).toBe(42);
+    expect(headerWidth(-5, false)).toBe(87);
   });
 });
