@@ -33,7 +33,9 @@ function nodeCost(run: ChooserNote[], i: number, opt: FingeringOption): number {
 function candidates(note: ChooserNote, overrides: Record<string, number>): number[] {
   const pinned = overrides[note.id];
   if (pinned !== undefined && Number.isInteger(pinned) && pinned >= 0 && pinned < note.options.length) return [pinned];
-  return note.options.map((_, i) => i);
+  // Chart-disagreement variants (v) are for manual choice only.
+  const auto = note.options.flatMap((o, i) => (o.v ? [] : [i]));
+  return auto.length ? auto : [0];
 }
 
 function solveRun(run: ChooserNote[], overrides: Record<string, number>, out: Record<string, number>): void {

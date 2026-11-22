@@ -24,6 +24,28 @@ describe('chooseFingerings', () => {
     const b = { id: 'b', written: 71, options: [o([0, 1, 0])] };
     expect(chooseFingerings([bb, b], {}).a).toBe(1);
   });
+  it('never picks a chart-disagreement variant automatically, even when it saves a finger change', () => {
+    const v = (h: number[]): FingeringOption => ({ h, x: [], n: 'variant', p: 0.3, v: true });
+    const items = [
+      { id: 'a', written: 60, options: [o([1, 1, 0])] },
+      { id: 'b', written: 62, options: [o([0, 0, 1]), v([1, 1, 1])] },
+      { id: 'c', written: 60, options: [o([1, 1, 0])] },
+    ];
+    expect(chooseFingerings(items, {})).toEqual({ a: 0, b: 0, c: 0 });
+  });
+  it('an override on a variant still works and the neighbours adapt to it', () => {
+    const v = (h: number[]): FingeringOption => ({ h, x: [], n: 'variant', p: 0.3, v: true });
+    const items = [
+      { id: 'a', written: 60, options: [o([0, 0, 0]), o([1, 1, 1], [], 0.4)] },
+      { id: 'b', written: 62, options: [o([0, 0, 0]), v([1, 1, 1])] },
+    ];
+    expect(chooseFingerings(items, {})).toEqual({ a: 0, b: 0 });
+    expect(chooseFingerings(items, { b: 1 })).toEqual({ a: 1, b: 1 });
+  });
+  it('falls back to the first option when every option is a variant', () => {
+    const v = (h: number[]): FingeringOption => ({ h, x: [], n: 'variant', p: 0, v: true });
+    expect(chooseFingerings([{ id: 'a', written: 60, options: [v([1]), v([0])] }], {})).toEqual({ a: 0 });
+  });
   it('overrides are fixed points', () => {
     const n = (id: string) => ({ id, written: 60, options: [o([1]), o([0], [], 0.1)] });
     expect(chooseFingerings([n('a'), n('b')], { a: 1 })).toEqual({ a: 1, b: 1 });

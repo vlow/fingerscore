@@ -8,6 +8,15 @@ Every standard fingering (the first option of a note) is printed by at least two
 
 Owner decision, 2026-11-22. Where published charts print different fingerings for a note, the first option is the standard one and every other documented variant is an alternate (`p` 0.3–0.5; the option name says what differs and which chart prints it). A variant stays out when the evidence shows it is probably wrong: a transcription slip, a chart for another system or instrument size, a trill-only fingering, or a chart that omits keys entirely. Trill fingerings and intonation tweaks printed only in "alternate fingering" charts also stay out. This replaces the earlier rule that alternates come only from basic charts.
 
+Each alternate is one of two kinds. A context alternate is a fingering players pick for the passage (bis, side or front F keys, a pinky pair); the automatic fingering choice may use it when it saves finger movement. A chart-disagreement variant exists only because charts print different fingerings; it carries `"v": true` in `fingerings.json`, is offered for manual choice only, and the automatic choice never picks it. The first option of a note never carries `v`.
+
+- Xaphoon: the F♯5 alternate is a context alternate.
+- Saxophone: B♭ bis, 1 + 1, 1 + 2; side C; alternate F♯ key; the front F and side E fingerings of E6–F♯6 from the basic charts are context alternates. The per-size Sax Teacher UK altissimo-chart fingerings for E6–C7 are variants.
+- Clarinet: left/right pinky pairs, F♯4 side keys, sliver-key fingerings and the E/B + F/C slur fingerings are context alternates. The altissimo alternates (E♭6, G♯6, A6) are variants.
+- Flute: thumb B♭ is a context alternate. The E♭-key versions of B♭6, B6 and C7 are variants.
+- Recorder (baroque): the index 11 alternate (thumb + 2 3, for slurs with C/F) is a context alternate. All hole-6, hole-7 and other chart variants, including the old standard of index 25, are variants.
+- Recorder (German): every alternate is a variant.
+
 Two variants stay out by earlier owner decision: clarinet throat B♭4 with the A key + side key 2 (a trill fingering) and flute low C4 with the C♯ key shown as well (the C key closes both pads).
 
 ## Waiting for the owner

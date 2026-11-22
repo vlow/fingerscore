@@ -6,7 +6,8 @@ import type { InstId } from './types';
 type Kind = Instrument['kind'];
 type SatKind = 'sax' | 'cl' | 'fl';
 
-export interface FingeringOption { h: number[]; x: string[]; n: string; p: number }
+/** v: chart-disagreement variant, offered for manual choice only (the automatic choice never picks it). */
+export interface FingeringOption { h: number[]; x: string[]; n: string; p: number; v?: boolean }
 type Table = Record<string, FingeringOption[]>;
 
 interface FingeringData {

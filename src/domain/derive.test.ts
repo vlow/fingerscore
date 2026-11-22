@@ -40,6 +40,15 @@ describe('derive', () => {
     expect(d.byId.t2.chosen).toBe(d.byId.t2.auto); expect(d.byId.t2.overridden).toBe(false);
     expect(d.counts.overridden).toBe(1);
   });
+  it('a recorder passage keeps the standard fingering where charts disagree (indices 8 and 25)', () => {
+    // Soprano recorder (written = sounding - 12): written 68 = index 8 (G♯), written 85 = index 25 (C♯ third octave).
+    const doc = { ...mkDoc([{ ev: [[81, 24], [80, 24], [81, 24], [97, 24], [98, 24], [97, 24]] }]), inst: 'rs' as const };
+    const d = derive(doc, DEFAULT_PREFS);
+    const g = d.events[1]; const cs = d.events[3];
+    expect(g.written).toBe(68); expect(cs.written).toBe(85);
+    expect(g.options.length).toBeGreaterThan(1); expect(cs.options.length).toBeGreaterThan(1);
+    expect(g.chosen).toBe(0); expect(cs.chosen).toBe(0);
+  });
   it('no notes: min and max are 0', () => {
     const d = derive(mkDoc([{ ev: [[0, 48]] }]), DEFAULT_PREFS);
     expect([d.min, d.max, d.counts.notes]).toEqual([0, 0, 0]);

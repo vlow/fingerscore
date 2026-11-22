@@ -132,6 +132,12 @@ it('an empty German entry shows no chart instead of the baroque fingering', asyn
   }
 });
 
+it('the first option of every list is never a manual-only variant', async () => {
+  const data = (await vi.importActual<{ default: { tables: Record<string, Record<string, { v?: boolean }[]>>; overrides: Record<string, Record<string, { v?: boolean }[]>> } }>('../data/fingerings.json')).default;
+  for (const [k, t] of [...Object.entries(data.tables), ...Object.entries(data.overrides)])
+    for (const [p, list] of Object.entries(t)) if (list.length) expect(list[0].v, `${k}:${p}`).toBeFalsy();
+});
+
 it('no option list holds the same fingering twice', async () => {
   const data = (await vi.importActual<{ default: { tables: Record<string, Record<string, { h: number[]; x: string[] }[]>>; overrides: Record<string, Record<string, { h: number[]; x: string[] }[]>> } }>('../data/fingerings.json')).default;
   const lists = [...Object.entries(data.tables), ...Object.entries(data.overrides)]
