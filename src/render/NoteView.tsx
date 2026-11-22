@@ -9,7 +9,7 @@ import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
 
 export const INK = '#15171C';
 const BAD = '#B91C1C';
-const WARN = '#B45309';
+export const WARN = '#B45309';
 const TEAL = '#0E6E68';
 const TEXT = '#2A2D33';
 const SELECTED_FILL = '#E3F4F2';
@@ -42,7 +42,7 @@ export const stemUp = (ev: DerivedEvent) => ev.pos < 4;
 const CLARINET_ALTISSIMO = 84; // written C6
 
 /** Which dashed box replaces a missing chart. */
-export function missingType(ev: DerivedEvent, kind: Instrument['kind']): 'bad' | 'ext' | 'alt' {
+export function missingType(ev: Pick<DerivedEvent, 'state' | 'written'>, kind: Instrument['kind']): 'bad' | 'ext' | 'alt' {
   if (ev.state === 'bad') return 'bad';
   return kind === 'cl' && ev.written > CLARINET_ALTISSIMO ? 'alt' : 'ext';
 }
@@ -61,10 +61,10 @@ function noteColor(ev: DerivedEvent): string {
   return ev.state === 'bad' ? BAD : ev.state === 'ext' ? WARN : INK;
 }
 
-/** Ellipse rotated −22°: filled up to a dotted quarter, open from a half, the whole note larger. */
-function NoteHead(p: { ev: DerivedEvent; x: number; y: number; color: string }) {
-  const whole = p.ev.d === 48;
-  const open = p.ev.d >= 24;
+/** Ellipse rotated −22°: filled up to a dotted quarter, open from a half, the whole note larger. d = duration in ticks (48 = whole). */
+export function NoteHead(p: { d: number; x: number; y: number; color: string }) {
+  const whole = p.d === 48;
+  const open = p.d >= 24;
   const [rx, ry] = whole ? [7, 5] : [6, 4.5];
   const rotate = `rotate(-22 ${p.x} ${p.y})`;
   return open
@@ -72,7 +72,7 @@ function NoteHead(p: { ev: DerivedEvent; x: number; y: number; color: string }) 
     : <ellipse data-head="filled" cx={p.x} cy={p.y} rx={rx} ry={ry} transform={rotate} fill={p.color} />;
 }
 
-function LedgerLines(p: { pos: number; x: number }) {
+export function LedgerLines(p: { pos: number; x: number }) {
   const lines: number[] = [];
   for (let q = -2; q >= p.pos; q -= 2) lines.push(q);
   for (let q = 10; q <= p.pos; q += 2) lines.push(q);
@@ -167,7 +167,7 @@ export function NoteView(p: NoteViewProps): JSX.Element {
 }
 
 /** Right ink edge of an accidental sits this far left of the notehead centre. */
-const ACCIDENTAL_GAP = 9;
+export const ACCIDENTAL_GAP = 9;
 
 function Rest(p: { ev: DerivedEvent; x: number; fullBar: boolean }) {
   const { name, dotted } = restGlyph(p.ev.d, p.fullBar);
@@ -188,7 +188,7 @@ function Note(p: NoteViewProps) {
   return (
     <>
       <LedgerLines pos={ev.pos} x={x} />
-      <NoteHead ev={ev} x={x} y={y} color={color} />
+      <NoteHead d={ev.d} x={x} y={y} color={color} />
       {ev.d < 48 && !p.beamed && (
         <rect data-stem="" x={x + (up ? STEM.upDx : STEM.downDx)} y={up ? y - STEM.length : y} width={STEM.width} height={STEM.length} fill={INK} />
       )}

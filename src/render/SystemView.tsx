@@ -8,13 +8,13 @@ import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, INK, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
 
-const STAFF = '#2A2D33';
+export const STAFF = '#2A2D33';
 const MUTED = '#5B616E';
 const { staffTop, staffBottom } = SHEET;
 const STAFF_H = staffBottom - staffTop + 1;
 const DOT_YS = [90, 100];                       // repeat dots sit in the two middle spaces
-const SHARP_POS = [8, 5, 9, 6, 3, 7, 4];        // key-signature staff positions, prototype order
-const FLAT_POS = [4, 7, 3, 6, 2, 5, 1];
+export const SHARP_POS = [8, 5, 9, 6, 3, 7, 4];        // key-signature staff positions, prototype order
+export const FLAT_POS = [4, 7, 3, 6, 2, 5, 1];
 
 export type UnderChart = (ev: DerivedEvent, x: number, y: number, systemIndex: number, lastSystem: boolean) => ReactNode;
 
