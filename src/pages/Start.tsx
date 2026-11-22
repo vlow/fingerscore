@@ -40,6 +40,7 @@ export default function Start() {
   const [error, setError] = useState<string | null>(null);
   const [libraryVersion, setLibraryVersion] = useState(0);
   const dropInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
 
   /** A new song replaces the previous one and drops its sheet. */
   function acceptSong(song: ParsedSong) {
@@ -76,7 +77,7 @@ export default function Start() {
   return (
     <div className={s.page}>
       <div className={s.intro}>
-        <h1 className={s.h1}>Sheet music with fingering charts for woodwinds</h1>
+        <h1 ref={heading} tabIndex={-1} className={s.h1}>Sheet music with fingering charts for woodwinds</h1>
         <p className={s.lead}>
           Upload a MIDI or MusicXML file. We transpose it to a key that suits your instrument and add a fingering chart
           under every note.
@@ -85,7 +86,7 @@ export default function Start() {
 
       {missingSheet && <p role="alert" className={s.missing}>That sheet is no longer saved in this browser.</p>}
 
-      <Gallery version={libraryVersion} emptyFocus={() => dropInput.current} />
+      <Gallery version={libraryVersion} emptyFocus={() => dropInput.current ?? heading.current} />
 
       <InstrumentPicker value={instId} onChange={setPreferredInstrument} />
 

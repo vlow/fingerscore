@@ -384,6 +384,17 @@ describe('keyboard focus in the gallery', () => {
     expect(document.activeElement).toBe(screen.getByLabelText(/drop a song or a saved sheet/i));
   });
 
+  it('deleting the only card while the drop zone shows a result moves focus to the page heading', async () => {
+    renderStart();
+    drop(sheetFile('Dropped'));
+    await screen.findByText('✓ "Dropped" added to your sheets');
+    await user.click(screen.getByRole('button', { name: 'Delete Dropped' }));
+    await user.keyboard('{Escape}');
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(document.activeElement).toBe(h1);
+    expect(h1).toHaveAttribute('tabindex', '-1');
+  });
+
   it('Show all moves focus to the first revealed card', async () => {
     saveSheets('S6', 'S5', 'S4', 'S3', 'S2', 'S1');
     renderStart();
