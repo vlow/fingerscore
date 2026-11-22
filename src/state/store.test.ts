@@ -170,6 +170,23 @@ describe('store', () => {
     expect(() => hydrate()).not.toThrow();
   });
 
+  it('a failed write removes the stale value, so a reload cannot mix two files', () => {
+    useApp.getState().setDoc(sampleDoc('xc'));
+    expect(readJSON('session', 'fingerscore.doc')).not.toBeNull();
+    const real = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (v.length > 2000) throw new DOMException('full', 'QuotaExceededError');
+      real.call(this, k, v);
+    });
+    useApp.getState().setDoc({ ...sampleDoc('fl'), title: 'File B' });
+    expect(sessionStorage.getItem('fingerscore.doc')).toBeNull();
+    const song: ParsedSong = { file: 'b.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [],
+      tracks: [{ id: 't0', name: 'x'.repeat(3000), instrument: '', channel: 1, percussion: false, notes: [], lyrics: [], chords: [] }] };
+    sessionStorage.setItem('fingerscore.song', '{"old":true}');
+    useApp.getState().setSong(song);
+    expect(sessionStorage.getItem('fingerscore.song')).toBeNull();
+  });
+
   it('corrupt stored JSON is ignored', () => {
     sessionStorage.setItem('fingerscore.doc', '{oops');
     expect(() => hydrate()).not.toThrow();

@@ -90,9 +90,13 @@ export const useApp = create<AppState>()((set, get) => ({
 
 // Mirror song and doc to sessionStorage. A null value is not written here: it also appears
 // when state is reset outside the actions, and the actions remove the keys themselves.
+// A failed write (storage full) removes the key, so a reload never pairs a new doc with an old song.
+const mirror = (key: string, value: unknown) => {
+  if (!writeJSON('session', key, value)) remove('session', key);
+};
 useApp.subscribe((state, prev) => {
-  if (state.song && state.song !== prev.song) writeJSON('session', KEY_SONG, state.song);
-  if (state.doc && state.doc !== prev.doc) writeJSON('session', KEY_DOC, state.doc);
+  if (state.song && state.song !== prev.song) mirror(KEY_SONG, state.song);
+  if (state.doc && state.doc !== prev.doc) mirror(KEY_DOC, state.doc);
 });
 
 function isDoc(v: unknown): v is Doc {
