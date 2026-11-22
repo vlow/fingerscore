@@ -45,6 +45,42 @@ describe('monophonic', () => {
   });
 });
 
+describe('regressions', () => {
+  it('monophonic: three notes on one onset', () => {
+    const three = [{ start: 0, dur: 12, midi: 64 }, { start: 0, dur: 12, midi: 72 }, { start: 0, dur: 12, midi: 60 }];
+    expect(monophonic(three, 'top')).toEqual([{ start: 0, dur: 12, midi: 72 }]);
+    expect(monophonic(three, 'bottom')).toEqual([{ start: 0, dur: 12, midi: 60 }]);
+  });
+  it('toBars: a note spanning two bar lines', () => {
+    const bars = toBars([{ start: 12, dur: 108, midi: 60 }], [4, 4], 0, []);
+    expect(bars).toHaveLength(3);
+    expect(sums(bars)).toBe(true);
+    const notes = bars.flatMap(b => b.ev).filter(e => !e.r);
+    expect(notes.slice(0, -1).every(e => e.tie)).toBe(true);
+    expect(notes[notes.length - 1].tie).toBe(false);
+    expect(bars[1].ev.every(e => !e.r && e.tie)).toBe(true);
+  });
+  it('buildDoc: off-grid pickup is snapped and flagged', () => {
+    const song = mkSong([n(0, 1 / 3, 60), n(1 / 3, 4, 62)]);
+    song.pickup = 1 / 3;
+    let doc!: ReturnType<typeof buildDoc>;
+    expect(() => { doc = buildDoc(song, opts()); }).not.toThrow();
+    expect(sums(doc.score)).toBe(true);
+    expect(doc.score[0].cap).toBe(3);
+    expect(doc.source.simplified).toBe(true);
+  });
+  it('buildDoc: a pickup of a full bar or more is no pickup', () => {
+    const song = mkSong([n(0, 4, 60), n(4, 4, 62)]);
+    song.pickup = 4;
+    expect(buildDoc(song, opts()).score.map(b => b.cap)).toEqual([48, 48]);
+  });
+  it('toBars ignores marks outside the score', () => {
+    const bars = toBars([{ start: 0, dur: 12, midi: 60 }], [4, 4], 0, [{ bar: -1, rs: true }, { bar: 5, re: true }]);
+    expect(bars).toHaveLength(1);
+    expect(bars[0]).toMatchObject({ rs: false, re: false });
+  });
+});
+
 describe('toBars', () => {
   it('bars always sum to cap', () => {
     const bars = toBars([{ start: 6, dur: 60, midi: 60 }, { start: 75, dur: 3, midi: 62 }], [4, 4], 0, []);

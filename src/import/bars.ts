@@ -8,7 +8,7 @@ const DEFAULT_REST_PITCH = 60;
 export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: ParsedSong['marks']): Bar[] {
   if (notes.length === 0) return [];
   const sorted = [...notes].sort((a, b) => a.start - b.start);
-  const end = Math.max(...sorted.map(n => n.start + n.dur));
+  const end = sorted.reduce((m, n) => Math.max(m, n.start + n.dur), 0);
   const full = barCap(ts);
   const bars: Bar[] = [];
   let lastPitch = DEFAULT_REST_PITCH;
@@ -23,7 +23,6 @@ export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: 
     const rest = (len: number) => {
       for (const d of splitDuration(len)) ev.push({ id: newId(), m: lastPitch, d, r: true, tie: false, l: '', c: '' });
     };
-    // a note that began in an earlier bar and runs on (carry) is handled by keeping it in `pending`
     for (;;) {
       const n = sorted[next];
       if (!n || n.start >= barEnd) break;

@@ -1,5 +1,6 @@
 import { parseChord } from '../domain/chords';
 import { inst } from '../domain/instruments';
+import { barCap } from '../domain/time';
 import { rankShifts, scoringPitches, type Prefs } from '../domain/transpose';
 import type { Doc, Ev, InstId } from '../domain/types';
 import { toBars } from './bars';
@@ -42,7 +43,11 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
 
   const q = quantise(track.notes);
   const melody = monophonic(q.notes, o.keep);
-  const score = toBars(melody, song.timeSig, Math.round(song.pickup * TPQ), song.marks);
+  const rawPickup = Number.isFinite(song.pickup) ? Math.max(0, song.pickup * TPQ) : 0;
+  let pickupTicks = Math.round(rawPickup / 3) * 3;
+  if (pickupTicks >= barCap(song.timeSig)) pickupTicks = 0; // a full bar or more is no pickup
+  const simplified = q.simplified || Math.abs(pickupTicks - rawPickup) > 0.02 * TPQ;
+  const score = toBars(melody, song.timeSig, pickupTicks, song.marks);
   const placed = place(score);
 
   const lyricTrack = o.lyricsFrom ? song.tracks.find(t => t.id === o.lyricsFrom) : undefined;
@@ -86,6 +91,6 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
     chartStyle: 'compact',
     recorderSystem: 'baroque',
     show: { fingerings: true, chords: true, lyrics: true, raiseExtensions: true },
-    source: { file: song.file, format: song.format, track: track.name, trackCount: song.tracks.length, simplified: q.simplified },
+    source: { file: song.file, format: song.format, track: track.name, trackCount: song.tracks.length, simplified },
   };
 }

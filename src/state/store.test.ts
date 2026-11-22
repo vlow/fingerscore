@@ -109,6 +109,23 @@ describe('store', () => {
     expect(useApp.getState().doc).toBeNull();
   });
 
+  it('setShift ignores non-finite input', () => {
+    useApp.getState().setDoc(sampleDoc('asax'));
+    const before = useApp.getState().doc!.shift;
+    useApp.getState().setShift(NaN);
+    useApp.getState().setShift(Infinity);
+    expect(useApp.getState().doc!.shift).toBe(before);
+  });
+
+  it('hydrate sets instId from a restored doc', () => {
+    localStorage.setItem('fingerscore.inst', JSON.stringify('cl'));
+    useApp.getState().setDoc(sampleDoc('xc'));
+    localStorage.setItem('fingerscore.inst', JSON.stringify('cl'));
+    useApp.setState({ doc: null });
+    hydrate();
+    expect(useApp.getState().instId).toBe('xc');
+  });
+
   it('doc survives a reload through sessionStorage', () => {
     useApp.getState().setDoc(sampleDoc('xc'));
     useApp.setState({ doc: null });

@@ -63,7 +63,7 @@ export const useApp = create<AppState>()((set, get) => ({
 
   setShift(shift) {
     const { doc } = get();
-    if (!doc) return;
+    if (!doc || !Number.isFinite(shift)) return;
     const clamped = Math.max(-24, Math.min(24, Math.round(shift)));
     set({ doc: { ...doc, shift: clamped, fingering: {} } });
   },
@@ -119,6 +119,6 @@ export function hydrate(): void {
     };
   }
   if (isSong(song)) patch.song = song;
-  if (isDoc(doc)) patch.doc = doc;
+  if (isDoc(doc)) { patch.doc = doc; patch.instId = doc.inst; }
   useApp.setState(patch);
 }
