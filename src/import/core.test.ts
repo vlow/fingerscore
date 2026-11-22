@@ -165,7 +165,7 @@ describe('buildDoc', () => {
     expect(doc.chords[a.id]).toMatchObject({ raw: 'D', ok: true, tk: 0 });
     expect(Object.keys(doc.chords)).toHaveLength(2);
   });
-  it('no chords unless asked; a track id gives none yet', () => {
+  it('no chords unless asked; a one-note chord track gives none', () => {
     const song = mkSong([n(0, 4, 62)], { chords: [{ at: 0, text: 'D' }] });
     expect(buildDoc(song, opts()).chords).toEqual({});
     expect(buildDoc(song, opts({ chordsFrom: 't1' })).chords).toEqual({});

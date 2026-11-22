@@ -1,12 +1,8 @@
 import { parseMidi } from './midi';
+import { parseMusicXml } from './musicxml';
 import { ImportError, type ParsedSong } from './types';
 
 export const ACCEPT = '.mid,.midi,.musicxml,.xml,.mxl';
-
-/** Stub until Task 17 adds the MusicXML parser. */
-async function parseMusicXml(file: string, _bytes: Uint8Array): Promise<ParsedSong> {
-  throw new ImportError(`"${file}" could not be read as a MusicXML file.`);
-}
 
 function readBytes(file: File): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {

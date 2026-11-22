@@ -4,6 +4,7 @@ import { barCap } from '../domain/time';
 import { rankShifts, scoringPitches, type Prefs } from '../domain/transpose';
 import type { Doc, Ev, InstId } from '../domain/types';
 import { toBars } from './bars';
+import { detectChords } from './harmony';
 import { estimateKey } from './keyfind';
 import { monophonic, quantise } from './quantise';
 import { ImportError, type ParsedSong } from './types';
@@ -62,16 +63,22 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
   }
 
   const chords: Doc['chords'] = {};
+  let chordList: { at: number; text: string }[] = [];
   if (o.chordsFrom === 'file') {
-    for (const ch of track.chords) {
-      const tick = Math.round(ch.at * TPQ);
-      const hit = placed.find(p => p.start <= tick && tick < p.start + p.ev.d);
-      if (hit && !hit.ev.c) {
-        hit.ev.c = ch.text;
-        chords[hit.ev.id] = parseChord(ch.text, 0);
-      }
+    chordList = track.chords;
+  } else if (o.chordsFrom) {
+    const chordTrack = song.tracks.find(t => t.id === o.chordsFrom);
+    const totalTicks = score.reduce((sum, b) => sum + b.cap, 0);
+    if (chordTrack) chordList = detectChords(chordTrack.notes, song.timeSig, pickupTicks / TPQ, totalTicks / TPQ);
+  }
+  for (const ch of chordList) {
+    const tick = Math.round(ch.at * TPQ);
+    const hit = placed.find(p => p.start <= tick && tick < p.start + p.ev.d);
+    if (hit && !hit.ev.c) {
+      hit.ev.c = ch.text;
+      chords[hit.ev.id] = parseChord(ch.text, 0);
     }
-  } // a track id would use detectChords (Task 17); none until then
+  }
 
   const key = song.key ?? estimateKey(melody.map(n => ({ start: n.start / TPQ, dur: n.dur / TPQ, midi: n.midi })));
   const shift = rankShifts(scoringPitches(score), inst(o.instId), key.tonicPc, key.mode, o.prefs)[0].shift;
