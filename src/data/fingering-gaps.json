@@ -6,8 +6,9 @@
    "pitch": 94,
    "note": "B♭6 (altissimo): no soprano fingering printed by both sources",
    "checked": [
-    "WFG saxophone charts (wfg.woodwind.org/sax/)",
-    "Sax Teacher UK altissimo chart"
+    "WFG saxophone charts (wfg.woodwind.org/sax/), middle altissimo page",
+    "Sax Teacher UK soprano altissimo chart (app data 1.9.3): main 3 + side C + side B♭; alternates side C + side B♭ + high F♯ (slightly sharp) and 2 3 | 1 2 3. None of these is in the WFG.",
+    "UNSW Music Acoustics saxophone pages (impedance diagrams; fingering drawings could not be read reliably)"
    ]
   },
   {
@@ -15,8 +16,9 @@
    "pitch": 95,
    "note": "B6 (altissimo): no tenor fingering printed by both sources",
    "checked": [
-    "WFG saxophone charts (wfg.woodwind.org/sax/)",
-    "Sax Teacher UK altissimo chart"
+    "WFG saxophone charts (wfg.woodwind.org/sax/), middle altissimo page",
+    "Sax Teacher UK tenor altissimo chart (app data 1.9.3): main palm D + 2 + G♯; five alternates. None of these is in the WFG.",
+    "UNSW Music Acoustics saxophone pages (impedance diagrams; fingering drawings could not be read reliably)"
    ]
   },
   {
@@ -24,8 +26,10 @@
    "pitch": 95,
    "note": "B6 (altissimo): no baritone fingering printed by both sources",
    "checked": [
-    "WFG saxophone charts (wfg.woodwind.org/sax/)",
-    "Sax Teacher UK altissimo chart"
+    "WFG saxophone charts (wfg.woodwind.org/sax/), middle altissimo page",
+    "Sax Teacher UK baritone altissimo chart (app data 1.9.3): main palm E♭; five alternates. None of these is in the WFG.",
+    "UNSW Music Acoustics saxophone pages (impedance diagrams; fingering drawings could not be read reliably)",
+    "Joan Martí-Frasquier, Altissimo Fingerings for Baritone Saxophone (2015, PDF); its key notation could not be decoded reliably"
    ]
   }
  ]

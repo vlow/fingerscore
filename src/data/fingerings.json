@@ -1998,8 +1998,119 @@
      "x": [
       "sBb"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK alto chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "hFs"
+     ],
+     "n": "1 | – + high F♯ (slightly flat) (Sax Teacher UK alto chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1
+     ],
+     "x": [],
+     "n": "1 3 | 1 3 (Sax Teacher UK alto chart, WFG)",
+     "p": 0.33
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "bis",
+      "sBb",
+      "hFs"
+     ],
+     "n": "bis + 1 | – + side B♭ + high F♯ (Sax Teacher UK alto chart)",
+     "p": 0.37
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "1 | 1 + side B♭ (Sax Teacher UK alto chart)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "fF",
+      "sBb"
+     ],
+     "n": "front F + 1 | 1 + side B♭ (Sax Teacher UK alto chart)",
+     "p": 0.43
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 1 2 (Sax Teacher UK alto chart, WFG)",
+     "p": 0.47
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 | 1 2 (Sax Teacher UK alto chart)",
+     "p": 0.5
     }
    ],
    "92": [
@@ -2016,8 +2127,106 @@
      "x": [
       "sC"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK alto chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "1 2 | 1 + side C (Sax Teacher UK alto chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC",
+      "sBb"
+     ],
+     "n": "1 2 3 | 1 + side C + side B♭ (Sax Teacher UK alto chart)",
+     "p": 0.34
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fF",
+      "tGs",
+      "sBb"
+     ],
+     "n": "front F + G♯ + 1 | – + side B♭ (Sax Teacher UK alto chart)",
+     "p": 0.38
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC",
+      "sBb"
+     ],
+     "n": "1 3 | 1 + side C + side B♭ (Sax Teacher UK alto chart, WFG)",
+     "p": 0.42
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 2 (Sax Teacher UK alto chart, WFG)",
+     "p": 0.46
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "1 | 1 2 + side C (Sax Teacher UK alto chart)",
+     "p": 0.5
     }
    ],
    "93": [
@@ -2032,8 +2241,107 @@
       0
      ],
      "x": [],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK alto chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "– | 2 (slightly flat) (Sax Teacher UK alto chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "tGs",
+      "sC",
+      "sBb",
+      "hFs"
+     ],
+     "n": "G♯ + 1 | – + side C + side B♭ + high F♯ (Sax Teacher UK alto chart)",
+     "p": 0.34
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "tGs"
+     ],
+     "n": "G♯ + 2 3 | – (slightly flat) (Sax Teacher UK alto chart, WFG)",
+     "p": 0.38
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "2 3 | – + side B♭ (Sax Teacher UK alto chart)",
+     "p": 0.42
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC",
+      "sBb"
+     ],
+     "n": "2 3 | 1 + side C + side B♭ (Sax Teacher UK alto chart)",
+     "p": 0.46
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "tBb",
+      "rC"
+     ],
+     "n": "low B♭ + 2 3 | 1 2 3 + low C (Sax Teacher UK alto chart, WFG)",
+     "p": 0.5
     }
    ],
    "94": [
@@ -2051,8 +2359,85 @@
       "sC",
       "sBb"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK alto chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sC",
+      "sBb"
+     ],
+     "n": "3 | – + side C + side B♭ (Sax Teacher UK alto chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "3 | 1 2 (Sax Teacher UK alto chart, WFG)",
+     "p": 0.35
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 2 3 | 1 (slightly flat) (Sax Teacher UK alto chart)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 2 3 | 1 2 3 (Sax Teacher UK alto chart, WFG)",
+     "p": 0.45
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 3 | 1 2 (Sax Teacher UK alto chart)",
+     "p": 0.5
     }
    ],
    "95": [
@@ -2069,8 +2454,93 @@
      "x": [
       "pD"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK alto chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sC",
+      "sBb"
+     ],
+     "n": "palm D + 3 | – + side C + side B♭ (Sax Teacher UK alto chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sC",
+      "sBb"
+     ],
+     "n": "palm D + – | – + side C + side B♭ (Sax Teacher UK alto chart, WFG)",
+     "p": 0.35
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "tB"
+     ],
+     "n": "low B + 1 2 3 | 1 2 3 (Sax Teacher UK alto chart)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pEb",
+      "sC"
+     ],
+     "n": "palm E♭ + 2 | – + side C (Sax Teacher UK alto chart)",
+     "p": 0.45
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 2 | 1 (Sax Teacher UK alto chart)",
+     "p": 0.5
     }
    ],
    "96": [
@@ -2085,8 +2555,110 @@
       0
      ],
      "x": [],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK alto chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb"
+     ],
+     "n": "palm D + palm E♭ + – | – (Sax Teacher UK alto chart, WFG)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "sC",
+      "sBb"
+     ],
+     "n": "palm D + palm E♭ + – | – + side C + side B♭ (Sax Teacher UK alto chart, WFG)",
+     "p": 0.34
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1
+     ],
+     "x": [
+      "rEb"
+     ],
+     "n": "1 3 | 1 3 + low E♭ (Sax Teacher UK alto chart, WFG)",
+     "p": 0.38
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1
+     ],
+     "x": [
+      "rEb"
+     ],
+     "n": "1 2 3 | 2 3 + low E♭ (Sax Teacher UK alto chart)",
+     "p": 0.42
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sE"
+     ],
+     "n": "palm D + – | – + side E (Sax Teacher UK alto chart, WFG)",
+     "p": 0.46
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sE"
+     ],
+     "n": "palm D + 1 2 | 1 + side E (Sax Teacher UK alto chart)",
+     "p": 0.5
     }
    ]
   },
@@ -4109,7 +4681,7 @@
       0
      ],
      "x": [],
-     "n": "hole 6 fully covered (Tomplay)",
+     "n": "hole 6 fully covered (Tomplay, Moeck, Küng, Takeyama)",
      "p": 0.3
     },
     {
@@ -4124,7 +4696,7 @@
       0
      ],
      "x": [],
-     "n": "hole 6 open (Prescott)",
+     "n": "hole 6 open (Prescott, Zen-On, Takeyama)",
      "p": 0.4
     }
    ],
@@ -4407,7 +4979,7 @@
       0
      ],
      "x": [],
-     "n": "1 2 | 5 6 (Dolmetsch)",
+     "n": "1 2 | 5 6 (Dolmetsch, Zen-On, Takeyama)",
      "p": 0.4
     },
     {
@@ -4422,7 +4994,7 @@
       0.5
      ],
      "x": [],
-     "n": "1 2 | 4 5 6 + half 7 (Bolton)",
+     "n": "1 2 | 4 5 6 + half 7 (Bolton, Moeck)",
      "p": 0.45
     }
    ],
@@ -4470,7 +5042,7 @@
       1,
       0,
       1,
-      0
+      1
      ],
      "x": [],
      "n": "standard; close the bell end (for example on the knee)",
@@ -4485,10 +5057,10 @@
       1,
       0,
       1,
-      1
+      0
      ],
      "x": [],
-     "n": "hole 7 also closed; close the bell end (for example on the knee) (ARS, Prescott, Tomplay, Bolton)",
+     "n": "hole 7 open; close the bell end (for example on the knee) (WFG, Dolmetsch, Takeyama)",
      "p": 0.3
     },
     {
@@ -4503,7 +5075,22 @@
       1
      ],
      "x": [],
-     "n": "1 3 | 4 5 7 (Yamaha; its alto chart also closes the bell)",
+     "n": "1 3 | 4 5 7 (Yamaha, Aulos, Zen-On; Yamaha's alto chart also closes the bell)",
+     "p": 0.35
+    },
+    {
+     "h": [
+      0.5,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0.5
+     ],
+     "x": [],
+     "n": "larger hole of 7 only; close the bell end (for example on the knee) (Moeck, Blockis)",
      "p": 0.4
     },
     {
@@ -4580,8 +5167,23 @@
       1
      ],
      "x": [],
-     "n": "hole 7 also closed (ARS, Prescott, Tomplay, Bolton)",
+     "n": "hole 7 also closed (ARS, Prescott, Tomplay, Bolton, Küng K4, Moeck, Takeyama)",
      "p": 0.3
+    },
+    {
+     "h": [
+      0.5,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0.5
+     ],
+     "x": [],
+     "n": "larger hole of 7 only (Moeck, Küng, Yamaha plastic models, Blockis)",
+     "p": 0.4
     }
    ],
    "27": [
@@ -4612,7 +5214,7 @@
       0
      ],
      "x": [],
-     "n": "1 3 only (Bolton, WFG)",
+     "n": "1 3 only (Bolton, WFG, Zen-On)",
      "p": 0.3
     },
     {
@@ -4644,6 +5246,36 @@
      "x": [],
      "n": "larger hole of 6 only (WFG)",
      "p": 0.45
+    },
+    {
+     "h": [
+      0.5,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0.5
+     ],
+     "x": [],
+     "n": "– 2 3 | – 5 6 + half 7 (Moeck)",
+     "p": 0.45
+    },
+    {
+     "h": [
+      0.5,
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "1 3 | – – 6 (WFG, Zen-On)",
+     "p": 0.5
     }
    ],
    "28": [
@@ -4691,6 +5323,21 @@
      "x": [],
      "n": "hole 1 half, 2 only (Bolton)",
      "p": 0.4
+    },
+    {
+     "h": [
+      0.5,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "2 only (Moeck, WFG)",
+     "p": 0.45
     }
    ],
    "29": [
@@ -5238,6 +5885,337 @@
      "p": 0.5
     }
    ],
+   "91": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "altissimo (Sax Teacher UK soprano chart, WFG)",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "bis",
+      "hFs"
+     ],
+     "n": "bis + 1 | 1 + high F♯ (Sax Teacher UK soprano chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "hFs"
+     ],
+     "n": "1 | – + high F♯ (slightly flat) (Sax Teacher UK soprano chart)",
+     "p": 0.34
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "bis",
+      "sBb",
+      "hFs"
+     ],
+     "n": "bis + 1 | – + side B♭ + high F♯ (Sax Teacher UK soprano chart)",
+     "p": 0.38
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "fF",
+      "sBb"
+     ],
+     "n": "front F + 1 | 1 + side B♭ (Sax Teacher UK soprano chart)",
+     "p": 0.42
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 1 2 (Sax Teacher UK soprano chart, WFG)",
+     "p": 0.46
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 | 1 2 (Sax Teacher UK soprano chart)",
+     "p": 0.5
+    }
+   ],
+   "92": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "altissimo (Sax Teacher UK soprano chart, WFG)",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sBb",
+      "hFs"
+     ],
+     "n": "1 | – + side B♭ + high F♯ (Sax Teacher UK soprano chart, WFG)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC",
+      "sBb"
+     ],
+     "n": "1 2 3 | 1 + side C + side B♭ (Sax Teacher UK soprano chart)",
+     "p": 0.35
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "1 | 1 + side C (Sax Teacher UK soprano chart, WFG)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 2 (Sax Teacher UK soprano chart, WFG)",
+     "p": 0.45
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "1 | 1 2 + side C (Sax Teacher UK soprano chart)",
+     "p": 0.5
+    }
+   ],
+   "93": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "altissimo (Sax Teacher UK soprano chart, WFG)",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1
+     ],
+     "x": [
+      "tBb",
+      "rC"
+     ],
+     "n": "low B♭ + 2 3 | 2 3 + low C (Sax Teacher UK soprano chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "tGs",
+      "sC",
+      "sBb",
+      "hFs"
+     ],
+     "n": "G♯ + 1 | – + side C + side B♭ + high F♯ (Sax Teacher UK soprano chart)",
+     "p": 0.34
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "tGs"
+     ],
+     "n": "G♯ + 2 3 | – (slightly flat) (Sax Teacher UK soprano chart, WFG)",
+     "p": 0.38
+    },
+    {
+     "h": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "– | 1 + side B♭ (Sax Teacher UK soprano chart)",
+     "p": 0.42
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "– | 2 3 + side C (Sax Teacher UK soprano chart)",
+     "p": 0.46
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "tBb",
+      "rC"
+     ],
+     "n": "low B♭ + 2 3 | 1 2 3 + low C (Sax Teacher UK soprano chart, WFG)",
+     "p": 0.5
+    }
+   ],
    "94": [],
    "95": [
     {
@@ -5255,8 +6233,211 @@
       "sC",
       "sBb"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK soprano chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sC",
+      "sBb"
+     ],
+     "n": "palm D + 3 | – + side C + side B♭ (Sax Teacher UK soprano chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "tGs"
+     ],
+     "n": "palm D + G♯ + 2 | – (slightly sharp) (Sax Teacher UK soprano chart)",
+     "p": 0.33
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "rEb"
+     ],
+     "n": "1 2 3 | 1 2 3 + low E♭ (slightly flat) (Sax Teacher UK soprano chart)",
+     "p": 0.37
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "sC"
+     ],
+     "n": "palm D + palm E♭ + 3 | – + side C (Sax Teacher UK soprano chart)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "sC"
+     ],
+     "n": "palm D + palm E♭ + – | – + side C (Sax Teacher UK soprano chart)",
+     "p": 0.43
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb"
+     ],
+     "n": "palm D + palm E♭ + 3 | – (Sax Teacher UK soprano chart)",
+     "p": 0.47
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 2 | 1 (Sax Teacher UK soprano chart)",
+     "p": 0.5
+    }
+   ],
+   "96": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "altissimo (Sax Teacher UK soprano chart, WFG)",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      1
+     ],
+     "x": [
+      "rEb"
+     ],
+     "n": "1 3 | 3 + low E♭ (Sax Teacher UK soprano chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1
+     ],
+     "x": [
+      "rEb"
+     ],
+     "n": "1 2 3 | 2 3 + low E♭ (Sax Teacher UK soprano chart)",
+     "p": 0.37
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "pEb",
+      "sE"
+     ],
+     "n": "palm D + palm E♭ + – | – + side E (Sax Teacher UK soprano chart)",
+     "p": 0.43
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sE"
+     ],
+     "n": "palm D + 1 2 | 1 + side E (Sax Teacher UK soprano chart)",
+     "p": 0.5
     }
    ]
   },
@@ -5582,8 +6763,71 @@
       "sBb",
       "hFs"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK tenor chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "fF",
+      "tGs"
+     ],
+     "n": "front F + G♯ + 1 | – (Sax Teacher UK tenor chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "1 | – + side B♭ (Sax Teacher UK tenor chart)",
+     "p": 0.37
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 1 2 (Sax Teacher UK tenor chart, WFG)",
+     "p": 0.43
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 | 1 2 (Sax Teacher UK tenor chart)",
+     "p": 0.5
     }
    ],
    "92": [
@@ -5598,8 +6842,148 @@
       0
      ],
      "x": [],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK tenor chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "2 3 | 1 + side B♭ (Sax Teacher UK tenor chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "1 | 2 + side C (Sax Teacher UK tenor chart)",
+     "p": 0.37
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 2 (Sax Teacher UK tenor chart, WFG)",
+     "p": 0.43
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "1 | 1 2 + side C (Sax Teacher UK tenor chart)",
+     "p": 0.5
+    }
+   ],
+   "93": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "altissimo (Sax Teacher UK tenor chart, WFG)",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "2 3 | – + side C (Sax Teacher UK tenor chart, WFG)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "– | 2 (slightly flat) (Sax Teacher UK tenor chart)",
+     "p": 0.37
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "tCs"
+     ],
+     "n": "low C♯ + 2 3 | 1 2 3 (Sax Teacher UK tenor chart)",
+     "p": 0.43
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "– | 1 + side B♭ (Sax Teacher UK tenor chart)",
+     "p": 0.5
     }
    ],
    "94": [
@@ -5617,8 +7001,68 @@
       "pD",
       "tGs"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK tenor chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 2 3 | 1 (slightly flat) (Sax Teacher UK tenor chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 1 2 (Sax Teacher UK tenor chart)",
+     "p": 0.37
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 2 3 | 1 2 3 (Sax Teacher UK tenor chart, WFG)",
+     "p": 0.43
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 3 | 1 2 (Sax Teacher UK tenor chart)",
+     "p": 0.5
     }
    ],
    "95": [],
@@ -5639,8 +7083,88 @@
       "sC",
       "sBb"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK tenor chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      1
+     ],
+     "x": [
+      "rEb"
+     ],
+     "n": "1 3 | 3 + low E♭ (Sax Teacher UK tenor chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "1 | 2 + side B♭ (Sax Teacher UK tenor chart)",
+     "p": 0.35
+    },
+    {
+     "h": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sE"
+     ],
+     "n": "palm D + – | – + side E (slightly flat) (Sax Teacher UK tenor chart, WFG)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "1 | 1 2 (Sax Teacher UK tenor chart, WFG)",
+     "p": 0.45
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sE"
+     ],
+     "n": "palm D + 1 2 | 1 + side E (Sax Teacher UK tenor chart)",
+     "p": 0.5
     }
    ]
   },
@@ -5947,8 +7471,262 @@
       "sBb",
       "hFs"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK baritone chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "hFs"
+     ],
+     "n": "1 | – + high F♯ (slightly flat) (Sax Teacher UK baritone chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "1 | – + side B♭ (Sax Teacher UK baritone chart)",
+     "p": 0.35
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "1 | 1 + side B♭ (Sax Teacher UK baritone chart)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 1 2 (Sax Teacher UK baritone chart, WFG)",
+     "p": 0.45
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 | 1 2 (Sax Teacher UK baritone chart)",
+     "p": 0.5
+    }
+   ],
+   "92": [
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "altissimo (Sax Teacher UK baritone chart, WFG)",
+     "p": 0
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC",
+      "sBb"
+     ],
+     "n": "1 2 3 | 1 + side C + side B♭ (Sax Teacher UK baritone chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "2 3 | 1 + side B♭ (Sax Teacher UK baritone chart)",
+     "p": 0.34
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "1 | 1 + side C (Sax Teacher UK baritone chart, WFG)",
+     "p": 0.38
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 3 | 2 (Sax Teacher UK baritone chart, WFG)",
+     "p": 0.42
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 | 2 (Sax Teacher UK baritone chart, WFG)",
+     "p": 0.46
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "sC"
+     ],
+     "n": "1 | 1 2 + side C (Sax Teacher UK baritone chart)",
+     "p": 0.5
+    }
+   ],
+   "93": [
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [],
+     "n": "altissimo (Sax Teacher UK baritone chart, WFG)",
+     "p": 0
+    },
+    {
+     "h": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "– | 1 + side B♭ (Sax Teacher UK baritone chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [
+      "tCs",
+      "rC"
+     ],
+     "n": "low C♯ + 2 3 | 1 2 + low C (Sax Teacher UK baritone chart)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "tGs"
+     ],
+     "n": "G♯ + 2 3 | – (slightly flat) (Sax Teacher UK baritone chart, WFG)",
+     "p": 0.5
     }
    ],
    "94": [
@@ -5966,8 +7744,88 @@
       "pD",
       "tGs"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK baritone chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 2 3 | – (Sax Teacher UK baritone chart, WFG)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD"
+     ],
+     "n": "palm D + 1 2 3 | 1 (Sax Teacher UK baritone chart)",
+     "p": 0.35
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "tBb"
+     ],
+     "n": "low B♭ + 1 2 | – (Sax Teacher UK baritone chart)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "x": [
+      "pD",
+      "sC",
+      "sBb"
+     ],
+     "n": "palm D + 2 3 | 1 2 3 + side C + side B♭ (Sax Teacher UK baritone chart)",
+     "p": 0.45
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "2 3 | 1 2 (Sax Teacher UK baritone chart)",
+     "p": 0.5
     }
    ],
    "95": [],
@@ -5987,8 +7845,88 @@
       "pEb",
       "sE"
      ],
-     "n": "altissimo",
+     "n": "altissimo (Sax Teacher UK baritone chart, WFG)",
      "p": 0
+    },
+    {
+     "h": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "pEb",
+      "sE"
+     ],
+     "n": "palm E♭ + 2 3 | – + side E (Sax Teacher UK baritone chart)",
+     "p": 0.3
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0
+     ],
+     "x": [
+      "sBb"
+     ],
+     "n": "1 | 2 + side B♭ (Sax Teacher UK baritone chart)",
+     "p": 0.35
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "x": [
+      "bis"
+     ],
+     "n": "bis + 1 3 | – (Sax Teacher UK baritone chart)",
+     "p": 0.4
+    },
+    {
+     "h": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ],
+     "x": [],
+     "n": "1 | 1 2 (Sax Teacher UK baritone chart, WFG)",
+     "p": 0.45
+    },
+    {
+     "h": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "x": [
+      "pD",
+      "sE"
+     ],
+     "n": "palm D + 1 2 | 1 + side E (Sax Teacher UK baritone chart)",
+     "p": 0.5
     }
    ]
   }
@@ -6163,6 +8101,11 @@
     {
      "title": "Prescott Workshop: fingerings for baroque recorders in C and in F (index 22 printed as 1 2 | 5 6 + half 7; dissenting)",
      "url": "http://www.prescottworkshop.com/bar_finger_f.pdf",
+     "accessed": "2026-11-22"
+    },
+    {
+     "title": "Blockis recorder fingerings: maker charts for Moeck (Flauto Soprano, Denner and Stanesby Alto), Küng (Studio, K4), Zen-On, Takeyama, Aulos and Yamaha (YRS-44, YRS-302B, YRA-28B, YRA-302B, YRA-801; German YRS-23, YRS-301, YRA-27)",
+     "url": "https://blockfloetengriffe.de/en/index.php?t=mM-Z",
      "accessed": "2026-11-22"
     }
    ],
