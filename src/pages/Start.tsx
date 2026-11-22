@@ -7,6 +7,7 @@ import { usableTracks } from '../import/melody';
 import type { ParsedSong } from '../import/types';
 import { useApp } from '../state/store';
 import DropZone, { errorMessage } from '../ui/DropZone';
+import Gallery from '../ui/Gallery';
 import InstrumentPicker from '../ui/InstrumentPicker';
 import s from './Start.module.css';
 
@@ -28,6 +29,7 @@ export default function Start() {
   const navigate = useNavigate();
   const missingSheet = (useLocation().state as { missingSheet?: boolean } | null)?.missingSheet === true;
   const [error, setError] = useState<string | null>(null);
+  const [libraryVersion, setLibraryVersion] = useState(0);
 
   /** A new song replaces the previous one and drops its sheet. */
   function acceptSong(song: ParsedSong) {
@@ -73,12 +75,15 @@ export default function Start() {
 
       {missingSheet && <p role="alert" className={s.missing}>That sheet is no longer saved in this browser.</p>}
 
+      <Gallery version={libraryVersion} />
+
       <InstrumentPicker value={instId} onChange={setInstrument} />
 
       <DropZone
         instrumentName={displayName(inst(instId))}
         onSong={acceptSong}
         onContinue={() => { const song = useApp.getState().song; if (song) continueWith(song); }}
+        onSheet={() => setLibraryVersion(n => n + 1)}
       />
 
       <fieldset className={s.prefs}>

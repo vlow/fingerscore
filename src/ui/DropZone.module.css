@@ -74,6 +74,12 @@
   font-weight: 600;
 }
 
+.chipSheet {
+  border-color: var(--teal-border);
+  background: var(--teal-tint);
+  color: var(--teal-hover);
+}
+
 /* Covers the whole zone: click to browse, or drop a file on it. */
 .input {
   position: absolute;
@@ -133,6 +139,7 @@
 
 .primary {
   border: none;
+  text-decoration: none;
   background: var(--teal);
   color: #ffffff;
 }

@@ -1,6 +1,9 @@
 import { useId, useState, type ChangeEvent, type DragEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { importMessage, parseFileText } from '../domain/persistence';
 import { ACCEPT, parseFile } from '../import';
 import { ImportError, type ParsedSong } from '../import/types';
+import { saveEntry, type LibraryEntry } from '../state/library';
 import s from './DropZone.module.css';
 
 interface Props {
@@ -8,19 +11,38 @@ interface Props {
   instrumentName: string;
   onSong(song: ParsedSong): void;
   onContinue(): void;
+  /** A saved sheet (.json) was added to the library. */
+  onSheet?(entry: LibraryEntry): void;
 }
 
 type State =
   | { kind: 'idle' }
   | { kind: 'parsing'; file: string }
   | { kind: 'ready'; file: string }
+  | { kind: 'sheet'; entry: LibraryEntry }
   | { kind: 'error'; message: string };
 
 export function errorMessage(e: unknown, file: string): string {
   return e instanceof ImportError ? e.userMessage : `"${file}" could not be read.`;
 }
 
-export default function DropZone({ instrumentName, onSong, onContinue }: Props) {
+const isSheetFile = (name: string) => name.toLowerCase().endsWith('.json');
+
+/** Reads a saved sheet and adds it to the library; the error is the message to show. */
+async function addSheet(file: File): Promise<{ entry: LibraryEntry } | { error: string }> {
+  let text: string;
+  try {
+    text = await file.text();
+  } catch {
+    return { error: importMessage(file.name, 'not-a-sheet') };
+  }
+  const parsed = parseFileText(text);
+  if (!parsed.ok) return { error: importMessage(file.name, parsed.reason) };
+  const saved = saveEntry(parsed.doc, null);
+  return saved.ok ? { entry: saved.entry } : { error: saved.message };
+}
+
+export default function DropZone({ instrumentName, onSong, onContinue, onSheet }: Props) {
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [drag, setDrag] = useState(false);
   const titleId = useId();
@@ -28,6 +50,13 @@ export default function DropZone({ instrumentName, onSong, onContinue }: Props) 
 
   async function readFile(file: File) {
     setState({ kind: 'parsing', file: file.name });
+    if (isSheetFile(file.name)) {
+      const r = await addSheet(file);
+      if ('error' in r) { setState({ kind: 'error', message: r.error }); return; }
+      onSheet?.(r.entry);
+      setState({ kind: 'sheet', entry: r.entry });
+      return;
+    }
     try {
       const song = await parseFile(file);
       onSong(song);
@@ -75,13 +104,14 @@ export default function DropZone({ instrumentName, onSong, onContinue }: Props) 
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" />
               </svg>
             </div>
-            <div id={titleId} className={s.title}>Drop a song here</div>
+            <div id={titleId} className={s.title}>Drop a song or a saved sheet here</div>
             <div id={hintId} className={s.hint}>
               or <span className={s.browse}>browse your computer</span> · new songs become a sheet for your {instrumentName}
             </div>
             <div className={s.chips}>
               <span className={s.chip}>MIDI .mid</span>
               <span className={s.chip}>MusicXML .musicxml .mxl</span>
+              <span className={`${s.chip} ${s.chipSheet}`}>Saved sheet .json</span>
             </div>
           </div>
           <input
@@ -105,6 +135,15 @@ export default function DropZone({ instrumentName, onSong, onContinue }: Props) 
           <div className={s.actions}>
             <button type="button" className={s.primary} onClick={onContinue}>Continue →</button>
             <button type="button" className={s.secondary} onClick={reset}>Choose another file</button>
+          </div>
+        </div>
+      )}
+      {state.kind === 'sheet' && (
+        <div className={s.content}>
+          <p className={s.result} role="status">✓ "{state.entry.title}" added to your sheets</p>
+          <div className={s.actions}>
+            <Link to={`/sheet?id=${encodeURIComponent(state.entry.id)}`} className={s.primary}>Open sheet →</Link>
+            <button type="button" className={s.secondary} onClick={reset}>Add another</button>
           </div>
         </div>
       )}

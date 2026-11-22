@@ -1,0 +1,124 @@
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.heading {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.count {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.card:hover {
+  border-color: var(--border-2);
+}
+
+/* The whole card opens the sheet; the delete button sits on top of it, outside the link. */
+.open {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 44px;
+  padding: 46px 14px 12px;
+  border-radius: var(--radius-card);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.staff {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  width: 100%;
+  height: 25px;
+  stroke: var(--border-2);
+  stroke-width: 1;
+}
+
+.title {
+  overflow: hidden;
+  padding-right: 24px;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inst {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.ago {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.delete {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--red);
+  cursor: pointer;
+}
+
+.delete:hover {
+  background: var(--red-bg);
+}
+
+.more {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.more:hover {
+  background: var(--page);
+}

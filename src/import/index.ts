@@ -6,7 +6,7 @@ import { parseMidi } from './midi';
 import { parseMusicXml } from './musicxml';
 import { ImportError, type ParsedSong } from './types';
 
-export const ACCEPT = '.mid,.midi,.musicxml,.xml,.mxl';
+export const ACCEPT = '.mid,.midi,.musicxml,.xml,.mxl,.json';
 
 function readBytes(file: File): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {

@@ -4,8 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { writeMidi, type MidiEvent } from 'midi-file';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { sampleDoc } from '../domain/fixture';
+import { serializeFile } from '../domain/persistence';
 import { DEFAULT_PREFS } from '../domain/transpose';
+import { listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
+import { ToastHost } from '../ui/Toast';
 import Start from './Start';
 
 const demoBytes = () => new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid'));
@@ -18,12 +21,13 @@ function Probe() {
 }
 const currentPath = () => path;
 
-function renderStart() {
+function renderStart({ state }: { state?: unknown } = {}) {
   render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={[{ pathname: '/', state }]}>
       <Routes>
         <Route path="*" element={<><Start /><Probe /></>} />
       </Routes>
+      <ToastHost />
     </MemoryRouter>,
   );
 }
@@ -61,11 +65,11 @@ it('picker: a type can be chosen and is marked checked', async () => {
 it('headline and drop zone copy', () => {
   renderStart();
   expect(screen.getByRole('heading', { level: 1, name: 'Sheet music with fingering charts for woodwinds' })).toBeInTheDocument();
-  expect(screen.getByText('Drop a song here')).toBeInTheDocument();
+  expect(screen.getByText('Drop a song or a saved sheet here')).toBeInTheDocument();
   expect(screen.getByText(/new songs become a sheet for your Alto sax in E♭/)).toBeInTheDocument();
   expect(screen.getByText('MIDI .mid')).toBeInTheDocument();
   expect(screen.getByText('MusicXML .musicxml .mxl')).toBeInTheDocument();
-  expect(screen.queryByText(/Saved sheet/)).toBeNull();
+  expect(screen.getByText('Saved sheet .json')).toBeInTheDocument();
 });
 
 it('a MIDI file leads to Continue', async () => {
@@ -113,7 +117,7 @@ it('Choose another file returns to the idle drop zone', async () => {
   renderStart();
   await user.upload(screen.getByLabelText(/drop a song/i), demoFile());
   await user.click(await screen.findByRole('button', { name: 'Choose another file' }));
-  expect(screen.getByText('Drop a song here')).toBeInTheDocument();
+  expect(screen.getByText('Drop a song or a saved sheet here')).toBeInTheDocument();
 });
 
 it('a wrong file shows the error by name', async () => {
@@ -122,7 +126,7 @@ it('a wrong file shows the error by name', async () => {
   await u.upload(screen.getByLabelText(/drop a song/i), new File(['x'], 'tune.abc'));
   expect(await screen.findByRole('alert')).toHaveTextContent('"tune.abc" is not a format fingerscore reads yet.');
   await u.click(screen.getByRole('button', { name: 'Try another file' }));
-  expect(screen.getByText('Drop a song here')).toBeInTheDocument();
+  expect(screen.getByText('Drop a song or a saved sheet here')).toBeInTheDocument();
 });
 
 it('preferences are stored', async () => {
@@ -161,7 +165,7 @@ it('a file dropped on the error state is read', async () => {
   await screen.findByRole('alert');
   expect(drop(demoFile())).toBe(false);
   expect(await screen.findByText(/Auld_Lang_Syne.mid — Ready/)).toBeInTheDocument();
-  expect(screen.getByRole('status')).toHaveTextContent('Ready');
+  expect(within(screen.getByTestId('drop-zone')).getByRole('status')).toHaveTextContent('Ready');
 });
 
 it('subline names the formats version 1 reads', () => {
@@ -181,4 +185,52 @@ it('says when a linked sheet is no longer saved', () => {
 it('shows no missing-sheet alert without that state', () => {
   renderStart();
   expect(screen.queryByText('That sheet is no longer saved in this browser.')).toBeNull();
+});
+
+it('no gallery without saved sheets', () => { renderStart(); expect(screen.queryByRole('heading', { name: 'Your sheets' })).toBeNull(); });
+
+it('gallery lists saved sheets newest first, four at a time', async () => {
+  for (let i = 1; i <= 6; i++) saveEntry({ ...sampleDoc('asax'), title: `Sheet ${i}` }, null, new Date(Date.UTC(2026, 10, 22, 10, i)));
+  renderStart(); const g = screen.getByRole('region', { name: 'Your sheets' });
+  expect(within(g).getByText('6 sheets · saved in this browser')).toBeInTheDocument();
+  expect(within(g).getAllByRole('link').map(a => a.textContent)).toEqual(expect.arrayContaining([expect.stringContaining('Sheet 6')]));
+  expect(within(g).getAllByRole('link')).toHaveLength(4); expect(within(g).getAllByRole('link')[0]).toHaveTextContent('Sheet 6');
+  expect(within(g).getAllByRole('link')[0]).toHaveAttribute('href', expect.stringMatching(/^\/sheet\?id=/)); expect(within(g).getAllByRole('link')[0]).toHaveTextContent('Alto sax in E♭');
+  await user.click(within(g).getByRole('button', { name: 'Show all 6' })); expect(within(g).getAllByRole('link')).toHaveLength(6);
+});
+
+it('delete with undo', async () => {
+  saveEntry({ ...sampleDoc('asax'), title: 'Keep' }, null); saveEntry({ ...sampleDoc('cl'), title: 'Drop me' }, null); renderStart();
+  await user.click(screen.getByRole('button', { name: 'Delete Drop me' })); expect(screen.queryByText('Drop me')).toBeNull(); expect(listEntries()).toHaveLength(1);
+  expect(screen.getByRole('status')).toHaveTextContent('Deleted "Drop me"'); await user.click(screen.getByRole('button', { name: 'Undo' }));
+  expect(screen.getByText('Drop me')).toBeInTheDocument(); expect(listEntries()).toHaveLength(2);
+});
+
+it('drop zone copy and chips include saved sheets', () => { renderStart(); expect(screen.getByText('Drop a song or a saved sheet here')).toBeInTheDocument(); expect(screen.getByText(/Saved sheet/)).toBeInTheDocument(); });
+
+it('a saved sheet dropped on the zone is added to the library', async () => {
+  renderStart(); const text = serializeFile({ ...sampleDoc('fl'), title: 'Dropped' });
+  await user.upload(screen.getByLabelText(/drop a song or a saved sheet/i), new File([text], 'dropped.fingerscore.json', { type: 'application/json' }));
+  expect(await screen.findByText('✓ "Dropped" added to your sheets')).toBeInTheDocument(); expect(listEntries()[0].title).toBe('Dropped');
+  expect(screen.getByRole('link', { name: /Open sheet/ })).toHaveAttribute('href', `/sheet?id=${listEntries()[0].id}`);
+  await user.click(screen.getByRole('button', { name: 'Add another' })); expect(screen.getByRole('region', { name: 'Your sheets' })).toHaveTextContent('Dropped');
+});
+
+it('a foreign JSON file is refused and nothing is added (review focus 1)', async () => {
+  renderStart(); await user.upload(screen.getByLabelText(/drop a song or a saved sheet/i), new File(['{"name":"x","version":"1.0.0"}'], 'package.json', { type: 'application/json' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('"package.json" isn\'t a fingerscore sheet.'); expect(listEntries()).toEqual([]);
+});
+
+it('the missing-sheet alert', () => { renderStart({ state: { missingSheet: true } }); expect(screen.getByRole('alert')).toHaveTextContent('That sheet is no longer saved in this browser.'); });
+
+it('deleting the open sheet\'s entry unlinks it; undo links it again', async () => {
+  useApp.getState().setDoc({ ...sampleDoc('asax'), title: 'Open one' });
+  expect(useApp.getState().saveSheet()).toBe(true);
+  const id = useApp.getState().libraryId;
+  renderStart();
+  await user.click(screen.getByRole('button', { name: 'Delete Open one' }));
+  expect(useApp.getState().libraryId).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Undo' }));
+  expect(useApp.getState().libraryId).toBe(id);
+  expect(screen.getByRole('region', { name: 'Your sheets' })).toHaveTextContent('Open one');
 });
