@@ -138,4 +138,25 @@ describe('parseMusicXml', () => {
     const s = await parseMusicXml('h.xml', xml(`<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><harmony><function>V</function></harmony>${n('C', 5, 4)}`));
     expect(s.tracks[0].chords).toEqual([]);
   });
+
+  it('a transposing part gives concert key, chords and notes', async () => {
+    const attrs = '<attributes><divisions>1</divisions><key><fifths>2</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose></attributes>';
+    const s = await parseMusicXml('cl.xml', xml(`${attrs}<harmony><root><root-step>D</root-step></root><kind>major</kind><bass><bass-step>F</bass-step><bass-alter>1</bass-alter></bass></harmony><note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice></note>`));
+    expect(s.key).toEqual({ tonicPc: 0, mode: 'major' });
+    expect(s.tracks[0].chords).toEqual([{ at: 0, text: 'C/E' }]);
+    expect(s.tracks[0].notes[0].midi).toBe(60);
+  });
+
+  it('the key comes from a non-transposing part, or else the converted first key', async () => {
+    const part = (id: string, fifths: number, tr: string) => `<part id="${id}"><measure number="1"><attributes><divisions>1</divisions><key><fifths>${fifths}</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time>${tr}</attributes>${n('C', 5, 4)}</measure></part>`;
+    const list = '<part-list><score-part id="P1"><part-name>A</part-name></score-part><score-part id="P2"><part-name>B</part-name></score-part></part-list>';
+    const file = (a: string, b: string) => new TextEncoder().encode(`<?xml version="1.0"?><score-partwise version="3.1">${list}${a}${b}</score-partwise>`);
+    const clar = '<transpose><chromatic>-2</chromatic></transpose>';
+    const flute = await parseMusicXml('f.xml', file(part('P1', 0, ''), part('P2', 2, clar)));
+    expect(flute.key).toEqual({ tonicPc: 0, mode: 'major' });
+    const clarFirst = await parseMusicXml('g.xml', file(part('P1', 2, clar), part('P2', 0, '')));
+    expect(clarFirst.key).toEqual({ tonicPc: 0, mode: 'major' });
+    const both = await parseMusicXml('h.xml', file(part('P1', 2, clar), part('P2', 2, clar)));
+    expect(both.key).toEqual({ tonicPc: 0, mode: 'major' });
+  });
 });

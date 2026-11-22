@@ -5,6 +5,7 @@ import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './
 
 const DEFAULT_TEMPO = 120;
 const EPS = 1e-9;
+const ROOT_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const STEP_PC: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const KIND_SUFFIX: Record<string, string> = {
   major: '', minor: 'm', dominant: '7', 'major-seventh': 'maj7', 'minor-seventh': 'm7', diminished: 'dim',
@@ -12,6 +13,7 @@ const KIND_SUFFIX: Record<string, string> = {
 };
 const BEAT_UNITS: Record<string, number> = { whole: 4, half: 2, quarter: 1, eighth: 0.5, '16th': 0.25 };
 
+interface WrittenKey { tonicPc: number; mode: 'major' | 'minor'; transpose: number }
 type Mark = ParsedSong['marks'][number];
 type Lyric = ParsedTrack['lyrics'][number];
 
@@ -70,13 +72,21 @@ function readTimeSig(file: string, root: Element): TimeSig {
   return [first[0], first[1]] as TimeSig;
 }
 
-function readKey(root: Element): ParsedSong['key'] {
-  const k = root.getElementsByTagName('key')[0];
+const mod12 = (x: number): number => ((x % 12) + 12) % 12;
+
+/** The key as written in a part, with the part's transposition at that point (semitones, written to concert). */
+function writtenKey(k: Element, transpose: number): WrittenKey | null {
   const fifths = num(text(k, 'fifths'));
-  if (!k || fifths === null) return null;
+  if (fifths === null) return null;
   const minor = text(k, 'mode') === 'minor';
-  const major = (((fifths * 7) % 12) + 12) % 12;
-  return { tonicPc: minor ? (major + 9) % 12 : major, mode: minor ? 'minor' : 'major' };
+  return { tonicPc: mod12(fifths * 7 + (minor ? 9 : 0)), mode: minor ? 'minor' : 'major', transpose };
+}
+
+/** Concert key: from the first part that does not transpose, else the first part's key converted. */
+function concertKey(results: PartResult[]): ParsedSong['key'] {
+  const keys = results.map(r => r.key).filter((k): k is WrittenKey => k !== null);
+  const k = keys.find(x => mod12(x.transpose) === 0) ?? keys[0];
+  return k ? { tonicPc: mod12(k.tonicPc + k.transpose), mode: k.mode } : null;
 }
 
 function readTempo(root: Element): number {
@@ -93,10 +103,11 @@ function readTempo(root: Element): number {
   return DEFAULT_TEMPO;
 }
 
-function chordText(h: Element): string {
+function chordText(h: Element, transpose: number): string {
   const name = (parent: Element | undefined, step: string, alter: string): string => {
     const letter = text(parent, step) ?? '';
     const a = Math.round(num(text(parent, alter)) ?? 0);
+    if (transpose !== 0 && letter in STEP_PC) return ROOT_NAMES[mod12(STEP_PC[letter] + a + transpose)];
     return letter + (a > 0 ? '♯'.repeat(a) : '♭'.repeat(-a));
   };
   const kind = kid(h, 'kind');
@@ -120,7 +131,7 @@ function lyricOf(note: Element): string | null {
 
 // ---- parts ----
 
-interface PartResult { id: string; name: string; instrument: string; channel: number | null; voices: Map<string, { notes: RawNote[]; lyrics: Lyric[] }>; chords: Lyric[] }
+interface PartResult { key: WrittenKey | null; id: string; name: string; instrument: string; channel: number | null; voices: Map<string, { notes: RawNote[]; lyrics: Lyric[] }>; chords: Lyric[] }
 
 /** Length of the first measure in quarter notes, from the furthest position anything reaches. */
 function firstMeasureExtent(part: Element, divisionsDefault: number): { length: number; implicit: boolean } | null {
@@ -160,7 +171,7 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
   const sp = info.get(id);
   const channel = num(text(kid(sp ?? part, 'midi-instrument'), 'midi-channel'));
   const result: PartResult = {
-    id, name: text(sp, 'part-name') ?? '', instrument: text(kid(sp ?? part, 'score-instrument'), 'instrument-name') ?? '',
+    key: null, id, name: text(sp, 'part-name') ?? '', instrument: text(kid(sp ?? part, 'score-instrument'), 'instrument-name') ?? '',
     channel, voices: new Map(), chords: [],
   };
   const open = new Map<string, Map<number, RawNote>>();      // per voice: pitch → note waiting for its tie stop
@@ -185,12 +196,14 @@ function readPart(part: Element, info: Map<string, Element>, barLength: number, 
         divisions = num(text(el, 'divisions')) ?? divisions;
         const tr = kid(el, 'transpose');
         if (tr) transpose = (num(text(tr, 'chromatic')) ?? 0) + 12 * (num(text(tr, 'octave-change')) ?? 0);
+        const keyEl = kid(el, 'key');
+        if (keyEl && !result.key) result.key = writtenKey(keyEl, transpose);
       } else if (name === 'backup' || name === 'forward') {
         const d = (num(text(el, 'duration')) ?? 0) / divisions;
         pos += name === 'forward' ? d : -d;
       } else if (name === 'harmony') {
         const offset = (num(text(el, 'offset')) ?? 0) / divisions;
-        const chord = chordText(el);
+        const chord = chordText(el, transpose);
         if (chord !== '') result.chords.push({ at: measureStart + pos + offset, text: chord });
       } else if (name === 'barline') {
         if (!marks) continue;
@@ -267,8 +280,8 @@ export async function parseMusicXml(file: string, bytes: Uint8Array): Promise<Pa
 
   const marks = new Map<number, Mark>();
   const tracks: ParsedTrack[] = [];
-  parts.forEach((part, i) => {
-    const r = readPart(part, info, barLength, pickup, i === 0 ? marks : null);
+  const results = parts.map((part, i) => readPart(part, info, barLength, pickup, i === 0 ? marks : null));
+  results.forEach((r, i) => {
     const voiceIds = Array.from(r.voices.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     voiceIds.forEach((vid, vi) => {
       const v = r.voices.get(vid)!;
@@ -289,7 +302,7 @@ export async function parseMusicXml(file: string, bytes: Uint8Array): Promise<Pa
 
   if (!tracks.some(t => !t.percussion)) throw new ImportError(`"${file}" has no melody track.`);
   return {
-    file, format: 'MusicXML', timeSig, tempo: readTempo(root), key: readKey(root), pickup,
+    file, format: 'MusicXML', timeSig, tempo: readTempo(root), key: concertKey(results), pickup,
     marks: Array.from(marks.values()).sort((a, b) => a.bar - b.bar), tracks,
   };
 }
