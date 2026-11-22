@@ -1,4 +1,4 @@
-import { previewTrack } from './player';
+import { previewTrack, stopPreview } from './player';
 
 class FakeNode {
   stop = vi.fn();
@@ -38,4 +38,25 @@ it('previewTrack plays the notes inside the window and a second call stops the f
   first.forEach(o => expect(o.disconnect).toHaveBeenCalled());
   oscillators.forEach(o => expect(o.disconnect).not.toHaveBeenCalled());
   expect(oscillators).toHaveLength(2);
+});
+
+it('previewTrack reports its natural end once, and not when it is stopped', () => {
+  vi.useFakeTimers();
+  try {
+    oscillators.splice(0);
+    const done = vi.fn();
+    previewTrack(notes, 120, 8, done);      // last sounding note ends 1 s after the start
+    vi.advanceTimersByTime(900);
+    expect(done).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(300);
+    expect(done).toHaveBeenCalledTimes(1);
+
+    const stopped = vi.fn();
+    previewTrack(notes, 120, 8, stopped);
+    stopPreview();
+    vi.advanceTimersByTime(5000);
+    expect(stopped).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
 });

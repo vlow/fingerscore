@@ -23,6 +23,26 @@ describe('playback schedule', () => {
     expect(s.totalTicks).toBe(48);
   });
 
+  it('marks cover notes and rests, so a rest is highlighted while it lasts', () => {
+    const d = mkDoc([{ ev: [[60, 12], [0, 12], [62, 12, { tie: true }], [62, 12]] }, { ev: [[0, 48]] }]);
+    const [a, rest, c] = d.score[0].ev;
+    const barRest = d.score[1].ev[0];
+    const s = buildSchedule(d);
+    expect(s.marks).toEqual([
+      { evId: a.id, start: 0 },
+      { evId: rest.id, start: 12 },
+      { evId: c.id, start: 24 },          // a tie chain keeps one mark, on its first note
+      { evId: barRest.id, start: 48 },
+    ]);
+    expect(s.notes).toHaveLength(2);      // rests stay silent
+  });
+
+  it('the sample song has a mark for every sounded note', () => {
+    const s = buildSchedule(sampleDoc('xc'));
+    expect(s.marks.length).toBeGreaterThanOrEqual(s.notes.length);
+    expect(s.marks.map(m => m.start)).toEqual([...s.marks.map(m => m.start)].sort((x, y) => x - y));
+  });
+
   it('no repeats: plays straight through', () => {
     const d = mkDoc([{ ev: [[60, 24], [62, 24]] }, { ev: [[64, 48]] }]);
     const s = buildSchedule(d);

@@ -56,6 +56,14 @@ function TrackChooser({ song }: { song: ParsedSong }) {
   const bandLo = instrument.lo - instrument.off;
   const bandHi = instrument.hi - instrument.off;
 
+  // The track whose preview is sounding; its button shows Stop until the preview ends or is stopped.
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  function togglePreview(track: ParsedTrack) {
+    if (previewing === track.id) { stopPreview(); setPreviewing(null); return; }
+    setPreviewing(track.id);
+    previewTrack(track.notes, song.tempo, PREVIEW_SECONDS, () => setPreviewing(null));
+  }
+
   const rows = useMemo<Row[]>(() => {
     const infos = analyseTracks(song);
     return song.tracks.map((track, i) => {
@@ -158,10 +166,13 @@ function TrackChooser({ song }: { song: ParsedSong }) {
                     />
                     {r.usable && (
                       <button
-                        type="button" className={s.play} aria-label={`Play a preview of ${r.track.name}`}
-                        onClick={() => previewTrack(r.track.notes, song.tempo, PREVIEW_SECONDS)}
+                        type="button" className={s.play}
+                        aria-label={previewing === r.track.id ? `Stop the preview of ${r.track.name}` : `Play a preview of ${r.track.name}`}
+                        onClick={() => togglePreview(r.track)}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
+                        {previewing === r.track.id
+                          ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
+                          : <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>}
                       </button>
                     )}
                   </div>

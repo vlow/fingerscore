@@ -2,7 +2,9 @@ import type { Doc } from './types';
 
 /** Ticks; midi is the sounding pitch (m + shift). */
 export interface SchedNote { evId: string; start: number; dur: number; midi: number }
-export interface Schedule { notes: SchedNote[]; totalTicks: number }
+/** A highlight point: the event shown as playing from `start` until the next mark. Notes and rests both get one. */
+export interface SchedMark { evId: string; start: number }
+export interface Schedule { notes: SchedNote[]; marks: SchedMark[]; totalTicks: number }
 
 export function ticksToSeconds(ticks: number, tempo: number): number {
   return (ticks * 60) / (tempo * 12);
@@ -43,6 +45,7 @@ function barOrder(doc: Doc): number[] {
 export function buildSchedule(doc: Doc): Schedule {
   const order = barOrder(doc);
   const notes: SchedNote[] = [];
+  const marks: SchedMark[] = [];
   let t = 0;
   let open: SchedNote | null = null;
   let prevBar = -2;
@@ -53,6 +56,7 @@ export function buildSchedule(doc: Doc): Schedule {
     for (const ev of bar.ev) {
       if (ev.r) {
         open = null;
+        marks.push({ evId: ev.id, start: t });
       } else {
         const midi = ev.m + doc.shift;
         if (open && open.midi === midi) {
@@ -60,11 +64,12 @@ export function buildSchedule(doc: Doc): Schedule {
         } else {
           open = { evId: ev.id, start: t, dur: ev.d, midi };
           notes.push(open);
+          marks.push({ evId: ev.id, start: t });
         }
         if (!ev.tie) open = null;
       }
       t += ev.d;
     }
   }
-  return { notes, totalTicks: t };
+  return { notes, marks, totalTicks: t };
 }

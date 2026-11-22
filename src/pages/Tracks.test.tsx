@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { previewTrack, stopPreview } from '../audio/player';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -128,8 +128,33 @@ it('a song without a usable track lists it disabled and cannot make a sheet', ()
 it('plays an 8-second preview and stops it on leaving the page', async () => {
   const view = renderTracks();
   await user.click(screen.getByRole('button', { name: 'Play a preview of Melody' }));
-  expect(previewTrack).toHaveBeenCalledWith(useApp.getState().song!.tracks[0].notes, 100, 8);
+  expect(previewTrack).toHaveBeenCalledWith(useApp.getState().song!.tracks[0].notes, 100, 8, expect.any(Function));
   expect(stopPreview).not.toHaveBeenCalled();
   view.unmount();
   expect(stopPreview).toHaveBeenCalledTimes(1);
+});
+
+it('the preview button becomes a stop button while its track plays', async () => {
+  renderTracks();
+  await user.click(screen.getByRole('button', { name: 'Play a preview of Melody' }));
+  const stop = screen.getByRole('button', { name: 'Stop the preview of Melody' });
+  expect(screen.queryByRole('button', { name: 'Play a preview of Melody' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Play a preview of Chords' })).toBeInTheDocument();   // other rows keep Play
+
+  await user.click(stop);
+  expect(stopPreview).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('button', { name: 'Play a preview of Melody' })).toBeInTheDocument();
+});
+
+it('starting another preview moves the stop button; a preview that ends turns it back', async () => {
+  renderTracks();
+  await user.click(screen.getByRole('button', { name: 'Play a preview of Melody' }));
+  await user.click(screen.getByRole('button', { name: 'Play a preview of Chords' }));
+  expect(screen.getByRole('button', { name: 'Stop the preview of Chords' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Play a preview of Melody' })).toBeInTheDocument();
+
+  const calls = vi.mocked(previewTrack).mock.calls;
+  const onDone = calls[calls.length - 1][3] as () => void;
+  act(() => onDone());                                   // the player reports the end of the preview
+  expect(screen.getByRole('button', { name: 'Play a preview of Chords' })).toBeInTheDocument();
 });

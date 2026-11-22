@@ -64,10 +64,11 @@ export function createPlayer(): Player {
     const secs = (ticks: number) => ticksToSeconds(ticks, doc.tempo);
     const endAt = t0 + secs(s.totalTicks);
     let next = 0;
+    let nextMark = 0;
     playing = true;
     notify = onEvent;
 
-    function schedule(n: Schedule['notes'][number], following: Schedule['notes'][number] | undefined) {
+    function schedule(n: Schedule['notes'][number]) {
       const start = t0 + secs(n.start);
       const end = start + secs(n.dur);
       const osc = c.createOscillator();
@@ -86,21 +87,25 @@ export function createPlayer(): Player {
       osc.stop(end + 0.02);
       nodes.push(osc);
       osc.onended = () => { nodes = nodes.filter(x => x !== osc); };
-      const delay = (t: number) => Math.max(0, (t - c.currentTime) * 1000);
-      eventTimers.push(setTimeout(() => { if (playing) onEvent(n.evId); }, delay(start)));
-      // The last note's end is signalled by the song-end timer; a note that runs straight into the
-      // next one gets no null, so a late timer cannot clear the next note's highlight.
-      if (following && following.start > n.start + n.dur) {
-        eventTimers.push(setTimeout(() => { if (playing) onEvent(null); }, delay(end)));
-      }
+    }
+
+    // Marks cover the whole timeline (every note chain and every rest), so the highlight moves
+    // from one to the next without gaps; the song-end timer clears the last one.
+    function scheduleMark(m: Schedule['marks'][number]) {
+      const at = t0 + secs(m.start);
+      eventTimers.push(setTimeout(() => { if (playing) onEvent(m.evId); }, Math.max(0, (at - c.currentTime) * 1000)));
     }
 
     function pump() {
       while (next < s.notes.length && t0 + secs(s.notes[next].start) < c.currentTime + LOOKAHEAD) {
-        schedule(s.notes[next], s.notes[next + 1]);
+        schedule(s.notes[next]);
         next++;
       }
-      if (next >= s.notes.length && timer) { clearInterval(timer); timer = null; }
+      while (nextMark < s.marks.length && t0 + secs(s.marks[nextMark].start) < c.currentTime + LOOKAHEAD) {
+        scheduleMark(s.marks[nextMark]);
+        nextMark++;
+      }
+      if (next >= s.notes.length && nextMark >= s.marks.length && timer) { clearInterval(timer); timer = null; }
     }
 
     pump();
@@ -120,9 +125,12 @@ export function createPlayer(): Player {
 // Track preview on the Tracks page: one shared context, one preview at a time.
 let previewCtx: AudioContext | null = null;
 let previewNodes: OscillatorNode[] = [];
+let previewTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Stops the running track preview, if any. */
 export function stopPreview(): void {
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = null;
   for (const o of previewNodes) {
     try { o.stop(); } catch { /* already stopped */ }
     o.disconnect();
@@ -130,10 +138,13 @@ export function stopPreview(): void {
   previewNodes = [];
 }
 
-/** Plays the first `seconds` of a track (positions in quarter notes) with a neutral timbre. Replaces any running preview. */
-export function previewTrack(notes: RawNote[], tempo: number, seconds: number): void {
+/**
+ * Plays the first `seconds` of a track (positions in quarter notes) with a neutral timbre. Replaces any running preview.
+ * `onDone` fires when the preview has played to its end; it does not fire when the preview is stopped or replaced.
+ */
+export function previewTrack(notes: RawNote[], tempo: number, seconds: number, onDone?: () => void): void {
   stopPreview();
-  if (notes.length === 0) return;
+  if (notes.length === 0) { onDone?.(); return; }
   previewCtx ??= new AudioContext();
   const c = previewCtx;
   void c.resume();
@@ -141,11 +152,13 @@ export function previewTrack(notes: RawNote[], tempo: number, seconds: number): 
   const from = Math.min(...notes.map(n => n.start));   // skip leading silence
   const t0 = c.currentTime + 0.05;
   const peak = PEAK / 2;                               // chords add up
+  let lastEnd = t0;
   for (const n of notes) {
     const start = t0 + (n.start - from) * secPerQuarter;
     if (start >= t0 + seconds) continue;
     const end = Math.min(start + n.dur * secPerQuarter, t0 + seconds);
     if (end - start < ATTACK) continue;
+    lastEnd = Math.max(lastEnd, end);
     const osc = c.createOscillator();
     const gain = c.createGain();
     osc.type = 'triangle';
@@ -160,4 +173,5 @@ export function previewTrack(notes: RawNote[], tempo: number, seconds: number): 
     osc.onended = () => { previewNodes = previewNodes.filter(x => x !== osc); };
     previewNodes.push(osc);
   }
+  previewTimer = setTimeout(() => { previewTimer = null; onDone?.(); }, Math.max(0, (lastEnd - c.currentTime) * 1000 + 50));
 }
