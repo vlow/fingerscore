@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Choose a track</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6E68}a:hover{color:#0A4F4A}
+.nb{position:absolute;height:3px;border-radius:2px}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F3F4F6; color: #15171C; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 14px">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 12px 28px; background: #FFFFFF; border-bottom: 1px solid #E2E4E8">
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #15171C">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="10" y="2" width="8" height="24" rx="4" fill="#15171C"></rect><circle cx="14" cy="8" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="13" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="18" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="23" r="1.6" fill="#5FD3C6"></circle></svg>
+      <span style="font-family: 'Atkinson Hyperlegible', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.01em">fingerscore</span>
+    </a>
+    <div style="flex: 1 1 0"></div>
+    <nav aria-label="Main" style="display: flex; gap: 4px">
+      <a href="Main.dc.html" aria-current="page" style="padding: 8px 12px; border-radius: 8px; background: #E3F4F2; color: #0A4F4A; text-decoration: none; font-weight: 700; font-size: 14px">Songs</a>
+      <a href="Scales.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #4A505C; text-decoration: none; font-weight: 600; font-size: 14px">Scales</a>
+    </nav>
+  </header>
+  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 10px 28px; background: #FAFAFB; border-bottom: 1px solid #E2E4E8">
+    <nav aria-label="Steps" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px"><a href="Main.dc.html" style="display: flex; align-items: center; gap: 6px; color: #5B616E; text-decoration: none"><span style="width: 20px; height: 20px; border-radius: 50%; background: #D3EEEA; color: #0A4F4A; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700">✓</span>File</a><span style="color: #B4B8C0" aria-hidden="true">—</span><span aria-current="step" style="display: flex; align-items: center; gap: 6px; font-weight: 700"><span style="width: 20px; height: 20px; border-radius: 50%; background: #0E6E68; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: 11px">2</span>Track</span><span style="color: #B4B8C0" aria-hidden="true">—</span><span style="display: flex; align-items: center; gap: 6px; color: #5B616E"><span style="width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #B4B8C0; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; box-sizing: border-box">3</span>Sheet</span></nav>
+    <div style="flex: 1 1 0"></div>
+    <a href="Main.dc.html" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; color: #15171C; text-decoration: none; font-weight: 600; font-size: 14px">Different file</a>
+  </div>
+
+  <div style="max-width: 1320px; margin: 0 auto; padding: 28px 28px 48px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px">
+      <div>
+        <h1 style="margin: 0 0 6px; font-family: 'Atkinson Hyperlegible', sans-serif; font-size: 30px; font-weight: 700">Which part do you want to play?</h1>
+        <div style="color: #4A505C; font-size: 15px">The_Water_Is_Wide.mid · MIDI type 1 · 4 tracks · 4/4 · ♩ = 100 · 1:25</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; background: #E3F4F2; color: #0A4F4A; font-size: 13px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E6E68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6l-4.9 3.6 1.9-5.8L4 8.8h6.1z"></path></svg>
+        We picked <strong>Melody</strong>: single notes, lyrics attached, highest average pitch.
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <fieldset style="flex: 999 1 560px; min-width: 0; margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 12px">
+        <legend style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Tracks in this file</legend>
+        <sc-for list="{{tracks}}" as="tr" hint-placeholder-count="4">
+          <label style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 16px 18px; border-radius: 14px; background: {{tr.bg}}; border: {{tr.border}}; cursor: {{tr.cursor}}; opacity: {{tr.opacity}}">
+            <input type="radio" name="track" checked="{{tr.on}}" disabled="{{tr.disabled}}" onChange="{{tr.pick}}" style="width: 20px; height: 20px; margin: 0; accent-color: #0E6E68">
+            <div style="flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+                <span style="font-weight: 700; font-size: 16px">{{tr.num}} · {{tr.name}}</span>
+                <sc-if value="{{tr.rec}}" hint-placeholder-val="{{ false }}">
+                  <span style="padding: 2px 8px; border-radius: 999px; background: #0E6E68; color: #FFFFFF; font-size: 11px; font-weight: 700">Recommended</span>
+                </sc-if>
+                <sc-for list="{{tr.tags}}" as="tg" hint-placeholder-count="1">
+                  <span style="padding: 2px 8px; border-radius: 999px; background: {{tg.bg}}; color: {{tg.fg}}; font-size: 11px; font-weight: 600">{{tg.text}}</span>
+                </sc-for>
+              </div>
+              <div style="color: #5B616E; font-size: 13px">{{tr.inst}}</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px">
+                <span><span style="color: #5B616E">Notes</span> <strong>{{tr.count}}</strong></span>
+                <span><span style="color: #5B616E">Range</span> <strong>{{tr.range}}</strong></span>
+                <span><span style="color: #5B616E">At once</span> <strong>{{tr.poly}}</strong></span>
+              </div>
+            </div>
+            <div style="flex: 2 1 300px; min-width: 0; display: flex; align-items: center; gap: 10px">
+              <div role="img" aria-label="Piano roll preview of {{tr.name}}" style="position: relative; flex: 1 1 0; height: 64px; border-radius: 8px; background: #F7F8F9; border: 1px solid #E8EAED; overflow: hidden">
+                <div style="position: absolute; left: 0; right: 0; top: {{band.t}}%; height: {{band.h}}%; background: #E3F4F2"></div>
+                <sc-for list="{{tr.roll}}" as="n" hint-placeholder-count="20">
+                  <div class="nb" style="left: {{n.l}}%; top: {{n.t}}%; width: {{n.w}}%; background: {{tr.color}}"></div>
+                </sc-for>
+              </div>
+              <button type="button" aria-label="Play preview of {{tr.name}}" style="flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #D5D8DE; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#15171C" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"></path></svg>
+              </button>
+            </div>
+          </label>
+        </sc-for>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #5B616E; padding-left: 4px">
+          <span style="width: 14px; height: 10px; border-radius: 2px; background: #E3F4F2; border: 1px solid #C8E6E1"></span>
+          Shaded band = range of your instrument (Xaphoon in C: C4–D6), before transposition
+        </div>
+      </fieldset>
+
+      <aside style="flex: 1 1 320px; max-width: 380px; display: flex; flex-direction: column; gap: 16px">
+        <section style="background: #FFFFFF; border: 1px solid #E2E4E8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Selected</h2>
+          <div style="font-family: 'Atkinson Hyperlegible', sans-serif; font-size: 22px; font-weight: 700">{{sel.name}}</div>
+          <sc-for list="{{sel.notes}}" as="nt" hint-placeholder-count="2">
+            <div style="display: flex; gap: 10px; padding: 10px 12px; border-radius: 10px; background: {{nt.bg}}; color: {{nt.fg}}; font-size: 13px; line-height: 1.45">
+              <span style="font-weight: 800" aria-hidden="true">{{nt.icon}}</span><span>{{nt.text}}</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{sel.isPoly}}" hint-placeholder-val="{{ false }}">
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">
+              From chords, keep
+              <select style="min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 500 14px 'Atkinson Hyperlegible', sans-serif; color: #15171C">
+                <option>Top note (usually the tune)</option>
+                <option>Bottom note</option>
+                <option>Voice 1 only</option>
+              </select>
+            </label>
+          </sc-if>
+        </section>
+
+        <section style="background: #FFFFFF; border: 1px solid #E2E4E8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Extras on the sheet</h2>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">
+            Chord symbols from
+            <select style="min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 500 14px 'Atkinson Hyperlegible', sans-serif; color: #15171C">
+              <option>2 · Piano (detected harmony)</option>
+              <option>4 · Bass (roots only)</option>
+              <option>No chords</option>
+            </select>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">
+            Lyrics from
+            <select style="min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 500 14px 'Atkinson Hyperlegible', sans-serif; color: #15171C">
+              <option>1 · Melody (lyric events)</option>
+              <option>No lyrics</option>
+            </select>
+          </label>
+        </section>
+
+        <a href="Editor.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; border-radius: 12px; background: #0E6E68; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px">
+          Make the sheet from {{sel.short}}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+        </a>
+      </aside>
+    </div>
+
+    <p style="margin: 0; font-size: 12px; color: #5B616E">MusicXML and MuseScore files list parts here; a part with two voices shows each voice as its own row.</p>
+  </div>
+  <footer style="margin-top: 40px; background: #FFFFFF; border-top: 1px solid #E2E4E8">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 20px 28px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><rect x="10" y="2" width="8" height="24" rx="4" fill="#15171C"></rect><circle cx="14" cy="8" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="13" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="18" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="23" r="1.6" fill="#5FD3C6"></circle></svg>
+        <span style="font-family: 'Atkinson Hyperlegible', sans-serif; font-weight: 700; font-size: 15px; color: #15171C">fingerscore</span>
+        <span style="font-size: 13px; color: #5B616E">© 2026</span>
+      </div>
+      <span style="font-size: 13px; color: #5B616E">Your sheets are stored in your browser. Nothing is stored on the server.</span>
+      <div style="flex: 1 1 0"></div>
+      <nav aria-label="Footer" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; font-size: 13px">
+        <a href="About.dc.html" style="color: #4A505C; text-decoration: none; font-weight: 600">About</a>
+        <a href="#github" style="display: inline-flex; align-items: center; gap: 6px; color: #4A505C; text-decoration: none; font-weight: 600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"></path><path d="m8 6-6 6 6 6"></path></svg>GitHub</a>
+        <a href="#privacy" style="color: #4A505C; text-decoration: none; font-weight: 600">Privacy</a>
+        <a href="Imprint.dc.html" style="color: #4A505C; text-decoration: none; font-weight: 600">Imprint</a>
+      </nav>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var R = {"mel": [{"l": 0.0, "t": 61.11, "w": 1.41}, {"l": 1.41, "t": 51.85, "w": 0.7}, {"l": 2.11, "t": 51.85, "w": 0.7}, {"l": 2.82, "t": 48.15, "w": 1.41}, {"l": 4.23, "t": 48.15, "w": 0.7}, {"l": 4.93, "t": 44.44, "w": 0.7}, {"l": 5.63, "t": 44.44, "w": 4.23}, {"l": 9.86, "t": 44.44, "w": 1.41}, {"l": 11.27, "t": 48.15, "w": 1.41}, {"l": 12.68, "t": 51.85, "w": 2.11}, {"l": 14.79, "t": 57.41, "w": 0.7}, {"l": 15.49, "t": 61.11, "w": 5.63}, {"l": 21.13, "t": 61.11, "w": 1.41}, {"l": 22.54, "t": 61.11, "w": 1.41}, {"l": 23.94, "t": 51.85, "w": 2.11}, {"l": 26.06, "t": 53.7, "w": 0.7}, {"l": 26.76, "t": 51.85, "w": 5.63}, {"l": 32.39, "t": 51.85, "w": 1.41}, {"l": 33.8, "t": 48.15, "w": 1.41}, {"l": 35.21, "t": 44.44, "w": 2.11}, {"l": 37.32, "t": 42.59, "w": 0.7}, {"l": 38.03, "t": 48.15, "w": 5.63}, {"l": 43.66, "t": 48.15, "w": 1.41}, {"l": 45.07, "t": 48.15, "w": 1.41}, {"l": 46.48, "t": 44.44, "w": 2.11}, {"l": 48.59, "t": 42.59, "w": 0.7}, {"l": 49.3, "t": 38.89, "w": 5.63}, {"l": 54.93, "t": 38.89, "w": 1.41}, {"l": 56.34, "t": 42.59, "w": 0.7}, {"l": 57.04, "t": 44.44, "w": 0.7}, {"l": 57.75, "t": 48.15, "w": 1.41}, {"l": 59.15, "t": 51.85, "w": 1.41}, {"l": 60.56, "t": 44.44, "w": 5.63}, {"l": 66.2, "t": 44.44, "w": 1.41}, {"l": 67.61, "t": 48.15, "w": 1.41}, {"l": 69.01, "t": 51.85, "w": 2.11}, {"l": 71.13, "t": 57.41, "w": 0.7}, {"l": 71.83, "t": 61.11, "w": 5.63}, {"l": 77.46, "t": 61.11, "w": 1.41}, {"l": 78.87, "t": 57.41, "w": 0.7}, {"l": 79.58, "t": 53.7, "w": 0.7}, {"l": 80.28, "t": 51.85, "w": 1.41}, {"l": 81.69, "t": 53.7, "w": 1.41}, {"l": 83.1, "t": 51.85, "w": 5.63}, {"l": 88.73, "t": 51.85, "w": 1.41}, {"l": 90.14, "t": 61.11, "w": 1.41}, {"l": 91.55, "t": 51.85, "w": 0.7}, {"l": 92.25, "t": 51.85, "w": 0.7}, {"l": 92.96, "t": 48.15, "w": 1.41}, {"l": 94.37, "t": 51.85, "w": 5.63}], "piano": [{"l": 0.0, "t": 66.67, "w": 2.82}, {"l": 0.0, "t": 61.11, "w": 2.82}, {"l": 0.0, "t": 53.7, "w": 2.82}, {"l": 0.0, "t": 31.48, "w": 2.82}, {"l": 2.82, "t": 66.67, "w": 1.41}, {"l": 2.82, "t": 61.11, "w": 1.41}, {"l": 2.82, "t": 53.7, "w": 1.41}, {"l": 2.82, "t": 31.48, "w": 1.41}, {"l": 4.23, "t": 74.07, "w": 2.82}, {"l": 4.23, "t": 66.67, "w": 2.82}, {"l": 4.23, "t": 61.11, "w": 2.82}, {"l": 4.23, "t": 38.89, "w": 2.82}, {"l": 7.04, "t": 74.07, "w": 2.82}, {"l": 7.04, "t": 66.67, "w": 2.82}, {"l": 7.04, "t": 61.11, "w": 2.82}, {"l": 7.04, "t": 38.89, "w": 2.82}, {"l": 9.86, "t": 74.07, "w": 2.82}, {"l": 9.86, "t": 66.67, "w": 2.82}, {"l": 9.86, "t": 61.11, "w": 2.82}, {"l": 9.86, "t": 38.89, "w": 2.82}, {"l": 12.68, "t": 61.11, "w": 2.82}, {"l": 12.68, "t": 53.7, "w": 2.82}, {"l": 12.68, "t": 48.15, "w": 2.82}, {"l": 12.68, "t": 25.93, "w": 2.82}, {"l": 15.49, "t": 74.07, "w": 2.82}, {"l": 15.49, "t": 66.67, "w": 2.82}, {"l": 15.49, "t": 61.11, "w": 2.82}, {"l": 15.49, "t": 38.89, "w": 2.82}, {"l": 18.31, "t": 74.07, "w": 2.82}, {"l": 18.31, "t": 66.67, "w": 2.82}, {"l": 18.31, "t": 61.11, "w": 2.82}, {"l": 18.31, "t": 38.89, "w": 2.82}, {"l": 21.13, "t": 74.07, "w": 2.82}, {"l": 21.13, "t": 66.67, "w": 2.82}, {"l": 21.13, "t": 61.11, "w": 2.82}, {"l": 21.13, "t": 38.89, "w": 2.82}, {"l": 23.94, "t": 74.07, "w": 2.82}, {"l": 23.94, "t": 66.67, "w": 2.82}, {"l": 23.94, "t": 61.11, "w": 2.82}, {"l": 23.94, "t": 38.89, "w": 2.82}, {"l": 26.76, "t": 57.41, "w": 2.82}, {"l": 26.76, "t": 51.85, "w": 2.82}, {"l": 26.76, "t": 44.44, "w": 2.82}, {"l": 26.76, "t": 22.22, "w": 2.82}, {"l": 29.58, "t": 57.41, "w": 2.82}, {"l": 29.58, "t": 51.85, "w": 2.82}, {"l": 29.58, "t": 44.44, "w": 2.82}, {"l": 29.58, "t": 22.22, "w": 2.82}, {"l": 32.39, "t": 57.41, "w": 2.82}, {"l": 32.39, "t": 51.85, "w": 2.82}, {"l": 32.39, "t": 44.44, "w": 2.82}, {"l": 32.39, "t": 22.22, "w": 2.82}, {"l": 35.21, "t": 70.37, "w": 2.82}, {"l": 35.21, "t": 64.81, "w": 2.82}, {"l": 35.21, "t": 57.41, "w": 2.82}, {"l": 35.21, "t": 35.19, "w": 2.82}, {"l": 38.03, "t": 61.11, "w": 2.82}, {"l": 38.03, "t": 53.7, "w": 2.82}, {"l": 38.03, "t": 48.15, "w": 2.82}, {"l": 38.03, "t": 25.93, "w": 2.82}, {"l": 40.85, "t": 61.11, "w": 2.82}, {"l": 40.85, "t": 53.7, "w": 2.82}, {"l": 40.85, "t": 48.15, "w": 2.82}, {"l": 40.85, "t": 25.93, "w": 2.82}, {"l": 43.66, "t": 61.11, "w": 2.82}, {"l": 43.66, "t": 53.7, "w": 2.82}, {"l": 43.66, "t": 48.15, "w": 2.82}, {"l": 43.66, "t": 25.93, "w": 2.82}, {"l": 46.48, "t": 61.11, "w": 2.82}, {"l": 46.48, "t": 53.7, "w": 2.82}, {"l": 46.48, "t": 48.15, "w": 2.82}, {"l": 46.48, "t": 25.93, "w": 2.82}, {"l": 49.3, "t": 66.67, "w": 2.82}, {"l": 49.3, "t": 61.11, "w": 2.82}, {"l": 49.3, "t": 53.7, "w": 2.82}, {"l": 49.3, "t": 31.48, "w": 2.82}, {"l": 52.11, "t": 66.67, "w": 2.82}, {"l": 52.11, "t": 61.11, "w": 2.82}, {"l": 52.11, "t": 53.7, "w": 2.82}, {"l": 52.11, "t": 31.48, "w": 2.82}, {"l": 54.93, "t": 64.81, "w": 2.82}, {"l": 54.93, "t": 57.41, "w": 2.82}, {"l": 54.93, "t": 51.85, "w": 2.82}, {"l": 54.93, "t": 29.63, "w": 2.82}, {"l": 57.75, "t": 64.81, "w": 2.82}, {"l": 57.75, "t": 57.41, "w": 2.82}, {"l": 57.75, "t": 51.85, "w": 2.82}, {"l": 57.75, "t": 29.63, "w": 2.82}, {"l": 60.56, "t": 66.67, "w": 2.82}, {"l": 60.56, "t": 61.11, "w": 2.82}, {"l": 60.56, "t": 53.7, "w": 2.82}, {"l": 60.56, "t": 31.48, "w": 2.82}, {"l": 63.38, "t": 66.67, "w": 2.82}, {"l": 63.38, "t": 61.11, "w": 2.82}, {"l": 63.38, "t": 53.7, "w": 2.82}, {"l": 63.38, "t": 31.48, "w": 2.82}, {"l": 66.2, "t": 64.81, "w": 2.82}, {"l": 66.2, "t": 57.41, "w": 2.82}, {"l": 66.2, "t": 51.85, "w": 2.82}, {"l": 66.2, "t": 29.63, "w": 2.82}, {"l": 69.01, "t": 64.81, "w": 2.82}, {"l": 69.01, "t": 57.41, "w": 2.82}, {"l": 69.01, "t": 51.85, "w": 2.82}, {"l": 69.01, "t": 29.63, "w": 2.82}, {"l": 71.83, "t": 74.07, "w": 2.82}, {"l": 71.83, "t": 66.67, "w": 2.82}, {"l": 71.83, "t": 61.11, "w": 2.82}, {"l": 71.83, "t": 38.89, "w": 2.82}, {"l": 74.65, "t": 74.07, "w": 2.82}, {"l": 74.65, "t": 66.67, "w": 2.82}, {"l": 74.65, "t": 61.11, "w": 2.82}, {"l": 74.65, "t": 38.89, "w": 2.82}, {"l": 77.46, "t": 61.11, "w": 2.82}, {"l": 77.46, "t": 53.7, "w": 2.82}, {"l": 77.46, "t": 48.15, "w": 2.82}, {"l": 77.46, "t": 25.93, "w": 2.82}, {"l": 80.28, "t": 61.11, "w": 2.82}, {"l": 80.28, "t": 53.7, "w": 2.82}, {"l": 80.28, "t": 48.15, "w": 2.82}, {"l": 80.28, "t": 25.93, "w": 2.82}, {"l": 83.1, "t": 74.07, "w": 2.82}, {"l": 83.1, "t": 66.67, "w": 2.82}, {"l": 83.1, "t": 61.11, "w": 2.82}, {"l": 83.1, "t": 38.89, "w": 2.82}, {"l": 85.92, "t": 74.07, "w": 2.82}, {"l": 85.92, "t": 66.67, "w": 2.82}, {"l": 85.92, "t": 61.11, "w": 2.82}, {"l": 85.92, "t": 38.89, "w": 2.82}, {"l": 88.73, "t": 74.07, "w": 2.82}, {"l": 88.73, "t": 66.67, "w": 2.82}, {"l": 88.73, "t": 61.11, "w": 2.82}, {"l": 88.73, "t": 38.89, "w": 2.82}, {"l": 91.55, "t": 64.81, "w": 2.82}, {"l": 91.55, "t": 57.41, "w": 2.82}, {"l": 91.55, "t": 51.85, "w": 2.82}, {"l": 91.55, "t": 29.63, "w": 2.82}, {"l": 94.37, "t": 74.07, "w": 2.82}, {"l": 94.37, "t": 66.67, "w": 2.82}, {"l": 94.37, "t": 61.11, "w": 2.82}, {"l": 94.37, "t": 38.89, "w": 2.82}, {"l": 97.18, "t": 74.07, "w": 2.82}, {"l": 97.18, "t": 66.67, "w": 2.82}, {"l": 97.18, "t": 61.11, "w": 2.82}, {"l": 97.18, "t": 38.89, "w": 2.82}], "bass": [{"l": 0.0, "t": 88.89, "w": 2.82}, {"l": 2.82, "t": 88.89, "w": 1.41}, {"l": 4.23, "t": 96.3, "w": 2.82}, {"l": 7.04, "t": 96.3, "w": 2.82}, {"l": 9.86, "t": 96.3, "w": 2.82}, {"l": 12.68, "t": 83.33, "w": 2.82}, {"l": 15.49, "t": 96.3, "w": 2.82}, {"l": 18.31, "t": 96.3, "w": 2.82}, {"l": 21.13, "t": 96.3, "w": 2.82}, {"l": 23.94, "t": 96.3, "w": 2.82}, {"l": 26.76, "t": 79.63, "w": 2.82}, {"l": 29.58, "t": 79.63, "w": 2.82}, {"l": 32.39, "t": 79.63, "w": 2.82}, {"l": 35.21, "t": 92.59, "w": 2.82}, {"l": 38.03, "t": 83.33, "w": 2.82}, {"l": 40.85, "t": 83.33, "w": 2.82}, {"l": 43.66, "t": 83.33, "w": 2.82}, {"l": 46.48, "t": 83.33, "w": 2.82}, {"l": 49.3, "t": 88.89, "w": 2.82}, {"l": 52.11, "t": 88.89, "w": 2.82}, {"l": 54.93, "t": 87.04, "w": 2.82}, {"l": 57.75, "t": 87.04, "w": 2.82}, {"l": 60.56, "t": 88.89, "w": 2.82}, {"l": 63.38, "t": 88.89, "w": 2.82}, {"l": 66.2, "t": 87.04, "w": 2.82}, {"l": 69.01, "t": 87.04, "w": 2.82}, {"l": 71.83, "t": 96.3, "w": 2.82}, {"l": 74.65, "t": 96.3, "w": 2.82}, {"l": 77.46, "t": 83.33, "w": 2.82}, {"l": 80.28, "t": 83.33, "w": 2.82}, {"l": 83.1, "t": 96.3, "w": 2.82}, {"l": 85.92, "t": 96.3, "w": 2.82}, {"l": 88.73, "t": 96.3, "w": 2.82}, {"l": 91.55, "t": 87.04, "w": 2.82}, {"l": 94.37, "t": 96.3, "w": 2.82}, {"l": 97.18, "t": 96.3, "w": 2.82}], "drums": [{"l": 0.0, "t": 88.89, "w": 0.7}, {"l": 1.41, "t": 88.89, "w": 0.7}, {"l": 2.82, "t": 88.89, "w": 0.7}, {"l": 4.23, "t": 88.89, "w": 0.7}, {"l": 5.63, "t": 88.89, "w": 0.7}, {"l": 7.04, "t": 88.89, "w": 0.7}, {"l": 8.45, "t": 88.89, "w": 0.7}, {"l": 9.86, "t": 88.89, "w": 0.7}, {"l": 11.27, "t": 88.89, "w": 0.7}, {"l": 12.68, "t": 88.89, "w": 0.7}, {"l": 14.08, "t": 88.89, "w": 0.7}, {"l": 15.49, "t": 88.89, "w": 0.7}, {"l": 16.9, "t": 88.89, "w": 0.7}, {"l": 18.31, "t": 88.89, "w": 0.7}, {"l": 19.72, "t": 88.89, "w": 0.7}, {"l": 21.13, "t": 88.89, "w": 0.7}, {"l": 22.54, "t": 88.89, "w": 0.7}, {"l": 23.94, "t": 88.89, "w": 0.7}, {"l": 25.35, "t": 88.89, "w": 0.7}, {"l": 26.76, "t": 88.89, "w": 0.7}, {"l": 28.17, "t": 88.89, "w": 0.7}, {"l": 29.58, "t": 88.89, "w": 0.7}, {"l": 30.99, "t": 88.89, "w": 0.7}, {"l": 32.39, "t": 88.89, "w": 0.7}, {"l": 33.8, "t": 88.89, "w": 0.7}, {"l": 35.21, "t": 88.89, "w": 0.7}, {"l": 36.62, "t": 88.89, "w": 0.7}, {"l": 38.03, "t": 88.89, "w": 0.7}, {"l": 39.44, "t": 88.89, "w": 0.7}, {"l": 40.85, "t": 88.89, "w": 0.7}, {"l": 42.25, "t": 88.89, "w": 0.7}, {"l": 43.66, "t": 88.89, "w": 0.7}, {"l": 45.07, "t": 88.89, "w": 0.7}, {"l": 46.48, "t": 88.89, "w": 0.7}, {"l": 47.89, "t": 88.89, "w": 0.7}, {"l": 49.3, "t": 88.89, "w": 0.7}, {"l": 50.7, "t": 88.89, "w": 0.7}, {"l": 52.11, "t": 88.89, "w": 0.7}, {"l": 53.52, "t": 88.89, "w": 0.7}, {"l": 54.93, "t": 88.89, "w": 0.7}, {"l": 56.34, "t": 88.89, "w": 0.7}, {"l": 57.75, "t": 88.89, "w": 0.7}, {"l": 59.15, "t": 88.89, "w": 0.7}, {"l": 60.56, "t": 88.89, "w": 0.7}, {"l": 61.97, "t": 88.89, "w": 0.7}, {"l": 63.38, "t": 88.89, "w": 0.7}, {"l": 64.79, "t": 88.89, "w": 0.7}, {"l": 66.2, "t": 88.89, "w": 0.7}, {"l": 67.61, "t": 88.89, "w": 0.7}, {"l": 69.01, "t": 88.89, "w": 0.7}, {"l": 70.42, "t": 88.89, "w": 0.7}, {"l": 71.83, "t": 88.89, "w": 0.7}, {"l": 73.24, "t": 88.89, "w": 0.7}, {"l": 74.65, "t": 88.89, "w": 0.7}, {"l": 76.06, "t": 88.89, "w": 0.7}, {"l": 77.46, "t": 88.89, "w": 0.7}, {"l": 78.87, "t": 88.89, "w": 0.7}, {"l": 80.28, "t": 88.89, "w": 0.7}, {"l": 81.69, "t": 88.89, "w": 0.7}, {"l": 83.1, "t": 88.89, "w": 0.7}, {"l": 84.51, "t": 88.89, "w": 0.7}, {"l": 85.92, "t": 88.89, "w": 0.7}, {"l": 87.32, "t": 88.89, "w": 0.7}, {"l": 88.73, "t": 88.89, "w": 0.7}, {"l": 90.14, "t": 88.89, "w": 0.7}, {"l": 91.55, "t": 88.89, "w": 0.7}, {"l": 92.96, "t": 88.89, "w": 0.7}, {"l": 94.37, "t": 88.89, "w": 0.7}, {"l": 95.77, "t": 88.89, "w": 0.7}, {"l": 97.18, "t": 88.89, "w": 0.7}, {"l": 98.59, "t": 88.89, "w": 0.7}, {"l": 0.0, "t": 100.0, "w": 0.7}, {"l": 2.82, "t": 96.3, "w": 0.7}, {"l": 5.63, "t": 100.0, "w": 0.7}, {"l": 8.45, "t": 96.3, "w": 0.7}, {"l": 11.27, "t": 100.0, "w": 0.7}, {"l": 14.08, "t": 96.3, "w": 0.7}, {"l": 16.9, "t": 100.0, "w": 0.7}, {"l": 19.72, "t": 96.3, "w": 0.7}, {"l": 22.54, "t": 100.0, "w": 0.7}, {"l": 25.35, "t": 96.3, "w": 0.7}, {"l": 28.17, "t": 100.0, "w": 0.7}, {"l": 30.99, "t": 96.3, "w": 0.7}, {"l": 33.8, "t": 100.0, "w": 0.7}, {"l": 36.62, "t": 96.3, "w": 0.7}, {"l": 39.44, "t": 100.0, "w": 0.7}, {"l": 42.25, "t": 96.3, "w": 0.7}, {"l": 45.07, "t": 100.0, "w": 0.7}, {"l": 47.89, "t": 96.3, "w": 0.7}, {"l": 50.7, "t": 100.0, "w": 0.7}, {"l": 53.52, "t": 96.3, "w": 0.7}, {"l": 56.34, "t": 100.0, "w": 0.7}, {"l": 59.15, "t": 96.3, "w": 0.7}, {"l": 61.97, "t": 100.0, "w": 0.7}, {"l": 64.79, "t": 96.3, "w": 0.7}, {"l": 67.61, "t": 100.0, "w": 0.7}, {"l": 70.42, "t": 96.3, "w": 0.7}, {"l": 73.24, "t": 100.0, "w": 0.7}, {"l": 76.06, "t": 96.3, "w": 0.7}, {"l": 78.87, "t": 100.0, "w": 0.7}, {"l": 81.69, "t": 96.3, "w": 0.7}, {"l": 84.51, "t": 100.0, "w": 0.7}, {"l": 87.32, "t": 96.3, "w": 0.7}, {"l": 90.14, "t": 100.0, "w": 0.7}, {"l": 92.96, "t": 96.3, "w": 0.7}, {"l": 95.77, "t": 100.0, "w": 0.7}, {"l": 98.59, "t": 96.3, "w": 0.7}], "ranges": {"mel": "A3–A4", "piano": "D3–F♯5", "bass": "D2–B2"}, "counts": {"mel": 50, "piano": 144, "bass": 36, "drums": 107}, "band": {"t": 7.41, "h": 48.15}};
+    var self = this;
+    var st = this.state || {};
+    var selId = st.sel || "mel";
+    var TEAL = { bg: "#E3F4F2", fg: "#0A4F4A" }, AMB = { bg: "#FFF1E0", fg: "#7C3A06" }, GRY = { bg: "#EEF0F2", fg: "#4A505C" };
+    var DEF = [
+      { id: "mel", num: 1, name: "Melody", inst: "Flute · channel 1", count: 39, range: R.ranges.mel, poly: "1 note", rec: true, color: "#0E6E68",
+        tags: [{ text: "Lyrics", bg: TEAL.bg, fg: TEAL.fg }, { text: "Single notes", bg: TEAL.bg, fg: TEAL.fg }],
+        notes: [{ icon: "✓", text: "One note at a time — ready for the Xaphoon.", t: TEAL },
+                { icon: "↑", text: "Lowest note A3 is below C4. We’ll suggest a key that fits on the next step.", t: GRY }] },
+      { id: "piano", num: 2, name: "Piano", inst: "Acoustic Grand Piano · channel 2", count: R.counts.piano, range: R.ranges.piano, poly: "up to 4 notes", color: "#5B616E",
+        tags: [{ text: "Chords", bg: GRY.bg, fg: GRY.fg }],
+        notes: [{ icon: "!", text: "Plays up to 4 notes at once. A Xaphoon plays one, so we’ll reduce it to a single line.", t: AMB },
+                { icon: "i", text: "Better used as the source for chord symbols.", t: GRY }] },
+      { id: "drums", num: 3, name: "Drums", inst: "Percussion · channel 10", count: R.counts.drums, range: "—", poly: "—", color: "#9AA0AA", disabled: true,
+        tags: [{ text: "Can’t be played", bg: GRY.bg, fg: GRY.fg }], notes: [] },
+      { id: "bass", num: 4, name: "Bass", inst: "Acoustic Bass · channel 3", count: R.counts.bass, range: R.ranges.bass, poly: "1 note", color: "#5B616E",
+        tags: [{ text: "Below range", bg: AMB.bg, fg: AMB.fg }],
+        notes: [{ icon: "!", text: "D2–B2 is far below the Xaphoon. We’ll move it up two octaves, which changes its character.", t: AMB }] }
+    ];
+    var sel = DEF.filter(function (d) { return d.id === selId; })[0];
+    var tracks = DEF.map(function (d) {
+      var on = d.id === selId;
+      return { num: d.num, name: d.name, inst: d.inst, count: d.count, range: d.range, poly: d.poly, rec: !!d.rec, tags: d.tags,
+        roll: R[d.id], color: d.color, on: on, disabled: !!d.disabled,
+        bg: d.disabled ? "#F8F9FA" : on ? "#F0FAF8" : "#FFFFFF",
+        border: on ? "2px solid #0E6E68" : "1px solid #E2E4E8",
+        cursor: d.disabled ? "not-allowed" : "pointer", opacity: d.disabled ? 0.6 : 1,
+        pick: function () { if (!d.disabled) self.setState({ sel: d.id }); } };
+    });
+    return {
+      tracks: tracks, band: R.band,
+      sel: { name: sel.num + " · " + sel.name, short: sel.name, isPoly: sel.id === "piano",
+        notes: sel.notes.map(function (n) { return { icon: n.icon, text: n.text, bg: n.t.bg, fg: n.t.fg }; }) }
+    };
+  }
+}
+</script>
+</body>
+</html>

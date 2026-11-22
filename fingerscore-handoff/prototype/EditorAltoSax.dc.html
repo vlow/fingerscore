@@ -1,0 +1,1556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Editor – alto sax</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6E68}a:hover{color:#0A4F4A}
+.sys{position:relative;height:290px}
+.kl{font:600 9px/10px 'Atkinson Hyperlegible',system-ui,sans-serif;color:#2A2D33;text-align:center}
+.ho.gh{border:1px solid #C3C7CE;background:transparent}
+.ho.pill{border-radius:2px}
+.altb{position:absolute;display:flex;align-items:center;justify-content:center;gap:2px;width:26px;height:16px;padding:0;border:1px solid;border-radius:8px;font:700 10px/1 'Atkinson Hyperlegible',system-ui,sans-serif;cursor:pointer;box-sizing:border-box}
+.pop{position:absolute;z-index:20;background:#FFFFFF;border:1px solid #D5D8DE;border-radius:12px;box-shadow:0 12px 32px rgba(20,22,28,0.18);padding:10px 12px 12px;box-sizing:border-box}
+.ch.bad{color:#B91C1C;text-decoration:underline wavy #B91C1C}
+.hit{position:absolute;top:0;width:22px;height:150px;padding:0;border:none;background:transparent;border-radius:6px;cursor:text;z-index:5}
+.hit:hover{background:rgba(14,110,104,0.08)}
+.edp{position:absolute;z-index:25;width:360px;background:#FFFFFF;border:1px solid #D5D8DE;border-radius:12px;box-shadow:0 12px 32px rgba(20,22,28,0.18);padding:12px;box-sizing:border-box;font-family:'Atkinson Hyperlegible',system-ui,sans-serif}
+.ch sup{font-size:9px;line-height:0;vertical-align:6px;margin-left:1px}
+.symb{min-width:36px;height:36px;padding:0 8px;border-radius:8px;border:1px solid #D5D8DE;background:#F8F9FA;font:600 14px 'Atkinson Hyperlegible',system-ui,sans-serif;color:#15171C;cursor:pointer}
+.symb:hover{background:#E3F4F2;border-color:#9FCFC8}
+.symb:disabled{opacity:0.35;cursor:not-allowed}
+.c8{font:italic 700 10px/12px Georgia,serif;color:#15171C;text-align:center}
+.ttl{display:block;width:100%;max-width:720px;margin:0 auto;padding:2px 8px;border:1px dashed transparent;border-radius:8px;background:transparent;text-align:center;color:#15171C;box-sizing:border-box}
+.ttl:hover{border-color:#C3C7CE}
+.ttl:focus{outline:none;border:1px solid #0E6E68;background:#F0FAF8}
+.ttl::placeholder{color:#9AA0AA;font-weight:500}
+.ttlhint{font-size:11px;color:#9AA0AA;height:14px}
+.pl{background:rgba(14,110,104,0.14);border-radius:6px}
+.nf.grey{border-color:#9AA0AA;color:#4A505C;background:#F3F4F6}
+.mk{position:absolute;box-sizing:border-box}
+.ln{background:#2A2D33}
+.nh{background:#15171C;border-radius:50%;transform:rotate(-22deg)}
+.nh.open{background:transparent;border:2px solid #15171C}
+.nh.bad{background:#B91C1C}.nh.open.bad{background:transparent;border-color:#B91C1C}
+.nh.warn{background:#B45309}.nh.open.warn{background:transparent;border-color:#B45309}
+.st,.bm,.lg,.br,.dt{background:#15171C}
+.dt,.rd{border-radius:50%;background:#15171C}
+.fl{border-right:2px solid #15171C;border-top:2px solid #15171C;border-radius:0 9px 0 0}
+.fl.dn{border-top:none;border-bottom:2px solid #15171C;border-radius:0 0 9px 0}
+.ti{border-bottom:1.5px solid #15171C;border-radius:0 0 50% 50%}
+.ti.up{border-bottom:none;border-top:1.5px solid #15171C;border-radius:50% 50% 0 0}
+.ly{font:500 12px/16px 'Atkinson Hyperlegible',system-ui,sans-serif;color:#2A2D33;text-align:center;white-space:nowrap}
+.ch{font:700 13px/16px 'Atkinson Hyperlegible',system-ui,sans-serif;color:#0E6E68;text-align:center;white-space:nowrap}
+.bn{font:400 11px/14px 'Atkinson Hyperlegible',system-ui,sans-serif;color:#5B616E}
+.ts{font:800 22px/20px 'Atkinson Hyperlegible',system-ui,sans-serif;color:#15171C;text-align:center}
+.vo{border-left:1px solid #15171C;border-top:1px solid #15171C;font:600 11px/14px 'Atkinson Hyperlegible',system-ui,sans-serif;padding:2px 0 0 4px;color:#15171C}
+.ho{border-radius:50%;border:1.3px solid #15171C;background:#fff}
+.ho.on{background:#15171C}
+.ho.half{background:linear-gradient(90deg,#15171C 50%,#fff 50%)}
+.nf{font:700 11px/14px 'Atkinson Hyperlegible',system-ui,sans-serif;text-align:center;border-radius:6px;padding-top:30px;border:1.5px dashed #B91C1C;color:#B91C1C;background:#FEF2F2}
+.nf.warn{border-color:#B45309;color:#B45309;background:#FFF7ED}
+.acc{position:absolute;overflow:visible}
+</style>
+</helmet>
+<div tabIndex="-1" onKeyDown="{{onKeys}}" style="min-height: 100vh; background: #F3F4F6; color: #15171C; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 14px; outline: none">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 12px 28px; background: #FFFFFF; border-bottom: 1px solid #E2E4E8">
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #15171C">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="10" y="2" width="8" height="24" rx="4" fill="#15171C"></rect><circle cx="14" cy="8" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="13" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="18" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="23" r="1.6" fill="#5FD3C6"></circle></svg>
+      <span style="font-family: 'Atkinson Hyperlegible', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.01em">fingerscore</span>
+    </a>
+    <div style="flex: 1 1 0"></div>
+    <nav aria-label="Main" style="display: flex; gap: 4px">
+      <a href="Main.dc.html" aria-current="page" style="padding: 8px 12px; border-radius: 8px; background: #E3F4F2; color: #0A4F4A; text-decoration: none; font-weight: 700; font-size: 14px">Songs</a>
+      <a href="Scales.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #4A505C; text-decoration: none; font-weight: 600; font-size: 14px">Scales</a>
+    </nav>
+  </header>
+  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 10px 28px; background: #FAFAFB; border-bottom: 1px solid #E2E4E8">
+    <sc-if value="{{fromImport}}" hint-placeholder-val="{{ true }}">
+  <nav aria-label="Steps" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px"><a href="Main.dc.html" style="display: flex; align-items: center; gap: 6px; color: #5B616E; text-decoration: none"><span style="width: 20px; height: 20px; border-radius: 50%; background: #D3EEEA; color: #0A4F4A; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700">✓</span>File</a><span style="color: #B4B8C0" aria-hidden="true">—</span><a href="Tracks.dc.html" style="display: flex; align-items: center; gap: 6px; color: #5B616E; text-decoration: none"><span style="width: 20px; height: 20px; border-radius: 50%; background: #D3EEEA; color: #0A4F4A; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700">✓</span>Track</a><span style="color: #B4B8C0" aria-hidden="true">—</span><span aria-current="step" style="display: flex; align-items: center; gap: 6px; font-weight: 700"><span style="width: 20px; height: 20px; border-radius: 50%; background: #0E6E68; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: 11px">3</span>Sheet</span></nav>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #F3F4F6; border: 1px solid #E2E4E8; font-size: 13px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B616E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+      <span style="font-weight: 600">The_Water_Is_Wide.mid</span>
+      <span style="color: #5B616E">MIDI · track 1 “Melody” of 4 · {{noteCount}} notes</span>
+      <a href="Tracks.dc.html" style="font-weight: 600; text-decoration: none; margin-left: 4px">Change track</a>
+    </div>
+    </sc-if>
+    <sc-if value="{{fromSaved}}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #F3F4F6; border: 1px solid #E2E4E8; font-size: 13px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B616E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6"></path></svg>
+      <span style="font-weight: 600">{{savedName}}</span>
+      <span style="color: #5B616E">{{savedMeta}} · {{noteCount}} notes</span>
+    </div>
+    </sc-if>
+    <div style="flex: 1 1 0"></div>
+    <div role="group" aria-label="History" style="display: flex; gap: 4px">
+      <button type="button" onClick="{{undo}}" disabled="{{noUndo}}" aria-label="Undo" title="Undo (Ctrl/⌘ Z)" style="width: 44px; height: 44px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; color: #15171C; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: {{undoOpacity}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h11a5 5 0 0 1 0 10h-3"></path></svg></button>
+      <button type="button" onClick="{{redo}}" disabled="{{noRedo}}" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)" style="width: 44px; height: 44px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; color: #15171C; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: {{redoOpacity}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9a5 5 0 0 0 0 10h3"></path></svg></button>
+    </div>
+<div style="position: relative; display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 12px; color: #5B616E; white-space: nowrap">{{saveStatus}}</span>
+      <button type="button" onClick="{{saveNow}}" style="display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; color: #15171C; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>Save</button>
+      <button type="button" onClick="{{toggleMenu}}" aria-expanded="{{menuOpen}}" aria-haspopup="true" style="display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; color: #15171C; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">File<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+      <sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="File" style="position: absolute; right: 0; top: 52px; z-index: 50; width: 380px; padding: 12px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D5D8DE; box-shadow: 0 16px 40px rgba(20,22,28,0.18); display: flex; flex-direction: column; gap: 8px">
+          <div role="group" aria-label="File actions" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+            <button type="button" onClick="{{downloadPdf}}" style="display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px; border-radius: 10px; border: none; background: #0E6E68; color: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>Download PDF</button>
+            <button type="button" onClick="{{downloadJson}}" style="display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>Download JSON</button>
+            <label style="position: relative; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M17 8l-5-5-5 5"></path><path d="M12 3v12"></path></svg>Open JSON file…<input type="file" accept=".json,application/json" onChange="{{importFile}}" style="position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden"></label>
+            <a href="Main.dc.html" style="display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; text-decoration: none; box-sizing: border-box"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New sheet</a>
+          </div>
+          <div style="height: 1px; background: #EEF0F2; margin: 4px 0"></div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><strong style="font-size: 14px">Saved in this browser</strong><span style="font-size: 12px; color: #5B616E">{{libCount}}</span></div>
+          <sc-if value="{{hasLib}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto">
+              <sc-for list="{{lib}}" as="it" hint-placeholder-count="2">
+                <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; {{it.style}}">
+                  <div style="flex: 1 1 0; min-width: 0">
+                    <div style="font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.title}}</div>
+                    <div style="font-size: 12px; color: #5B616E">{{it.meta}}</div>
+                  </div>
+                  <button type="button" onClick="{{it.open}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Open</button>
+                  <button type="button" onClick="{{it.remove}}" aria-label="Delete {{it.title}}" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: #8F1414; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg></button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{noLib}}" hint-placeholder-val="{{ true }}">
+            <div style="padding: 10px; border-radius: 10px; background: #F3F4F6; font-size: 13px; color: #4A505C">Nothing saved yet. Press Save to keep this sheet in your browser.</div>
+          </sc-if>
+          <div style="font-size: 12px; color: #5B616E; line-height: 1.4">Sheets are stored only on this device. Download a JSON file to back up or move a sheet to another computer.</div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; padding: 24px 28px; align-items: flex-start">
+    <aside style="flex: 1 1 320px; max-width: 360px; display: flex; flex-direction: column; gap: 16px">
+
+      <section style="background: #FFFFFF; border: 1px solid #E2E4E8; border-radius: 14px; padding: 18px">
+        <h2 style="margin: 0 0 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Detected in file</h2>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+          <div><div style="font-size: 12px; color: #5B616E">Key (concert)</div><div style="font-weight: 600">{{origKey}}</div></div>
+          <div><div style="font-size: 12px; color: #5B616E">Range</div><div style="font-weight: 600">{{origRange}}</div></div>
+          <div><div style="font-size: 12px; color: #5B616E">Time</div><div style="font-weight: 600">4/4 · ♩ = {{tempo}}</div></div>
+          <div><div style="font-size: 12px; color: #5B616E">Track</div><div style="font-weight: 600">1 · Melody</div></div>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E2E4E8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+        <label for="inst" style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Fingerings for</label>
+        <select id="inst" value="{{instId}}" onChange="{{pickInst}}" style="min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 15px 'Atkinson Hyperlegible', sans-serif; color: #15171C">
+          <optgroup label="Xaphoon"><option value="xc">Xaphoon in C</option><option value="xbb">Xaphoon in B♭</option></optgroup>
+          <optgroup label="Saxophone"><option value="ssax">Soprano sax (B♭)</option><option value="asax">Alto sax (E♭)</option><option value="tsax">Tenor sax (B♭)</option><option value="bsax">Baritone sax (E♭)</option></optgroup>
+          <optgroup label="Clarinet"><option value="cl">Clarinet (B♭)</option></optgroup>
+          <optgroup label="Recorder"><option value="rs">Soprano recorder (C)</option><option value="ra">Alto recorder (F)</option></optgroup>
+          <optgroup label="Flute"><option value="fl">Flute (C)</option><option value="picc">Piccolo (C)</option><option value="afl">Alto flute (G)</option></optgroup>
+        </select>
+        <sc-if value="{{isRecorder}}" hint-placeholder-val="{{ false }}">
+          <div role="group" aria-label="Recorder fingering system" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <button type="button" onClick="{{pickBaroque}}" style="min-height: 40px; border-radius: 10px; {{baroqueStyle}}; font-family: 'Atkinson Hyperlegible', sans-serif; font-size: 13px; color: #15171C; cursor: pointer">Baroque fingering</button>
+            <button type="button" onClick="{{pickGerman}}" style="min-height: 40px; border-radius: 10px; {{germanStyle}}; font-family: 'Atkinson Hyperlegible', sans-serif; font-size: 13px; color: #15171C; cursor: pointer">German fingering</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{hasChartStyle}}" hint-placeholder-val="{{ false }}">
+          <div role="group" aria-label="Fingering chart style" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <button type="button" onClick="{{pickCompact}}" style="min-height: 44px; border-radius: 10px; {{compactStyle}}; font-family: 'Atkinson Hyperlegible', sans-serif; font-size: 13px; color: #15171C; cursor: pointer; line-height: 1.2">Compact<br><span style="font-size: 11px; font-weight: 500; color: #5B616E">only keys in use</span></button>
+            <button type="button" onClick="{{pickFull}}" style="min-height: 44px; border-radius: 10px; {{fullStyle}}; font-family: 'Atkinson Hyperlegible', sans-serif; font-size: 13px; color: #15171C; cursor: pointer; line-height: 1.2">Full key map<br><span style="font-size: 11px; font-weight: 500; color: #5B616E">every key, ghosted</span></button>
+          </div>
+        </sc-if>
+        <div style="font-size: 12px; color: #5B616E; line-height: 1.45">{{instNote}} Range: {{rg.loName}}–{{rg.hiName}} (to {{rg.extName}} extended).</div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E2E4E8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Key &amp; transposition</h2>
+          <sc-if value="{{isSuggested}}" hint-placeholder-val="{{ true }}">
+            <span style="padding: 3px 10px; border-radius: 999px; background: #E3F4F2; color: #0A4F4A; font-size: 12px; font-weight: 600">Suggested</span>
+          </sc-if>
+        </div>
+        <sc-if value="{{isTransposing}}" hint-placeholder-val="{{ false }}">
+          <div style="border: 1px solid #E2E4E8; border-radius: 12px; overflow: hidden">
+            <div style="padding: 12px; background: #FFFFFF">
+              <label for="ksound" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 5a10 10 0 0 1 0 14"></path></svg>
+                Sounds in · concert pitch
+              </label>
+              <select id="ksound" value="{{concertTonic}}" onChange="{{pickConcertKey}}" style="min-height: 44px; width: 100%; margin-top: 6px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 700 16px 'Atkinson Hyperlegible', sans-serif; color: #15171C"><option value="0">C major</option><option value="1">D♭ major</option><option value="2">D major</option><option value="3">E♭ major</option><option value="4">E major</option><option value="5">F major</option><option value="6">G♭ / F♯ major</option><option value="7">G major</option><option value="8">A♭ major</option><option value="9">A major</option><option value="10">B♭ major</option><option value="11">B major</option></select>
+              <div style="margin-top: 4px; font-size: 12px; color: #5B616E">What the band and audience hear. Set this to play along with others.</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #F3F4F6; border-top: 1px solid #E2E4E8; border-bottom: 1px solid #E2E4E8; font-size: 12px; color: #2A2D33">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E6E68" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16"></path><path d="M6 14l6 6 6-6"></path></svg>
+              <span>{{intervalText}}</span>
+            </div>
+            <div style="padding: 12px; background: #F0FAF8">
+              <label for="kread" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                You read · written pitch
+              </label>
+              <select id="kread" value="{{writtenTonic}}" onChange="{{pickWrittenKey}}" style="min-height: 44px; width: 100%; margin-top: 6px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 700 16px 'Atkinson Hyperlegible', sans-serif; color: #15171C"><option value="0">C major</option><option value="1">D♭ major</option><option value="2">D major</option><option value="3">E♭ major</option><option value="4">E major</option><option value="5">F major</option><option value="6">G♭ / F♯ major</option><option value="7">G major</option><option value="8">A♭ major</option><option value="9">A major</option><option value="10">B♭ major</option><option value="11">B major</option></select>
+              <div style="margin-top: 4px; font-size: 12px; color: #0A4F4A">{{sigText}} · this is the sheet below, with your fingerings</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{isNotTransposing}}" hint-placeholder-val="{{ true }}">
+          <div style="padding: 12px; border-radius: 12px; background: #F0FAF8; border: 1px solid #E2E4E8">
+            <label for="kread1" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Key</label>
+            <select id="kread1" value="{{writtenTonic}}" onChange="{{pickWrittenKey}}" style="min-height: 44px; width: 100%; margin-top: 6px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 700 16px 'Atkinson Hyperlegible', sans-serif; color: #15171C"><option value="0">C major</option><option value="1">D♭ major</option><option value="2">D major</option><option value="3">E♭ major</option><option value="4">E major</option><option value="5">F major</option><option value="6">G♭ / F♯ major</option><option value="7">G major</option><option value="8">A♭ major</option><option value="9">A major</option><option value="10">B♭ major</option><option value="11">B major</option></select>
+            <div style="margin-top: 4px; font-size: 12px; color: #0A4F4A">{{sigText}} · {{intervalText}}</div>
+          </div>
+        </sc-if>
+        <div style="font-size: 12px; color: #5B616E; font-weight: 600; margin-top: 2px">Fine-tune</div>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <button type="button" onClick="{{dec}}" aria-label="Transpose down one semitone" style="width: 44px; height: 44px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 20px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">−</button>
+          <div style="flex: 1 1 0; text-align: center">
+            <div style="font-family: 'Atkinson Hyperlegible', sans-serif; font-size: 30px; font-weight: 700; line-height: 1.1">{{shiftLabel}}</div>
+            <div style="font-size: 13px; color: #5B616E">{{shiftSub}} from original</div>
+          </div>
+          <button type="button" onClick="{{inc}}" aria-label="Transpose up one semitone" style="width: 44px; height: 44px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 20px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">+</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <button type="button" onClick="{{octDown}}" style="min-height: 40px; border-radius: 10px; border: 1px solid #D5D8DE; background: #F8F9FA; font: 500 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Octave down</button>
+          <button type="button" onClick="{{octUp}}" style="min-height: 40px; border-radius: 10px; border: 1px solid #D5D8DE; background: #F8F9FA; font: 500 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Octave up</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 12px; color: #5B616E; font-weight: 600">Keys that fit</div>
+          <sc-for list="{{suggestions}}" as="sg" hint-placeholder-count="3">
+            <button type="button" onClick="{{sg.pick}}" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 10px; border: {{sg.border}}; background: {{sg.bg}}; font: 500 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; text-align: left; cursor: pointer">
+              <span><strong>{{sg.key}}</strong> <span style="color: #5B616E">{{sg.shift}}</span><br><span style="font-size: 12px; color: #5B616E">{{sg.reason}}</span></span>
+              <span style="font-size: 12px; color: #5B616E">{{sg.range}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E2E4E8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Range check</h2>
+        <div style="position: relative; height: 34px; border-radius: 8px; background: #F3F4F6">
+          <div style="position: absolute; top: 0; bottom: 0; left: {{rg.okL}}%; width: {{rg.okW}}%; background: #D3EEEA; border-radius: 6px"></div>
+          <div style="position: absolute; top: 0; bottom: 0; left: {{rg.exL}}%; width: {{rg.exW}}%; background: #FDE7CF; border-radius: 0 6px 6px 0"></div>
+          <div style="position: absolute; top: 11px; height: 12px; left: {{rg.sL}}%; width: {{rg.sW}}%; background: {{rg.sColor}}; border-radius: 6px"></div>
+        </div>
+        <div style="position: relative; height: 16px; font-size: 11px; color: #5B616E">
+          <span style="position: absolute; left: {{rg.okL}}%; transform: translateX(-50%)">{{rg.loName}}</span>
+          <span style="position: absolute; left: {{rg.exL}}%; transform: translateX(-50%)">{{rg.hiName}}</span>
+          <span style="position: absolute; left: {{rg.exE}}%; transform: translateX(-50%)">{{rg.extName}}</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #5B616E">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #D3EEEA"></span>Playable</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #FDE7CF"></span>Extended (hard)</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 6px; border-radius: 3px; background: #0E6E68"></span>This song</span>
+        </div>
+        <div style="font-size: 13px"><strong>{{rangeText}}</strong></div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E2E4E8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Lyrics &amp; chords</h2>
+        <label for="bulk" style="font-size: 13px; font-weight: 600">Type or paste a verse</label>
+        <textarea id="bulk" rows="4" value="{{bulkText}}" onChange="{{onBulk}}" placeholder="The wat-er is wide, I can’t cross o’er…" style="padding: 10px; border-radius: 10px; border: 1px solid #D5D8DE; font: 400 14px/1.45 'Atkinson Hyperlegible', sans-serif; color: #15171C; resize: vertical"></textarea>
+        <div style="font-size: 12px; color: #5B616E; line-height: 1.45">Words fill the notes in order{{bulkFrom}}. Use <strong>-</strong> between syllables (wat-er) and <strong>_</strong> to hold a note.</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <button type="button" onClick="{{fillLyrics}}" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: none; background: #0E6E68; color: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">Fill lyrics</button>
+          <button type="button" onClick="{{clearLyrics}}" style="min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Clear lyrics</button>
+          <button type="button" onClick="{{clearChords}}" style="min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Clear chords</button>
+        </div>
+        <sc-if value="{{hasTextEdits}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #4A505C">
+            <span>{{textEditSummary}}</span>
+            <button type="button" onClick="{{resetText}}" style="min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 12px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Restore from file</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E2E4E8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B616E">Show on sheet</h2>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer"><input type="checkbox" checked="{{showFing}}" onChange="{{toggleFing}}" style="width: 18px; height: 18px; accent-color: #0E6E68">Fingering charts</label>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer"><input type="checkbox" checked="{{showChords}}" onChange="{{toggleChords}}" style="width: 18px; height: 18px; accent-color: #0E6E68">Chord symbols (transposed)</label>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; padding-left: 28px; font-size: 13px"><input type="checkbox" checked="{{supExt}}" onChange="{{toggleSup}}" style="width: 16px; height: 16px; accent-color: #0E6E68">Raise extensions (C<sup style="font-size: 9px">7</sup>, Am<sup style="font-size: 9px">add9</sup>)</label>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer"><input type="checkbox" checked="{{showLyrics}}" onChange="{{toggleLyrics}}" style="width: 18px; height: 18px; accent-color: #0E6E68">Lyrics</label>
+        <sc-if value="{{hasAlts}}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 8px; padding: 12px; border-radius: 10px; background: #F3F4F6; font-size: 13px; line-height: 1.45">
+            <div style="font-weight: 700">Fingerings picked for smooth playing</div>
+            <div style="color: #4A505C">We choose each fingering by looking at the notes around it. {{altSummary}}. Click <span style="display: inline-flex; align-items: center; gap: 2px; padding: 0 5px; border: 1px solid #C3C7CE; border-radius: 8px; font-size: 10px; font-weight: 700; background: #FFFFFF">⇅ 2</span> under a chart to choose another.</div>
+            <sc-if value="{{hasManual}}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{resetAlts}}" style="margin-top: 8px; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Reset all to auto</button>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </aside>
+
+    <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+      <sc-if value="{{hasBad}}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 12px; background: #FEF2F2; border: 1px solid #F5C2C2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+          <div style="flex: 1 1 280px">
+            <div style="font-weight: 700; color: #8F1414">{{badTitle}}</div>
+            <div style="color: #7A1F1F; font-size: 13px">Those notes are marked red and have no fingering. The {{instName}} plays {{rg.loName}} to {{rg.hiName}}, up to {{rg.extName}} with extended fingerings.</div>
+          </div>
+          <button type="button" onClick="{{applySuggested}}" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: none; background: #B91C1C; color: #FFFFFF; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">Use {{bestLabel}}</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{hasExtOnly}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 12px; background: #FFF7ED; border: 1px solid #F6D3A8">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+          <div style="flex: 1 1 280px">
+            <div style="font-weight: 700; color: #7C3A06">{{extTitle}}</div>
+            <div style="color: #7C3A06; font-size: 13px">Above {{rg.hiName}} the {{instName}} needs extended fingerings. Playable for experienced players; marked amber.</div>
+          </div>
+          <button type="button" onClick="{{applySuggested}}" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #B45309; background: #FFFFFF; color: #7C3A06; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">Use {{bestLabel}}</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{isSuggested}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; background: #E3F4F2; color: #0A4F4A; font-size: 13px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0E6E68" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+          <span><strong>Suggested key applied:</strong> {{suggestLine}} Every note fits the {{instName}}{{upperNote}}.</span>
+        </div>
+      </sc-if>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+        <div role="group" aria-label="Editing mode" style="display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: #E8EAED">
+          <button type="button" onClick="{{modeView}}" aria-pressed="{{isView}}" style="min-height: 38px; padding: 0 14px; border: none; border-radius: 9px; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; {{viewStyle}}">View</button>
+          <button type="button" onClick="{{modeNotes}}" aria-pressed="{{noteMode}}" style="min-height: 38px; padding: 0 14px; border: none; border-radius: 9px; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; {{notesStyle}}">Edit notes</button>
+          <button type="button" onClick="{{modeLyrics}}" aria-pressed="{{lyricMode}}" style="min-height: 38px; padding: 0 14px; border: none; border-radius: 9px; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; {{lyricsStyle}}">Lyrics</button>
+          <button type="button" onClick="{{modeChords}}" aria-pressed="{{chordMode}}" style="min-height: 38px; padding: 0 14px; border: none; border-radius: 9px; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; {{chordsStyle}}">Chords</button>
+        </div>
+        <span style="font-size: 13px; color: #4A505C">{{editHint}}</span>
+        <div style="flex: 1 1 0"></div>
+        <div role="group" aria-label="Playback" style="display: flex; align-items: center; gap: 12px">
+          <button type="button" onClick="{{togglePlay}}" aria-label="{{playLabel}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 10px; border: none; background: #15171C; color: #FFFFFF; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">
+            <sc-if value="{{playing}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg></sc-if>
+            <sc-if value="{{notPlaying}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"></path></svg></sc-if>
+            {{playLabel}}
+          </button>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #2A2D33; white-space: nowrap">♩ = {{tempo}}
+            <input type="range" min="40" max="200" step="2" value="{{tempo}}" onChange="{{onTempo}}" aria-label="Tempo in beats per minute" style="width: 110px; accent-color: #0E6E68">
+          </label>
+        </div>
+      </div>
+      <div style="overflow-x: auto; padding-bottom: 8px">
+        <div style="width: 940px; margin: 0 auto; box-sizing: border-box; padding: 48px 40px 36px; background: #FFFFFF; border-radius: 4px; box-shadow: 0 1px 2px rgba(20,22,28,0.06), 0 8px 28px rgba(20,22,28,0.08)">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; margin-bottom: 4px">
+            <h1 style="margin: 0; width: 100%">
+              <input class="ttl" type="text" aria-label="Sheet title" value="{{sheetTitle}}" onChange="{{onTitle}}" placeholder="Add a title" style="font: 800 26px/1.25 'Atkinson Hyperlegible', sans-serif">
+            </h1>
+            <input class="ttl" type="text" aria-label="Sheet subtitle" value="{{sheetSub}}" onChange="{{onSub}}" placeholder="Add a subtitle (composer, arranger…)" style="font: 600 14px/1.4 'Atkinson Hyperlegible', sans-serif; color: #2A2D33">
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5B616E; margin-bottom: 8px">
+            <span>♩ = {{tempo}}</span>
+            <span>{{instName}} · {{headerKeys}}</span>
+          </div>
+          <sc-for list="{{systems}}" as="sys" hint-placeholder-count="5">
+            <div class="sys" style="width: {{sys.w}}px">
+              <svg class="acc" width="40" height="140" aria-hidden="true" style="left: 0px; top: 0px"><path transform="translate(0,115.6) scale(0.0588,-0.0588)" fill="#15171C" d="M434 2Q464 -103 464 -170Q464 -223 427 -257Q390 -291 337 -291Q287 -291 250 -262Q213 -232 213 -190Q213 -160 234 -134Q254 -107 284 -107Q313 -107 332 -128Q350 -150 350 -178Q350 -240 280 -240Q298 -268 338 -268Q353 -268 368 -264Q384 -259 401 -248Q418 -237 428 -214Q439 -190 439 -157Q439 -136 411 -6Q389 -12 356 -12Q259 -12 190 60Q120 132 120 232Q120 267 132 303Q143 339 158 366Q172 394 200 428Q229 463 248 484Q268 504 303 539Q280 621 280 689Q280 779 313 840Q346 900 379 900Q389 900 402 887Q414 874 426 851Q438 828 446 790Q455 753 455 710Q455 551 342 447L368 329Q384 332 397 332Q458 332 500 282Q542 233 542 162Q542 44 434 2ZM426 746Q426 801 394 801Q358 801 333 748Q308 695 308 630Q308 588 321 557Q359 580 392 640Q426 699 426 746ZM498 128Q498 183 466 216Q434 249 383 249L428 23Q498 52 498 128ZM407 17 361 247Q334 241 312 214Q289 187 289 158Q289 143 295 128Q301 114 310 104Q318 94 327 86Q336 78 342 74Q348 71 348 71L340 66Q307 75 278 106Q248 137 248 184Q248 231 278 270Q307 310 343 323L325 430Q168 299 168 177Q168 104 223 55Q278 6 348 6Q365 6 407 17Z"></path></svg>
+              <sc-for list="{{sys.marks}}" as="m" hint-placeholder-count="40">
+                <div class="{{m.cls}}" style="left: {{m.x}}px; top: {{m.y}}px; width: {{m.w}}px; height: {{m.h}}px">{{m.text}}</div>
+              </sc-for>
+              <sc-for list="{{sys.chords}}" as="c" hint-placeholder-count="3">
+                <div class="{{c.cls}}" style="left: {{c.x}}px; top: 2px; width: 80px; height: 16px"><span>{{c.root}}</span><span class="cq">{{c.qual}}</span><span>{{c.extFlat}}</span><sup>{{c.extUp}}</sup><span>{{c.bass}}</span></div>
+              </sc-for>
+              <sc-for list="{{sys.hits}}" as="h" hint-placeholder-count="0">
+                <button type="button" class="hit" aria-label="{{h.label}}" onClick="{{h.pick}}" style="left: {{h.x}}px; {{h.style}}"></button>
+              </sc-for>
+              <sc-if value="{{sys.ed.has}}" hint-placeholder-val="{{ false }}">
+                <div class="edp" role="dialog" aria-label="{{sys.ed.label}}" style="left: {{sys.ed.x}}px; top: {{sys.ed.y}}px">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px">
+                    <strong style="font-size: 13px">{{sys.ed.title}}</strong>
+                    <button type="button" onClick="{{closeEditor}}" aria-label="Close editor" style="width: 32px; height: 32px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B616E" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+                  </div>
+                  <sc-if value="{{sys.ed.isChord}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #5B616E; text-transform: uppercase; letter-spacing: 0.05em">Chord
+                      <input type="text" ref="{{chordRef}}" autoFocus="{{ true }}" value="{{sys.ed.chord}}" onChange="{{sys.ed.onChord}}" onKeyDown="{{sys.ed.onKey}}" placeholder="e.g. Am, F♯7, B♭Δ7/D" style="min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #D5D8DE; font: 700 15px 'Atkinson Hyperlegible', sans-serif; color: #0E6E68; text-transform: none; letter-spacing: 0">
+                    </label>
+                    <div role="group" aria-label="Insert chord symbol" style="display: flex; flex-wrap: wrap; gap: 4px">
+                      <sc-for list="{{sys.ed.chordSyms}}" as="s" hint-placeholder-count="12">
+                        <button type="button" class="symb" title="{{s.label}}" aria-label="Insert {{s.label}}" onMouseDown="{{keepFocus}}" onClick="{{s.ins}}">{{s.t}}</button>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{sys.ed.chordBad}}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size: 12px; color: #B91C1C">Not a chord we can transpose. Start with a note name A–G.</div>
+                    </sc-if>
+                  </div>
+                  </sc-if>
+                  <sc-if value="{{sys.ed.isLyric}}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #5B616E; text-transform: uppercase; letter-spacing: 0.05em">Lyric
+                      <input type="text" ref="{{lyricRef}}" autoFocus="{{ true }}" value="{{sys.ed.lyric}}" onChange="{{sys.ed.onLyric}}" onKeyDown="{{sys.ed.onKey}}" placeholder="syllable" style="min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #D5D8DE; font: 500 15px 'Atkinson Hyperlegible', sans-serif; color: #15171C; text-transform: none; letter-spacing: 0">
+                    </label>
+                    <div role="group" aria-label="Insert lyric symbol" style="display: flex; flex-wrap: wrap; gap: 4px">
+                      <sc-for list="{{sys.ed.lyricSyms}}" as="s" hint-placeholder-count="6">
+                        <button type="button" class="symb" title="{{s.label}}" aria-label="Insert {{s.label}}" onMouseDown="{{keepFocus}}" onClick="{{s.ins}}">{{s.t}}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  </sc-if>
+                  <sc-if value="{{sys.ed.isChord}}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top: 8px; font-size: 11px; color: #5B616E; line-height: 1.4">Shortcuts while typing: <strong>b</strong> → ♭ and <strong>#</strong> → ♯ after a note name. Numbers after the chord quality are raised on the sheet (C<sup style="font-size: 8px">7</sup>).</div>
+                  </sc-if>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px">
+                    <button type="button" onClick="{{prevNote}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">‹ Prev</button>
+                    <button type="button" onClick="{{nextNote}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Next ›</button>
+                    <span style="margin-left: auto; font-size: 11px; color: #5B616E">Enter = next note</span>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-for list="{{sys.altBtns}}" as="b" hint-placeholder-count="0">
+                <button type="button" class="altb" aria-label="{{b.label}}" onClick="{{b.toggle}}" style="left: {{b.x}}px; top: {{b.y}}px; {{b.style}}"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"></path></svg>{{b.count}}</button>
+              </sc-for>
+              <sc-if value="{{sys.pop.has}}" hint-placeholder-val="{{ false }}">
+                <div class="pop" role="dialog" aria-label="Alternate fingerings" style="left: {{sys.pop.x}}px; top: {{sys.pop.y}}px; width: {{sys.pop.w}}px">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font: 700 12px/16px 'Atkinson Hyperlegible', sans-serif; color: #15171C"><span>{{sys.pop.title}}</span><span style="font-weight: 500; color: #5B616E">pick a fingering</span></div>
+                  <div style="display: flex; gap: 8px">
+                    <sc-for list="{{sys.pop.opts}}" as="op" hint-placeholder-count="2">
+                      <button type="button" onClick="{{op.pick}}" style="position: relative; width: 76px; height: 132px; padding: 0; border-radius: 10px; cursor: pointer; {{op.style}}">
+                        <sc-for list="{{op.marks}}" as="m" hint-placeholder-count="9">
+                          <div class="{{m.cls}}" style="left: {{m.x}}px; top: {{m.y}}px; width: {{m.w}}px; height: {{m.h}}px"></div>
+                        </sc-for>
+                        <span style="position: absolute; left: 2px; right: 2px; bottom: 6px; font: 600 10px/12px 'Atkinson Hyperlegible', sans-serif; color: #15171C; text-align: center">{{op.name}}</span>
+                        <sc-if value="{{op.auto}}" hint-placeholder-val="{{ false }}">
+                          <span style="position: absolute; top: 4px; right: 4px; padding: 1px 5px; border-radius: 6px; background: #E3F4F2; color: #0A4F4A; font: 700 9px/12px 'Atkinson Hyperlegible', sans-serif">auto</span>
+                        </sc-if>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-for list="{{sys.r1s}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="20" height="125" aria-hidden="true" style="left: {{a.x}}px; top: 0px"><path transform="translate(0,111.7) scale(0.0467,-0.0467)" fill="#15171C" d="M370 548H297V465H84V548H12V572H370Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.r2s}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="20" height="125" aria-hidden="true" style="left: {{a.x}}px; top: 0px"><path transform="translate(0,111.7) scale(0.0467,-0.0467)" fill="#15171C" d="M12 382H85V465H298V382H370V358H12Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.r4s}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="20" height="125" aria-hidden="true" style="left: {{a.x}}px; top: 0px"><path transform="translate(0,111.7) scale(0.0467,-0.0467)" fill="#15171C" d="M55 208Q55 242 78 260Q100 278 130 278Q150 278 178 267L65 415Q145 487 145 544Q145 589 91 658H136L264 502Q181 404 181 356Q181 310 259 217L243 194Q203 217 176 217Q140 217 140 173Q140 129 179 84L165 62Q55 144 55 208Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.r8s}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="20" height="125" aria-hidden="true" style="left: {{a.x}}px; top: 0px"><path transform="translate(0,111.7) scale(0.0467,-0.0467)" fill="#15171C" d="M136 443Q152 443 175 466Q198 490 213 511H234L138 166H101L173 426Q126 402 97 402Q68 402 44 422Q19 443 19 473Q19 495 35 514Q51 532 79 532Q106 532 122 514Q138 495 138 473Q138 458 131 445Q135 443 136 443Z"></path></svg>
+              </sc-for>
+              <sc-if value="{{sys.ne.has}}" hint-placeholder-val="{{ false }}">
+                <div class="edp" role="dialog" aria-label="Edit note" style="left: {{sys.ne.x}}px; top: {{sys.ne.y}}px">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px">
+                    <strong style="font-size: 13px">{{sys.ne.title}}</strong>
+                    <button type="button" onClick="{{closeEditor}}" aria-label="Close" style="width: 32px; height: 32px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B616E" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+                  </div>
+                  <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #5B616E; margin-bottom: 4px">Pitch</div>
+                  <div style="display: flex; align-items: center; gap: 4px">
+                    <button type="button" class="symb" onClick="{{sys.ne.octDown}}" title="Octave down (Ctrl ↓)" aria-label="Octave down">−8</button>
+                    <button type="button" class="symb" onClick="{{sys.ne.down}}" title="Semitone down (↓)" aria-label="Semitone down">−1</button>
+                    <span style="flex: 1 1 0; min-width: 64px; text-align: center; font: 700 18px 'Atkinson Hyperlegible', sans-serif">{{sys.ne.pitch}}</span>
+                    <button type="button" class="symb" onClick="{{sys.ne.up}}" title="Semitone up (↑)" aria-label="Semitone up">+1</button>
+                    <button type="button" class="symb" onClick="{{sys.ne.octUp}}" title="Octave up (Ctrl ↑)" aria-label="Octave up">+8</button>
+                  </div>
+                  <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #5B616E; margin: 10px 0 4px">Length</div>
+                  <div role="group" aria-label="Length" style="display: flex; gap: 4px">
+                    <button type="button" class="symb" onClick="{{sys.ne.d1.pick}}" disabled="{{sys.ne.d1.off}}" aria-label="Eighth (3)" title="Eighth (3)" style="{{sys.ne.d1.style}}"><svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><ellipse cx="5" cy="16" rx="4" ry="3" fill="currentColor"></ellipse><path d="M8.6 16V2c1 3 5 4 5 8" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+                    <button type="button" class="symb" onClick="{{sys.ne.d2.pick}}" disabled="{{sys.ne.d2.off}}" aria-label="Quarter (4)" title="Quarter (4)" style="{{sys.ne.d2.style}}"><svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><ellipse cx="6" cy="16" rx="4" ry="3" fill="currentColor"></ellipse><path d="M9.6 16V2" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+                    <button type="button" class="symb" onClick="{{sys.ne.d4.pick}}" disabled="{{sys.ne.d4.off}}" aria-label="Half (5)" title="Half (5)" style="{{sys.ne.d4.style}}"><svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><ellipse cx="6" cy="16" rx="3.6" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.6"></ellipse><path d="M9.6 16V2" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+                    <button type="button" class="symb" onClick="{{sys.ne.d8.pick}}" disabled="{{sys.ne.d8.off}}" aria-label="Whole (6)" title="Whole (6)" style="{{sys.ne.d8.style}}"><svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true"><ellipse cx="9" cy="12" rx="5" ry="3.4" fill="none" stroke="currentColor" stroke-width="2"></ellipse></svg></button>
+                    <button type="button" class="symb" onClick="{{sys.ne.dot}}" disabled="{{sys.ne.dotOff}}" aria-label="Dotted (.)" title="Dotted (.)" style="{{sys.ne.dotStyle}}">·</button>
+                    <span style="flex: 1 1 0"></span>
+                    <button type="button" class="symb" onClick="{{sys.ne.tie}}" disabled="{{sys.ne.tieOff}}" aria-label="Tie to next note (T)" title="Tie to next note (T)" style="{{sys.ne.tieStyle}}">⁀</button>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px">
+                    <button type="button" onClick="{{sys.ne.rest}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">{{sys.ne.restLabel}}</button>
+                    <span style="flex: 1 1 0"></span>
+                    <button type="button" onClick="{{sys.ne.addBar}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">+ Bar after</button>
+                    <button type="button" onClick="{{sys.ne.removeBar}}" disabled="{{sys.ne.noRemove}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #F5C2C2; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #8F1414; cursor: pointer">Remove bar</button>
+                  </div>
+                  <div style="margin-top: 8px; font-size: 11px; color: #5B616E; line-height: 1.4">Keys: ↑ ↓ pitch · A–G note name · ← → next · 3 4 5 6 length · . dot · R rest · T tie · Del rest</div>
+                </div>
+              </sc-if>
+              <sc-for list="{{sys.flats}}" as="a" hint-placeholder-count="1">
+                <svg class="acc" width="12" height="27" aria-hidden="true" style="left: {{a.x}}px; top: {{a.y}}px"><path transform="translate(0,24) scale(0.03,-0.03)" fill="{{a.fill}}" d="M222 441Q275 441 302 408Q329 375 329 317Q329 273 300 234Q270 195 192 117Q115 39 56 -34V783L99 802V402Q148 441 222 441ZM232 308Q232 373 183 373Q159 373 134 358Q110 344 99 319V87Q159 155 196 214Q232 274 232 308Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.sharps}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="12" height="31" aria-hidden="true" style="left: {{a.x}}px; top: {{a.y}}px"><path transform="translate(0,21.7) scale(0.03,-0.03)" fill="{{a.fill}}" d="M365 24 319 6V-193L275 -209V-10L138 -63V-262L94 -279V-80L50 -96V0L94 17V262L50 245V341L94 358V589L138 606V376L275 429V659L319 675V446L365 464V366L319 348V104L365 122ZM275 88V332L138 279V34Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.nats}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="12" height="30" aria-hidden="true" style="left: {{a.x}}px; top: {{a.y}}px"><path transform="translate(0,20.25) scale(0.03,-0.03)" fill="{{a.fill}}" d="M324 -273 280 -290V3L56 -87V656L99 675V344L324 433ZM280 93V328L99 254V19Z"></path></svg>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #E2E4E8; font-size: 11px; color: #5B616E">
+            <span>{{legend}}</span>
+            <span>fingerscore.eu</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <footer style="margin-top: 40px; background: #FFFFFF; border-top: 1px solid #E2E4E8">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 20px 28px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><rect x="10" y="2" width="8" height="24" rx="4" fill="#15171C"></rect><circle cx="14" cy="8" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="13" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="18" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="23" r="1.6" fill="#5FD3C6"></circle></svg>
+        <span style="font-family: 'Atkinson Hyperlegible', sans-serif; font-weight: 700; font-size: 15px; color: #15171C">fingerscore</span>
+        <span style="font-size: 13px; color: #5B616E">© 2026</span>
+      </div>
+      <span style="font-size: 13px; color: #5B616E">Your sheets are stored in your browser. Nothing is stored on the server.</span>
+      <div style="flex: 1 1 0"></div>
+      <nav aria-label="Footer" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; font-size: 13px">
+        <a href="About.dc.html" style="color: #4A505C; text-decoration: none; font-weight: 600">About</a>
+        <a href="#github" style="display: inline-flex; align-items: center; gap: 6px; color: #4A505C; text-decoration: none; font-weight: 600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"></path><path d="m8 6-6 6 6 6"></path></svg>GitHub</a>
+        <a href="#privacy" style="color: #4A505C; text-decoration: none; font-weight: 600">Privacy</a>
+        <a href="Imprint.dc.html" style="color: #4A505C; text-decoration: none; font-weight: 600">Imprint</a>
+      </nav>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"startChartStyle":{"editor":"enum","options":["compact","full"],"default":"compact","section":"Prototype"},"startInstrument":{"editor":"enum","options":["xc","xbb","ssax","asax","tsax","bsax","cl","rs","ra","fl","picc","afl"],"default":"asax","section":"Prototype"},"useSuggested":{"editor":"boolean","default":true,"section":"Prototype"},"startShift":{"editor":"int","default":0,"min":-24,"max":24,"section":"Prototype"},"$preview":{"width":1440,"height":1980}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    try {
+      var id = window.localStorage.getItem("fingerscore.pending");
+      if (!id) return;
+      window.localStorage.removeItem("fingerscore.pending");
+      var list = JSON.parse(window.localStorage.getItem("fingerscore.library.v1") || "[]") || [];
+      var e = list.filter(function (x) { return x.id === id; })[0];
+      if (e && e.doc) this.setState(Object.assign({}, e.doc, { docId: e.id, savedDoc: e.doc, origin: { kind: "library", name: e.title } }));
+    } catch (err) {}
+  }
+  componentWillUnmount() {
+    var P = this._player;
+    if (P) { P.timers.forEach(clearTimeout); try { if (P.ctx && P.ctx.close) P.ctx.close(); } catch (e) {} }
+    this._player = null;
+  }
+  renderVals() {
+    var BOOK = [
+      [["C4",2,"The","Am"],["F4",1,"wat-"],["F4",1,"er"],["G4",2,"is"]],
+      [["G4",1,"wide,","F"],["A4",1,"","",1],["A4",6,"","",1]],
+      [["A4",2],["G4",2,"I","C"],["F4",3,"cross"],["D4",1,"o’er"]],
+      [["C4",8,"","F",1]],
+      [["C4",2],["C4",2,"Nei-"],["F4",3,"ther"],["E4",1,"have"]],
+      [["F4",8,"I","Dm",1]],
+      [["F4",2],["G4",2,"the","Gm"],["A4",3,"wings"],["Bb4",1,"to"]],
+      [["G4",8,"fly","C",1]],
+      [["G4",2],["G4",2,"Give"],["A4",3,"me"],["Bb4",1,"a"]],
+      [["C5",8,"boat","Am",1]],
+      [["C5",2,"","Bb"],["Bb4",1,"that"],["A4",1,"can"],["G4",2,"car-"],["F4",2,"ry"]],
+      [["A4",8,"two,","Am",1]],
+      [["A4",2,"","Bb"],["G4",2,"And"],["F4",3,"both"],["D4",1,"shall"]],
+      [["C4",8,"row","F",1]],
+      [["C4",2,"","C"],["D4",1,"my"],["E4",1],["F4",2,"love"],["E4",2,"and"]],
+      [["F4",8,"I","F",1]],
+      [["F4",2],["C4",2,"","F"],["F4",1,"","Bb"],["F4",1],["G4",2,"","C"]],
+      [["F4",8,"","F"]]
+    ];
+    var ORIG = -3, ORIG_TONIC = 2;
+    var PC = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+    var KEYSIG = {0:0,1:-5,2:2,3:-3,4:4,5:-1,6:-6,7:1,8:-4,9:3,10:-2,11:5};
+    var NS = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+    var NF = ["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
+    var LSH = [[0,0],[0,1],[1,0],[1,1],[2,0],[3,0],[3,1],[4,0],[4,1],[5,0],[5,1],[6,0]];
+    var LFL = [[0,0],[1,-1],[1,0],[2,-1],[2,0],[3,0],[4,-1],[4,0],[5,-1],[5,0],[6,-1],[6,0]];
+    var SH_ORDER = [3,0,4,1,5,2,6], FL_ORDER = [6,2,5,1,4,0,3];
+    var SH_P = [8,5,9,6,3,7,4], FL_P = [4,7,3,6,2,5,1];
+
+    /* ---------- instruments: written pitch = concert + off ---------- */
+    var INST = {
+      xc:   { name: "Xaphoon in C",  group: "Xaphoon",   off: 0,   lo: 60, hi: 86, ext: 91, kind: "xaph", easyTop: 73 },
+      xbb:  { name: "Xaphoon in B♭", group: "Xaphoon",   off: 2,   lo: 60, hi: 86, ext: 91, kind: "xaph", easyTop: 73 },
+      ssax: { name: "Soprano sax (B♭)", group: "Saxophone", off: 2,  lo: 58, hi: 89, ext: 96, kind: "sax", easyTop: 73 },
+      asax: { name: "Alto sax (E♭)",    group: "Saxophone", off: 9,  lo: 58, hi: 89, ext: 96, kind: "sax", easyTop: 73 },
+      tsax: { name: "Tenor sax (B♭)",   group: "Saxophone", off: 14, lo: 58, hi: 89, ext: 96, kind: "sax", easyTop: 73 },
+      bsax: { name: "Baritone sax (E♭)",group: "Saxophone", off: 21, lo: 58, hi: 89, ext: 96, kind: "sax", easyTop: 73 },
+      cl:   { name: "Clarinet (B♭)",    group: "Clarinet",  off: 2,  lo: 52, hi: 88, ext: 96, kind: "cl", easyTop: 70 },
+      rs:   { name: "Soprano recorder (C)", group: "Recorder", off: -12, lo: 60, hi: 86, ext: 91, kind: "rec", base: 60, easyTop: 75 },
+      ra:   { name: "Alto recorder (F)",    group: "Recorder", off: 0,   lo: 65, hi: 91, ext: 96, kind: "rec", base: 65, easyTop: 80 },
+      fl:   { name: "Flute (C)",       group: "Flute", off: 0,   lo: 60, hi: 93, ext: 96, kind: "fl", easyTop: 85 },
+      picc: { name: "Piccolo (C)",     group: "Flute", off: -12, lo: 62, hi: 93, ext: 96, kind: "fl", easyTop: 85 },
+      afl:  { name: "Alto flute (G)",  group: "Flute", off: 5,   lo: 60, hi: 91, ext: 93, kind: "fl", easyTop: 85 }
+    };
+    var INST_ORDER = ["xc","xbb","ssax","asax","tsax","bsax","cl","rs","ra","fl","picc","afl"];
+
+    /* diagram layouts: [dx, dy, size, double?] */
+    var LAYOUT = {
+      xaph: [[0,0,8],[-7,8,8],[0,17,8],[0,26.5,8],[0,36,8],[0,49,8],[0,58.5,8],[0,68,8],[0,77.5,8]],
+      rec:  [[-8,0,8],[0,10,8],[0,20,8],[0,30,8],[0,44,8],[0,54,8],[0,64,8,1],[0,74,8,1]],
+      sax:  [[-9,2,6],[0,10,8],[0,19.5,8],[0,29,8],[0,43,8],[0,52.5,8],[0,62,8]],
+      cl:   [[-9,-0.5,5],[-9,6.5,7],[0,10,8],[0,19.5,8],[0,29,8],[0,43,8],[0,52.5,8],[0,62,8]],
+      fl:   [[-9,2,7],[0,10,8],[0,19.5,8],[0,29,8],[0,43,8],[0,52.5,8],[0,62,8]]
+    };
+    /* satellite keys: id -> [cx, cy, cluster]; shapes per cluster for the full key map */
+    var SATS = {
+      sax: { pD:[-15,12,"palm"], pEb:[-15,18.5,"palm"], pF:[-15,25,"palm"], fF:[10,11,"fF"], bis:[8,19.5,"bis"], hFs:[11,40.5,"hFs"], aFs:[12,66,"aFs"],
+             sE:[11,47.5,"side"], sC:[11,54,"side"], sBb:[11,60.5,"side"], tGs:[-11,38,"table"], tCs:[-17,38,"table"],
+             tB:[-17,44.5,"table"], tBb:[-11,44.5,"table"], rEb:[10,72,"rp"], rC:[10,78.5,"rp"] },
+      cl:  { kA:[0,2,"throat"], kGs:[8,5,"throat"], lpE:[-15,38,"lp"], lpF:[-15,44,"lp"], lpFs:[-15,50,"lp"],
+             s1:[11,40,"side"], s2:[11,46,"side"], s3:[11,52,"side"], s4:[11,58,"side"], rpE:[10,70,"rp"], rpF:[10,76,"rp"], rpGs:[10,82,"rp"] },
+      fl:  { fBb:[-16,3,"thumb"], fGs:[-12,38,"lp"], tD:[11,44,"trill"], tDs:[11,51,"trill"], fEb:[10,71,"rp"], fCs:[10,77,"rp"], fC:[10,83,"rp"] }
+    };
+    var SHAPE = { palm:[4,7], side:[4,6], table:[5,5], rp:[7,4], lp:[7,4], fF:[4,4], bis:[4,4], hFs:[4,6], aFs:[4,4], throat:[7,4], thumb:[4,6], trill:[4,5] };
+    var LEGEND = {
+      xaph: "● closed   ○ open   ◐ half-hole · top hole = thumb",
+      rec:  "● closed   ○ open   ◐ half-hole · left hole = thumb · lowest two holes are double",
+      sax:  "● pressed   ○ open · top left = octave key · small keys around the column = palm, side and pinky keys",
+      cl:   "● closed   ○ open · top left = register key, below it the thumb hole · small keys = A/G♯, side and pinky keys",
+      fl:   "● pressed   ○ open · top left = thumb (B♭ thumb beside it) · right pinky E♭ key is held for almost every note"
+    };
+
+    var XA = {
+      60:[1,1,1,1,1,1,1,1,1], 61:[1,1,1,1,1,1,1,1,0.5], 62:[1,1,1,1,1,1,1,1,0], 63:[1,1,1,1,1,1,1,0.5,0],
+      64:[1,1,1,1,1,1,1,0,0], 65:[1,1,1,1,1,1,0,0,0], 66:[1,1,1,1,1,0,1,0,0], 67:[1,1,1,1,1,0,0,0,1],
+      68:[1,1,1,1,0,1,0,0,1], 69:[1,1,1,1,0,0,0,0,1], 70:[1,1,1,0,0,0,0,0,1], 71:[1,1,0,1,0,0,0,0,1],
+      72:[1,1,0,0,0,0,0,0,1], 73:[1,0,0,0,0,0,0,0,1]
+    };
+    var REC = [
+      [1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,.5],[1,1,1,1,1,1,1,0],[1,1,1,1,1,1,.5,0],[1,1,1,1,1,1,0,0],
+      [1,1,1,1,1,0,1,1],[1,1,1,1,0,1,1,0],[1,1,1,1,0,0,0,0],[1,1,1,0,1,1,.5,0],[1,1,1,0,0,0,0,0],
+      [1,1,0,1,1,0,0,0],[1,1,0,0,0,0,0,0],[1,0,1,0,0,0,0,0],[0,1,1,0,0,0,0,0],[0,0,1,0,0,0,0,0],
+      [0,0,1,1,1,1,1,0],[.5,1,1,1,1,1,0,0],[.5,1,1,1,1,0,1,0],[.5,1,1,1,0,1,0,0],[.5,1,1,1,0,0,0,0],
+      [.5,1,1,0,1,0,0,0],[.5,1,1,0,0,0,0,0],[.5,1,1,0,1,1,1,0],[.5,1,1,0,1,1,0,0],[.5,1,0,0,1,1,0,0],
+      [.5,1,0,1,1,0,1,1],[.5,1,0,1,1,0,1,0]
+    ];
+    var REC_GERMAN = { 5: [1,1,1,1,1,0,0,0], 6: [1,1,1,1,0,1,1,1], 17: [.5,1,1,1,1,0,0,0] };
+    function S(h, x, n, p) { return { h: h, x: x || [], n: n || "standard", p: p || 0 }; }
+    var SAX = {
+      58:[S([0,1,1,1,1,1,1],["tBb"])], 59:[S([0,1,1,1,1,1,1],["tB"])], 60:[S([0,1,1,1,1,1,1],["rC"])], 61:[S([0,1,1,1,1,1,1],["tCs"])],
+      62:[S([0,1,1,1,1,1,1])], 63:[S([0,1,1,1,1,1,1],["rEb"])], 64:[S([0,1,1,1,1,1,0])], 65:[S([0,1,1,1,1,0,0])],
+      66:[S([0,1,1,1,0,1,0]), S([0,1,1,1,1,0,0],["aFs"],"alt. F♯ key",0.6)],
+      67:[S([0,1,1,1,0,0,0])], 68:[S([0,1,1,1,0,0,0],["tGs"])], 69:[S([0,1,1,0,0,0,0])],
+      70:[S([0,1,0,0,0,0,0],["bis"],"bis key"), S([0,1,0,0,1,0,0],[],"1 + 1",0.3), S([0,1,0,0,0,0,0],["sBb"],"side B♭",0.4)],
+      71:[S([0,1,0,0,0,0,0])],
+      72:[S([0,0,1,0,0,0,0]), S([0,1,0,0,0,0,0],["sC"],"side C",0.6)],
+      73:[S([0,0,0,0,0,0,0])],
+      86:[S([1,0,0,0,0,0,0],["pD"])], 87:[S([1,0,0,0,0,0,0],["pD","pEb"])], 88:[S([1,0,0,0,0,0,0],["pD","pEb","sE"])],
+      89:[S([1,0,0,0,0,0,0],["pD","pEb","pF"]), S([1,1,0,0,0,0,0],["fF"],"front F",0.5)],
+      90:[S([1,0,0,0,0,0,0],["pD","pEb","pF","hFs"])]
+    };
+    var CL = {
+      52:[S([0,1,1,1,1,1,1,1],["lpE"],"left pinky E"), S([0,1,1,1,1,1,1,1],["rpE"],"right pinky E",0.1)],
+      53:[S([0,1,1,1,1,1,1,1],["rpF"],"right pinky F"), S([0,1,1,1,1,1,1,1],["lpF"],"left pinky F",0.1)],
+      54:[S([0,1,1,1,1,1,1,1],["lpFs"])], 55:[S([0,1,1,1,1,1,1,1])], 56:[S([0,1,1,1,1,1,1,1],["rpGs"])],
+      57:[S([0,1,1,1,1,1,1,0])], 58:[S([0,1,1,1,1,1,0,0])], 59:[S([0,1,1,1,1,0,1,0])],
+      60:[S([0,1,1,1,1,0,0,0])], 61:[S([0,1,1,1,1,0,0,0],["lpFs"])], 62:[S([0,1,1,1,0,0,0,0])], 63:[S([0,1,1,1,0,0,0,0],["s4"])],
+      64:[S([0,1,1,0,0,0,0,0])], 65:[S([0,1,0,0,0,0,0,0])],
+      66:[S([0,0,1,0,0,0,0,0],[],"thumb off, 1"), S([0,1,0,0,0,0,0,0],["s3","s4"],"thumb + side 3 & 4",0.6)],
+      67:[S([0,0,0,0,0,0,0,0])], 68:[S([0,0,0,0,0,0,0,0],["kGs"])], 69:[S([0,0,0,0,0,0,0,0],["kA"])],
+      70:[S([1,0,0,0,0,0,0,0],["kA"],"A key + register"), S([0,0,0,0,0,0,0,0],["kA","s2"],"A key + side 2",0.3)]
+    };
+    var FL = {
+      60:[S([1,1,1,1,1,1,1],["fC"])], 61:[S([1,1,1,1,1,1,1],["fCs"])], 62:[S([1,1,1,1,1,1,1])], 63:[S([1,1,1,1,1,1,1],["fEb"])],
+      64:[S([1,1,1,1,1,1,0],["fEb"])], 65:[S([1,1,1,1,1,0,0],["fEb"])], 66:[S([1,1,1,1,0,0,1],["fEb"])], 67:[S([1,1,1,1,0,0,0],["fEb"])],
+      68:[S([1,1,1,1,0,0,0],["fGs","fEb"])], 69:[S([1,1,1,0,0,0,0],["fEb"])],
+      70:[S([1,1,0,0,1,0,0],["fEb"],"1 + 1"), S([0,1,0,0,0,0,0],["fBb","fEb"],"thumb B♭",0.2)],
+      71:[S([1,1,0,0,0,0,0],["fEb"])], 72:[S([0,1,0,0,0,0,0],["fEb"])], 73:[S([0,0,0,0,0,0,0],["fEb"])],
+      74:[S([1,0,1,1,1,1,1])], 75:[S([1,0,1,1,1,1,1],["fEb"])],
+      86:[S([1,0,1,1,0,0,0],["fEb"])], 87:[S([1,1,1,1,1,1,1],["fGs","fEb"])], 88:[S([1,1,1,0,1,1,0],["fEb"])], 89:[S([1,1,0,1,1,0,0],["fEb"])],
+      90:[S([1,1,0,1,0,0,1],["fEb"])], 91:[S([0,1,1,1,0,0,0],["fEb"])], 92:[S([0,0,1,1,0,0,0],["fGs","fEb"])], 93:[S([1,0,1,0,1,0,0],["fEb"])],
+      94:[S([1,0,0,0,1,0,0],["tD"])], 95:[S([1,1,0,1,0,0,0],["tDs"])], 96:[S([0,1,1,1,1,0,0],["fGs"])]
+    };
+    var FINGER = { tGs:"lp", tCs:"lp", tB:"lp", tBb:"lp", rEb:"rp", rC:"rp", pD:"lpalm", pEb:"lpalm", pF:"lpalm",
+      sE:"rside", sC:"rside", sBb:"rside", hFs:"rside", bis:"L1", fF:"L1", aFs:"R3",
+      lpE:"lp", lpF:"lp", lpFs:"lp", rpE:"rp", rpF:"rp", rpGs:"rp", kA:"L1", kGs:"L1", s1:"rside", s2:"rside", s3:"rside", s4:"rside",
+      fBb:"T", fGs:"lp", fEb:"rp", fCs:"rp", fC:"rp", tD:"rside", tDs:"rside" };
+
+    var self = this;
+    var st = this.state || {};
+    /* ---------- undo / redo: history of the document (instrument, key, fingerings, text) ---------- */
+    var DOCK = ["score","tempo","inst","shift","alts","lyr","chd","title","subtitle","chartStyle","german","showFing","showChords","showLyrics","supExt"];
+    var H = self._hist || (self._hist = { past: [], future: [], key: null, t: 0 });
+    function snap() { var s = self.state || {}, o = {}; DOCK.forEach(function (k) { o[k] = s[k]; }); return o; }
+    function commit(patch, coalesceKey) {
+      var isDoc = Object.keys(patch).some(function (k) { return DOCK.indexOf(k) >= 0; });
+      if (isDoc) {
+        var now = Date.now();
+        if (!(coalesceKey && H.key === coalesceKey && now - H.t < 1500)) { H.past.push(snap()); if (H.past.length > 200) H.past.shift(); }
+        H.key = coalesceKey || null; H.t = now; H.future = [];
+      }
+      self.setState(patch);
+    }
+    function undo() { if (!H.past.length) return; H.future.push(snap()); H.key = null; self.setState(Object.assign({}, H.past.pop(), { open: null })); }
+    function redo() { if (!H.future.length) return; H.past.push(snap()); H.key = null; self.setState(Object.assign({}, H.future.pop(), { open: null })); }
+    var instId = st.inst || this.props.startInstrument || "asax";
+    if (!INST[instId]) instId = "xc";
+    var I = INST[instId];
+    var german = !!st.german;
+    var chartStyle = st.chartStyle || this.props.startChartStyle || "compact";
+
+    function fing(w) {
+      var r, b;
+      if (I.kind === "xaph") {
+        if (XA[w]) return { h: XA[w], k: "" };
+        if (w >= 74 && w <= I.hi) { r = fing(w - 12); b = r.h.slice(); b[0] = 0; return { h: b, k: "" }; }
+        return null;
+      }
+      if (I.kind === "rec") {
+        var i = w - I.base;
+        if (i < 0 || i >= REC.length) return null;
+        return { h: (german && REC_GERMAN[i]) ? REC_GERMAN[i] : REC[i], k: "" };
+      }
+      return null;
+    }
+
+    function options(w) {
+      var r, b, list;
+      if (I.kind === "xaph" || I.kind === "rec") {
+        var f = fing(w);
+        return f ? [{ h: f.h, x: [], n: "standard", p: 0 }] : [];
+      }
+      if (I.kind === "sax") {
+        if (SAX[w]) return SAX[w];
+        if (w >= 74 && w <= 85) return options(w - 12).map(function (o) { var h = o.h.slice(); h[0] = 1; return { h: h, x: o.x, n: o.n, p: o.p }; });
+        return [];
+      }
+      if (I.kind === "cl") {
+        if (CL[w]) return CL[w];
+        if (w >= 71 && w <= 84) return options(w - 19).map(function (o) { var h = o.h.slice(); h[0] = 1; return { h: h, x: o.x, n: o.n, p: o.p }; });
+        return [];
+      }
+      if (I.kind === "fl") {
+        if (FL[w]) return FL[w];
+        if (w >= 76 && w <= 85) return options(w - 12);
+        return [];
+      }
+      return [];
+    }
+
+    function midiOf(s) {
+      var i = 1, alt = 0;
+      if (s[i] === "b") { alt = -1; i++; } else if (s[i] === "#") { alt = 1; i++; }
+      return 12 * (parseInt(s.slice(i), 10) + 1) + PC[s[0]] + alt;
+    }
+    function mod12(x) { return ((x % 12) + 12) % 12; }
+    function keyOf(tonic) {
+      tonic = mod12(tonic);
+      var sig = KEYSIG[tonic], flat = sig < 0, alt = [0,0,0,0,0,0,0], i;
+      if (sig > 0) for (i = 0; i < sig; i++) alt[SH_ORDER[i]] = 1;
+      if (sig < 0) for (i = 0; i < -sig; i++) alt[FL_ORDER[i]] = -1;
+      return { tonic: tonic, sig: sig, flat: flat, alt: alt, name: (flat ? NF : NS)[tonic] + " major" };
+    }
+    function sigText(sig) { return sig === 0 ? "no sharps or flats" : Math.abs(sig) + (sig > 0 ? " ♯" : " ♭"); }
+    function nName(m, flat) { return (flat ? NF : NS)[mod12(m)] + (Math.floor(m / 12) - 1); }
+    function sLabel(s) { return (s > 0 ? "+" : "") + s; }
+
+    /* ---------- the score: bars of events (notes and rests), editable ---------- */
+    var DEFAULT_BARS = BOOK.map(function (meas, mi) {
+      return { cap: meas.reduce(function (a, n) { return a + n[1]; }, 0), rs: mi === 1, re: mi === 16, volta: mi === 16 ? "1." : mi === 17 ? "2." : "",
+        ev: meas.map(function (n) { return { m: midiOf(n[0]) + ORIG, d: n[1], l: n[2] || "", c: n[3] || "", tie: !!n[4], r: false }; }) };
+    });
+    var BARS = st.score || DEFAULT_BARS;
+    var NOTES = [], MLEN = [];
+    BARS.forEach(function (bar, mi) {
+      var t = 0;
+      bar.ev.forEach(function (e, k) {
+        NOTES.push({ mi: mi, k: k, t: t, m: e.m, d: e.d, l: e.l || "", c: e.c || "", tie: !!e.tie && !e.r, r: !!e.r });
+        t += e.d;
+      });
+      MLEN.push(bar.cap);
+    });
+    NOTES.forEach(function (n, i) { n.cont = i > 0 && NOTES[i - 1].tie && !n.r; });
+
+    function evalShift(s, inst) {
+      var bad = 0, ext = 0, upper = 0, low = 0, mn = 999, mx = 0;
+      NOTES.forEach(function (n) {
+        if (n.r) return;
+        var w = n.m + s + inst.off; mn = Math.min(mn, w); mx = Math.max(mx, w);
+        if (n.cont) return;
+        if (w < inst.lo || w > inst.ext) bad++; else if (w > inst.hi) ext++; else if (w > inst.easyTop) upper++;
+        if (inst.kind === "sax" && w < 62) low++;
+      });
+      var k = keyOf(ORIG_TONIC + s + inst.off);
+      return { s: s, bad: bad, ext: ext, upper: upper, mn: mn, mx: mx, k: k, sk: keyOf(ORIG_TONIC + s),
+        score: bad * 1000 + ext * 60 + upper * 3 + low * 3 + Math.abs(k.sig) * 8 + Math.abs(s) };
+    }
+    function bestFor(inst) {
+      var all = [];
+      for (var s0 = -24; s0 <= 24; s0++) all.push(evalShift(s0, inst));
+      all.sort(function (a, b) { return a.score - b.score; });
+      return all;
+    }
+    var all = bestFor(I);
+    var best = all[0];
+
+    var useSug = this.props.useSuggested == null ? true : this.props.useSuggested;
+    var shift = st.shift != null ? st.shift : (useSug ? best.s : Number(this.props.startShift || 0));
+    var ev = evalShift(shift, I);
+    var key = ev.k;
+    /* written vs concert pitch: fingerings always follow the written note; only the notation and names change */
+    var concert = false; /* the sheet always shows written pitch; concert pitch is only a way to choose the key */
+    var DOFF = concert ? 0 : I.off;
+    var K8 = concert ? Math.floor(I.off / 12) : 0;
+    var wkey = ev.k;
+    key = keyOf(ORIG_TONIC + shift + DOFF);
+    function dname(wm, flat) { return nName(concert ? wm - I.off : wm, flat); }
+    var orig = evalShift(0, INST.xc);
+
+    var suggestions = all.filter(function (e) { return e.bad === 0; }).slice(0, 3).map(function (e) {
+      var on = e.s === shift;
+      var reason = e.ext > 0 ? "Needs extended high notes" : e.upper === 0 ? "Low register only" : e.upper + (e.upper === 1 ? " note" : " notes") + " in upper register";
+      var kk = e.k;
+      return { key: I.off % 12 !== 0 ? "Sounds " + e.sk.name.replace(" major", "") + " → you read " + e.k.name.replace(" major", "") : e.k.name, shift: sLabel(e.s), reason: reason + " · " + sigText(kk.sig),
+        range: dname(e.mn, kk.flat) + "–" + dname(e.mx, kk.flat),
+        border: on ? "2px solid #0E6E68" : "1px solid #E2E4E8", bg: on ? "#F0FAF8" : "#FFFFFF",
+        pick: function () { commit({ shift: e.s, alts: {}, open: null }); } };
+    });
+
+    var RL = I.lo - 7, RH = I.ext + 4;
+    function pct(m) { return Math.round((Math.max(RL, Math.min(RH, m)) - RL) / (RH - RL) * 1000) / 10; }
+    var sColor = ev.bad > 0 ? "#B91C1C" : ev.ext > 0 ? "#B45309" : "#0E6E68";
+    var rg = { okL: pct(I.lo), okW: pct(I.hi) - pct(I.lo), exL: pct(I.hi), exW: pct(I.ext) - pct(I.hi), exE: pct(I.ext),
+      sL: pct(ev.mn - 0.4), sW: Math.max(1.5, pct(ev.mx + 0.4) - pct(ev.mn - 0.4)), sColor: sColor,
+      loName: dname(I.lo, true), hiName: dname(I.hi, true), extName: dname(I.ext, true) };
+    var below = 0, above = 0;
+    NOTES.forEach(function (n) { if (n.cont || n.r) return; var w = n.m + shift + I.off; if (w < I.lo) below++; if (w > I.ext) above++; });
+    var badTitle = (below ? below + (below === 1 ? " note is" : " notes are") + " below " + rg.loName : "") +
+      (below && above ? " and " : "") + (above ? above + (above === 1 ? " note is" : " notes are") + " above " + rg.extName : "") +
+      " — out of range for the " + I.name.replace(/ \(.*\)/, "").toLowerCase();
+
+    /* ---------- notation layout ---------- */
+    var W = 860, BOT = 115, FY = 166;
+    function yOf(p) { return BOT - p * 5; }
+    var GROUPS = [];
+    for (var gi0 = 0; gi0 < BARS.length; gi0 += 4) { var gg = []; for (var gj = gi0; gj < Math.min(gi0 + 4, BARS.length); gj++) gg.push(gj); GROUPS.push(gg); }
+    var nsig = Math.abs(key.sig);
+    var showF = st.showFing !== false, showC = st.showChords !== false || st.mode === "chords", showL = st.showLyrics !== false || st.mode === "lyrics";
+    var LAY = LAYOUT[I.kind];
+
+    function transChord(c) {
+      if (!c) return "";
+      var root = c[0], rest = c.slice(1), alt = 0;
+      if (rest[0] === "b") { alt = -1; rest = rest.slice(1); }
+      var pc = mod12(PC[root] + alt + ORIG + shift + DOFF);
+      return (key.flat ? NF : NS)[pc] + rest;
+    }
+
+    /* ---------- fingering choice: cheapest path through the melody (looks at previous and next note) ---------- */
+    function trans(a, b) {
+      var c = 0, i;
+      for (i = 0; i < a.h.length; i++) if (a.h[i] !== b.h[i]) c++;
+      var ax = {}, bx = {};
+      a.x.forEach(function (k) { ax[k] = 1; }); b.x.forEach(function (k) { bx[k] = 1; });
+      a.x.forEach(function (k) { if (!bx[k]) c++; }); b.x.forEach(function (k) { if (!ax[k]) c++; });
+      a.x.forEach(function (k) { b.x.forEach(function (k2) { if (k !== k2 && FINGER[k] && FINGER[k] === FINGER[k2]) c += 3; }); });
+      return c;
+    }
+    var overrides = st.alts || {};
+    var NOPT = {}, CHOICE = {}, AUTO = {};
+    var seq = [];
+    NOTES.forEach(function (n, i) {
+      if (n.r) { seq.push(null); return; }
+      if (n.cont) return;
+      var w = n.m + shift + I.off;
+      if (w < I.lo || w > I.ext) { seq.push(null); return; }
+      var op = options(w);
+      if (!op.length) { seq.push(null); return; }
+      NOPT[i] = op; seq.push(i);
+    });
+    function solve(useOverrides) {
+      var res = {}, run = [];
+      function flush() {
+        if (!run.length) return;
+        var cost = [], back = [];
+        run.forEach(function (ni, k) {
+          var op = NOPT[ni], prevOp = k ? NOPT[run[k - 1]] : null;
+          cost[k] = []; back[k] = [];
+          op.forEach(function (o, j) {
+            var fixed = useOverrides && overrides[ni] != null && overrides[ni] < op.length;
+            if (fixed && overrides[ni] !== j) { cost[k][j] = 1e9; return; }
+            var pen = o.p;
+            if (o.x.indexOf("bis") >= 0) {
+              [run[k - 1], run[k + 1]].forEach(function (nb) { if (nb != null && mod12(NOTES[nb].m + shift + I.off) === 11) pen += 2; });
+            }
+            if (!k) { cost[k][j] = pen; back[k][j] = -1; return; }
+            var best = 1e12, bj = 0;
+            prevOp.forEach(function (po, pj) { var c = cost[k - 1][pj] + trans(po, o); if (c < best) { best = c; bj = pj; } });
+            cost[k][j] = best + pen; back[k][j] = bj;
+          });
+        });
+        var last = run.length - 1, bj = 0;
+        cost[last].forEach(function (c, j) { if (c < cost[last][bj]) bj = j; });
+        for (var k = last; k >= 0; k--) { res[run[k]] = bj; bj = back[k][bj]; }
+        run = [];
+      }
+      seq.forEach(function (ni) { if (ni == null) flush(); else run.push(ni); });
+      flush();
+      return res;
+    }
+    AUTO = solve(false);
+    CHOICE = solve(true);
+    var openNote = st.open != null && NOPT[st.open] && NOPT[st.open].length > 1 ? st.open : null;
+    var manualCount = Object.keys(overrides).filter(function (k) { return NOPT[k] && overrides[k] !== AUTO[k] && overrides[k] < NOPT[k].length; }).length;
+    var altCount = Object.keys(NOPT).filter(function (k) { return NOPT[k].length > 1; }).length;
+
+    function chartMarks(f, cx, top, out) {
+      var full = chartStyle === "full";
+      function m(cls, x, y, w, h) { out.push({ cls: "mk " + cls, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, w: w, h: h, text: "" }); }
+      LAY.forEach(function (h, hi) {
+        var v = f.h[hi], sz = h[2];
+        if (hi === 0 && I.kind === "sax" && full) m("ho pill" + (v === 1 ? " on" : ""), cx + h[0] - 4, top + h[1] + 1, 8, 4);
+        else if (h[3]) {
+          m("ho" + (v >= 0.5 ? " on" : ""), cx + h[0] - 5.5, top + h[1], 7, 7);
+          m("ho" + (v === 1 ? " on" : ""), cx + h[0] + 2, top + h[1] + 1.5, 4.5, 4.5);
+        } else m("ho" + (v === 1 ? " on" : v === 0.5 ? " half" : ""), cx + h[0] - sz / 2, top + h[1], sz, sz);
+      });
+      if (SATS[I.kind]) {
+        var used = {}, clusters = {};
+        (f.x || []).forEach(function (id) { used[id] = true; clusters[SATS[I.kind][id][2]] = true; });
+        Object.keys(SATS[I.kind]).forEach(function (id) {
+          var s = SATS[I.kind][id], on = !!used[id];
+          if (!full && !clusters[s[2]]) return;
+          var wh = full ? SHAPE[s[2]] : [5, 5];
+          m("ho" + (on ? " on" : " gh") + (wh[0] !== wh[1] ? " pill" : ""), cx + s[0] - wh[0] / 2, top + s[1] - wh[1] / 2, wh[0], wh[1]);
+        });
+      }
+    }
+
+    var noteX = {};
+    /* ---------- lyric & chord edits (chords stored in concert pitch so they follow any transposition) ---------- */
+    var LYR = st.lyr || {}, CHD = st.chd || {};
+    var mode = st.mode || "view";
+    var lyricMode = mode === "lyrics", chordMode = mode === "chords", editMode = lyricMode || chordMode, noteMode = mode === "notes";
+    var supExt = st.supExt !== false;
+    var selNote = (editMode || noteMode) && st.sel != null && NOTES[st.sel] ? st.sel : null;
+    var TK = ORIG + shift + DOFF;
+    var RPC = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+    function parseChord(txt) {
+      var m = /^([A-Ga-g])([#♯b♭]?)(.*)$/.exec(txt.trim());
+      if (!m) return null;
+      var pc = RPC[m[1].toUpperCase()] + (m[2] === "#" || m[2] === "♯" ? 1 : m[2] ? -1 : 0);
+      var rest = m[3], bass = null, sm = /^(.*)\/([A-Ga-g])([#♯b♭]?)$/.exec(rest);
+      if (sm) { rest = sm[1]; bass = RPC[sm[2].toUpperCase()] + (sm[3] === "#" || sm[3] === "♯" ? 1 : sm[3] ? -1 : 0); }
+      return { pc: pc, rest: rest, bass: bass };
+    }
+    function chordText(ni) {
+      var n = NOTES[ni], ov = CHD[ni];
+      if (ov === undefined) return transChord(n.c);
+      if (!ov.raw) return "";
+      if (ov.tk === TK || !ov.ok) return ov.ok ? prettyChord(ov.raw) : ov.raw;
+      var names = key.flat ? NF : NS;
+      return names[mod12(ov.pc + TK)] + ov.rest + (ov.bass != null ? "/" + names[mod12(ov.bass + TK)] : "");
+    }
+    function prettyChord(txt) {
+      return String(txt || "").replace(/^([A-Ga-g])b/, "$1♭").replace(/^([A-Ga-g])#/, "$1♯")
+        .replace(/\/([A-Ga-g])b$/, "/$1♭").replace(/\/([A-Ga-g])#$/, "/$1♯")
+        .replace(/^([a-g])/, function (c) { return c.toUpperCase(); });
+    }
+    function chordParts(txt, bad) {
+      var t = prettyChord(txt);
+      if (bad) return { root: t, qual: "", ext: "", bass: "" };
+      var m = /^([A-G][♭♯]?)(.*?)(?:\/([A-G][♭♯]?))?$/.exec(t);
+      if (!m) return { root: t, qual: "", ext: "", bass: "" };
+      var q = /^(m(?!aj)|min|-|°|dim|aug|\+|ø)?(.*)$/.exec(m[2]);
+      var ext = (q[2] || "").replace(/b(\d)/g, "♭$1").replace(/#(\d)/g, "♯$1");
+      return { root: m[1], qual: q[1] || "", ext: ext, bass: m[3] ? "/" + m[3] : "" };
+    }
+    function chordBad(ni) { var ov = CHD[ni]; return !!(ov && ov.raw && !ov.ok); }
+    function lyricText(ni) { return LYR[ni] !== undefined ? LYR[ni] : NOTES[ni].l; }
+    function setChord(ni, txt) {
+      var p = parseChord(txt), c = Object.assign({}, CHD);
+      c[ni] = { raw: txt, ok: !!p, tk: TK, pc: p ? mod12(p.pc - TK) : 0, rest: p ? p.rest : "", bass: p && p.bass != null ? mod12(p.bass - TK) : null };
+      commit({ chd: c }, "chd" + ni);
+    }
+    function setLyric(ni, txt) { var l = Object.assign({}, LYR); l[ni] = txt; commit({ lyr: l }, "lyr" + ni); }
+    var CHORD_SYMS = [["♭","flat"],["♯","sharp"],["m","minor"],["°","diminished"],["ø","half-diminished"],["Δ","major seventh","Δ7"],
+      ["7","seventh"],["sus4","suspended fourth"],["add9","added ninth"],["6","sixth"],["/","slash: bass note"],["( )","brackets for alterations","()"]];
+    var LYRIC_SYMS = [["‿","two syllables on one note"],["’","apostrophe"],["-","hyphen: syllable continues"],["„","opening quote"],["“","closing quote"],["…","ellipsis"]];
+    function insertSym(which, ni, sym, current) {
+      var el = which === "c" ? self._chordEl : self._lyricEl;
+      var v = String(current || ""), a = v.length, b = v.length;
+      if (el && el.selectionStart != null) { a = el.selectionStart; b = el.selectionEnd; }
+      var nv = v.slice(0, a) + sym + v.slice(b), caret = a + (sym === "()" ? 1 : sym.length);
+      if (which === "c") setChord(ni, nv); else setLyric(ni, nv);
+      setTimeout(function () { if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) {} } }, 0);
+    }
+    function stepNote(d) {
+      if (selNote == null) return;
+      var i = selNote + d;
+      while (NOTES[i] && lyricMode && (NOTES[i].cont || NOTES[i].r) && d !== 0) i += d;
+      if (NOTES[i]) commit({ sel: i });
+    }
+    /* ---------- note editing operations (each one is a single undo step) ---------- */
+    var DUR_OK = [1, 2, 3, 4, 6, 8];
+    var DUR_NAME = { 1: "eighth", 2: "quarter", 3: "dotted quarter", 4: "half", 6: "dotted half", 8: "whole" };
+    function decomp(n) { var out = []; [8, 6, 4, 3, 2, 1].forEach(function (d) { while (n >= d) { out.push(d); n -= d; } }); return out; }
+    function cloneBars() {
+      var gi = 0;
+      return BARS.map(function (b) { return { cap: b.cap, rs: b.rs, re: b.re, volta: b.volta, ev: b.ev.map(function (e) { var c = Object.assign({}, e); c._o = gi++; return c; }) }; });
+    }
+    function finish(nb, selOld, selNewFlag) {
+      var flat = [];
+      nb.forEach(function (b) { b.ev.forEach(function (e) { flat.push(e); }); });
+      flat.forEach(function (e, i) { var nx = flat[i + 1]; if (e.tie && (e.r || !nx || nx.r || nx.m !== e.m)) e.tie = false; });
+      var map = {}, newSel = null;
+      flat.forEach(function (e, i) { if (e._o != null) map[e._o] = i; if (e._sel) newSel = i; });
+      if (newSel == null && selOld != null) newSel = map[selOld] != null ? map[selOld] : Math.min(selOld, flat.length - 1);
+      flat.forEach(function (e) { delete e._o; delete e._sel; });
+      function remap(o) { var r = {}; Object.keys(o || {}).forEach(function (k) { if (map[k] != null) r[map[k]] = o[k]; }); return r; }
+      killPlayer();
+      commit({ playing: false, playIdx: null, score: nb, shift: shift, lyr: remap(LYR), chd: remap(CHD), alts: remap(st.alts), sel: newSel, open: null });
+    }
+    function at(nb, i) { var n = NOTES[i]; return { bar: nb[n.mi], k: n.k, e: nb[n.mi].ev[n.k], mi: n.mi }; }
+    function prevPitch(i) { for (var j = i; j >= 0; j--) if (!NOTES[j].r) return NOTES[j].m; for (var j2 = i; j2 < NOTES.length; j2++) if (!NOTES[j2].r) return NOTES[j2].m; return 65 + ORIG + 12; }
+    function opPitch(i, m) { var nb = cloneBars(), a = at(nb, i); a.e.m = m; a.e.r = false; finish(nb, i); }
+    function opShift(i, dv) { var n = NOTES[i]; opPitch(i, (n.r ? prevPitch(i) : n.m) + (n.r ? 0 : dv)); }
+    function opRest(i) { var nb = cloneBars(), a = at(nb, i); if (a.e.r) { a.e.r = false; a.e.m = prevPitch(i); } else { a.e.r = true; a.e.tie = false; } finish(nb, i); }
+    function opDur(i, d) {
+      var nb = cloneBars(), a = at(nb, i), t = 0;
+      for (var q = 0; q < a.k; q++) t += a.bar.ev[q].d;
+      var room = a.bar.cap - t;
+      if (d > room) { var fit = DUR_OK.filter(function (x) { return x <= room; }); d = fit[fit.length - 1]; }
+      var old = a.e.d;
+      if (!d || d === old) return;
+      a.e.d = d;
+      if (d < old) {
+        var rests = decomp(old - d).map(function (pd) { return { r: true, d: pd, m: a.e.m }; });
+        Array.prototype.splice.apply(a.bar.ev, [a.k + 1, 0].concat(rests));
+      } else {
+        var extra = d - old, j = a.k + 1;
+        while (extra > 0 && j < a.bar.ev.length) {
+          var nx = a.bar.ev[j];
+          if (nx.d <= extra) { extra -= nx.d; a.bar.ev.splice(j, 1); }
+          else {
+            var rem = nx.d - extra; extra = 0;
+            if (DUR_OK.indexOf(rem) >= 0) nx.d = rem;
+            else { var parts = decomp(rem).map(function (pd, pi) { return pi === 0 && !nx.r ? Object.assign({}, nx, { d: pd, tie: false, _o: nx._o }) : { r: true, d: pd, m: nx.m }; }); Array.prototype.splice.apply(a.bar.ev, [j, 1].concat(parts)); }
+          }
+        }
+      }
+      finish(nb, i);
+    }
+    function opDot(i) { var d = NOTES[i].d, nd = { 2: 3, 3: 2, 4: 6, 6: 4 }[d]; if (nd) opDur(i, nd); }
+    function canTie(i) { var n = NOTES[i], nx = NOTES[i + 1]; return !!(n && nx && !n.r && !nx.r && nx.m === n.m); }
+    function opTie(i) { if (!canTie(i) && !NOTES[i].tie) return; var nb = cloneBars(), a = at(nb, i); a.e.tie = !a.e.tie; finish(nb, i); }
+    function opAddBar(i) {
+      var nb = cloneBars(), mi = NOTES[i].mi;
+      nb.splice(mi + 1, 0, { cap: 8, rs: false, re: false, volta: "", ev: [{ r: true, d: 8, m: prevPitch(i), _sel: true }] });
+      finish(nb, i);
+    }
+    function opRemoveBar(i) {
+      if (BARS.length < 2) return;
+      var nb = cloneBars(), mi = NOTES[i].mi;
+      nb.splice(mi, 1);
+      finish(nb, Math.max(0, i - NOTES[i].k - 1));
+    }
+    function opLetter(i, li) {
+      var pcw = [0, 2, 4, 5, 7, 9, 11][li] + key.alt[li];
+      var w0 = (NOTES[i].r ? prevPitch(i) : NOTES[i].m) + shift + I.off, best = null;
+      function cost(w) { return Math.abs(w - w0) + (w < I.lo || w > I.hi ? 100 : 0); }
+      for (var w = w0 - 11; w <= w0 + 11; w++) if (mod12(w) === mod12(pcw) && (best == null || cost(w) < cost(best))) best = w;
+      opPitch(i, best - shift - I.off);
+    }
+    function selectEv(d) { if (selNote == null) return; var j = selNote + d; if (NOTES[j]) commit({ sel: j }); }
+    /* ---------- playback (Web Audio): plays the sheet at sounding pitch, with repeats ---------- */
+    var tempo = st.tempo || 100;
+    var TIMBRE = { xaph: ["sawtooth", 1500], sax: ["sawtooth", 2200], cl: ["square", 1500], fl: ["sine", 4000], rec: ["triangle", 3000] };
+    function killPlayer() {
+      var P = self._player;
+      if (P) { P.timers.forEach(clearTimeout); try { if (P.ctx && P.ctx.close) P.ctx.close(); } catch (e) {} }
+      self._player = null;
+    }
+    function stopPlay() { killPlayer(); self.setState({ playing: false, playIdx: null }); }
+    function playOrder() {
+      var order = [], done = {}, b = 0, guard = 0, lastRs = 0, second = false;
+      while (b < BARS.length && guard++ < 1000) {
+        var B = BARS[b];
+        if (B.rs) lastRs = b;
+        if (second && B.volta === "1.") { b++; continue; }
+        order.push(b);
+        if (B.re && !done[b]) { done[b] = true; second = true; b = lastRs; continue; }
+        b++;
+      }
+      return order;
+    }
+    function startPlay(fromIdx) {
+      killPlayer();
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      var ctx = new AC(), P = { ctx: ctx, timers: [] };
+      self._player = P;
+      var eighth = 30 / tempo, T0 = ctx.currentTime + 0.12, t = 0, started = fromIdx == null;
+      var tim = TIMBRE[I.kind] || TIMBRE.xaph;
+      var byBar = {};
+      NOTES.forEach(function (n, i) { (byBar[n.mi] = byBar[n.mi] || []).push(i); });
+      playOrder().forEach(function (b) {
+        (byBar[b] || []).forEach(function (i) {
+          var n = NOTES[i];
+          if (!started) { if (i !== fromIdx) return; started = true; }
+          var at = t;
+          P.timers.push(setTimeout(function () { if (self._player === P) self.setState({ playIdx: i }); }, Math.max(0, (T0 - ctx.currentTime + at) * 1000)));
+          if (!n.r && !n.cont) {
+            var dur = n.d, j = i;
+            while (NOTES[j] && NOTES[j].tie && NOTES[j + 1]) { j++; dur += NOTES[j].d; }
+            var t1 = T0 + at, t2 = T0 + at + dur * eighth;
+            var o = ctx.createOscillator(), g = ctx.createGain(), fl = ctx.createBiquadFilter();
+            o.type = tim[0]; o.frequency.value = 440 * Math.pow(2, (n.m + shift - 69) / 12);
+            fl.type = "lowpass"; fl.frequency.value = tim[1];
+            g.gain.setValueAtTime(0, t1); g.gain.linearRampToValueAtTime(0.22, t1 + 0.025);
+            g.gain.setValueAtTime(0.22, Math.max(t1 + 0.03, t2 - 0.06)); g.gain.linearRampToValueAtTime(0, t2);
+            o.connect(fl); fl.connect(g); g.connect(ctx.destination);
+            o.start(t1); o.stop(t2 + 0.05);
+          }
+          t += n.d * eighth;
+        });
+      });
+      P.timers.push(setTimeout(function () { if (self._player === P) stopPlay(); }, (T0 - ctx.currentTime + t) * 1000 + 300));
+      self.setState({ playing: true });
+    }
+    /* ---------- save / load: browser library (localStorage) and JSON files ---------- */
+    var LIB_KEY = "fingerscore.library.v1";
+    function readLib() { try { return JSON.parse(window.localStorage.getItem(LIB_KEY) || "[]") || []; } catch (e) { return null; } }
+    function writeLib(list) { try { window.localStorage.setItem(LIB_KEY, JSON.stringify(list)); return true; } catch (e) { return false; } }
+    var LIBRARY = readLib();
+    var storageOk = LIBRARY !== null;
+    if (!LIBRARY) LIBRARY = [];
+    function currentDoc() { var d = snap(); Object.keys(d).forEach(function (k) { if (d[k] === undefined) delete d[k]; }); return d; }
+    function docTitle() { return (st.title != null ? st.title : "The Water Is Wide") || "Untitled sheet"; }
+    function packFile() { return { app: "fingerscore", format: 1, savedAt: new Date().toISOString(), title: docTitle(), doc: currentDoc() }; }
+    function applyDoc(doc, docId, origin) {
+      killPlayer();
+      var patch = { origin: origin || null, docId: docId || null, menu: false, sel: null, mode: "view", playing: false, playIdx: null, open: null, savedDoc: doc };
+      DOCK.forEach(function (k) { patch[k] = doc[k]; });
+      commit(patch);
+    }
+    function saveToBrowser() {
+      var list = readLib();
+      if (!list) { self.setState({ libMsg: "This browser blocks local storage. Use “Download JSON” instead." }); return; }
+      var id = st.docId || ("s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+      var doc = currentDoc();
+      var entry = { id: id, title: docTitle(), inst: I.name, savedAt: new Date().toISOString(), doc: doc };
+      var i = list.findIndex(function (e) { return e.id === id; });
+      if (i >= 0) list[i] = entry; else list.unshift(entry);
+      if (!writeLib(list)) { self.setState({ libMsg: "Couldn’t save — the browser storage may be full." }); return; }
+      self.setState({ docId: id, savedDoc: doc, libMsg: "" });
+    }
+    function deleteEntry(id) { var list = (readLib() || []).filter(function (e) { return e.id !== id; }); writeLib(list); self.setState({ libRev: (st.libRev || 0) + 1, docId: st.docId === id ? null : st.docId }); }
+    function slug(s) { return (s || "sheet").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "sheet"; }
+    function downloadJson() {
+      var text = JSON.stringify(packFile(), null, 2), name = slug(docTitle()) + ".fingerscore.json";
+      function fallback() {
+        try {
+          var url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+          var a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+        } catch (e) { self.setState({ libMsg: "Download isn’t available here." }); }
+      }
+      try {
+        if (window.claude && window.claude.use) {
+          window.claude.use("downloads").then(function (dl) { if (dl) dl.save({ filename: name, data: text }).catch(function () {}); else fallback(); }, fallback);
+        } else fallback();
+      } catch (e) { fallback(); }
+    }
+    function importFile(e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var data = JSON.parse(String(reader.result));
+          if (!data || data.app !== "fingerscore" || !data.doc) throw new Error("not ours");
+          applyDoc(data.doc, null, { kind: "file", name: file.name });
+          self.setState({ libMsg: "Opened “" + (data.title || file.name) + "”." });
+        } catch (err) { self.setState({ libMsg: "That file isn’t a fingerscore sheet (.json)." }); }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    }
+    function canon(d) { var o = {}; DOCK.forEach(function (k) { if (d && d[k] !== undefined) o[k] = d[k]; }); return JSON.stringify(o); }
+    var dirty = st.savedDoc != null ? canon(st.savedDoc) !== canon(currentDoc()) : null;
+    function ago(iso) {
+      var d = new Date(iso), s = (Date.now() - d.getTime()) / 1000;
+      if (s < 60) return "just now"; if (s < 3600) return Math.round(s / 60) + " min ago";
+      if (s < 86400) return Math.round(s / 3600) + " h ago"; return d.toLocaleDateString();
+    }
+    var editedLyrics = Object.keys(LYR).filter(function (k) { return LYR[k] !== NOTES[k].l; }).length;
+    var editedChords = Object.keys(CHD).filter(function (k) { return chordText(k) !== transChord(NOTES[k].c); }).length;
+
+    var systems = GROUPS.map(function (g, si) {
+      var marks = [], flats = [], sharps = [], nats = [], altBtns = [], hits = [], chords = [], r1s = [], r2s = [], r4s = [], r8s = [], ne = { has: false, x: 0, y: 0, d1: {}, d2: {}, d4: {}, d8: {} }, ed = { has: false, x: 0, y: 0, title: "", chord: "", lyric: "", chordBad: false }, pop = { has: false, x: 0, y: 0, w: 0, title: "", opts: [] };
+      var header = 34 + nsig * 9 + (si === 0 ? 26 : 0) + 8;
+      var mw = (W - header) / 4;
+      var sysW = Math.round(header + g.length * mw);
+      function mk(cls, x, y, w, h, text) { marks.push({ cls: "mk " + cls, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, w: w, h: h, text: text || "" }); }
+      function acc(a, x, p, fill) {
+        var y = yOf(p);
+        if (a === -1) flats.push({ x: x, y: y - 18, fill: fill });
+        else if (a === 1) sharps.push({ x: x, y: y - 16, fill: fill });
+        else nats.push({ x: x, y: y - 15, fill: fill });
+      }
+      for (var li = 0; li < 5; li++) mk("ln", 0, 75 + li * 10, sysW, 1);
+      if (K8 > 0) mk("c8", 12, 133, 14, 12, "8");
+      if (K8 < 0) mk("c8", 15, 52, 14, 12, "8");
+      for (var ki = 0; ki < nsig; ki++) {
+        if (key.sig > 0) acc(1, 34 + ki * 9, SH_P[ki], "#15171C"); else acc(-1, 34 + ki * 9, FL_P[ki], "#15171C");
+      }
+      if (si === 0) { mk("ts", 34 + nsig * 9 + 4, 75, 18, 20, "4"); mk("ts", 34 + nsig * 9 + 4, 95, 18, 20, "4"); }
+      else mk("bn", 0, 54, 30, 14, String(g[0]));
+      mk("br", 0, 75, 1, 41);
+
+      g.forEach(function (mi, j) {
+        var x0 = header + j * mw, x1 = x0 + mw;
+        var BAR = BARS[mi], lastBar = mi === BARS.length - 1;
+        var pad = BAR.rs ? 26 : 16;
+        if (BAR.rs) { mk("br", x0 - 1, 75, 4, 41); mk("br", x0 + 6, 75, 1, 41); mk("rd", x0 + 10, 88, 4, 4); mk("rd", x0 + 10, 98, 4, 4); }
+        if (BAR.re) { mk("rd", x1 - 15, 88, 4, 4); mk("rd", x1 - 15, 98, 4, 4); mk("br", x1 - 9, 75, 1, 41); mk("br", x1 - 4, 75, 4, 41); }
+        else if (lastBar) { mk("br", x1 - 9, 75, 1, 41); mk("br", x1 - 4, 75, 4, 41); }
+        else mk("br", x1 - 1, 75, 1, 41);
+        if (BAR.volta) mk("vo", x0 + 2, 46, mw - 12, 14, BAR.volta);
+
+        var mnotes = NOTES.filter(function (n) { return n.mi === mi; });
+        var len = MLEN[mi];
+        var pos = mnotes.map(function (n) {
+          if (n.r) {
+            var rx = (n.t === 0 && n.d === len) ? x0 + mw / 2 : x0 + pad + n.t * (mw - pad - 14) / len;
+            var orr = { n: n, rest: true, w: null, p: 4, x: rx, y: 95, status: "", up: true, si: si, sysEnd: sysW };
+            noteX[NOTES.indexOf(n)] = orr;
+            return orr;
+          }
+          var w = n.m + shift + I.off;
+          var dp = concert ? w - I.off + 12 * K8 : w;
+          var sp = (key.flat ? LFL : LSH)[mod12(dp)];
+          var oct = Math.floor(dp / 12) - 1;
+          var p = sp[0] + 7 * oct - 30;
+          var x = x0 + pad + n.t * (mw - pad - 14) / len;
+          var status = (w < I.lo || w > I.ext) ? "bad" : (w > I.hi ? "warn" : "");
+          var o = { n: n, w: w, p: p, x: x, y: yOf(p), letter: sp[0], a: sp[1], status: status, up: p < 4, si: si, sysEnd: sysW };
+          noteX[NOTES.indexOf(n)] = o;
+          return o;
+        });
+
+        var beamed = {};
+        for (var bi = 0; bi < pos.length - 1; bi++) {
+          var A = pos[bi], B = pos[bi + 1];
+          if (!A.rest && !B.rest && A.n.d === 1 && B.n.d === 1 && A.n.t % 2 === 0) {
+            beamed[bi] = beamed[bi + 1] = true;
+            var up = (A.p + B.p) / 2 < 4;
+            if (up) {
+              var tip = Math.min(A.y, B.y) - 30;
+              mk("st", A.x + 4.6, tip, 1.4, A.y - tip); mk("st", B.x + 4.6, tip, 1.4, B.y - tip);
+              mk("bm", A.x + 4.6, tip, B.x - A.x + 1.4, 4);
+            } else {
+              var tip2 = Math.max(A.y, B.y) + 30;
+              mk("st", A.x - 6, A.y, 1.4, tip2 - A.y); mk("st", B.x - 6, B.y, 1.4, tip2 - B.y);
+              mk("bm", A.x - 6, tip2 - 4, B.x - A.x + 1.4, 4);
+            }
+          }
+        }
+
+        pos.forEach(function (o, k) {
+          var n = o.n, open = n.d >= 4, hw = n.d === 8 ? 14 : 12, hh = n.d === 8 ? 10 : 9;
+          if (o.rest) {
+            var rl = { 8: r1s, 6: r2s, 4: r2s, 3: r4s, 2: r4s, 1: r8s }[n.d];
+            rl.push({ x: Math.round(o.x - 8) });
+            if (n.d === 3 || n.d === 6) mk("dt", o.x + 10, 88, 4, 4);
+          } else {
+          var col = o.status === "bad" ? "#B91C1C" : o.status === "warn" ? "#B45309" : "#15171C";
+          if (o.p <= -2) for (var q = -2; q >= o.p; q -= 2) mk("lg", o.x - 10, yOf(q), 20, 1.3);
+          if (o.p >= 10) for (var q2 = 10; q2 <= o.p; q2 += 2) mk("lg", o.x - 10, yOf(q2), 20, 1.3);
+          mk("nh" + (open ? " open" : "") + (o.status ? " " + o.status : ""), o.x - hw / 2, o.y - hh / 2, hw, hh);
+          if (n.d < 8 && !beamed[k]) {
+            if (o.up) mk("st", o.x + 4.6, o.y - 33, 1.4, 33); else mk("st", o.x - 6, o.y, 1.4, 33);
+            if (n.d === 1) { if (o.up) mk("fl", o.x + 5, o.y - 33, 8, 15); else mk("fl dn", o.x - 5.5, o.y + 18, 8, 15); }
+          }
+          if (n.d === 3 || n.d === 6) mk("dt", o.x + 10, (o.p % 2 === 0 ? o.y - 5 : o.y) - 2, 4, 4);
+          if (o.a !== key.alt[o.letter] && !n.cont) acc(o.a, o.x - 19, o.p, col);
+          }
+          if (st.playing && st.playIdx === NOTES.indexOf(n)) mk("pl", o.x - 12, 0, 24, 150);
+          var nIdx = NOTES.indexOf(n), lyT = o.rest ? "" : lyricText(nIdx), chT = chordText(nIdx);
+          if (showL && lyT) mk("ly", o.x - 35, 22, 70, 16, lyT);
+          if (showC && chT) {
+            var cp = chordParts(chT, chordBad(nIdx));
+            chords.push({ x: Math.round(o.x - 40), root: cp.root, qual: cp.qual, bass: cp.bass,
+              extUp: supExt ? cp.ext : "", extFlat: supExt ? "" : cp.ext, cls: "mk ch" + (chordBad(nIdx) ? " bad" : "") });
+          }
+          if (noteMode) {
+            var isSelN = selNote === nIdx;
+            hits.push({ x: Math.round(o.x - 11), label: "Select " + (n.r ? "rest" : "note") + ", " + (n.mi ? "bar " + n.mi : "pickup") + ", position " + (k + 1),
+              style: isSelN ? "background: rgba(14,110,104,0.14); outline: 2px solid #0E6E68" : "",
+              pick: function () { commit({ sel: nIdx }); } });
+            if (isSelN) {
+              var room = MLEN[n.mi] - n.t;
+              var dstyle = function (d) { return n.d === d || n.d === (d === 2 ? 3 : d === 4 ? 6 : -1) ? "background: #15171C; color: #FFFFFF; border-color: #15171C" : ""; };
+              var dmk = function (d) { return { style: dstyle(d), off: d > room, pick: function () { opDur(nIdx, d); } }; };
+              ne = { has: true, x: Math.round(Math.max(0, Math.min(sysW - 360, o.x - 180))), y: 136,
+                title: (n.mi ? "Bar " + n.mi : "Pickup") + " · " + (n.r ? "rest" : dname(o.w, key.flat)) + " · " + DUR_NAME[n.d],
+                pitch: n.r ? "rest" : dname(o.w, key.flat),
+                up: function () { opShift(nIdx, 1); }, down: function () { opShift(nIdx, -1); },
+                octUp: function () { opShift(nIdx, 12); }, octDown: function () { opShift(nIdx, -12); },
+                d1: dmk(1), d2: dmk(2), d4: dmk(4), d8: dmk(8),
+                dot: function () { opDot(nIdx); }, dotOff: !({ 2: 1, 3: 1, 4: 1, 6: 1 })[n.d] || (n.d === 2 && room < 3) || (n.d === 4 && room < 6),
+                dotStyle: n.d === 3 || n.d === 6 ? "background: #15171C; color: #FFFFFF; border-color: #15171C" : "",
+                tie: function () { opTie(nIdx); }, tieOff: !canTie(nIdx) && !n.tie, tieStyle: n.tie ? "background: #15171C; color: #FFFFFF; border-color: #15171C" : "",
+                rest: function () { opRest(nIdx); }, restLabel: n.r ? "Turn into note" : "Turn into rest",
+                addBar: function () { opAddBar(nIdx); }, removeBar: function () { opRemoveBar(nIdx); }, noRemove: BARS.length < 2 };
+            }
+          }
+          if (editMode && (chordMode || !o.rest)) {
+            var isSel = selNote === nIdx;
+            hits.push({ x: Math.round(o.x - 11), label: (chordMode ? "Edit chord, " : "Edit lyric, ") + (n.mi ? "bar " + n.mi : "pickup") + ", note " + (k + 1),
+              style: isSel ? "background: rgba(14,110,104,0.14); outline: 2px solid #0E6E68" : "",
+              pick: function () { commit({ sel: nIdx }); } });
+            if (isSel) {
+              ed = { has: true, x: Math.round(Math.max(0, Math.min(sysW - 360, o.x - 180))), y: 136,
+                title: (n.mi ? "Bar " + n.mi : "Pickup") + " · " + dname(o.w, key.flat) + (n.cont ? " (tied)" : ""),
+                chord: chT, lyric: lyT, chordBad: chordBad(nIdx), isChord: chordMode, isLyric: lyricMode, label: chordMode ? "Edit chord" : "Edit lyric",
+                onChord: function (e) { setChord(nIdx, e.target.value); },
+                onLyric: function (e) { setLyric(nIdx, e.target.value); },
+                chordSyms: CHORD_SYMS.map(function (s) { return { t: s[0], label: s[1], ins: function () { insertSym("c", nIdx, s[2] || s[0], chT); } }; }),
+                lyricSyms: LYRIC_SYMS.map(function (s) { return { t: s[0], label: s[1], ins: function () { insertSym("l", nIdx, s[2] || s[0], lyT); } }; }),
+                onKey: function (e) {
+                  if (e.key === "Enter" || (e.key === "Tab" && !e.shiftKey)) { e.preventDefault(); stepNote(1); }
+                  else if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); stepNote(-1); }
+                  else if (e.key === "Escape") { commit({ sel: null }); }
+                } };
+            }
+          }
+          if (showF && !n.cont && !o.rest) {
+            var ni = NOTES.indexOf(n);
+            var op = o.status === "bad" ? null : NOPT[ni];
+            if (op && op.length) {
+              var f = op[CHOICE[ni] || 0];
+              chartMarks(f, o.x, FY, marks);
+              if (op.length > 1) {
+                var manual = overrides[ni] != null && overrides[ni] !== AUTO[ni];
+                altBtns.push({ x: Math.round(o.x - 13), y: FY + 90, count: op.length, label: "Alternate fingerings for this note (" + op.length + ")",
+                  style: openNote === ni ? "background: #15171C; color: #FFFFFF; border-color: #15171C" : manual ? "background: #0E6E68; color: #FFFFFF; border-color: #0E6E68" : "background: #FFFFFF; color: #2A2D33; border-color: #C3C7CE",
+                  toggle: function () { commit({ open: openNote === ni ? null : ni }); } });
+              }
+              if (openNote === ni) {
+                var popW = op.length * 84 + 24;
+                var nm = dname(o.w, key.flat);
+                pop = { has: true, x: Math.round(Math.max(0, Math.min(sysW - popW, o.x - popW / 2))), y: si === GROUPS.length - 1 ? FY - 148 : FY + 112, w: popW,
+                  title: nm + " · bar " + n.mi,
+                  opts: op.map(function (alt, j) {
+                    var mm = []; chartMarks(alt, 42, 12, mm);
+                    var sel = (CHOICE[ni] || 0) === j;
+                    return { name: alt.n, marks: mm, auto: AUTO[ni] === j,
+                      style: sel ? "border: 2px solid #0E6E68; background: #F0FAF8" : "border: 1px solid #E2E4E8; background: #FFFFFF",
+                      pick: function () { var a = Object.assign({}, overrides); if (AUTO[ni] === j) delete a[ni]; else a[ni] = j; commit({ alts: a, open: null }); } };
+                  }) };
+              }
+            } else if (o.status === "bad") {
+              mk("nf", o.x - 13, FY, 26, 84, "!");
+            } else {
+              mk("nf" + (o.status === "warn" ? " warn" : " grey"), o.x - 13, FY, 26, 84, o.status === "warn" ? "ext" : "alt");
+            }
+          }
+        });
+      });
+      return { w: sysW, marks: marks, flats: flats, sharps: sharps, nats: nats, header: header, altBtns: altBtns, pop: pop, hits: hits, ed: ed, chords: chords, r1s: r1s, r2s: r2s, r4s: r4s, r8s: r8s, ne: ne };
+    });
+
+    NOTES.forEach(function (n, i) {
+      if (!n.tie || !NOTES[i + 1]) return;
+      var A = noteX[i], B = noteX[i + 1];
+      if (!A || !B || A.rest || B.rest) return;
+      var below2 = A.up;
+      var cls = "mk ti" + (below2 ? "" : " up");
+      var ty = below2 ? A.y + 5 : A.y - 12;
+      if (A.si === B.si) {
+        systems[A.si].marks.push({ cls: cls, x: A.x + 6, y: ty, w: Math.max(6, B.x - A.x - 12), h: 7, text: "" });
+      } else {
+        systems[A.si].marks.push({ cls: cls, x: A.x + 6, y: ty, w: Math.max(6, A.sysEnd - A.x - 8), h: 7, text: "" });
+        var ty2 = below2 ? B.y + 5 : B.y - 12;
+        systems[B.si].marks.push({ cls: cls, x: systems[B.si].header - 4, y: ty2, w: Math.max(6, B.x - systems[B.si].header - 2), h: 7, text: "" });
+      }
+    });
+
+    function jumpTo(pc, off) {
+      var bestS = null, bestScore = 1e12;
+      for (var s1 = -24; s1 <= 24; s1++) {
+        if (mod12(ORIG_TONIC + s1 + off) !== pc) continue;
+        var sc = evalShift(s1, I).score;
+        if (sc < bestScore) { bestScore = sc; bestS = s1; }
+      }
+      if (bestS != null) setShift(bestS);
+    }
+    function setShift(v) { commit({ shift: Math.max(-24, Math.min(24, v)), alts: {}, open: null }); }
+    var octs = Math.trunc(shift / 12), rem = shift - octs * 12;
+    var groups = ["Xaphoon", "Saxophone", "Clarinet", "Recorder"].map(function (gname) {
+      return { label: gname, items: INST_ORDER.filter(function (id) { return INST[id].group === gname; }).map(function (id) { return { id: id, name: INST[id].name }; }) };
+    });
+    var transposing = I.off % 12 !== 0;
+    return {
+      systems: systems,
+      noteCount: NOTES.filter(function (n) { return !n.cont && !n.r; }).length,
+      instGroups: groups, instId: instId, instName: I.name,
+      instShort: I.name.replace(/ \(.*\)/, ""),
+      isRecorder: I.kind === "rec",
+      fromImport: !st.origin, fromSaved: !!st.origin,
+      savedName: st.origin ? (st.origin.kind === "file" ? st.origin.name : (docTitle() || "Saved sheet")) : "",
+      savedMeta: st.origin ? (st.origin.kind === "file" ? "fingerscore sheet" : "saved in this browser") : "",
+      tempo: tempo,
+      saveNow: saveToBrowser,
+      saveStatus: st.libMsg ? st.libMsg : (dirty === null ? (storageOk ? "Not saved yet" : "") : dirty ? "Unsaved changes" : "Saved"),
+      menuOpen: !!st.menu,
+      toggleMenu: function () { self.setState({ menu: !st.menu, libMsg: "" }); },
+      lib: LIBRARY.map(function (e) {
+        return { title: e.title || "Untitled sheet", meta: (e.inst || "") + " · " + ago(e.savedAt),
+          style: e.id === st.docId ? "background: #F0FAF8" : "",
+          open: function () { applyDoc(e.doc || {}, e.id, { kind: "library", name: e.title }); },
+          remove: function () { deleteEntry(e.id); } };
+      }),
+      hasLib: LIBRARY.length > 0, noLib: LIBRARY.length === 0,
+      libCount: LIBRARY.length ? LIBRARY.length + (LIBRARY.length === 1 ? " sheet" : " sheets") : "",
+      downloadJson: downloadJson,
+      downloadPdf: function () { self.setState({ menu: false }); setTimeout(function () { try { window.print(); } catch (e) {} }, 50); },
+      importFile: importFile,
+      playing: !!st.playing, notPlaying: !st.playing,
+      playLabel: st.playing ? "Stop" : (selNote != null && (noteMode || editMode) ? "Play from selected" : "Play"),
+      togglePlay: function () { if (st.playing) stopPlay(); else startPlay(selNote != null && (noteMode || editMode) ? selNote : null); },
+      onTempo: function (e) { commit({ tempo: Number(e.target.value) }, "tempo"); },
+      editMode: editMode, noteMode: noteMode, isView: mode === "view",
+      viewStyle: mode === "view" ? "background: #FFFFFF; color: #15171C; box-shadow: 0 1px 3px rgba(20,22,28,0.15)" : "background: transparent; color: #4A505C",
+      notesStyle: noteMode ? "background: #FFFFFF; color: #15171C; box-shadow: 0 1px 3px rgba(20,22,28,0.15)" : "background: transparent; color: #4A505C",
+      lyricsStyle: lyricMode ? "background: #FFFFFF; color: #15171C; box-shadow: 0 1px 3px rgba(20,22,28,0.15)" : "background: transparent; color: #4A505C",
+      chordsStyle: chordMode ? "background: #FFFFFF; color: #15171C; box-shadow: 0 1px 3px rgba(20,22,28,0.15)" : "background: transparent; color: #4A505C",
+      lyricMode: lyricMode, chordMode: chordMode,
+      modeView: function () { commit({ mode: "view", sel: null, open: null }); },
+      modeNotes: function () { commit({ mode: "notes", sel: selNote != null ? selNote : 0, open: null }); },
+      modeLyrics: function () { commit({ mode: "lyrics", sel: selNote != null && !NOTES[selNote].r ? selNote : NOTES.findIndex(function (n) { return !n.cont && !n.r; }), open: null }); },
+      modeChords: function () { commit({ mode: "chords", sel: selNote != null ? selNote : 0, open: null }); },
+      undo: undo, redo: redo,
+      noUndo: !H.past.length, noRedo: !H.future.length,
+      undoOpacity: H.past.length ? 1 : 0.4, redoOpacity: H.future.length ? 1 : 0.4,
+      onKeys: function (e) {
+        var mod = e.metaKey || e.ctrlKey, k = (e.key || "").toLowerCase();
+        var tag = e.target && e.target.tagName;
+        if (noteMode && selNote != null && tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") {
+          var hk = true;
+          if (k === "arrowup") opShift(selNote, mod ? 12 : 1);
+          else if (k === "arrowdown") opShift(selNote, mod ? -12 : -1);
+          else if (k === "arrowleft") selectEv(-1);
+          else if (k === "arrowright") selectEv(1);
+          else if (!mod && { "3": 1, "4": 2, "5": 4, "6": 8 }[k]) opDur(selNote, { "3": 1, "4": 2, "5": 4, "6": 8 }[k]);
+          else if (!mod && k === ".") opDot(selNote);
+          else if (!mod && k === "r") opRest(selNote);
+          else if (!mod && k === "t") opTie(selNote);
+          else if (k === "delete" || k === "backspace") { if (!NOTES[selNote].r) opRest(selNote); }
+          else if (k === "escape") commit({ sel: null });
+          else if (!mod && "cdefgab".indexOf(k) >= 0 && k.length === 1) opLetter(selNote, "cdefgab".indexOf(k));
+          else hk = false;
+          if (hk) { e.preventDefault(); return; }
+        }
+        if (!mod) return;
+        if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+        else if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); redo(); }
+      },
+      sheetTitle: st.title != null ? st.title : "The Water Is Wide",
+      sheetSub: st.subtitle != null ? st.subtitle : "Traditional",
+      onTitle: function (e) { commit({ title: e.target.value }, "title"); },
+      onSub: function (e) { commit({ subtitle: e.target.value }, "subtitle"); },
+      chordRef: function (el) { self._chordEl = el; },
+      lyricRef: function (el) { self._lyricEl = el; },
+      keepFocus: function (e) { e.preventDefault(); },
+      supExt: supExt,
+      toggleSup: function () { commit({ supExt: !supExt }); },
+      editBtnStyle: editMode ? "border: 2px solid #0E6E68; background: #0E6E68; color: #FFFFFF" : "border: 1px solid #D5D8DE; background: #FFFFFF; color: #15171C",
+      editBtnLabel: editMode ? "Done editing" : "Edit lyrics & chords",
+      editHint: noteMode ? (selNote == null ? "Click a note or rest to change it." : "Use the panel or your keyboard · changes can be undone") : chordMode ? (selNote == null ? "Click any note to add or change its chord." : "Enter or Tab moves to the next note · Esc closes") : lyricMode ? (selNote == null ? "Click any note to edit its lyric." : "Enter or Tab moves to the next note · Esc closes") : "Change notes, lyrics or chords — everything can be undone.",
+      toggleEdit: function () { commit({ edit: !editMode, sel: editMode ? null : (NOTES.findIndex(function (n) { return !n.cont; })), open: null }); },
+      closeEditor: function () { commit({ sel: null }); },
+      prevNote: function () { stepNote(-1); },
+      nextNote: function () { stepNote(1); },
+      bulkText: st.bulk || "",
+      onBulk: function (e) { commit({ bulk: e.target.value }); },
+      bulkFrom: selNote != null ? ", starting at the selected note" : ", starting at the first note",
+      fillLyrics: function () {
+        var toks = [];
+        (st.bulk || "").split(/\s+/).forEach(function (w) {
+          if (!w) return;
+          var parts = w.split("-");
+          parts.forEach(function (p, i) { if (p || i < parts.length - 1) toks.push(i < parts.length - 1 ? p + "-" : p); });
+        });
+        var l = Object.assign({}, LYR), i = selNote != null ? selNote : 0;
+        toks.forEach(function (tk) {
+          while (NOTES[i] && (NOTES[i].cont || NOTES[i].r)) i++;
+          if (!NOTES[i]) return;
+          l[i] = tk === "_" ? "" : tk; i++;
+        });
+        commit({ lyr: l });
+      },
+      clearLyrics: function () { var l = {}; NOTES.forEach(function (n, i) { l[i] = ""; }); commit({ lyr: l }); },
+      clearChords: function () { var c = {}; NOTES.forEach(function (n, i) { c[i] = { raw: "", ok: true, tk: TK, pc: 0, rest: "", bass: null }; }); commit({ chd: c }); },
+      hasTextEdits: editedLyrics + editedChords > 0,
+      textEditSummary: "Edited: " + editedLyrics + (editedLyrics === 1 ? " lyric" : " lyrics") + ", " + editedChords + (editedChords === 1 ? " chord" : " chords"),
+      resetText: function () { commit({ lyr: {}, chd: {} }); },
+      hasAlts: altCount > 0 && showF,
+      altSummary: altCount + (altCount === 1 ? " note has" : " notes have") + " alternate fingerings" + (manualCount ? " · " + manualCount + " changed by you" : " · all on auto"),
+      hasManual: manualCount > 0,
+      resetAlts: function () { commit({ alts: {}, open: null }); },
+      hasChartStyle: I.kind === "sax" || I.kind === "cl" || I.kind === "fl",
+      compactStyle: chartStyle === "full" ? "border: 1px solid #D5D8DE; background: #FFFFFF; font-weight: 500" : "border: 2px solid #0E6E68; background: #F0FAF8; font-weight: 700",
+      fullStyle: chartStyle === "full" ? "border: 2px solid #0E6E68; background: #F0FAF8; font-weight: 700" : "border: 1px solid #D5D8DE; background: #FFFFFF; font-weight: 500",
+      pickCompact: function () { commit({ chartStyle: "compact" }); },
+      pickFull: function () { commit({ chartStyle: "full" }); },
+      baroqueStyle: german ? "border: 1px solid #D5D8DE; background: #FFFFFF; font-weight: 500" : "border: 2px solid #0E6E68; background: #F0FAF8; font-weight: 700",
+      germanStyle: german ? "border: 2px solid #0E6E68; background: #F0FAF8; font-weight: 700" : "border: 1px solid #D5D8DE; background: #FFFFFF; font-weight: 500",
+      pickBaroque: function () { commit({ german: false }); },
+      pickGerman: function () { commit({ german: true }); },
+      pickInst: function (e) {
+        var id = e && e.target ? e.target.value : e;
+        if (!INST[id]) return;
+        var b = bestFor(INST[id])[0];
+        commit({ inst: id, shift: b.s, alts: {}, open: null });
+      },
+      instNote: I.off === -12 ? "Written an octave below how it sounds." : I.kind === "rec" ? "Written at pitch." :
+        transposing ? "Transposing instrument: the sheet is written " + ({ 2: "a whole step", 9: "a major sixth", 5: "a perfect fourth" })[((I.off % 12) + 12) % 12] + " above concert pitch" + (I.off >= 12 ? " (plus " + Math.floor(I.off / 12) + " octave)" : "") + "." : "Non-transposing: written as it sounds.",
+      origKey: orig.k.name, origKeyShort: orig.k.name,
+      origRange: nName(orig.mn, orig.k.flat) + " – " + nName(orig.mx, orig.k.flat),
+      keyName: key.name, sigText: sigText(key.sig),
+      keyLabel: concert ? "Concert key" : (I.off !== 0 ? "Written key" : "Key"),
+      keyTonic: String(key.tonic),
+      pickKey: function (e) {
+        var pc = Number(e.target.value), bestS = null, bestScore = 1e12;
+        for (var s1 = -24; s1 <= 24; s1++) {
+          if (mod12(ORIG_TONIC + s1 + DOFF) !== pc) continue;
+          var sc = evalShift(s1, I).score;
+          if (sc < bestScore) { bestScore = sc; bestS = s1; }
+        }
+        if (bestS != null) setShift(bestS);
+      },
+      isTransposing: I.off % 12 !== 0, isNotTransposing: I.off % 12 === 0,
+      concertTonic: String(ev.sk.tonic), writtenTonic: String(ev.k.tonic),
+      pickConcertKey: function (e) { jumpTo(Number(e.target.value), 0); },
+      pickWrittenKey: function (e) { jumpTo(Number(e.target.value), I.off); },
+      intervalText: (function () {
+        var o = I.off, iv = { 2: "a whole step", 9: "a major sixth", 5: "a perfect fourth", 14: "a ninth (octave + whole step)", 21: "an octave + major sixth" }[o];
+        if (o === 0) return "sounds as written";
+        if (o === -12) return "sounds an octave higher than written";
+        return I.name.replace(/ \(.*\)/, "") + " in " + ({ 2: "B♭", 9: "E♭", 5: "G" })[o % 12] + ": you read " + iv + " higher than it sounds";
+      })(),
+      headerKeys: I.off % 12 !== 0 ? "you read " + ev.k.name + " · sounds " + ev.sk.name : ev.k.name,
+      suggestLine: (I.off % 12 !== 0 ? "sounds in " + ev.sk.name + ", you read " + ev.k.name : ev.k.name) + " (" + sLabel(shift) + " from the original " + orig.k.name + ").",
+      concert: concert,
+      writtenStyle: concert ? "border: 1px solid #D5D8DE; background: #FFFFFF; font-weight: 500" : "border: 2px solid #0E6E68; background: #F0FAF8; font-weight: 700",
+      concertStyle: concert ? "border: 2px solid #0E6E68; background: #F0FAF8; font-weight: 700" : "border: 1px solid #D5D8DE; background: #FFFFFF; font-weight: 500",
+      pickWritten: function () { commit({ concert: false }); },
+      pickConcert: function () { commit({ concert: true }); },
+      pitchNote: concert ? "Notes and chords as they sound" + (K8 > 0 ? " (8 under the clef: sounds an octave lower)" : K8 < 0 ? " (8 over the clef: sounds an octave higher)" : "") + ". Fingerings still for your " + I.name + "." : "Notes as you read them on your " + I.name + ".",
+      pitchMode: concert ? " · concert pitch" : (I.off !== 0 ? " · written pitch" : ""),
+      soundsLine: transposing ? (concert ? "Written for your instrument in " + wkey.name : "Sounds in " + ev.sk.name) : "",
+      hasSounds: transposing,
+      shiftLabel: sLabel(shift),
+      shiftSub: Math.abs(shift) >= 12 ? "semitones · " + (octs > 0 ? "+" : "") + octs + " oct " + (rem ? sLabel(rem) : "") : "semitones",
+      isSuggested: shift === best.s,
+      bestLabel: (concert ? best.sk.name : best.k.name) + " (" + sLabel(best.s) + ")",
+      suggestions: suggestions, rg: rg,
+      rangeText: "This song: " + dname(ev.mn, key.flat) + " – " + dname(ev.mx, key.flat) +
+        (ev.bad ? " · " + ev.bad + " unplayable" : ev.ext ? " · " + ev.ext + " extended" : " · all playable"),
+      hasBad: ev.bad > 0, hasExtOnly: ev.bad === 0 && ev.ext > 0,
+      badTitle: badTitle,
+      extTitle: ev.ext + (ev.ext === 1 ? " note needs" : " notes need") + " extended high fingerings",
+      upperNote: ev.upper === 0 ? ", low register only" : "",
+      legend: LEGEND[I.kind] + (I.kind === "xaph" ? "" : " · fingering data: draft"),
+      showFing: showF, showChords: showC, showLyrics: showL,
+      toggleFing: function () { commit({ showFing: !showF }); },
+      toggleChords: function () { commit({ showChords: !showC }); },
+      toggleLyrics: function () { commit({ showLyrics: !showL }); },
+      dec: function () { setShift(shift - 1); }, inc: function () { setShift(shift + 1); },
+      octDown: function () { setShift(shift - 12); }, octUp: function () { setShift(shift + 12); },
+      applySuggested: function () { setShift(best.s); }
+    };
+  }
+}
+</script>
+</body>
+</html>
