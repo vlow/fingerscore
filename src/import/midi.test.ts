@@ -106,6 +106,103 @@ describe('parseMidi', () => {
   });
 });
 
+/** Build a track from absolute ticks; noteOff sorts before noteOn at the same tick. */
+const absTrack = (events: { tick: number; ev: Ev; order?: number }[]): MidiEvent[] => {
+  const sorted = [...events].sort((a, b) => a.tick - b.tick || (a.order ?? 1) - (b.order ?? 1));
+  let last = 0;
+  return track(sorted.map(e => { const d = e.tick - last; last = e.tick; return [{ ...e.ev, deltaTime: d }]; }).flat() as unknown as Ev[]);
+};
+const nt = (tick: number, n: number, ch = 0, len = 480) => [
+  { tick, ev: { type: 'noteOn', channel: ch, noteNumber: n, velocity: 80 } },
+  { tick: tick + len, ev: { type: 'noteOff', channel: ch, noteNumber: n, velocity: 0 }, order: 0 },
+];
+const ly = (tick: number, text: string, type = 'lyrics') => ({ tick, ev: meta(type, { text }), order: 0 });
+const sig = (n: number, d: number) => ({ tick: 0, ev: meta('timeSignature', { numerator: n, denominator: d, metronome: 24, thirtyseconds: 8 }), order: -1 });
+const tempo = { tick: 0, ev: meta('setTempo', { microsecondsPerBeat: 500000 }), order: -1 };
+
+describe('lyric attachment', () => {
+  it('finds lyrics behind an empty conductor track', () => {
+    const bytes = midiBytes([
+      absTrack([tempo, sig(4, 4)]),
+      absTrack([...nt(0, 60), ...nt(480, 62), ly(0, 'la'), ly(480, 'di')]),
+    ]);
+    const s = parseMidi('c.mid', bytes);
+    expect(s.tracks).toHaveLength(1);
+    expect(s.tracks[0].lyrics).toEqual([{ at: 0, text: 'la' }, { at: 1, text: 'di' }]);
+  });
+
+  it('attaches lyrics stored in the conductor track to the melody', () => {
+    const bytes = midiBytes([
+      absTrack([tempo, ly(0, 'la'), ly(480, 'di')]),
+      absTrack([...nt(0, 60), ...nt(480, 62)]),
+    ]);
+    const s = parseMidi('c.mid', bytes);
+    expect(s.tracks[0].lyrics.map(l => l.text)).toEqual(['la', 'di']);
+  });
+
+  it('attaches lyrics to the matching channel of a split track', () => {
+    const bytes = midiBytes([absTrack([
+      ...nt(0, 60, 0), ...nt(480, 62, 0), ...nt(240, 72, 1), ...nt(720, 74, 1), ly(0, 'la'), ly(480, 'di'),
+    ])]);
+    const s = parseMidi('two.mid', bytes);
+    expect(s.tracks).toHaveLength(2);
+    const low = s.tracks.find(t => t.notes[0].midi === 60)!;
+    const high = s.tracks.find(t => t.notes[0].midi === 72)!;
+    expect(low.lyrics.map(l => l.text)).toEqual(['la', 'di']);
+    expect(high.lyrics).toEqual([]);
+  });
+
+  it('drops a lyric list that matches no onsets', () => {
+    const bytes = midiBytes([absTrack([...nt(0, 60), ly(100, 'x')])]);
+    expect(parseMidi('n.mid', bytes).tracks[0].lyrics).toEqual([]);
+  });
+});
+
+describe('timing', () => {
+  it('rejects SMPTE time division', () => {
+    const bytes = new Uint8Array(writeMidi({ header: { format: 1, numTracks: 1, framesPerSecond: 25, ticksPerFrame: 40 }, tracks: [track(note(0, 60))] }));
+    try { parseMidi('smpte.mid', bytes); expect.unreachable(); } catch (e) {
+      expect(e).toBeInstanceOf(ImportError);
+      expect((e as ImportError).userMessage).toBe('"smpte.mid" could not be read as a MIDI file.');
+    }
+  });
+
+  it('trims count-in bars when the melody starts on a downbeat', () => {
+    const bytes = midiBytes([absTrack([...nt(2 * 1920, 60), ...nt(2 * 1920 + 480, 62)])]);
+    const s = parseMidi('b.mid', bytes);
+    expect(s.pickup).toBe(0);
+    expect(s.tracks[0].notes.map(n => n.start)).toEqual([0, 1]);
+  });
+
+  it('trims empty bars before a pickup', () => {
+    const bytes = midiBytes([absTrack([...nt(2 * 1920 + 1440, 60), ...nt(3 * 1920, 62)])]);
+    const s = parseMidi('b.mid', bytes);
+    expect(s.pickup).toBe(1);
+    expect(s.tracks[0].notes.map(n => n.start)).toEqual([0, 1]);
+  });
+
+  it('drops count-in drum hits', () => {
+    const bytes = midiBytes([
+      absTrack([...nt(0, 36, 9, 120), ...nt(1920, 36, 9, 120), ...nt(1920, 60, 0), ...nt(2400, 62, 0)]),
+    ]);
+    const s = parseMidi('d.mid', bytes);
+    const drums = s.tracks.find(t => t.percussion)!;
+    expect(drums.notes.map(n => n.start)).toEqual([0]);
+  });
+
+  it('treats a remainder of exactly half a bar as a pickup', () => {
+    const s = parseMidi('h.mid', midiBytes([absTrack(nt(960, 60))]));
+    expect(s.pickup).toBe(2);
+    expect(s.tracks[0].notes[0].start).toBe(0);
+  });
+
+  it('keeps the leading rest when the remainder is over half a bar', () => {
+    const s = parseMidi('h.mid', midiBytes([absTrack(nt(900, 60))]));
+    expect(s.pickup).toBe(0);
+    expect(s.tracks[0].notes[0].start).toBeCloseTo(900 / 480);
+  });
+});
+
 describe('parseFile', () => {
   it('refuses other extensions', async () => {
     await expect(parseFile(new File(['x'], 'song.abc'))).rejects.toMatchObject({ userMessage: '"song.abc" is not a format fingerscore reads yet. Use MIDI or MusicXML.' });
