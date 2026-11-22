@@ -18,8 +18,8 @@ const INVALID = 'Not a chord we can transpose. Start with a note name A–G.';
 
 interface Props {
   doc: Doc; derived: Derived; id: string;
-  /** Focus the field when the panel opens or moves to another event (a click on the sheet, Enter or Tab in the field). */
-  focus?: boolean;
+  /** Focuses the field on open and whenever it changes; null leaves the focus where it is (arrow keys on the sheet). */
+  focusKey: number | null;
   onEdit(next: Doc | null, coalesceKey: string): void;
   onMove(id: string): void;
   onClose(): void;
@@ -34,8 +34,8 @@ export default function ChordPanel(p: Props): JSX.Element | null {
   const shown = derived.byId[id];
 
   useEffect(() => {
-    if (p.focus) caret.ref.current?.focus();
-  }, [id, p.focus]);   // caret.ref is stable
+    if (p.focusKey !== null) caret.ref.current?.focus();
+  }, [id, p.focusKey]);   // caret.ref is stable
 
   if (!shown) return null;
   const value = shown.chord ?? '';

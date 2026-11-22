@@ -53,7 +53,20 @@ export function setLyric(doc: Doc, id: string, text: string): Doc | null {
 
 /** Whitespace separates words; inner hyphens split a word into syllables ("wat-er" → "wat-", "er"); "_" is an empty syllable. */
 export function splitVerse(text: string): string[] {
-  return text.split(/\s+/).filter(w => w !== '').flatMap(w => (w === '_' ? [''] : w.split(/(?<=[^-]-+)(?=[^-])/)));
+  return text.split(/\s+/).filter(w => w !== '').flatMap(w => (w === '_' ? [''] : syllables(w)));
+}
+
+/** "beau-ti-ful" → "beau-", "ti-", "ful": a break after each run of hyphens that follows a letter and precedes one. */
+function syllables(word: string): string[] {
+  const out: string[] = [];
+  let current = '';
+  for (let k = 0; k < word.length; k++) {
+    current += word[k];
+    const breaks = word[k] === '-' && k + 1 < word.length && word[k + 1] !== '-' && /[^-]/.test(current);
+    if (breaks) { out.push(current); current = ''; }
+  }
+  out.push(current);
+  return out;
 }
 
 /**
@@ -95,9 +108,14 @@ export function editCount(doc: Doc): number {
   return eventOrder(doc).filter(e => e.l !== (lyrics[e.id] ?? '') || chordDiffers(doc.chords[e.id], chords[e.id])).length;
 }
 
-/** Lyrics and chords of every surviving event back to the imported state; null when nothing differs. */
+/** False for a sheet imported before lyrics and chords were kept, or a file that had none: there is nothing to restore. */
+export function hasImported(doc: Doc): boolean {
+  return Object.keys(doc.imported.lyrics).length > 0 || Object.keys(doc.imported.chords).length > 0;
+}
+
+/** Lyrics and chords of every surviving event back to the imported state; null when nothing differs or nothing was imported. */
 export function restoreFromFile(doc: Doc): Doc | null {
-  if (editCount(doc) === 0) return null;
+  if (!hasImported(doc) || editCount(doc) === 0) return null;
   const { lyrics, chords: texts } = doc.imported;
   const chords: Doc['chords'] = {};
   for (const e of eventOrder(doc)) if (texts[e.id] !== undefined) chords[e.id] = parseChord(texts[e.id], 0);

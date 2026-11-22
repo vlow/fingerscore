@@ -9,8 +9,8 @@ const SYMBOLS = ['‿', '’', '-', '„', '“', '…'];
 
 interface Props {
   doc: Doc; id: string;
-  /** Focus the field when the panel opens or moves to another note (a click on the note, Enter or Tab in the field). */
-  focus?: boolean;
+  /** Focuses the field on open and whenever it changes; null leaves the focus where it is (arrow keys on the sheet). */
+  focusKey: number | null;
   onEdit(next: Doc | null, coalesceKey: string): void;
   onMove(id: string): void;
   onClose(): void;
@@ -24,8 +24,8 @@ export default function LyricPanel(p: Props): JSX.Element | null {
   const at = locate(doc, id);
 
   useEffect(() => {
-    if (p.focus) caret.ref.current?.focus();
-  }, [id, p.focus]);   // caret.ref is stable
+    if (p.focusKey !== null) caret.ref.current?.focus();
+  }, [id, p.focusKey]);   // caret.ref is stable
 
   if (!at) return null;
   const write = (text: string) => onEdit(setLyric(doc, id, text), `lyric:${id}`);

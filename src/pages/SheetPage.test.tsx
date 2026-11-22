@@ -7,7 +7,8 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
-import { addBarAfter, locate, setLetter, toggleRest } from '../domain/edit';
+import { addBarAfter, locate, shiftPitch, toggleRest } from '../domain/edit';
+import { setChord } from '../domain/editText';
 import { inst } from '../domain/instruments';
 import { mod12, signatureLetters } from '../domain/keys';
 import { serializeFile } from '../domain/persistence';
@@ -962,7 +963,7 @@ describe('modes, undo and redo', () => {
     await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
     expect(selected()).toBe(r.next);
     expect(screen.getByRole('group', { name: 'Lyrics panel' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Lyrics' })).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: 'Lyric' })).toHaveFocus();   // design 4.4: focused on open
   });
 });
 
@@ -1258,14 +1259,16 @@ describe('Edit notes panel and keys', () => {
     expect(ev(score[1].ev[0].id).r).toBe(!score[1].ev[0].r);
   });
 
-  it('a key without a character is no letter (Task 4 review M4)', async () => {
+  it('panel buttons name their keys once: aria-keyshortcuts, no title; one hint line (Task 4 review M3)', async () => {
     await edit();
-    const n = current().score.flatMap(b => b.ev).find(e => !e.r && setLetter(current(), e.id, 0, 'nearest') !== current())!;
-    await clickEvent(n.id);
-    sheet().focus();
-    const d0 = current();
-    fireEvent.keyDown(sheet(), { key: '' });   // React reports an empty key as "Unidentified"; the guard does not rely on that
-    expect(current()).toBe(d0);
+    await clickEvent(current().score[2].ev[1].id);
+    const keys = (name: string) => button(name).getAttribute('aria-keyshortcuts');
+    expect(['Octave down', 'Semitone down', 'Semitone up', 'Octave up'].map(keys))
+      .toEqual(['Control+ArrowDown Meta+ArrowDown', 'ArrowDown', 'ArrowUp', 'Control+ArrowUp Meta+ArrowUp']);
+    expect(['Sixteenth', 'Eighth', 'Quarter', 'Half', 'Whole', 'Dotted', 'Tie', 'Turn into rest'].map(keys))
+      .toEqual(['2', '3', '4', '5', '6', '.', 'T', 'R']);
+    expect(within(panel()).getAllByRole('button').filter(b => b.hasAttribute('title'))).toEqual([]);
+    expect(within(panel()).getByText('Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · R rest · T tie')).toBeInTheDocument();
   });
 
   it('an edit during playback stops it and keeps the selection (review focus 5)', async () => {
@@ -1439,6 +1442,66 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     await user.click(within(card).getByRole('button', { name: 'Fill lyrics' }));
     expect(ev(notes[0].id).l).toBe('Oh');
     expect(within(card).getByText('1 edit to lyrics and chords')).toBeInTheDocument();
+  });
+
+  it('the field takes focus on a click, on a click that lands on the selected note again, and on a switch to Lyrics or Chords', async () => {
+    const notes = lyricNotes();
+    const restDoc = toggleRest(sampleDoc('xc'), notes[3].id)!;
+    open('xc', { score: restDoc.score });
+    await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
+    const sheet = screen.getByRole('group', { name: /Sheet music/ });
+    await clickEvent(notes[4].id);
+    expect(field()).toHaveFocus();
+    sheet.focus();
+    await clickEvent(notes[3].id);   // the rest hands the selection to the same note again
+    expect(selectedId()).toBe(notes[4].id);
+    expect(field()).toHaveFocus();
+    await user.click(screen.getByRole('radio', { name: 'Chords' }));
+    expect(screen.getByRole('textbox', { name: 'Chord' })).toHaveFocus();
+    await user.click(screen.getByRole('radio', { name: 'View' }));
+    await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
+    expect(field()).toHaveFocus();
+    expect(field()).toHaveValue(notes[4].l);
+  });
+
+  it('text edits do not stop playback; a pitch edit does', async () => {
+    await lyrics();
+    const notes = lyricNotes();
+    await clickEvent(notes[0].id);
+    fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
+    await user.click(screen.getByRole('button', { name: 'Play from selected' }));
+    fakePlayer.stop.mockClear();
+    await user.type(field(), 'x');
+    expect(ev(notes[0].id).l).toBe(`${notes[0].l}x`);
+    act(() => { useApp.getState().applyEdit(setChord(current(), notes[1].id, 'G7', 0)); });
+    await user.keyboard('{Control>}z{/Control}');
+    await user.keyboard('{Control>}z{/Control}');
+    expect(ev(notes[0].id).l).toBe(notes[0].l);
+    expect(fakePlayer.stop).not.toHaveBeenCalled();
+    act(() => { useApp.getState().applyEdit(shiftPitch(current(), notes[1].id, 1)); });
+    expect(fakePlayer.stop).toHaveBeenCalled();
+  });
+
+  it('bulk card: a keyboard-activated button that disables itself hands the focus to the verse field', async () => {
+    open('xc');
+    const card = screen.getByRole('region', { name: 'Lyrics & chords' });
+    const verse = within(card).getByRole('textbox', { name: 'Type or paste a verse' });
+    const btn = (name: string) => within(card).getByRole('button', { name });
+    for (const name of ['Clear chords', 'Clear lyrics', 'Restore from file']) {
+      btn(name).focus();
+      await user.keyboard('{Enter}');
+      expect(btn(name)).toBeDisabled();
+      expect(verse).toHaveFocus();
+    }
+    expect(within(card).getByRole('status')).toHaveTextContent('0 edits to lyrics and chords');
+  });
+
+  it('a sheet with nothing imported says so and cannot be restored', async () => {
+    open('xc', { imported: { lyrics: {}, chords: {} } });
+    const card = screen.getByRole('region', { name: 'Lyrics & chords' });
+    expect(within(card).getByRole('status')).toHaveTextContent('Nothing was imported with this sheet.');
+    expect(within(card).queryByText(/edits? to lyrics and chords/)).toBeNull();
+    expect(within(card).getByRole('button', { name: 'Restore from file' })).toBeDisabled();
   });
 
   it('the verse field keeps the browser\'s own undo; Ctrl+S still saves', async () => {

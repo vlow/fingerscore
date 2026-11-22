@@ -118,8 +118,13 @@ function Sheet({ doc }: { doc: Doc }) {
   // an id the document no longer has counts as no selection, and loading another sheet clears it.
   const [mode, setMode] = useState<Mode>('view');
   const [selection, setSelection] = useState<string | null>(null);
-  /** The event whose Lyric or Chord field takes focus: set by a click on the sheet and by Enter/Tab in the field. */
-  const [fieldFocus, setFieldFocus] = useState<string | null>(null);
+  /**
+   * The event whose Lyric or Chord field takes focus, and a count that re-focuses it: a click on the sheet (also one
+   * that lands on the selected note again), a switch to Lyrics or Chords mode, Enter/Tab in the field. Arrow keys on
+   * the sheet clear it, so the arrows keep working.
+   */
+  const [fieldFocus, setFieldFocus] = useState<{ id: string; n: number } | null>(null);
+  const focusField = (id: string) => setFieldFocus(f => ({ id, n: (f?.n ?? 0) + 1 }));
   const [announcement, setAnnouncement] = useState('');
   const selectedId = selection !== null && derived.byId[selection] ? selection : null;
   const paperRef = useRef<HTMLDivElement | null>(null);
@@ -143,7 +148,8 @@ function Sheet({ doc }: { doc: Doc }) {
   function select(picked: string | null, byKeyboard = false) {
     const id = picked === null ? null : landing(picked, mode);
     setSelection(id);
-    setFieldFocus(byKeyboard ? null : id);
+    if (byKeyboard || id === null) setFieldFocus(null);
+    else focusField(id);
     scrollToSelection.current = byKeyboard && id !== null;
     if (id === null) { setAnnouncement('Selection cleared'); return; }
     const ev = derived.byId[id];
@@ -212,10 +218,10 @@ function Sheet({ doc }: { doc: Doc }) {
 
   function changeMode(m: Mode) {
     setMode(m);
-    if (m === 'lyrics' && selectedId !== null && landing(selectedId, m) !== selectedId) {
-      select(landing(selectedId, m));
-      setFieldFocus(null);   // the mode switch keeps the focus
-    }
+    if (selectedId === null) return;
+    const id = landing(selectedId, m);
+    if (id !== selectedId) select(id);
+    if (m === 'lyrics' || m === 'chords') focusField(id);   // the panel's field is focused on open
   }
 
   // Keyboard order: every event in score order. Edit notes and Chords mode include tied continuations
@@ -262,7 +268,11 @@ function Sheet({ doc }: { doc: Doc }) {
   const [playing, setPlaying] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [playError, setPlayError] = useState(false);
-  useEffect(() => () => playerRef.current?.stop(), [doc.score, doc.shift, doc.inst, doc.tempo]);
+  // Playback stops when what it plays changes: pitches, lengths, rests, ties, bars and their repeats, key, instrument,
+  // tempo. Lyrics live on the events too, but typing one must not stop the music.
+  const audible = useMemo(() => doc.score.map(b => `${b.cap}${b.rs ? 's' : ''}${b.re ? 'e' : ''}${b.volta}:`
+    + b.ev.map(e => `${e.m},${e.d}${e.r ? 'r' : ''}${e.tie ? 't' : ''}`).join(';')).join('|'), [doc.score]);
+  useEffect(() => () => playerRef.current?.stop(), [audible, doc.shift, doc.inst, doc.tempo]);
 
   function togglePlay() {
     const current = playerRef.current;
@@ -392,7 +402,7 @@ function Sheet({ doc }: { doc: Doc }) {
   /** Enter or Tab in a panel's field: the selection moves and the field keeps the focus. */
   function moveField(id: string) {
     select(id, true);
-    setFieldFocus(id);
+    focusField(id);
   }
 
   /** Esc in a panel's field clears the selection; the sheet takes the keys again. */
@@ -440,11 +450,11 @@ function Sheet({ doc }: { doc: Doc }) {
         onBlur={e => { if (!gone(e.target)) panelFocus.current = false; }}>
         {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
         {mode === 'chords' && (
-          <ChordPanel doc={doc} derived={derived} id={selectedId} focus={fieldFocus === selectedId}
+          <ChordPanel doc={doc} derived={derived} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null}
             onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} />
         )}
         {mode === 'lyrics' && (
-          <LyricPanel doc={doc} id={selectedId} focus={fieldFocus === selectedId} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} />
+          <LyricPanel doc={doc} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} />
         )}
       </div>
     );

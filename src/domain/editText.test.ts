@@ -24,6 +24,9 @@ describe('lyrics', () => {
     expect(fillLyrics(start, 'a _ b c d e', ids[1])!.score[0].ev.map(e => e.l)).toEqual(['x', 'a', '', 'b']);
     expect(splitVerse('  beau-ti-ful   day ')).toEqual(['beau-', 'ti-', 'ful', 'day']);
     expect(splitVerse('-ing _ wat-')).toEqual(['-ing', '', 'wat-']);
+    expect(['-a', 'a-', '--', 'a--b', '-a-b', 'a-b-', '-', 'a---b-c'].map(w => splitVerse(w))).toEqual([
+      ['-a'], ['a-'], ['--'], ['a--', 'b'], ['-a-', 'b'], ['a-', 'b-'], ['-'], ['a---', 'b-', 'c'],
+    ]);
     expect(fillLyrics(d, '   ', null)).toBeNull();
     expect(fillLyrics(start, 'x', ids[0])).toBeNull();
     expect(d.score[0].ev.map(e => e.l)).toEqual(['', '', '', '']);
@@ -86,6 +89,14 @@ describe('lyrics', () => {
     expect(editCount(setChord(imp, b, 'C', 0)!)).toBe(1);
     expect(editCount(setChord(imp, a, '', 0)!)).toBe(1);
     expect(restoreFromFile(setChord(imp, a, 'N.C.', 0)!)!.chords[a]).toMatchObject({ ok: true, raw: 'Am7/G', tk: 0 });
+  });
+
+  it('a sheet with nothing imported is never restored (it would wipe every lyric and chord)', () => {
+    const d = mkDoc([{ ev: [[60, 24], [62, 24]] }]);
+    const a = d.score[0].ev[0].id;
+    const typed = setChord(setLyric(d, a, 'la')!, a, 'C', 0)!;
+    expect(editCount(typed)).toBe(1);
+    expect(restoreFromFile(typed)).toBeNull();
   });
 });
 

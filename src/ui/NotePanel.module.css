@@ -99,6 +99,13 @@
   background: var(--red-bg);
 }
 
+.keys {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .symb:focus-visible,
 .action:focus-visible {
   outline: 2px solid var(--teal);

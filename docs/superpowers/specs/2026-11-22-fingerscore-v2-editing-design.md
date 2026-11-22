@@ -61,7 +61,7 @@ Panel:
 - **Turn into rest / Turn into note**; a rest becomes a note at the pitch it remembers (the previous note's pitch).
 - **+ Bar after:** inserts a bar of the song's meter holding one whole-bar rest, and selects that rest. **Remove bar:** removes the selected event's bar and selects the first event of the following bar (or of the previous one); disabled when the score has one bar.
 
-Keyboard (sheet focused, Edit notes mode): ↑/↓ semitone, Ctrl/⌘+↑/↓ octave, A–G jump to that letter (with the key signature's alteration) in the playable octave nearest to the current written pitch, ←/→ previous/next event (tied continuations included in this mode, since they can be edited), 2/3/4/5/6 sixteenth/eighth/quarter/half/whole, `.` dot, R rest↔note, T tie, Delete/Backspace turn into rest, Enter/Space play from the selection, Esc clear the selection. Keys that would do something disabled do nothing.
+Keyboard (sheet focused, Edit notes mode): ↑/↓ semitone, Ctrl/⌘+↑/↓ octave, A–G jump to that letter (with the key signature's alteration) in the playable octave nearest to the current written pitch, ←/→ previous/next event (tied continuations included in this mode, since they can be edited), 2/3/4/5/6 sixteenth/eighth/quarter/half/whole, `.` dot, R rest↔note, T tie, Delete/Backspace turn into rest, Enter/Space play from the selection, Esc clear the selection. Keys that would do something disabled do nothing. The panel names these keys on its buttons (`aria-keyshortcuts`, no tooltips) and in one line at its bottom: "Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · R rest · T tie".
 
 **Bar-fill rules** (ticks; bars always sum exactly to `cap`):
 
@@ -75,13 +75,14 @@ Keyboard (sheet focused, Edit notes mode): ↑/↓ semitone, Ctrl/⌘+↑/↓ oc
 ### 4.4 Lyrics (§9.4)
 
 - Panel with one **Lyric** field (focused on open) and symbol buttons ‿ ’ - „ “ … that insert at the caret without taking focus. Enter and Tab move to the next note that can carry a syllable (rests and tied continuations are skipped), Shift+Tab to the previous one; at the last note Enter keeps the selection. Esc clears the selection.
+- The Lyric field takes focus when a click on the sheet makes or re-makes the selection, when the mode switches to Lyrics with a selection, and on Enter/Tab moves; arrow keys on the sheet move the selection without taking focus from the sheet.
 - Selecting a rest or a tied continuation in Lyrics mode moves the selection to the next note that can carry a syllable.
-- Sidebar card "Lyrics & chords": textarea "Type or paste a verse", **Fill lyrics** (fills from the selected note, or from the first note; `wat-er` puts "wat-" and "er" on two notes; a standalone `_` leaves a note empty; extra syllables beyond the last note are dropped; notes beyond the text keep what they have), **Clear lyrics**, **Clear chords**, and a line "{n} edits to lyrics and chords" with **Restore from file** (restores lyrics and chords of all surviving events to the imported state; disabled at 0 edits). The card shows in every mode.
+- Sidebar card "Lyrics & chords": textarea "Type or paste a verse", **Fill lyrics** (fills from the selected note, or from the first note; `wat-er` puts "wat-" and "er" on two notes; a standalone `_` leaves a note empty; extra syllables beyond the last note are dropped; notes beyond the text keep what they have), **Clear lyrics**, **Clear chords**, and a line "{n} edits to lyrics and chords" with **Restore from file** (restores lyrics and chords of all surviving events to the imported state; disabled at 0 edits). A sheet with no imported lyrics or chords at all (one saved before this feature, or a file without them) shows "Nothing was imported with this sheet." instead of the count, and Restore from file stays disabled. The card shows in every mode.
 
 ### 4.5 Chords (§9.5)
 
 - Panel with one **Chord** field (focused on open) and buttons ♭ ♯ m ° ø Δ 7 sus4 add9 6 / ( ) that insert at the caret without taking focus; "Δ" inserts "Δ7"; "( )" inserts both and puts the caret between them. Hint: "b → ♭ and # → ♯ after a note name". Typing "b" or "#" directly after a root or bass letter is shown as ♭ / ♯.
-- Any event can carry a chord: notes, tied continuations and rests. Enter and Tab move to the next event, Shift+Tab to the previous. An empty field removes the chord.
+- Any event can carry a chord: notes, tied continuations and rests. Enter and Tab move to the next event, Shift+Tab to the previous. An empty field removes the chord. The Chord field takes focus on the same occasions as the Lyric field (4.4).
 - A valid chord is stored relative to the original key, so it follows every transposition and instrument; the typed text shows verbatim until the key changes. Invalid text is kept, shown red with a wavy underline, not transposed, with the message "Not a chord we can transpose. Start with a note name A–G." under the field.
 
 ### 4.6 Undo and redo (§10)

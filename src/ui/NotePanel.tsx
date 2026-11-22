@@ -12,10 +12,6 @@ const BASE_NAMES: Record<number, string> = Object.fromEntries(
   Object.entries(LENGTH_NAMES).map(([d, name]) => [d, name[0].toUpperCase() + name.slice(1)]),
 );
 
-/** Tooltips with the key hints only where there is a pointer that hovers; elsewhere the accessible name alone is read. */
-const tip = (text: string) =>
-  (typeof window.matchMedia === 'function' && window.matchMedia('(hover: hover)').matches ? text : undefined);
-
 /** Note symbols for the length buttons (after the prototype's icons): filled heads with flags, open heads. */
 const ICONS: Record<number, ReactNode> = {
   3: <><ellipse cx="5" cy="16" rx="4" ry="3" fill="currentColor" /><path d="M8.6 16V2c1 3 5 4 5 8M8.6 6.5c1 3 5 4 5 8" fill="none" stroke="currentColor" strokeWidth="1.6" /></>,
@@ -42,8 +38,8 @@ export default function NotePanel(p: Props): JSX.Element | null {
   const ev = at.ev;
   const { base, dotted } = splitLength(ev.d);
   const longer = dottedOf(base);
-  const pitch = (step: number, name: string, label: string, title: string) => (
-    <button type="button" className={s.symb} aria-label={name} title={tip(title)} disabled={shiftPitch(doc, id, step) === null}
+  const pitch = (step: number, name: string, label: string, keys: string) => (
+    <button type="button" className={s.symb} aria-label={name} aria-keyshortcuts={keys} disabled={shiftPitch(doc, id, step) === null}
       onClick={() => onEdit(shiftPitch(doc, id, step))}>{label}</button>
   );
 
@@ -51,30 +47,30 @@ export default function NotePanel(p: Props): JSX.Element | null {
     <div className={s.panel}>
       <div className={s.label} aria-hidden="true">Pitch</div>
       <div role="group" aria-label="Pitch" className={s.row}>
-        {pitch(-12, 'Octave down', '−8', 'Octave down (Ctrl/⌘ ↓)')}
-        {pitch(-1, 'Semitone down', '−1', 'Semitone down (↓)')}
+        {pitch(-12, 'Octave down', '−8', 'Control+ArrowDown Meta+ArrowDown')}
+        {pitch(-1, 'Semitone down', '−1', 'ArrowDown')}
         <span className={s.name}>{ev.r ? 'rest' : shown.spelled.name}</span>
-        {pitch(1, 'Semitone up', '+1', 'Semitone up (↑)')}
-        {pitch(12, 'Octave up', '+8', 'Octave up (Ctrl/⌘ ↑)')}
+        {pitch(1, 'Semitone up', '+1', 'ArrowUp')}
+        {pitch(12, 'Octave up', '+8', 'Control+ArrowUp Meta+ArrowUp')}
       </div>
       <div className={`${s.label} ${s.gap}`} aria-hidden="true">Length</div>
       <div role="group" aria-label="Length" className={s.row}>
         {BASE_LENGTHS.map(d => (
-          <button key={d} type="button" className={s.symb} aria-label={BASE_NAMES[d]} title={tip(`${BASE_NAMES[d]} (${KEY_OF_LENGTH[d]})`)}
+          <button key={d} type="button" className={s.symb} aria-label={BASE_NAMES[d]} aria-keyshortcuts={KEY_OF_LENGTH[d]}
             aria-pressed={base === d} disabled={!fits(doc, id, d)} onClick={() => onEdit(setLength(doc, id, d))}>
             <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true">{ICONS[d]}</svg>
           </button>
         ))}
-        <button type="button" className={s.symb} aria-label="Dotted" title={tip('Dotted (.)')} aria-pressed={dotted}
+        <button type="button" className={s.symb} aria-label="Dotted" aria-keyshortcuts="." aria-pressed={dotted}
           disabled={!dotted && (longer === null || !fits(doc, id, longer))} onClick={() => onEdit(toggleDotted(doc, id))}>
           <svg width="8" height="20" viewBox="0 0 8 20" aria-hidden="true"><circle cx="4" cy="12" r="2.6" fill="currentColor" /></svg>
         </button>
         <span className={s.spacer} />
-        <button type="button" className={s.symb} aria-label="Tie" title={tip('Tie (T)')} aria-pressed={ev.tie}
+        <button type="button" className={s.symb} aria-label="Tie" aria-keyshortcuts="T" aria-pressed={ev.tie}
           disabled={!ev.tie && !canTie(doc, id)} onClick={() => onEdit(toggleTie(doc, id))}>⁀</button>
       </div>
       <div className={s.actions}>
-        <button type="button" className={s.action} onClick={() => onEdit(toggleRest(doc, id))}>
+        <button type="button" className={s.action} aria-keyshortcuts="R" onClick={() => onEdit(toggleRest(doc, id))}>
           {ev.r ? 'Turn into note' : 'Turn into rest'}
         </button>
         <span className={s.spacer} />
@@ -86,6 +82,7 @@ export default function NotePanel(p: Props): JSX.Element | null {
           Remove bar
         </button>
       </div>
+      <p className={s.keys}>Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · R rest · T tie</p>
     </div>
   );
 }
