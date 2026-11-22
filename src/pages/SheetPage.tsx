@@ -12,7 +12,7 @@ import type { Doc } from '../domain/types';
 import { usableTracks } from '../import/melody';
 import { SHEET, layoutSheet } from '../render/layout';
 import { Paper } from '../render/Paper';
-import { deleteEntry, listEntries, restoreEntry } from '../state/library';
+import { deleteEntry, listEntries, restoreEntry, writeFailureMessage } from '../state/library';
 import { saveStatus, useApp } from '../state/store';
 import AltFingeringPopover, { popoverWidth } from '../ui/AltFingeringPopover';
 import Banners from '../ui/Banners';
@@ -248,7 +248,7 @@ function Sheet({ doc }: { doc: Doc }) {
     useApp.getState().forgetEntry(id);
     setFileError(null);
     const undo = () => {
-      if (!restoreEntry(entry)) return;
+      if (!restoreEntry(entry)) { setFileError(writeFailureMessage()); return; }
       // Link the open sheet again only if it is still the one whose entry was deleted.
       const now = useApp.getState();
       if (openSource && now.libraryId === null && now.doc?.source === openSource) now.relinkEntry(id);

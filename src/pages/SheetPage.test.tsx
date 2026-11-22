@@ -405,6 +405,29 @@ describe('save and the File menu', () => {
     expect(listEntries()[0].doc.show.lyrics).toBe(false);
   });
 
+  it('Undo takes focus after Delete and gives it back to the File button', async () => {
+    saveEntry({ ...sampleDoc('fl'), title: 'Other' }, null);
+    open('asax');
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete Other' }));
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(listEntries().map(e => e.title)).toEqual(['Other']);
+    expect(screen.getByRole('button', { name: /File/ })).toHaveFocus();
+  });
+
+  it('a failed Undo shows the storage message', async () => {
+    saveEntry({ ...sampleDoc('fl'), title: 'Other' }, null);
+    open('asax');
+    await user.click(screen.getByRole('button', { name: /File/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete Other' }));
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    spy.mockRestore();
+    expect(screen.getByRole('alert')).toHaveTextContent('This browser blocks local storage. Use "Download JSON" instead.');
+    expect(listEntries()).toHaveLength(0);
+  });
+
   it('undo does not link a sheet loaded after the delete', async () => {
     open('asax');
     await user.click(screen.getByRole('button', { name: 'Save' }));

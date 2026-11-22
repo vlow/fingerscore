@@ -1,6 +1,7 @@
 import { downloadText } from './download';
 
 it('downloads through a Blob URL on a temporary link', async () => {
+  vi.useFakeTimers();
   const create = vi.fn(() => 'blob:x');
   const revoke = vi.fn();
   vi.stubGlobal('URL', { ...URL, createObjectURL: create, revokeObjectURL: revoke });
@@ -12,8 +13,11 @@ it('downloads through a Blob URL on a temporary link', async () => {
   expect(click).toHaveBeenCalledTimes(1);
   expect(await (create.mock.calls[0] as unknown as [Blob])[0].text()).toBe('{}');
   expect(document.querySelector('a[download]')).toBeNull();
-  await new Promise(r => setTimeout(r, 0));
+  vi.advanceTimersByTime(9999);
+  expect(revoke).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(1);
   expect(revoke).toHaveBeenCalledWith('blob:x');
   click.mockRestore();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });

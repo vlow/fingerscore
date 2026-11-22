@@ -63,6 +63,11 @@ export function deleteEntry(id: string): LibraryEntry | null {
   return writeJSON('local', KEY, all.filter(e => e.id !== id)) ? removed : null;
 }
 
+/** The message for a library write that just failed: blocked storage, else full storage. */
+export function writeFailureMessage(): string {
+  return probe('local', PROBE_KEY) ? FULL_MESSAGE : BLOCKED_MESSAGE;
+}
+
 /** Puts an entry back, ordered by savedAt (newest first). */
 export function restoreEntry(entry: LibraryEntry): boolean {
   const all = listEntries().filter(e => e.id !== entry.id);

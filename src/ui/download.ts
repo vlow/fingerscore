@@ -8,5 +8,6 @@ export function downloadText(name: string, text: string): void {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  // Some browsers cancel a download whose URL is revoked too soon.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }

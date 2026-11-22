@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sampleDoc } from '../domain/fixture';
-import { BLOCKED_MESSAGE, FULL_MESSAGE, deleteEntry, getEntry, listEntries, restoreEntry, saveEntry } from './library';
+import { BLOCKED_MESSAGE, FULL_MESSAGE, deleteEntry, getEntry, listEntries, restoreEntry, saveEntry, writeFailureMessage } from './library';
 
 beforeEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
 const T = (s: string) => new Date(s);
@@ -72,5 +72,12 @@ describe('library', () => {
   it('leaves no probe key behind', () => {
     saveEntry(sampleDoc('asax'), null);
     expect(localStorage.length).toBe(1);
+  });
+
+  it('writeFailureMessage tells blocked storage from full storage', () => {
+    expect(writeFailureMessage()).toBe(FULL_MESSAGE);
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked'); });
+    expect(writeFailureMessage()).toBe(BLOCKED_MESSAGE);
+    spy.mockRestore();
   });
 });
