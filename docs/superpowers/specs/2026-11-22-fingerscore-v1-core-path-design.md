@@ -190,3 +190,4 @@ Triplets; editing modes and undo/redo; library, Save, File menu, JSON files, gal
 - **Xaphoon F♯5.** Two fingerings from the Xaphoon handbook: the G5 fingering with less lip pressure (standard, as the chart prints it) and the high F fingering with more lip pressure.
 - **Flute low C.** The C key alone, following the Woodwind Fingering Guide.
 - **Music glyphs.** All glyphs move from GNU FreeSerif to Bravura (SIL Open Font License); the FreeSerif credit is replaced by a Bravura credit.
+- **Alternates policy** (replaces the "basic-chart alternates only" rule of 5.1). Where published charts print different fingerings for a note, the first option is the standard one and every other documented variant is offered as an alternate, unless the evidence shows it is probably wrong. Trill fingerings and intonation tweaks stay out. German recorder G♯/C♯: hole 6 open is the standard; half and full covering are alternates.
