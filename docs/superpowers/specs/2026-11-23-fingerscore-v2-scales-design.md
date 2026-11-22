@@ -44,7 +44,7 @@ A player wants to practise a scale on their instrument and see how each note is 
 - **Heptatonic, pentatonic and blues scales:** each note's letter = tonic letter + the scale degree index from `scales.json`; the accidental is whatever makes that letter sound the note. This can require a double sharp (G♯ harmonic minor has F double-sharp) or, in principle, a double flat: both are supported and drawn with the Bravura glyphs. In text a double sharp is written "F𝄪" and a double flat "B𝄫".
 - **Chromatic:** ascending with sharps, or with flats when the tonic's major key has flats; descending always with flats.
 - **Key signature on the staff:** the tonic's major signature for major-type scales, the relative major's for minor-type scales, none for the chromatic scale.
-- **Accidentals drawn:** a note gets an accidental when its alteration differs from the key signature, or when the previous note in the sequence had the same letter and octave with a different alteration (the blues scale's B♭ then B♮).
+- **Accidentals drawn:** a note gets an accidental when its alteration differs from the key signature, or when the most recent earlier note of the sequence with the same letter and octave had a different alteration (the blues scale's B♭ then B♮; G♮ and F♮ when melodic minor descends after G♯ and F♯).
 
 ### 4.3 Fingerings
 
