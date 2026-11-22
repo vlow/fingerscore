@@ -23,7 +23,9 @@ interface FingeringData {
 export interface Source { title: string; url?: string; accessed?: string }
 export interface KindMeta { sources: Source[]; reviewed: string | null }
 
-export interface GapEntry { inst?: InstId; kind?: Kind; pitch: number; note: string; checked: string[] }
+export type RecorderSystem = 'baroque' | 'german';
+export interface GapEntry { inst?: InstId; kind?: Kind; pitch: number; system?: 'german'; note: string; checked: string[] }
+export interface Gap { inst: InstId; pitch: number; system: RecorderSystem }
 
 const D = data as unknown as FingeringData;
 
@@ -32,7 +34,7 @@ export const SATS = D.SATS;
 export const SHAPE = D.SHAPE;
 export const FINGER = D.FINGER;
 
-export function optionsFor(id: InstId, written: number, recorderSystem: 'baroque' | 'german'): FingeringOption[] {
+export function optionsFor(id: InstId, written: number, recorderSystem: RecorderSystem): FingeringOption[] {
   const override = D.overrides[id]?.[written];
   if (override) return override;
   const i = inst(id);
@@ -52,11 +54,16 @@ export function hasSatellites(kind: Kind): boolean {
   return kind === 'sax' || kind === 'cl' || kind === 'fl';
 }
 
-export function coverageGaps(): { inst: InstId; pitch: number }[] {
-  const out: { inst: InstId; pitch: number }[] = [];
+/** Pitches lo..ext with no option. German recorder gaps are notes where the German system has none but the baroque table has one. */
+export function coverageGaps(): Gap[] {
+  const out: Gap[] = [];
   for (const id of ORDER) {
-    const { lo, ext } = inst(id);
-    for (let w = lo; w <= ext; w++) if (optionsFor(id, w, 'baroque').length === 0) out.push({ inst: id, pitch: w });
+    const { lo, ext, kind } = inst(id);
+    for (let w = lo; w <= ext; w++) {
+      const baroque = optionsFor(id, w, 'baroque').length > 0;
+      if (!baroque) out.push({ inst: id, pitch: w, system: 'baroque' });
+      else if (kind === 'rec' && optionsFor(id, w, 'german').length === 0) out.push({ inst: id, pitch: w, system: 'german' });
+    }
   }
   return out;
 }
@@ -70,9 +77,11 @@ export function rawGaps(): GapEntry[] {
 }
 
 /** Gap list with 'kind' entries expanded to the instruments of that kind whose lo..ext contains the pitch. */
-export function documentedGaps(): { inst: InstId; pitch: number }[] {
-  return rawGaps().flatMap(g =>
-    g.inst ? [{ inst: g.inst, pitch: g.pitch }]
+export function documentedGaps(): Gap[] {
+  return rawGaps().flatMap(g => {
+    const system: RecorderSystem = g.system ?? 'baroque';
+    return g.inst ? [{ inst: g.inst, pitch: g.pitch, system }]
       : ORDER.filter(id => inst(id).kind === g.kind && g.pitch >= inst(id).lo && g.pitch <= inst(id).ext)
-        .map(id => ({ inst: id, pitch: g.pitch })));
+        .map(id => ({ inst: id, pitch: g.pitch, system }));
+  });
 }

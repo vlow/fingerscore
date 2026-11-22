@@ -26,13 +26,23 @@ it('option arrays match the layout', () => {
     }
 });
 
-it('every gap is documented', () => {
-  const doc = new Set(documentedGaps().map(g => `${g.inst}:${g.pitch}`));
-  expect(coverageGaps().filter(g => !doc.has(`${g.inst}:${g.pitch}`))).toEqual([]);
+const gapKey = (g: { inst: string; pitch: number; system: string }) => `${g.inst}:${g.pitch}:${g.system}`;
+
+it('every gap is documented, in both recorder systems', () => {
+  const doc = new Set(documentedGaps().map(gapKey));
+  expect(coverageGaps().filter(g => !doc.has(gapKey(g)))).toEqual([]);
+  expect(coverageGaps().some(g => g.system === 'german')).toBe(true);
 });
 
 it('no documented gap has data', () => {
-  for (const g of documentedGaps()) expect(optionsFor(g.inst, g.pitch, 'baroque'), `${g.inst}:${g.pitch}`).toEqual([]);
+  for (const g of documentedGaps()) expect(optionsFor(g.inst, g.pitch, g.system), gapKey(g)).toEqual([]);
+});
+
+it('a German gap entry is a real German gap: the baroque table has data there', () => {
+  for (const g of documentedGaps().filter(g => g.system === 'german')) {
+    expect(inst(g.inst).kind, gapKey(g)).toBe('rec');
+    expect(optionsFor(g.inst, g.pitch, 'baroque').length, gapKey(g)).toBeGreaterThan(0);
+  }
 });
 
 async function withGaps(gaps: unknown[], run: (m: typeof import('./fingerings')) => void) {
@@ -88,10 +98,19 @@ it('satellite keys exist for sax, clarinet and flute only', () => {
   expect(['xaph', 'sax', 'cl', 'fl', 'rec'].filter(k => hasSatellites(k as 'sax'))).toEqual(['sax', 'cl', 'fl']);
 });
 
+// Normal-range gaps where the charts disagree; each waits for an owner decision (docs/fingering-gaps.md, "Waiting for the owner").
+const OWNER_PENDING = [
+  'ra:87:baroque', 'fl:60:baroque', 'afl:60:baroque',
+  'rs:66:german', 'rs:68:german', 'rs:77:german', 'rs:78:german',
+  'ra:71:german', 'ra:73:german', 'ra:82:german', 'ra:83:german',
+];
+
 it('gap list is short and sourced', () => {
   const gaps = documentedGaps();
   for (const g of rawGaps()) expect(g.checked.length, `${g.inst ?? g.kind}:${g.pitch}`).toBeGreaterThanOrEqual(2);
-  expect(gaps.filter(g => g.pitch <= inst(g.inst).hi)).toEqual([]);     // nothing missing inside the normal range
+  const inRange = gaps.filter(g => g.pitch <= inst(g.inst).hi).map(gapKey);
+  expect(inRange.filter(k => !OWNER_PENDING.includes(k))).toEqual([]);     // nothing else missing inside the normal range
+  expect([...inRange].sort()).toEqual([...OWNER_PENDING].sort());          // every pending entry is still a real gap
 });
 
 it('named alternates exist', () => {
