@@ -1,0 +1,63 @@
+/*
+ * Print stylesheet for the Sheet page (SPEC §13.3): only the paper is printed, on A4 with 12mm
+ * margins, scaled to the page width, each system kept on one page (Paper.module.css). Rules are
+ * scoped to a page that holds the paper ([data-print-paper]) so other pages print normally.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body:has([data-print-paper]) {
+    background: #ffffff;
+  }
+
+  body:has([data-print-paper]) .app {
+    min-height: 0;
+  }
+
+  body:has([data-print-paper]) .site-header,
+  body:has([data-print-paper]) .site-footer,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  .app-main:has([data-print-paper]) {
+    max-width: none;
+    padding: 0;
+  }
+
+  [data-print-paper] {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  /* 860px of systems on 186mm (A4 width minus margins): zoom keeps page breaks on the scaled size. */
+  [data-print-paper] .paper {
+    width: 860px;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    zoom: 0.817;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Title inputs print as plain text: no border, outline, focus fill or placeholder. */
+  [data-print-plain],
+  [data-print-plain]:hover,
+  [data-print-plain]:focus,
+  [data-print-plain]:focus-visible {
+    border-color: transparent !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Playback highlight column. */
+  [data-print-paper] [data-playing] > rect:first-child {
+    display: none;
+  }
+}

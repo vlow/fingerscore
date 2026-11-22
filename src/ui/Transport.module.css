@@ -1,0 +1,42 @@
+/* Playback controls, after the prototype (Editor.dc.html, "Playback" group). */
+.transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.play {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.play:hover {
+  background: var(--text);
+}
+
+.tempo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.slider {
+  width: 110px;
+  accent-color: var(--teal);
+}

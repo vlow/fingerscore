@@ -1,0 +1,37 @@
+/* Show on sheet card body, after the prototype (Editor.dc.html, "Show on sheet"). */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.box {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+/* Sub-option of chord symbols, indented under its parent. */
+.sub {
+  padding-left: 28px;
+  font-size: 13px;
+}
+
+.sub .box {
+  width: 16px;
+  height: 16px;
+}
+
+.sup {
+  font-size: 9px;
+}

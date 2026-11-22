@@ -1,0 +1,326 @@
+/* Sheet page, after the prototype editor (Editor.dc.html): sidebar + main column. */
+
+/* The sheet needs the full window width: sidebar 360px + 940px paper. */
+:global(.app-main):has(> .page) {
+  max-width: none;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+.chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--page);
+  font-size: 13px;
+}
+
+.chip > svg {
+  flex: none;
+}
+
+.chipFile {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.chipMeta {
+  color: var(--muted);
+}
+
+.chipLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-left: 4px;
+  color: var(--teal);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.chipLink:hover {
+  color: var(--teal-hover);
+  text-decoration: underline;
+}
+
+.print {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.print:hover {
+  background: var(--page);
+}
+
+.body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.side {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 360px;
+}
+
+.main {
+  display: flex;
+  flex: 999 1 560px;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--teal-tint);
+  color: var(--teal-hover);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--amber-bg);
+  color: #7c3a06;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.select {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.segButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.segButton:hover {
+  background: var(--page);
+}
+
+/* Selected option: 2px teal frame without shifting the layout. */
+.segButton[aria-pressed='true'] {
+  border-color: var(--teal);
+  box-shadow: inset 0 0 0 1px var(--teal);
+  background: var(--teal-light);
+  font-weight: 700;
+}
+
+.segSub {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.alts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--page);
+  color: var(--muted-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.small {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.small:hover {
+  background: var(--pagebar);
+}
+
+.banners {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.banners:empty {
+  display: none;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The paper keeps its printed width and scrolls inside this container on narrow screens. */
+.paperScroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+/* Alternate-fingering pill under a chart (prototype .altb), in system coordinates. */
+.pill {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 26px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--ghost);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: 700 10px/1 'Atkinson Hyperlegible', system-ui, sans-serif;
+  cursor: pointer;
+}
+
+/* Invisible 36 × 36 touch target around the small pill. */
+.pill::before {
+  content: '';
+  position: absolute;
+  inset: -10px -5px;
+}
+
+.pill:hover {
+  border-color: var(--muted);
+}
+
+.pillChanged {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #ffffff;
+}
+
+.pillChanged:hover {
+  background: var(--teal-hover);
+}
+
+.pillOpen {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+/* Once the sidebar wraps above the main column, let it use the full width. */
+@media (max-width: 960px) {
+  .side {
+    max-width: none;
+  }
+}
+
+/* Print: plain block flow so the browser can break pages between systems. */
+@media print {
+  .page,
+  .body,
+  .main {
+    display: block;
+  }
+}

@@ -21,10 +21,10 @@ export function Paper(p: PaperProps): JSX.Element {
     <article className={`paper ${styles.paper}`} data-testid="paper">
       <header className={styles.heading}>
         <h1 className={styles.h1}>
-          <input className={`${styles.ttl} ${styles.title}`} type="text" aria-label="Sheet title" value={doc.title}
+          <input className={`${styles.ttl} ${styles.title}`} data-print-plain="" type="text" aria-label="Sheet title" value={doc.title}
             placeholder="Add a title" onChange={e => p.onTitle(e.target.value)} />
         </h1>
-        <input className={`${styles.ttl} ${styles.subtitle}`} type="text" aria-label="Sheet subtitle" value={doc.subtitle}
+        <input className={`${styles.ttl} ${styles.subtitle}`} data-print-plain="" type="text" aria-label="Sheet subtitle" value={doc.subtitle}
           placeholder="Add a subtitle (composer, arranger…)" onChange={e => p.onSubtitle(e.target.value)} />
       </header>
       <div className={styles.meta}>

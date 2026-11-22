@@ -1,0 +1,84 @@
+/* Range check card body, after the prototype (Editor.dc.html, "Range check"). */
+.bar {
+  position: relative;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--page);
+}
+
+.bar > div {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.ok {
+  border-radius: 6px;
+  background: #d3eeea;
+}
+
+.ext {
+  border-radius: 0 6px 6px 0;
+  background: #fde7cf;
+}
+
+.bar > .song {
+  top: 11px;
+  bottom: auto;
+  height: 12px;
+  border-radius: 6px;
+}
+
+.songOk {
+  background: var(--teal);
+}
+
+.songExt {
+  background: var(--amber);
+}
+
+.songBad {
+  background: var(--red);
+}
+
+.labels {
+  position: relative;
+  height: 16px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.labels > span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legend > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.songSwatch {
+  height: 6px;
+}
+
+.text {
+  font-size: 13px;
+}
