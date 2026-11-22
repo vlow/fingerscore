@@ -258,6 +258,15 @@
   gap: 12px;
 }
 
+.playError {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 13px;
+}
+
 /* The paper keeps its printed width and scrolls inside this container on narrow screens. */
 .paperScroll {
   overflow-x: auto;

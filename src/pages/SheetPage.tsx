@@ -71,6 +71,7 @@ function Sheet({ doc }: { doc: Doc }) {
   const playerRef = useRef<Player | null>(null);
   const [playing, setPlaying] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [playError, setPlayError] = useState(false);
   useEffect(() => () => playerRef.current?.stop(), [doc.score, doc.shift, doc.inst, doc.tempo]);
 
   function togglePlay() {
@@ -81,13 +82,20 @@ function Sheet({ doc }: { doc: Doc }) {
       setPlayingId(null);
       return;
     }
-    const player = current ?? createPlayer();
-    playerRef.current = player;
-    player.play(buildSchedule(doc), doc, id => {
-      setPlayingId(id);
-      setPlaying(player.playing);
-    });
-    setPlaying(true);
+    try {
+      const player = current ?? createPlayer();
+      playerRef.current = player;
+      player.play(buildSchedule(doc), doc, id => {
+        setPlayingId(id);
+        setPlaying(player.playing);
+      });
+      setPlayError(false);
+      setPlaying(true);
+    } catch {
+      setPlayError(true);
+      setPlaying(false);
+      setPlayingId(null);
+    }
   }
 
   function print() {
@@ -233,6 +241,7 @@ function Sheet({ doc }: { doc: Doc }) {
             <Banners doc={doc} derived={derived} onShift={setShift} />
           </div>
           <div className={s.toolbar} data-print-hide="">
+            {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
             <Transport playing={playing} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo })} />
           </div>
           <div className={s.paperScroll} data-print-paper="">

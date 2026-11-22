@@ -77,4 +77,27 @@ describe('playback schedule', () => {
     const d = mkDoc([{ ev: [[60, 48]] }, { re: true, ev: [[62, 48]] }]);
     expect(buildSchedule(d).notes.map(n => n.midi)).toEqual([60, 62, 60, 62]);
   });
+
+  it('three endings: each repeat end jumps back once, ending n plays on pass n', () => {
+    // MusicXML endings 1, 2, 3: ending 3 has no volta in the doc.
+    const d = mkDoc([
+      { ev: [[60, 48]] },
+      { re: true, volta: '1', ev: [[62, 48]] },
+      { re: true, volta: '2', ev: [[64, 48]] },
+      { ev: [[65, 48]] },
+    ]);
+    expect(buildSchedule(d).notes.map(n => n.midi)).toEqual([60, 62, 60, 64, 60, 65]);
+  });
+
+  it('a second section without a start mark repeats once and ends', () => {
+    const d = mkDoc([
+      { rs: true, ev: [[60, 48]] },
+      { re: true, volta: '1', ev: [[62, 48]] },
+      { volta: '2', ev: [[64, 48]] },
+      { ev: [[65, 48]] },
+      { re: true, ev: [[67, 48]] },
+    ]);
+    // after the endings the next repeat goes back to the bar after the second ending
+    expect(buildSchedule(d).notes.map(n => n.midi)).toEqual([60, 62, 60, 64, 65, 67, 65, 67]);
+  });
 });

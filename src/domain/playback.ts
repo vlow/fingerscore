@@ -8,27 +8,34 @@ export function ticksToSeconds(ticks: number, tempo: number): number {
   return (ticks * 60) / (tempo * 12);
 }
 
-/** Bar indices in play order, following repeats and first/second endings. */
+/**
+ * Bar indices in play order, following repeats and endings.
+ * A section starts at a bar with a start-repeat mark, at bar 0, or after a finished repeat.
+ * Each end-repeat mark jumps back to its section start once; every jump starts the next pass.
+ * A first-ending bar plays only on pass 1, a second-ending bar only on passes 1–2, so
+ * `A | 1.(re) | 2.(re) | 3.` plays A 1. A 2. A 3. (ending 3 has no volta in the doc).
+ * The order is capped at 4 × the bar count as a safety net.
+ */
 function barOrder(doc: Doc): number[] {
+  const bars = doc.score;
+  const cap = 4 * bars.length;
   const order: number[] = [];
+  const taken = new Set<number>();
   let start = 0;
-  let second = false;
-  for (let i = 0; i < doc.score.length; i++) {
-    const bar = doc.score[i];
-    if (second && bar.volta === '1') {
-      if (bar.re) second = false;
+  let pass = 1;
+  for (let i = 0; i < bars.length && order.length < cap; i++) {
+    const bar = bars[i];
+    if ((bar.volta === '1' && pass > 1) || (bar.volta === '2' && pass > 2)) continue;
+    if (bar.rs && i !== start) { start = i; pass = 1; }
+    order.push(i);
+    if (bar.re && !taken.has(i)) {
+      taken.add(i);
+      pass += 1;
+      i = start - 1;
       continue;
     }
-    if (bar.rs && !second) start = i;
-    order.push(i);
-    if (bar.re) {
-      if (!second) {
-        second = true;
-        i = start - 1;
-      } else {
-        second = false;
-      }
-    }
+    const endsEndings = pass > 1 && bar.volta !== '' && (bars[i + 1]?.volta ?? '') === '';
+    if (bar.re || endsEndings) { start = i + 1; pass = 1; }
   }
   return order;
 }

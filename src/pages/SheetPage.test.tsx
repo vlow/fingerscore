@@ -241,6 +241,14 @@ describe('playback', () => {
     expect(fakePlayer.stop).toHaveBeenCalled();
   });
 
+  it('shows an alert when the browser cannot play', async () => {
+    open('asax');
+    fakePlayer.play.mockImplementation(() => { throw new Error('no AudioContext'); });
+    await user.click(screen.getByRole('button', { name: 'Play' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Playback is not available in this browser.');
+    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+  });
+
   it('tempo slider writes the tempo', () => {
     open('asax');
     const slider = screen.getByLabelText(/♩ =/);
