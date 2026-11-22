@@ -26,15 +26,15 @@ export function deleteWithUndo(id: string, opts: DeleteOptions = {}): boolean {
     if (getEntry(id)) opts.onFailed?.(writeFailureMessage());
     return false;
   }
-  // Edits keep doc.source; loading another sheet replaces it.
+  // Opening or importing another sheet raises sheetGen; edits keep it.
   const app = useApp.getState();
-  const openSource = app.libraryId === id && app.doc ? app.doc.source : null;
+  const openGen = app.libraryId === id && app.doc ? app.sheetGen : null;
   app.forgetEntry(id);
   opts.onDeleted?.(entry);
   const undo = () => {
     if (!restoreEntry(entry)) { opts.onFailed?.(writeFailureMessage()); return; }
     const now = useApp.getState();
-    if (openSource && now.libraryId === null && now.doc?.source === openSource) now.relinkEntry(id);
+    if (openGen !== null && now.libraryId === null && now.doc && now.sheetGen === openGen) now.relinkEntry(id);
     opts.onChanged?.();
     opts.onRestored?.(entry);
   };

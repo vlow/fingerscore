@@ -102,7 +102,8 @@ function Sheet({ doc }: { doc: Doc }) {
   const selectedId = selection !== null && derived.byId[selection] ? selection : null;
   const paperRef = useRef<HTMLDivElement | null>(null);
   const scrollToSelection = useRef(false);
-  useEffect(() => { setSelection(null); setAnnouncement(''); }, [doc.source]);
+  const sheetGen = useApp(st => st.sheetGen);
+  useEffect(() => { setSelection(null); setAnnouncement(''); }, [sheetGen]);
   const firstBar = doc.score.length > 0 && doc.score[0].cap < barCap(doc.timeSig) ? 0 : 1;
 
   function select(id: string | null, byKeyboard = false) {

@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseChord } from '../domain/chords';
+import { removeBar } from '../domain/edit';
 import { sampleDoc } from '../domain/fixture';
 import { mod12 } from '../domain/keys';
 import { inst } from '../domain/instruments';
@@ -6,7 +8,7 @@ import { DEFAULT_PREFS, rankShifts, scoringPitches } from '../domain/transpose';
 import type { ParsedSong } from '../import/types';
 import { readJSON } from './storage';
 import { BLOCKED_MESSAGE, deleteEntry, listEntries } from './library';
-import { hydrate, saveStatus, useApp } from './store';
+import { canRedo, canUndo, HISTORY_LIMIT, hydrate, saveStatus, setClock, useApp } from './store';
 
 const best = (d: ReturnType<typeof sampleDoc>, prefs = DEFAULT_PREFS) =>
   rankShifts(scoringPitches(d.score), inst(d.inst), d.originalTonicPc, d.originalMode, prefs)[0].shift;
@@ -15,8 +17,10 @@ beforeEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
   sessionStorage.clear();
-  useApp.setState({ instId: 'asax', prefs: DEFAULT_PREFS, song: null, doc: null, libraryId: null, savedSnapshot: null, saveError: null });
+  useApp.setState({ instId: 'asax', prefs: DEFAULT_PREFS, song: null, doc: null, libraryId: null, savedSnapshot: null, saveError: null, past: [], future: [] });
 });
+
+afterEach(() => { setClock(Date.now); });
 
 describe('store', () => {
   it('changing the instrument re-picks the shift and clears overrides', () => {
@@ -396,5 +400,73 @@ describe('library state', () => {
     useApp.getState().setDoc(sampleDoc('fl'));
     expect(useApp.getState().libraryId).toBeNull();
     expect(useApp.getState().savedSnapshot).toBeNull();
+  });
+});
+
+describe('history', () => {
+  it('undo and redo restore documents', () => {
+    const s = useApp.getState; s().setDoc(sampleDoc('asax')); const d0 = s().doc!;
+    s().patchDoc({ tempo: 90 }); s().setShift(d0.shift + 1); expect(s().past).toHaveLength(2); expect(canUndo(s())).toBe(true);
+    s().undo(); expect(s().doc!.shift).toBe(d0.shift); expect(s().doc!.tempo).toBe(90); expect(canRedo(s())).toBe(true);
+    s().undo(); expect(s().doc).toBe(d0); expect(canUndo(s())).toBe(false);
+    s().redo(); s().redo(); expect(s().doc!.shift).toBe(d0.shift + 1); expect(canRedo(s())).toBe(false);
+    s().undo(); s().patchDoc({ tempo: 70 }); expect(s().future).toEqual([]);       // a new change clears redo
+  });
+  it('undo and redo without history change nothing', () => {
+    const s = useApp.getState; s().undo(); s().redo(); expect(s().doc).toBeNull();
+    s().setDoc(sampleDoc('fl')); const d = s().doc; s().undo(); s().redo(); expect(s().doc).toBe(d);
+  });
+  it('undo brings back what a structural edit removed (review focus 3)', () => {
+    const s = useApp.getState; let d = sampleDoc('asax'); const bar = d.score[2]; const ev = bar.ev[0];
+    d = { ...d, fingering: { [ev.id]: 0 }, chords: { ...d.chords, [ev.id]: parseChord('C', 0) } }; s().setDoc(d);
+    expect(s().applyEdit(removeBar(d, 2)!.doc)).toBe(true); expect(s().doc!.score).toHaveLength(d.score.length - 1); expect(s().doc!.chords[ev.id]).toBeUndefined();
+    s().undo(); expect(s().doc).toBe(d); s().redo(); expect(s().doc!.fingering[ev.id]).toBeUndefined();
+  });
+  it('applyEdit refuses null and identical documents', () => {
+    const s = useApp.getState; s().setDoc(sampleDoc('fl'));
+    expect(s().applyEdit(null)).toBe(false); expect(s().applyEdit(s().doc)).toBe(false); expect(s().past).toEqual([]);
+  });
+  it('every document action is undoable', () => {
+    const s = useApp.getState; s().setDoc(sampleDoc('asax'));
+    const steps = [() => s().setShift(3), () => s().patchDoc({ title: 'X' }), () => s().setFingering('e1', 2), () => s().resetFingerings(),
+      () => s().setInstrument('fl'), () => s().setPrefs({ easyRegister: false })];
+    steps.forEach((step, k) => { step(); expect(s().past).toHaveLength(k + 1); });
+  });
+  it('coalesces changes to one field within 1.5 s (review focus 4)', () => {
+    const s = useApp.getState; let t = 0; setClock(() => t); s().setDoc({ ...sampleDoc('fl'), title: 'A' });
+    s().patchDoc({ title: 'Ab' }, 'title'); t += 500; s().patchDoc({ title: 'Abc' }, 'title'); expect(s().past).toHaveLength(1);
+    t += 2000; s().patchDoc({ title: 'Abcd' }, 'title'); expect(s().past).toHaveLength(2);
+    s().patchDoc({ subtitle: 'x' }, 'subtitle'); expect(s().past).toHaveLength(3);                 // another key starts a new step
+    s().undo(); s().undo(); expect(s().doc!.title).toBe('Abc'); s().undo(); expect(s().doc!.title).toBe('A');
+    s().patchDoc({ title: 'B' }, 'title'); s().undo(); t += 100; s().patchDoc({ title: 'C' }, 'title'); expect(s().past).toHaveLength(1);   // undo resets coalescing
+  });
+  it('a change without a key ends a coalescing step', () => {
+    const s = useApp.getState; const t = 0; setClock(() => t); s().setDoc(sampleDoc('fl'));
+    s().patchDoc({ title: 'a' }, 'title'); s().patchDoc({ tempo: 90 }); s().patchDoc({ title: 'ab' }, 'title'); expect(s().past).toHaveLength(3);
+  });
+  it('history is capped at 200 steps', () => {
+    const s = useApp.getState; s().setDoc(sampleDoc('fl')); for (let i = 0; i < 250; i++) s().patchDoc({ tempo: 40 + (i % 150) });
+    expect(s().past.length).toBe(HISTORY_LIMIT);
+  });
+  it('opening or importing a sheet resets history and raises the generation', () => {
+    const s = useApp.getState; s().setDoc(sampleDoc('fl')); s().patchDoc({ tempo: 90 }); const g = s().sheetGen; s().saveSheet(); const id = s().libraryId!;
+    s().setDoc(sampleDoc('cl')); expect(s().past).toEqual([]); expect(s().sheetGen).toBe(g + 1);
+    s().patchDoc({ tempo: 80 }); s().openEntry(id); expect(s().past).toEqual([]); expect(s().future).toEqual([]); expect(s().sheetGen).toBe(g + 2);
+    s().patchDoc({ tempo: 70 }); s().undo(); s().openImported(sampleDoc('asax'), 'a.json'); expect(s().future).toEqual([]); expect(s().sheetGen).toBe(g + 3);
+    s().patchDoc({ tempo: 60 }); s().openUnsaved(sampleDoc('asax'), 'b.json'); expect(s().past).toEqual([]); expect(s().sheetGen).toBe(g + 4);
+  });
+  it('undo to the saved document shows saved', () => {
+    const s = useApp.getState; s().setDoc(sampleDoc('fl')); s().saveSheet();
+    s().patchDoc({ tempo: 90 }); expect(saveStatus(s())).toBe('dirty'); s().undo(); expect(saveStatus(s())).toBe('saved');
+  });
+  it('undo of an instrument change restores instrument, shift and fingering choices', () => {
+    const s = useApp.getState; const d = { ...sampleDoc('asax'), fingering: { e3: 0 } }; s().setDoc(d); s().setInstrument('cl');
+    expect(s().doc!.fingering).toEqual({}); s().undo(); expect(s().doc).toBe(d); expect(s().instId).toBe('asax');
+    s().redo(); expect(s().instId).toBe('cl');
+  });
+  it('history is not written to storage', () => {
+    const s = useApp.getState; s().setDoc(sampleDoc('fl')); s().patchDoc({ tempo: 90 });
+    expect(Object.keys(sessionStorage).join() + Object.keys(localStorage).join()).not.toMatch(/past|future|history/i);
+    useApp.setState({ doc: null, past: [], future: [] }); hydrate(); expect(useApp.getState().past).toEqual([]);
   });
 });

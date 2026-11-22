@@ -180,9 +180,19 @@ function sortKeys(v: unknown): unknown {
   return v;
 }
 
-/** Stable serialisation: equal documents give equal strings, whatever their key order. */
+const canonicalCache = new WeakMap<Doc, string>();
+
+/**
+ * Stable serialisation: equal documents give equal strings, whatever their key order.
+ * Cached per document object; documents are never changed in place.
+ */
 export function canonical(doc: Doc): string {
-  return JSON.stringify(sortKeys(doc));
+  let text = canonicalCache.get(doc);
+  if (text === undefined) {
+    text = JSON.stringify(sortKeys(doc));
+    canonicalCache.set(doc, text);
+  }
+  return text;
 }
 
 export function fileName(title: string): string {

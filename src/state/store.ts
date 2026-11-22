@@ -18,6 +18,14 @@ export interface AppState {
   libraryId: string | null;
   savedSnapshot: string | null;                    // canonical(doc) at the last save or open
   saveError: string | null;
+  /** Earlier and undone documents, oldest first; in memory only, never persisted. */
+  past: Doc[]; future: Doc[];
+  /** Raised whenever another sheet is opened or imported: the "same sheet" test. */
+  sheetGen: number;
+  undo(): void;
+  redo(): void;
+  /** Applies an edited document as one history step; false when there is none or it is the current one. */
+  applyEdit(next: Doc | null, coalesceKey?: string): boolean;
   saveSheet(): boolean;
   openEntry(id: string): boolean;
   /** Adds an imported sheet to the library and opens it; when the save fails it opens the sheet unlinked. */
@@ -34,7 +42,7 @@ export interface AppState {
   setSong(s: ParsedSong | null): void;
   setDoc(d: Doc | null): void;
   setShift(shift: number): void;
-  patchDoc(p: Partial<Pick<Doc, 'title' | 'subtitle' | 'tempo' | 'chartStyle' | 'recorderSystem' | 'show'>>): void;
+  patchDoc(p: Partial<Pick<Doc, 'title' | 'subtitle' | 'tempo' | 'chartStyle' | 'recorderSystem' | 'show'>>, coalesceKey?: string): void;
   setFingering(evId: string, index: number | null): void;
   resetFingerings(): void;
 }
@@ -42,6 +50,21 @@ export interface AppState {
 function bestShift(doc: Doc, instId: InstId, prefs: Prefs): number {
   return rankShifts(scoringPitches(doc.score), inst(instId), doc.originalTonicPc, doc.originalMode, prefs)[0].shift;
 }
+
+export const HISTORY_LIMIT = 200;
+export const COALESCE_MS = 1500;
+
+export function canUndo(s: Pick<AppState, 'past'>): boolean { return s.past.length > 0; }
+export function canRedo(s: Pick<AppState, 'future'>): boolean { return s.future.length > 0; }
+
+let now: () => number = Date.now;
+/** Test hook: the clock that decides whether changes coalesce. */
+export function setClock(fn: () => number): void { now = fn; }
+
+// The key and time of the last committed change, for coalescing; undo, redo and opening a sheet end a step.
+let lastKey: string | null = null;
+let lastAt = 0;
+const endStep = () => { lastKey = null; };
 
 export type SaveStatus = 'new' | 'dirty' | 'saved';
 export type ImportResult = { saved: true } | { saved: false; message: string };
@@ -63,128 +86,172 @@ function changed(doc: Doc, patch: Partial<Doc>): Doc {
   return next;
 }
 
-export const useApp = create<AppState>()((set, get) => ({
-  instId: 'asax',
-  prefs: DEFAULT_PREFS,
-  song: null,
-  doc: null,
-  libraryId: null,
-  savedSnapshot: null,
-  saveError: null,
-
-  saveSheet() {
-    const { doc, libraryId } = get();
-    if (!doc) return false;
-    const r = saveEntry(doc, libraryId);
-    if (!r.ok) { set({ saveError: r.message }); return false; }
-    set({ libraryId: r.entry.id, savedSnapshot: canonical(doc), saveError: null });
+export const useApp = create<AppState>()((set, get) => {
+  /**
+   * The one way a document change enters the store: the previous document goes onto the history,
+   * unless the change extends the previous step (same coalescing key within COALESCE_MS).
+   */
+  function commit(next: Doc, coalesceKey?: string, extra: Partial<AppState> = {}): boolean {
+    const { doc, past } = get();
+    if (!doc || next === doc) { if (Object.keys(extra).length > 0) set(extra); return false; }
+    const t = now();
+    const extend = coalesceKey !== undefined && coalesceKey === lastKey && t - lastAt < COALESCE_MS && past.length > 0;
+    lastKey = coalesceKey ?? null;
+    lastAt = t;
+    const pushed = extend ? past : [...past, doc].slice(-HISTORY_LIMIT);
+    set({ ...extra, doc: next, past: pushed, future: [] });
     return true;
-  },
+  }
 
-  openEntry(id) {
-    const entry = getEntry(id);
-    if (!entry) return false;
-    const doc = opened(entry.doc, entry.title, 'library');
-    remove('session', KEY_SONG);
-    set({ doc, instId: doc.inst, song: null, libraryId: entry.id, savedSnapshot: canonical(doc), saveError: null });
-    return true;
-  },
+  /** A sheet was opened or imported: history starts afresh. */
+  const fresh = () => { endStep(); return { past: [], future: [], sheetGen: get().sheetGen + 1 }; };
 
-  openImported(imported, fileName) {
-    const r = saveEntry(imported, null);
-    if (!r.ok) {
-      get().openUnsaved(imported, fileName);
-      return { saved: false, message: r.message };
-    }
-    const doc = opened(r.entry.doc, fileName, 'file');
-    remove('session', KEY_SONG);
-    set({ doc, instId: doc.inst, song: null, libraryId: r.entry.id, savedSnapshot: canonical(doc), saveError: null });
-    return { saved: true };
-  },
+  return {
+    instId: 'asax',
+    prefs: DEFAULT_PREFS,
+    song: null,
+    doc: null,
+    libraryId: null,
+    savedSnapshot: null,
+    saveError: null,
+    past: [],
+    future: [],
+    sheetGen: 0,
 
-  openUnsaved(imported, fileName) {
-    const doc = opened(imported, fileName, 'file');
-    remove('session', KEY_SONG);
-    remove('session', KEY_SHEET);
-    set({ doc, instId: doc.inst, song: null, libraryId: null, savedSnapshot: null, saveError: null });
-  },
+    undo() {
+      const { doc, past, future } = get();
+      if (!doc || past.length === 0) return;
+      const prev = past[past.length - 1];
+      endStep();
+      set({ doc: prev, instId: prev.inst, past: past.slice(0, -1), future: [...future, doc] });
+    },
 
-  forgetEntry(id) {
-    if (get().libraryId !== id) return;
-    remove('session', KEY_SHEET);
-    set({ libraryId: null, savedSnapshot: null });
-  },
+    redo() {
+      const { doc, past, future } = get();
+      if (!doc || future.length === 0) return;
+      const next = future[future.length - 1];
+      endStep();
+      set({ doc: next, instId: next.inst, past: [...past, doc], future: future.slice(0, -1) });
+    },
 
-  /** Links the open sheet to an entry again (undo of a delete): saved when the sheet equals the entry, else dirty. */
-  relinkEntry(id) {
-    const entry = getEntry(id);
-    if (!entry) return;
-    const { doc } = get();
-    const snapshot = canonical(doc ? { ...entry.doc, source: doc.source } : entry.doc);
-    set({ libraryId: entry.id, savedSnapshot: snapshot });
-  },
+    applyEdit(next, coalesceKey) {
+      return next !== null && commit(next, coalesceKey);
+    },
 
-  setInstrument(id) {
-    writeJSON('local', KEY_INST, id);
-    const { doc, prefs } = get();
-    if (!doc) { set({ instId: id }); return; }
-    set({ instId: id, doc: changed(doc, { inst: id, shift: bestShift(doc, id, prefs) }) });
-  },
+    saveSheet() {
+      const { doc, libraryId } = get();
+      if (!doc) return false;
+      const r = saveEntry(doc, libraryId);
+      if (!r.ok) { set({ saveError: r.message }); return false; }
+      set({ libraryId: r.entry.id, savedSnapshot: canonical(doc), saveError: null });
+      return true;
+    },
 
-  setPreferredInstrument(id) {
-    writeJSON('local', KEY_INST, id);
-    set({ instId: id });
-  },
+    openEntry(id) {
+      const entry = getEntry(id);
+      if (!entry) return false;
+      const doc = opened(entry.doc, entry.title, 'library');
+      remove('session', KEY_SONG);
+      set({ ...fresh(), doc, instId: doc.inst, song: null, libraryId: entry.id, savedSnapshot: canonical(doc), saveError: null });
+      return true;
+    },
 
-  setPrefs(p) {
-    const prev = get();
-    const prefs = { ...prev.prefs, ...p };
-    writeJSON('local', KEY_PREFS, prefs);
-    const { doc } = prev;
-    if (doc && doc.shift === bestShift(doc, doc.inst, prev.prefs)) {
-      set({ prefs, doc: changed(doc, { shift: bestShift(doc, doc.inst, prefs) }) });
-    } else {
-      set({ prefs });
-    }
-  },
+    openImported(imported, fileName) {
+      const r = saveEntry(imported, null);
+      if (!r.ok) {
+        get().openUnsaved(imported, fileName);
+        return { saved: false, message: r.message };
+      }
+      const doc = opened(r.entry.doc, fileName, 'file');
+      remove('session', KEY_SONG);
+      set({ ...fresh(), doc, instId: doc.inst, song: null, libraryId: r.entry.id, savedSnapshot: canonical(doc), saveError: null });
+      return { saved: true };
+    },
 
-  setSong(s) {
-    if (s === null) remove('session', KEY_SONG);
-    set({ song: s });
-  },
+    openUnsaved(imported, fileName) {
+      const doc = opened(imported, fileName, 'file');
+      remove('session', KEY_SONG);
+      remove('session', KEY_SHEET);
+      set({ ...fresh(), doc, instId: doc.inst, song: null, libraryId: null, savedSnapshot: null, saveError: null });
+    },
 
-  setDoc(d) {
-    if (d === null) remove('session', KEY_DOC);
-    remove('session', KEY_SHEET);
-    set({ doc: d, libraryId: null, savedSnapshot: null, saveError: null });
-  },
+    forgetEntry(id) {
+      if (get().libraryId !== id) return;
+      remove('session', KEY_SHEET);
+      set({ libraryId: null, savedSnapshot: null });
+    },
 
-  setShift(shift) {
-    const { doc } = get();
-    if (!doc || !Number.isFinite(shift)) return;
-    const clamped = Math.max(-24, Math.min(24, Math.round(shift)));
-    set({ doc: changed(doc, { shift: clamped }) });
-  },
+    /** Links the open sheet to an entry again (undo of a delete): saved when the sheet equals the entry, else dirty. */
+    relinkEntry(id) {
+      const entry = getEntry(id);
+      if (!entry) return;
+      const { doc } = get();
+      const snapshot = canonical(doc ? { ...entry.doc, source: doc.source } : entry.doc);
+      set({ libraryId: entry.id, savedSnapshot: snapshot });
+    },
 
-  patchDoc(p) {
-    const { doc } = get();
-    if (doc) set({ doc: changed(doc, p) });
-  },
+    setInstrument(id) {
+      writeJSON('local', KEY_INST, id);
+      const { doc, prefs } = get();
+      if (!doc) { set({ instId: id }); return; }
+      commit(changed(doc, { inst: id, shift: bestShift(doc, id, prefs) }), undefined, { instId: id });
+    },
 
-  setFingering(evId, index) {
-    const { doc } = get();
-    if (!doc) return;
-    const fingering = { ...doc.fingering };
-    if (index === null) delete fingering[evId];
-    else fingering[evId] = index;
-    set({ doc: { ...doc, fingering } });
-  },
+    setPreferredInstrument(id) {
+      writeJSON('local', KEY_INST, id);
+      set({ instId: id });
+    },
 
-  resetFingerings() {
-    const { doc } = get();
-    if (doc) set({ doc: { ...doc, fingering: {} } });
-  },
-}));
+    setPrefs(p) {
+      const prev = get();
+      const prefs = { ...prev.prefs, ...p };
+      writeJSON('local', KEY_PREFS, prefs);
+      const { doc } = prev;
+      if (doc && doc.shift === bestShift(doc, doc.inst, prev.prefs)) {
+        commit(changed(doc, { shift: bestShift(doc, doc.inst, prefs) }), undefined, { prefs });
+      } else {
+        set({ prefs });
+      }
+    },
+
+    setSong(s) {
+      if (s === null) remove('session', KEY_SONG);
+      set({ song: s });
+    },
+
+    setDoc(d) {
+      if (d === null) remove('session', KEY_DOC);
+      remove('session', KEY_SHEET);
+      set({ ...fresh(), doc: d, libraryId: null, savedSnapshot: null, saveError: null });
+    },
+
+    setShift(shift) {
+      const { doc } = get();
+      if (!doc || !Number.isFinite(shift)) return;
+      const clamped = Math.max(-24, Math.min(24, Math.round(shift)));
+      commit(changed(doc, { shift: clamped }));
+    },
+
+    patchDoc(p, coalesceKey) {
+      const { doc } = get();
+      if (doc) commit(changed(doc, p), coalesceKey);
+    },
+
+    setFingering(evId, index) {
+      const { doc } = get();
+      if (!doc) return;
+      const fingering = { ...doc.fingering };
+      if (index === null) delete fingering[evId];
+      else fingering[evId] = index;
+      commit({ ...doc, fingering });
+    },
+
+    resetFingerings() {
+      const { doc } = get();
+      if (doc) commit({ ...doc, fingering: {} });
+    },
+  };
+});
 
 // Mirror song and doc to sessionStorage. A null value is not written here: it also appears
 // when state is reset outside the actions, and the actions remove the keys themselves.
