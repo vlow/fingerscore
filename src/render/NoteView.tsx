@@ -5,12 +5,14 @@ import type { Doc } from '../domain/types';
 import { FingeringChart, MissingChart } from './FingeringChart';
 import { Glyph, type GlyphName } from './Glyph';
 import { SHEET } from './layout';
+import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
 
 export const INK = '#15171C';
 const BAD = '#B91C1C';
 const WARN = '#B45309';
 const TEAL = '#0E6E68';
 const TEXT = '#2A2D33';
+export const CHORD_FONT_PX = 13;
 export const FONT = "'Atkinson Hyperlegible', system-ui, sans-serif";
 
 /** Stem geometry from the prototype: 1.4px wide, 33px long, right of the head going up, left going down. */
@@ -78,22 +80,25 @@ function Dot(p: { x: number; y: number }) {
   return <circle data-dot="" cx={p.x} cy={p.y} r={2} fill={INK} />;
 }
 
-/** Wavy underline under a chord we cannot read; width estimated from the text length. */
-function wavy(x: number, y: number, chars: number): string {
-  const half = Math.max(8, chars * 3.6);
+/** Wavy underline of the given width under a chord we cannot read. */
+function wavy(x: number, y: number, width: number): string {
+  const half = Math.max(8, width / 2);
   let d = `M${x - half} ${y}`;
   for (let i = 0; i < Math.ceil((2 * half) / 4); i++) d += 'q1 -1.5 2 0q1 1.5 2 0';
   return d;
 }
 
-function Chord(p: { text: string; ok: boolean; x: number; raise: boolean }) {
+function Chord(p: { text: string; ok: boolean; x: number; textLength?: number; raise: boolean }) {
   const y = SHEET.chordY + 13;
-  const common = { x: p.x, y, textAnchor: 'middle' as const, fontSize: 13, fontWeight: 700, fontFamily: FONT };
+  const common = {
+    x: p.x, y, textAnchor: 'middle' as const, fontSize: CHORD_FONT_PX, fontWeight: 700, fontFamily: FONT,
+    ...(p.textLength === undefined ? {} : { textLength: p.textLength, lengthAdjust: 'spacingAndGlyphs' as const }),
+  };
   if (!p.ok) {
     return (
       <g data-chord="bad">
         <text {...common} fill={BAD}>{p.text}</text>
-        <path d={wavy(p.x, y + 3, p.text.length)} fill="none" stroke={BAD} strokeWidth={1} />
+        <path d={wavy(p.x, y + 3, p.textLength ?? p.text.length * TEXT_EM_PER_CHAR * CHORD_FONT_PX)} fill="none" stroke={BAD} strokeWidth={1} />
       </g>
     );
   }
@@ -110,8 +115,11 @@ function Chord(p: { text: string; ok: boolean; x: number; raise: boolean }) {
   );
 }
 
+/** Where the band placement put a lyric or chord: centre x and, when condensed, its textLength. */
+export interface TextSpot { x: number; textLength?: number }
+
 export interface NoteViewProps {
-  ev: DerivedEvent; x: number; y: number;
+  ev: DerivedEvent; x: number; y: number; lyricAt?: TextSpot; chordAt?: TextSpot;
   inst: Instrument; chartStyle: Doc['chartStyle']; show: Doc['show'];
   playing: boolean; beamed: boolean; fullBarRest: boolean;
 }
@@ -122,9 +130,14 @@ export function NoteView(p: NoteViewProps): JSX.Element {
   return (
     <g data-ev={ev.id} data-state={ev.state} data-tied={ev.tiedFrom ? '' : undefined} data-playing={p.playing ? 'true' : undefined}>
       {p.playing && <rect x={x - 12} y={0} width={24} height={150} rx={6} fill="rgba(14,110,104,0.14)" />}
-      {show.chords && ev.chord !== null && <Chord text={ev.chord} ok={ev.chordOk} x={x} raise={show.raiseExtensions} />}
+      {show.chords && ev.chord !== null && (
+        <Chord text={ev.chord} ok={ev.chordOk} x={p.chordAt?.x ?? x} textLength={p.chordAt?.textLength} raise={show.raiseExtensions} />
+      )}
       {show.lyrics && !ev.rest && ev.lyric !== '' && (
-        <text x={x} y={SHEET.lyricY + 12} textAnchor="middle" fontSize={12} fontFamily={FONT} fill={TEXT}>{ev.lyric}</text>
+        <text data-lyric="" x={p.lyricAt?.x ?? x} y={SHEET.lyricY + 12} textAnchor="middle" fontSize={LYRIC_FONT_PX} fontFamily={FONT} fill={TEXT}
+          {...(p.lyricAt?.textLength === undefined ? {} : { textLength: p.lyricAt.textLength, lengthAdjust: 'spacingAndGlyphs' })}>
+          {ev.lyric}
+        </text>
       )}
       {ev.rest ? <Rest ev={ev} x={x} fullBar={p.fullBarRest} /> : <Note {...p} />}
       {show.fingerings && !ev.rest && !ev.tiedFrom && (

@@ -4,7 +4,8 @@ import { barCap } from '../domain/time';
 import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
 import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout } from './layout';
-import { FONT, INK, NoteView, STEM, stemUp, yOfPos } from './NoteView';
+import { placeLyrics, type LyricItem } from './lyrics';
+import { CHORD_FONT_PX, FONT, INK, NoteView, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
 
 const STAFF = '#2A2D33';
@@ -146,6 +147,10 @@ export function SystemView(p: SystemViewProps): JSX.Element {
   };
   const charted = (ev: DerivedEvent) => doc.show.fingerings && !ev.rest && !ev.tiedFrom && ev.options.length > 0;
   const under = p.renderUnderChart;
+  const band = (items: LyricItem[], fontPx?: number) =>
+    new Map<string, TextSpot>(placeLyrics(items, 0, end, fontPx).map(({ id, ...spot }) => [id, spot]));
+  const lyrics = band(doc.show.lyrics ? placed.filter(n => !n.ev.rest && n.ev.lyric !== '').map(n => ({ id: n.ev.id, x: n.x, text: n.ev.lyric })) : []);
+  const chords = band(doc.show.chords ? placed.filter(n => n.ev.chord !== null).map(n => ({ id: n.ev.id, x: n.x, text: n.ev.chord! })) : [], CHORD_FONT_PX);
 
   return (
     <div className={styles.system}>
@@ -163,7 +168,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
         {line(0, 1)}
         {system.bars.map(bar => <Barlines key={bar.bar} bar={bar} doc={doc} />)}
         {system.bars.map(bar => bar.events.map(e => (
-          <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} inst={derived.inst} chartStyle={doc.chartStyle}
+          <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}
             show={doc.show} playing={p.playingId === e.id} beamed={beamed.has(e.id)} fullBarRest={fullBarRest(bar)} />
         )))}
         {groups.map(g => <Beams key={g.ids[0]} group={g} notes={g.ids.map(id => byId.get(id)!)} />)}

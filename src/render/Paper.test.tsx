@@ -5,6 +5,7 @@ import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { layoutSheet } from './layout';
 import { missingType } from './NoteView';
+import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
 import { mkDoc } from '../test/helpers';
 import type { DerivedEvent } from '../domain/derive';
 import type { Doc, InstId } from '../domain/types';
@@ -182,6 +183,18 @@ describe('SystemView symbols', () => {
     const c = draw(mkDoc([{ ev: [[0, 18], [0, 6], [67, 24]] }]));
     expect(c.querySelectorAll('[data-rest="restQuarter"]')).toHaveLength(1);
     expect(c.querySelectorAll('[data-dot]')).toHaveLength(1);
+  });
+
+  it('close syllables do not overlap on the lyric line', () => {
+    const doc = mkDoc([{ ev: [[67, 6], [67, 12], [67, 6], [67, 24]] }]);
+    doc.score[0].ev[0].l = 'ac-';
+    doc.score[0].ev[1].l = 'quain-';
+    const c = draw(doc);
+    const [a, b] = [...c.querySelectorAll('[data-lyric]')];
+    const width = (t: string) => t.length * TEXT_EM_PER_CHAR * LYRIC_FONT_PX;
+    const right = Number(a.getAttribute('x')) + width('ac-') / 2;
+    const left = Number(b.getAttribute('x')) - width('quain-') / 2;
+    expect(left - right).toBeGreaterThanOrEqual(1);
   });
 
   it('ledger lines below the staff', () => {
