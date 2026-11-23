@@ -23,6 +23,15 @@ describe('parseMusicXml', () => {
     expect(buildDoc(s, opts(s)).score).toHaveLength(1);
   });
 
+  it('reads the mode from the key', async () => {
+    const key = (mode: string, tr = '') => `<attributes><divisions>1</divisions><key><fifths>0</fifths><mode>${mode}</mode></key><time><beats>4</beats><beat-type>4</beat-type></time>${tr}</attributes>${n('C', 5, 4)}`;
+    expect((await parseMusicXml('d.xml', xml(key('dorian')))).key).toEqual({ tonicPc: 2, mode: 'dorian' });
+    expect((await parseMusicXml('d.xml', xml(key('dorian', '<transpose><chromatic>-2</chromatic></transpose>')))).key).toEqual({ tonicPc: 0, mode: 'dorian' });
+    expect((await parseMusicXml('d.xml', xml(key('ionian')))).key).toEqual({ tonicPc: 0, mode: 'major' });
+    expect((await parseMusicXml('d.xml', xml(key('aeolian')))).key).toEqual({ tonicPc: 9, mode: 'minor' });
+    expect((await parseMusicXml('d.xml', xml(key('mystery')))).key).toEqual({ tonicPc: 0, mode: null });
+  });
+
   it('simple: tracks, pickup, key, lyrics, chords, repeats', async () => {
     const s = await load('simple.musicxml');
     expect(s).toMatchObject({ format: 'MusicXML', timeSig: [4, 4], key: { tonicPc: 0, mode: 'major' }, pickup: 1, tempo: 90 });

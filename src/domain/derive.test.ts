@@ -18,6 +18,10 @@ describe('derive', () => {
     const d = derive({ ...sampleDoc('fl'), originalTonicPc: 9, originalMode: 'minor', shift: 0 }, DEFAULT_PREFS);
     expect(d.writtenKey).toBe('A minor'); expect(d.sig).toBe(0);
   });
+  it('modal songs are named by their mode', () => {
+    const d = derive({ ...sampleDoc('xc'), originalTonicPc: 2, originalMode: 'dorian', shift: 2 }, DEFAULT_PREFS);
+    expect(d.writtenKey).toBe('E Dorian'); expect(d.sig).toBe(2);
+  });
   it('non-transposing header is the written key alone', () => {
     const d = derive(sampleDoc('xc'), DEFAULT_PREFS);
     expect(d.headerKeys).toBe('F major');

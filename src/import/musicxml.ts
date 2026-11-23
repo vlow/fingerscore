@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { songTimeSig } from './meter';
-import type { TimeSig } from '../domain/types';
+import { MODE_BELOW_MAJOR } from '../domain/keys';
+import type { Mode, TimeSig } from '../domain/types';
 import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './types';
 
 const DEFAULT_TEMPO = 120;
@@ -15,7 +16,7 @@ const KIND_SUFFIX: Record<string, string> = {
 const NO_CHORD = /^n\.?\s*c\.?$/i;
 const BEAT_UNITS: Record<string, number> = { whole: 4, half: 2, quarter: 1, eighth: 0.5, '16th': 0.25 };
 
-interface WrittenKey { tonicPc: number; mode: 'major' | 'minor' | null; transpose: number }
+interface WrittenKey { tonicPc: number; mode: Mode | null; transpose: number }
 type Mark = ParsedSong['marks'][number];
 type Lyric = ParsedTrack['lyrics'][number];
 
@@ -74,13 +75,18 @@ function readTimeSig(file: string, root: Element): TimeSig {
 
 const mod12 = (x: number): number => ((x % 12) + 12) % 12;
 
+const MUSICXML_MODES: Record<string, Mode> = {
+  major: 'major', ionian: 'major', minor: 'minor', aeolian: 'minor',
+  dorian: 'dorian', phrygian: 'phrygian', lydian: 'lydian', mixolydian: 'mixolydian', locrian: 'locrian',
+};
+
 /** The key as written in a part, with the part's transposition at that point (semitones, written to concert). */
 function writtenKey(k: Element, transpose: number): WrittenKey | null {
   const fifths = num(text(k, 'fifths'));
   if (fifths === null) return null;
   const given = text(k, 'mode');
-  const mode = given === 'minor' ? 'minor' : given === 'major' ? 'major' : null;    // other or no mode: estimated later
-  return { tonicPc: mod12(fifths * 7 + (mode === 'minor' ? 9 : 0)), mode, transpose };
+  const mode = (given !== undefined ? MUSICXML_MODES[given] : undefined) ?? null;    // unknown or no mode: estimated later
+  return { tonicPc: mod12(fifths * 7 + (mode ? MODE_BELOW_MAJOR[mode] : 0)), mode, transpose };
 }
 
 /** Concert key: from the first part that does not transpose, else the first part's key converted. */

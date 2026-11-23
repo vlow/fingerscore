@@ -1,5 +1,5 @@
 export type InstId = 'xc'|'xbb'|'ssax'|'asax'|'tsax'|'bsax'|'cl'|'rs'|'ra'|'fl'|'picc'|'afl';
-export type Mode = 'major' | 'minor';
+export type Mode = 'major' | 'minor' | 'dorian' | 'phrygian' | 'lydian' | 'mixolydian' | 'locrian';
 export type TimeSig = [4,4] | [3,4] | [2,4] | [6,8] | [2,2];
 export interface Ev { id: string; m: number; d: number; r: boolean; tie: boolean; l: string }
 export interface Bar { cap: number; rs: boolean; re: boolean; volta: '' | '1' | '2'; ev: Ev[] }

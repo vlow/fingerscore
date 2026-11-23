@@ -6,20 +6,27 @@ export function mod12(n: number): number {
 
 const SIG_BY_MAJOR_PC: Record<number, number> = { 0: 0, 1: -5, 2: 2, 3: -3, 4: 4, 5: -1, 6: -6, 7: 1, 8: -4, 9: 3, 10: -2, 11: 5 };
 
+export const MODES: Mode[] = ['major', 'minor', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'locrian'];
+
+/** Semitones the mode's tonic lies above the tonic of the major key with the same signature. */
+export const MODE_BELOW_MAJOR: Record<Mode, number> = { major: 0, dorian: 2, phrygian: 4, lydian: 5, mixolydian: 7, minor: 9, locrian: 11 };
+
 export function keySignature(tonicPc: number, mode: Mode): number {
-  const majorPc = mode === 'minor' ? mod12(tonicPc + 3) : mod12(tonicPc);
-  return SIG_BY_MAJOR_PC[majorPc];
+  return SIG_BY_MAJOR_PC[mod12(tonicPc - MODE_BELOW_MAJOR[mode])];
 }
 
 const MAJOR_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
 const MINOR_NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'B♭', 'B'];
 
 export function tonicName(tonicPc: number, mode: Mode): string {
-  return (mode === 'minor' ? MINOR_NAMES : MAJOR_NAMES)[mod12(tonicPc)];
+  if (mode === 'major') return MAJOR_NAMES[mod12(tonicPc)];
+  if (mode === 'minor') return MINOR_NAMES[mod12(tonicPc)];
+  return spell(60 + mod12(tonicPc), keySignature(tonicPc, mode)).name.replace(/\d+$/, '');
 }
 
 export function keyName(tonicPc: number, mode: Mode): string {
-  return `${tonicName(tonicPc, mode)} ${mode}`;
+  const label = mode === 'major' || mode === 'minor' ? mode : mode[0].toUpperCase() + mode.slice(1);
+  return `${tonicName(tonicPc, mode)} ${label}`;
 }
 
 export function sigText(sig: number): string {

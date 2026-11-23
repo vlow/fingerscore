@@ -1,4 +1,4 @@
-import { accidental, keyName, keySignature, mod12, sigText, signatureLetters, spell, spelledName, staffPos, tonicName, type Spelled } from './keys';
+import { MODES, accidental, keyName, keySignature, mod12, sigText, signatureLetters, spell, spelledName, staffPos, tonicName, type Spelled } from './keys';
 
 it('signatures', () => {
   expect(keySignature(2,'major')).toBe(2); expect(keySignature(6,'major')).toBe(-6);
@@ -62,4 +62,23 @@ it('accidentals for double sharps and double flats', () => {
   const bbb: Spelled = { letter: 6, alter: -2, octave: 4, name: 'B𝄫4' };
   expect(accidental(bbb, -2)).toBe('doubleFlat');
   expect(accidental(bbb, 0)).toBe('doubleFlat');
+});
+
+it('modes: signatures', () => {
+  expect(keySignature(2, 'dorian')).toBe(0); expect(keySignature(7, 'mixolydian')).toBe(0);
+  expect(keySignature(9, 'dorian')).toBe(1); expect(keySignature(3, 'dorian')).toBe(-5); expect(keySignature(6, 'dorian')).toBe(4);
+  expect(keySignature(4, 'phrygian')).toBe(0); expect(keySignature(5, 'lydian')).toBe(0); expect(keySignature(11, 'locrian')).toBe(0);
+});
+it('modes: names', () => {
+  expect(keyName(2, 'dorian')).toBe('D Dorian'); expect(keyName(3, 'dorian')).toBe('E♭ Dorian');
+  expect(keyName(6, 'dorian')).toBe('F♯ Dorian'); expect(keyName(7, 'mixolydian')).toBe('G Mixolydian');
+  expect(keyName(4, 'phrygian')).toBe('E Phrygian'); expect(keyName(5, 'lydian')).toBe('F Lydian'); expect(keyName(11, 'locrian')).toBe('B Locrian');
+  expect(keyName(0, 'major')).toBe('C major'); expect(keyName(9, 'minor')).toBe('A minor');
+});
+it('modes: MODES lists all seven; signatures stay within -6..6', () => {
+  expect(MODES).toEqual(['major', 'minor', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'locrian']);
+  for (const m of MODES) for (let pc = 0; pc < 12; pc++) {
+    const sig = keySignature(pc, m);
+    expect(sig).toBeGreaterThanOrEqual(-6); expect(sig).toBeLessThanOrEqual(6);
+  }
 });

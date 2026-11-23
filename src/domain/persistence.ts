@@ -1,5 +1,6 @@
 import { inst, ORDER } from './instruments';
 import { optionsFor } from './fingerings';
+import { MODES } from './keys';
 import { barCap, DURATIONS, isSupportedTimeSig } from './time';
 import type { Bar, ChordSym, Doc, Ev, InstId, Mode, TimeSig } from './types';
 
@@ -118,7 +119,7 @@ export function validateDoc(value: unknown): Doc | null {
   const sig = [timeSig[0], timeSig[1]] as TimeSig;
   if (!isStr(instId) || !ORDER.includes(instId as InstId)) return null;
   if (!isInt(shift, -24, 24) || !isNum(tempo) || !isInt(originalTonicPc, 0, 11)) return null;
-  if (originalMode !== 'major' && originalMode !== 'minor') return null;
+  if (!MODES.includes(originalMode as Mode)) return null;
   if (!Array.isArray(score) || score.length === 0 || score.length > MAX_BARS) return null;
 
   const ids = new Set<string>();

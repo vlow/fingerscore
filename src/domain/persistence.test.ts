@@ -54,11 +54,15 @@ describe('sheet file', () => {
     ['empty score', (d: any) => { d.score = []; }],
     ['pitch out of range', (d: any) => { d.score[0].ev[0].m = 200; }],
     ['bad volta', (d: any) => { d.score[0].volta = '3'; }],
-    ['bad mode', (d: any) => { d.originalMode = 'dorian'; }],
+    ['bad mode', (d: any) => { d.originalMode = 'ionian'; }],
     ['cap above the meter', (d: any) => { d.score[0].cap = 60; }],
     ['cap not on the grid', (d: any) => { d.score[0].cap = 4; }],
   ])('refuses a damaged document: %s', (_n, m) => {
     expect(broken(m)).toEqual({ ok: false, reason: 'damaged' });
+  });
+
+  it('accepts a modal originalMode', () => {
+    expect(broken(d => { d.originalMode = 'dorian'; }).ok).toBe(true);
   });
 
   it('refuses a score with more than 2000 bars as damaged; 2000 bars are fine', () => {
