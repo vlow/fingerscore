@@ -1,7 +1,8 @@
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
-import { bar44of, bar68of, mkDoc, sixteenthBar } from '../test/helpers';
+import type { TimeSig } from '../domain/types';
+import { bar44of, bar68of, mkDoc, sixteenthBar, type BarSpec, type EvSpec } from '../test/helpers';
 import { SHEET, headerWidth, layoutSheet } from './layout';
 
 describe('layoutSheet', () => {
@@ -64,5 +65,77 @@ describe('layoutSheet', () => {
     expect(headerWidth(0, true)).toBe(68);
     expect(headerWidth(0, false)).toBe(42);
     expect(headerWidth(-5, false)).toBe(97);   // 11px per Bravura key-signature accidental
+  });
+
+  describe('triplets', () => {
+    const N = 67;
+    const bar = (...specs: (number | 'r')[]): BarSpec => ({ ev: specs.map((d): EvSpec => d === 'r' ? [0, 4] : [N, d]) });
+    const run = (bars: BarSpec[], ts: TimeSig = [4, 4]) => {
+      const doc = mkDoc(bars, ts);
+      const d = derive(doc, DEFAULT_PREFS);
+      return { doc, d, L: layoutSheet(doc, d) };
+    };
+    const idsOf = (d: ReturnType<typeof derive>, ...idx: number[]) => idx.map(i => d.events[i].id);
+
+    it('three triplet eighths: one beam of one level, the number stands alone', () => {
+      const { d, L } = run([bar(4, 4, 4, 12, 24)]);
+      expect(L.beams).toEqual([{ ids: idsOf(d, 0, 1, 2), beams: 1 }]);
+      expect(L.tuplets).toEqual([{ bar: 0, ids: idsOf(d, 0, 1, 2), beamed: true }]);
+    });
+    it('triplet sixteenths: two groups, two beams each', () => {
+      const { d, L } = run([bar(2, 2, 2, 2, 2, 2, 12, 24)]);
+      expect(L.beams).toEqual([{ ids: idsOf(d, 0, 1, 2), beams: 2 }, { ids: idsOf(d, 3, 4, 5), beams: 2 }]);
+      expect(L.tuplets.map(t => t.beamed)).toEqual([true, true]);
+    });
+    it('a long-short figure has no beam and a bracket', () => {
+      const { L } = run([bar(8, 4, 12, 24)]);
+      expect(L.beams).toEqual([]);
+      expect(L.tuplets).toHaveLength(1);
+      expect(L.tuplets[0].beamed).toBe(false);
+    });
+    it('a rest inside a group breaks the beam; the mark gets a bracket', () => {
+      const { L } = run([bar(4, 'r', 4, 12, 24)]);
+      expect(L.beams).toEqual([]);
+      expect(L.tuplets[0].beamed).toBe(false);
+    });
+    it('mixed values beam as one group with a stub-capable mixed beam', () => {
+      const { d, L } = run([bar(4, 4, 2, 2, 24, 12)]);
+      expect(L.beams).toEqual([{ ids: idsOf(d, 0, 1, 2, 3), beams: 'mixed' }]);
+      expect(L.tuplets).toEqual([{ bar: 0, ids: idsOf(d, 0, 1, 2, 3), beamed: true }]);
+    });
+    it('a group beams across the beat boundary inside it (6/8, ticks 12 to 24)', () => {
+      const { d, L } = run([bar(12, 4, 4, 4, 12)], [6, 8]);
+      expect(L.beams).toEqual([{ ids: idsOf(d, 1, 2, 3), beams: 1 }]);
+      expect(L.tuplets[0].beamed).toBe(true);
+    });
+    it('a plain eighth never beams with a triplet eighth', () => {
+      const { d, L } = run([bar(6, 6, 4, 4, 4, 12, 12), bar(6, 4, 4, 4, 6, 12, 12)]);
+      expect(L.beams).toEqual([
+        { ids: idsOf(d, 0, 1), beams: 1 },
+        { ids: idsOf(d, 2, 3, 4), beams: 1 },
+        { ids: idsOf(d, 8, 9, 10), beams: 1 },
+      ]);
+    });
+    it('plain eighths still beam by beat', () => {
+      const doc = mkDoc([bar68of(6, 6, 6, 6, 6, 6), bar68of(6, 6, 6, 6, 6, 6)], [6, 8]);
+      expect(layoutSheet(doc, derive(doc, DEFAULT_PREFS)).beams.map(g => g.ids.length)).toEqual([3, 3, 3, 3]);
+    });
+    it('a bar of 24 twos: increasing x, eight beam groups of three', () => {
+      const { L } = run([bar(...Array<number>(24).fill(2))]);
+      const xs = L.systems.flatMap(s => s.bars.flatMap(b => b.events.map(e => e.x)));
+      expect(xs).toHaveLength(24);
+      for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1]);
+      expect(L.beams.map(g => g.ids.length)).toEqual(Array<number>(8).fill(3));
+      expect(L.tuplets).toHaveLength(8);
+    });
+    it('triplet bars are wider than plain eighth bars', () => {
+      const plain = run(Array.from({ length: 4 }, () => bar44of(6, 6, 6, 6, 6, 6, 6, 6)));
+      expect(plain.L.systems[0].bars).toHaveLength(4);
+      const eighths = run(Array.from({ length: 6 }, () => bar(4, 4, 4, 12, 24)));
+      expect(eighths.L.systems.every(s => s.bars.length < 4)).toBe(true);
+      expect(eighths.L.systems.slice(0, -1).every(s => s.bars.length >= 2)).toBe(true);
+      const sixteenths = run(Array.from({ length: 3 }, () => bar(...Array<number>(24).fill(2))));
+      expect(sixteenths.L.systems.map(s => s.bars.length)).toEqual([1, 1, 1]);
+    });
   });
 });

@@ -4,6 +4,7 @@ import type { Instrument } from '../domain/instruments';
 import type { Doc } from '../domain/types';
 import { FingeringChart, MissingChart } from './FingeringChart';
 import { Glyph, glyphInk, type GlyphName } from './Glyph';
+import { notatedLength } from '../domain/triplets';
 import { SHEET } from './layout';
 import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
 
@@ -49,7 +50,7 @@ export function missingType(ev: Pick<DerivedEvent, 'state' | 'written'>, kind: I
 
 const DOTTED = new Set([9, 18, 36]);
 
-/** Rest glyph for a duration; a rest filling a whole full bar is a whole rest. */
+/** Rest glyph for a duration as written (a triplet member passes its notated value); a rest filling a whole full bar is a whole rest. */
 function restGlyph(d: number, fullBar: boolean): { name: GlyphName; dotted: boolean } {
   if (fullBar) return { name: 'restWhole', dotted: false };
   const base: Record<number, GlyphName> = { 3: 'restSixteenth', 6: 'restEighth', 12: 'restQuarter', 24: 'restHalf', 48: 'restWhole' };
@@ -170,7 +171,7 @@ export function NoteView(p: NoteViewProps): JSX.Element {
 export const ACCIDENTAL_GAP = 9;
 
 function Rest(p: { ev: DerivedEvent; x: number; fullBar: boolean }) {
-  const { name, dotted } = restGlyph(p.ev.d, p.fullBar);
+  const { name, dotted } = restGlyph(notatedLength(p.ev.d), p.fullBar);
   const ink = glyphInk(name);
   return (
     <g data-rest={name}>
@@ -184,16 +185,17 @@ function Note(p: NoteViewProps) {
   const { ev, x, y } = p;
   const color = noteColor(ev);
   const up = stemUp(ev);
-  const flags = p.beamed ? 0 : ev.d === 3 ? 2 : ev.d === 6 || ev.d === 9 ? 1 : 0;
+  const d = notatedLength(ev.d);   // a triplet member is drawn as its notated value
+  const flags = p.beamed ? 0 : d === 3 ? 2 : d === 6 || d === 9 ? 1 : 0;
   return (
     <>
       <LedgerLines pos={ev.pos} x={x} />
-      <NoteHead d={ev.d} x={x} y={y} color={color} />
-      {ev.d < 48 && !p.beamed && (
+      <NoteHead d={d} x={x} y={y} color={color} />
+      {d < 48 && !p.beamed && (
         <rect data-stem="" x={x + (up ? STEM.upDx : STEM.downDx)} y={up ? y - STEM.length : y} width={STEM.width} height={STEM.length} fill={INK} />
       )}
       {flags > 0 && <Flags count={flags} x={x} y={y} up={up} />}
-      {DOTTED.has(ev.d) && <Dot x={x + 12} y={ev.pos % 2 === 0 ? y - 5 : y} />}
+      {DOTTED.has(d) && <Dot x={x + 12} y={ev.pos % 2 === 0 ? y - 5 : y} />}
       {ev.accidental && <Glyph name={ev.accidental} x={x - ACCIDENTAL_GAP - glyphInk(ev.accidental).right} y={y} fill={color} />}
     </>
   );

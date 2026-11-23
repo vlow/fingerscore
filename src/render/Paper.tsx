@@ -48,7 +48,7 @@ export function Paper(p: PaperProps): JSX.Element {
         const under = p.renderUnderSystem?.(s.index);
         return (
           <Fragment key={s.index}>
-            <SystemView doc={doc} show={show} derived={derived} system={s} beams={layout.beams} ties={ties[s.index]}
+            <SystemView doc={doc} show={show} derived={derived} system={s} beams={layout.beams} tuplets={layout.tuplets} ties={ties[s.index]}
               playingId={p.playingId} selectedId={p.selectedId} onSelect={p.onSelect} lastSystem={s.index === last} renderUnderChart={p.renderUnderChart} />
             {under != null && under !== false && <div className={styles.underSystem} data-under-system="" data-print-hide="">{under}</div>}
           </Fragment>

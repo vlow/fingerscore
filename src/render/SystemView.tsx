@@ -1,9 +1,10 @@
 import { Fragment, type ReactNode } from 'react';
 import type { Derived, DerivedEvent } from '../domain/derive';
 import { barCap } from '../domain/time';
+import { notatedLength } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
-import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout } from './layout';
+import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
 import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, INK, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
@@ -105,12 +106,17 @@ export function hitColumns(bar: BarLayout): { id: string; x: number; width: numb
   });
 }
 
+/** Stem direction of a beam group (by its average staff position) and the y of its stem tips. */
+function beamGeometry(notes: Placed[]): { up: boolean; tip: number } {
+  const up = notes.reduce((s, n) => s + n.ev.pos, 0) / notes.length < 4;
+  const ys = notes.map(n => n.y);
+  return { up, tip: up ? Math.min(...ys) - 30 : Math.max(...ys) + 30 };
+}
+
 /** Horizontal beams over a group's stems; direction by the group's average staff position. */
 function Beams(p: { group: BeamGroup; notes: Placed[] }) {
   const { notes } = p;
-  const up = notes.reduce((s, n) => s + n.ev.pos, 0) / notes.length < 4;
-  const ys = notes.map(n => n.y);
-  const tip = up ? Math.min(...ys) - 30 : Math.max(...ys) + 30;
+  const { up, tip } = beamGeometry(notes);
   const sx = (n: Placed) => n.x + (up ? STEM.upDx : STEM.downDx);
   const level = (k: number) => (up ? tip + 6 * k : tip - 4 - 6 * k);
   const beam = (from: number, to: number, k: number, key: string, attr: object = { 'data-beam': '' }) => (
@@ -123,9 +129,9 @@ function Beams(p: { group: BeamGroup; notes: Placed[] }) {
   if (p.group.beams === 'mixed') {
     // second beam over each run of sixteenths; a lone sixteenth gets a stub towards its neighbour
     for (let i = 0; i < notes.length; i++) {
-      if (notes[i].ev.d !== 3) continue;
+      if (notatedLength(notes[i].ev.d) !== 3) continue;
       let j = i;
-      while (j + 1 < notes.length && notes[j + 1].ev.d === 3) j++;
+      while (j + 1 < notes.length && notatedLength(notes[j + 1].ev.d) === 3) j++;
       if (j > i) second.push(span(i, j, 1));
       else {
         const x = sx(notes[i]);
@@ -146,8 +152,63 @@ function Beams(p: { group: BeamGroup; notes: Placed[] }) {
   );
 }
 
+const TUPLET_FONT_PX = 12;
+const TUPLET_GAP = 6;           // clear space between the group's ink and the mark
+const TUPLET_HOOK = 4;          // bracket end hooks point at the notes
+const TUPLET_DIGIT_H = 9;       // ink height of the 3 at TUPLET_FONT_PX
+const TUPLET_HALF_GAP = 8;      // half width of the bracket's opening around the number
+
+/** A rest's ink, around the staff middle. */
+const REST_HALF_H = 12;
+
+/** Highest and lowest ink of a triplet group: heads, stems, beams (stem direction by beam or by position). */
+function groupInk(members: Placed[], beams: BeamGroup[], byId: Map<string, Placed>): { top: number; bottom: number } {
+  let top = Infinity;
+  let bottom = -Infinity;
+  const beamTip = new Map<string, { up: boolean; tip: number }>();
+  for (const g of beams) {
+    const geo = beamGeometry(g.ids.map(id => byId.get(id)!));
+    for (const id of g.ids) beamTip.set(id, geo);
+  }
+  for (const n of members) {
+    if (n.ev.rest) { top = Math.min(top, n.y - REST_HALF_H); bottom = Math.max(bottom, n.y + REST_HALF_H); continue; }
+    const reach = n.ev.accidental ? 10 : 6;
+    top = Math.min(top, n.y - reach); bottom = Math.max(bottom, n.y + reach);
+    const beam = beamTip.get(n.ev.id);
+    if (beam) { if (beam.up) top = Math.min(top, beam.tip); else bottom = Math.max(bottom, beam.tip); }
+    else if (stemUp(n.ev)) top = Math.min(top, n.y - STEM.length);
+    else bottom = Math.max(bottom, n.y + STEM.length);
+  }
+  return { top, bottom };
+}
+
+/** The 3 of a triplet group, with a bracket unless one beam joins all members. Above the group, or below it when above would reach the ending bracket line. */
+function Tuplet(p: { mark: TupletMark; members: Placed[]; beams: BeamGroup[]; byId: Map<string, Placed>; volta: boolean }) {
+  const { mark, members } = p;
+  const { top, bottom } = groupInk(members, p.beams, p.byId);
+  const x1 = members[0].x - 6;
+  const x2 = members[members.length - 1].x + 7;
+  const cx = (members[0].x + members[members.length - 1].x) / 2;
+  // Height of the mark above a group: bracket line plus gap, or the number's top over the beam.
+  const reachAbove = top - TUPLET_GAP - (mark.beamed ? TUPLET_DIGIT_H : TUPLET_DIGIT_H / 2);
+  const limit = p.volta ? SHEET.voltaY + 14 : SHEET.voltaY;
+  const above = reachAbove > limit;
+  // y of the bracket line, or of the number's baseline when it stands alone.
+  const line = above ? top - TUPLET_GAP : bottom + TUPLET_GAP;
+  const baseline = mark.beamed ? (above ? line - 1 : line + TUPLET_DIGIT_H + 1) : line + TUPLET_DIGIT_H / 2;
+  const half = Math.max(2, Math.min(TUPLET_HALF_GAP, (x2 - x1) / 2 - 2));
+  const hook = above ? TUPLET_HOOK : -TUPLET_HOOK;
+  const d = `M${x1} ${line + hook}V${line}H${cx - half}M${cx + half} ${line}H${x2}V${line + hook}`;
+  return (
+    <g data-tuplet="" data-tuplet-side={above ? 'above' : 'below'}>
+      {!mark.beamed && <path data-tuplet-bracket="" d={d} fill="none" stroke={INK} strokeWidth={1} />}
+      <text x={cx} y={baseline} textAnchor="middle" fontSize={TUPLET_FONT_PX} fontWeight={700} fontStyle="italic" fontFamily={FONT} fill={INK}>3</text>
+    </g>
+  );
+}
+
 export interface SystemViewProps {
-  doc: Doc; derived: Derived; system: SystemLayout; beams: BeamGroup[]; ties: TieSegment[];
+  doc: Doc; derived: Derived; system: SystemLayout; beams: BeamGroup[]; tuplets: TupletMark[]; ties: TieSegment[];
   /** What to draw; defaults to doc.show (Paper widens it in Lyrics and Chords mode). */
   show?: Doc['show'];
   playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
@@ -202,6 +263,10 @@ export function SystemView(p: SystemViewProps): JSX.Element {
             beamed={beamed.has(e.id)} fullBarRest={fullBarRest(bar)} />
         )))}
         {groups.map(g => <Beams key={g.ids[0]} group={g} notes={g.ids.map(id => byId.get(id)!)} />)}
+        {p.tuplets.filter(m => byId.has(m.ids[0])).map(m => (
+          <Tuplet key={m.ids[0]} mark={m} members={m.ids.map(id => byId.get(id)!)} byId={byId}
+            beams={groups.filter(g => m.ids.includes(g.ids[0]))} volta={doc.score[m.bar].volta !== ''} />
+        ))}
         {p.ties.map((t, i) => <Tie key={i} {...t} />)}
         {columns.map(c => (
           <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={SHEET.chordY} width={c.width} height={COLUMN_BOTTOM - SHEET.chordY}

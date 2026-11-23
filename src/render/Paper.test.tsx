@@ -3,10 +3,11 @@ import { Paper } from './Paper';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
-import { layoutSheet } from './layout';
+import { SHEET, layoutSheet } from './layout';
+import { pathBox } from './pathBox';
 import { missingType } from './NoteView';
 import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
-import { mkDoc } from '../test/helpers';
+import { mkDoc, type BarSpec, type EvSpec } from '../test/helpers';
 import type { DerivedEvent } from '../domain/derive';
 import type { Doc, InstId } from '../domain/types';
 
@@ -365,3 +366,74 @@ describe('missingType', () => {
     expect(missingType(ev('bad', 100), 'cl')).toBe('bad');
   });
 });
+
+describe('triplets', () => {
+  const N = 67;
+  const bar = (...specs: (number | 'r')[]): BarSpec => ({ ev: specs.map((d): EvSpec => d === 'r' ? [0, 4] : [N, d]) });
+  const ev = (c: HTMLElement, id: string) => c.querySelector(`[data-ev="${id}"]`)!;
+
+  it('draws a lone triplet eighth with one flag and a beamed one with none', () => {
+    const { container } = renderDoc(mkDoc([bar(8, 4, 12, 24), bar(4, 4, 4, 12, 24)]));
+    expect(ev(container, 't2').querySelectorAll('[data-flag]')).toHaveLength(1);
+    for (const id of ['t5', 't6', 't7']) expect(ev(container, id).querySelectorAll('[data-flag]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-beam-group]')).toHaveLength(1);
+  });
+  it('a member of 8 is a filled head with a stem and no flag; a member of 16 is open', () => {
+    const { container } = renderDoc(mkDoc([bar(8, 4, 12, 24), bar(16, 8, 24)]));
+    const q = ev(container, 't1');
+    expect(q.querySelector('[data-head="filled"]')).not.toBeNull();
+    expect(q.querySelectorAll('[data-stem]')).toHaveLength(1);
+    expect(q.querySelectorAll('[data-flag]')).toHaveLength(0);
+    expect(ev(container, 't5').querySelector('[data-head="open"]')).not.toBeNull();
+    expect(ev(container, 't6').querySelector('[data-head="filled"]')).not.toBeNull();
+  });
+  it('a triplet eighth rest is the eighth rest glyph; no dots inside a group', () => {
+    const { container } = renderDoc(mkDoc([bar(4, 'r', 4, 12, 24)]));
+    expect(ev(container, 't2').querySelector('[data-rest="restEighth"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-dot]')).toHaveLength(0);
+  });
+  it('one mark per group with the text 3; a bracket for [8,4] and none for [4,4,4]', () => {
+    const { container } = renderDoc(mkDoc([bar(8, 4, 12, 24), bar(4, 4, 4, 12, 24)]));
+    const marks = container.querySelectorAll('[data-tuplet]');
+    expect(marks).toHaveLength(2);
+    expect([...marks].map(m => m.querySelector('text')!.textContent)).toEqual(['3', '3']);
+    expect(marks[0].querySelector('[data-tuplet-bracket]')).not.toBeNull();
+    expect(marks[1].querySelector('[data-tuplet-bracket]')).toBeNull();
+    expect([...marks].map(m => m.getAttribute('data-tuplet-side'))).toEqual(['above', 'above']);
+  });
+  it('under an ending bracket with notes above the staff, the mark goes below; clear of all bands', () => {
+    const high: BarSpec = { ev: [[81, 8], [81, 4], [81, 12], [81, 24]], volta: '1' };
+    const doc = mkDoc([high, { ev: [[81, 4], [81, 4], [81, 4], [81, 12], [81, 24]], volta: '1' }]);
+    const { container } = renderDoc(doc);
+    expect(derive(doc, DEFAULT_PREFS).events[0].pos).toBeGreaterThan(9);
+    const marks = [...container.querySelectorAll('[data-tuplet]')];
+    expect(marks.map(m => m.getAttribute('data-tuplet-side'))).toEqual(['below', 'below']);
+    for (const m of marks) expectClear(m, true);
+  });
+  it('the mark stays clear of chord, lyric and ending lines in ordinary bars', () => {
+    const doc = mkDoc([
+      bar(8, 4, 12, 24), bar(4, 4, 4, 12, 24), bar(8, 8, 8, 24), bar(2, 2, 2, 6, 12, 24),
+    ]);
+    doc.score[0].ev[0].l = 'la'; doc.score[0].ev[0].m = 74;
+    const { container } = renderDoc(doc);
+    const marks = [...container.querySelectorAll('[data-tuplet]')];
+    expect(marks).toHaveLength(4);
+    for (const m of marks) { expect(m.getAttribute('data-tuplet-side')).toBe('above'); expectClear(m, false); }
+  });
+});
+
+/** Box of a mark from its attributes: the number's text and the bracket path. */
+function markBox(m: Element) {
+  const t = m.querySelector('text')!;
+  const x = Number(t.getAttribute('x')), y = Number(t.getAttribute('y')), fs = Number(t.getAttribute('font-size'));
+  const boxes = [{ x1: x - fs * 0.3, x2: x + fs * 0.3, y1: y - fs * 0.75, y2: y }];
+  for (const p of m.querySelectorAll('[data-tuplet-bracket]')) boxes.push(pathBox(p.getAttribute('d')!));
+  return { y1: Math.min(...boxes.map(b => b.y1)), y2: Math.max(...boxes.map(b => b.y2)) };
+}
+
+function expectClear(m: Element, volta: boolean) {
+  const { y1, y2 } = markBox(m);
+  const bands: [number, number][] = [[SHEET.chordY, SHEET.chordY + 15], [SHEET.lyricY, SHEET.lyricY + 16]];
+  if (volta) bands.push([SHEET.voltaY, SHEET.voltaY + 14]);
+  for (const [a, b] of bands) expect(y2 < a || y1 > b).toBe(true);
+}

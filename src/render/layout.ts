@@ -1,5 +1,6 @@
 import type { Derived, DerivedEvent } from '../domain/derive';
 import { barCap, beatTicks } from '../domain/time';
+import { notatedLength, tripletGroups, type TripletGroup } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 
 export const SHEET = { width: 940, pad: 40, systemWidth: 860, systemHeight: 290, staffTop: 75, staffBottom: 115, chordY: 2, lyricY: 22, voltaY: 46, chartY: 166, altButtonDy: 90, minPitch: 20, barPad: 16, barPadAfterRepeat: 26, barTail: 14 } as const;
@@ -14,7 +15,9 @@ export interface EvLayout { id: string; x: number; y: number }            // y =
 export interface BarLayout { bar: number; x: number; width: number; events: EvLayout[] }
 export interface SystemLayout { index: number; y: number; headerWidth: number; showTimeSig: boolean; barNumber: number | null; bars: BarLayout[] }
 export interface BeamGroup { ids: string[]; beams: 1 | 2 | 'mixed' }
-export interface SheetLayout { systems: SystemLayout[]; height: number; beams: BeamGroup[] }
+/** One triplet group: its number (and bracket unless `beamed`: one beam joins all members). */
+export interface TupletMark { bar: number; ids: string[]; beamed: boolean }
+export interface SheetLayout { systems: SystemLayout[]; height: number; beams: BeamGroup[]; tuplets: TupletMark[] }
 
 const MAX_BARS_PER_SYSTEM = 4;
 const STAFF_MIDDLE = (SHEET.staffTop + SHEET.staffBottom) / 2;
@@ -74,19 +77,35 @@ function layoutEvents(doc: Doc, bar: number, x: number, width: number, events: D
   }));
 }
 
-/** Beam runs of 16ths/8ths/dotted 8ths inside one beat window; a lone short note keeps its flag. */
-function beamGroups(barEvents: DerivedEvent[], beat: number): BeamGroup[] {
+/** Beam kind of a run by notated lengths: all eighths, all sixteenths, or both. */
+function beamKind(run: DerivedEvent[]): BeamGroup['beams'] {
+  const lengths = run.map(e => notatedLength(e.d));
+  return lengths.every(d => d === 6) ? 1 : lengths.every(d => d === 3) ? 2 : 'mixed';
+}
+
+/**
+ * Beam runs of 16ths/8ths/dotted 8ths inside one beat window; a lone short note keeps its flag.
+ * A triplet group beams by group instead: notated eighths and sixteenths join across the whole group,
+ * beat boundaries inside it do not matter, a rest or longer member ends the run, and no run crosses the
+ * group's edge. A plain note never beams with a triplet member.
+ */
+function beamGroups(barEvents: DerivedEvent[], beat: number, groups: TripletGroup[]): BeamGroup[] {
   const out: BeamGroup[] = [];
+  const groupOfId = new Map(groups.flatMap(g => g.ids.map(id => [id, g] as const)));
   let run: DerivedEvent[] = [];
   let window = -1;
+  let current: TripletGroup | null = null;
   const flush = () => {
-    if (run.length >= 2) {
-      const beams = run.every(e => e.d === 6) ? 1 : run.every(e => e.d === 3) ? 2 : 'mixed';
-      out.push({ ids: run.map(e => e.id), beams });
-    }
+    if (run.length >= 2) out.push({ ids: run.map(e => e.id), beams: beamKind(run) });
     run = [];
   };
   for (const ev of barEvents) {
+    const g = groupOfId.get(ev.id) ?? null;
+    if (g !== current) { flush(); current = g; }
+    if (g) {
+      if (ev.rest || !BEAMABLE.has(notatedLength(ev.d))) flush(); else run.push(ev);
+      continue;
+    }
     const w = Math.floor(ev.tick / beat);
     const fits = !ev.rest && BEAMABLE.has(ev.d) && ev.tick + ev.d <= (w + 1) * beat;
     if (!fits || w !== window) flush();
@@ -120,9 +139,16 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
   });
 
   const beat = beatTicks(doc.timeSig);
-  return {
-    systems,
-    height: systems.length * SHEET.systemHeight,
-    beams: byBar.flatMap(evs => beamGroups(evs, beat)),
-  };
+  const full = barCap(doc.timeSig);
+  const beams: BeamGroup[] = [];
+  const tuplets: TupletMark[] = [];
+  byBar.forEach((evs, bar) => {
+    const groups = tripletGroups(doc.score[bar], full) ?? [];
+    const barBeams = beamGroups(evs, beat, groups);
+    beams.push(...barBeams);
+    for (const g of groups) {
+      tuplets.push({ bar, ids: g.ids, beamed: barBeams.some(b => b.ids.length === g.ids.length && b.ids[0] === g.ids[0]) });
+    }
+  });
+  return { systems, height: systems.length * SHEET.systemHeight, beams, tuplets };
 }
