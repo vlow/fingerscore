@@ -155,3 +155,15 @@ it('an empty override hides the kind table for one instrument only', () => {
   expect(optionsFor('asax', 95, 'baroque').length).toBeGreaterThan(0);
   expect(optionsFor('tsax', 95, 'baroque')).toEqual([]);
 });
+
+test('option names describe the fingering and never list source charts', () => {
+  const sources = /WFG|Tomplay|Sax Teacher|Yamaha|Dolmetsch|Bolton|Moeck|Aulos|Zen-On|Takeyama|Blockis|chart/;
+  for (const id of ORDER) {
+    const i = inst(id);
+    for (const system of ['baroque', 'german'] as const) {
+      for (let w = i.lo; w <= i.hi; w++) {
+        for (const o of optionsFor(id, w, system)) expect(o.n).not.toMatch(sources);
+      }
+    }
+  }
+});

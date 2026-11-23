@@ -52,7 +52,7 @@ A player wants to practise a scale on their instrument and see how each note is 
 - A note without a sourced fingering shows the same box as on a sheet.
 - **Choosable, as on a sheet:** every chart whose note has two or more fingerings gets the pill "⇅ {n}" under it (teal when the player changed that note). It opens the sheet's popover, titled "{note} — pick a fingering", with one button per option, the tag "auto" on the automatic choice and the current choice outlined. Picking the auto option removes the pick; picking another sets it. Esc and a click outside close the popover and return the focus to the pill. Manual-only variants can be picked.
 - A pick belongs to the note's position in the scale's sequence and is a fixed point for the automatic choice along the whole sequence, so the neighbours adapt. Picks are cleared when the notes or their fingering tables change (instrument, scale, key, range, direction, recorder system), not by chart style, note names, the alternates checkbox or the key naming.
-- "Show alternate fingerings" (off by default) stacks every further option under the note, each with its name: the chosen chart on top, then every option except the chosen one; manual-only variants are included (their names say which charts print them).
+- "Show alternate fingerings" (off by default) stacks every further option under the note, each with its name: the chosen chart on top, then every option except the chosen one; manual-only variants are included. Names describe the fingering only; the charts that print an option are recorded in the data (`src`) and in `docs/fingering-gaps.md`, not shown.
 - Print shows the chosen fingerings; the pills, the popover and the summary line do not print.
 
 ### 4.4 The page (`/scales`)
