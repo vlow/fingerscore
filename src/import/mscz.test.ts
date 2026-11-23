@@ -314,8 +314,10 @@ describe('harmonyText and lyricText', () => {
     expect(harmonyText(9, null, 24)).toBe('D♭/A♯');
     expect([harmonyText(13, null, null), harmonyText(19, null, null), harmonyText(20, null, null), harmonyText(7, null, null), harmonyText(6, null, null)])
       .toEqual(['F', 'B', 'F♯', 'C♭', 'F♭']);
+    // A double sharp or flat is written as the plain note of the same pitch: the chord parser reads one accidental only.
     expect([harmonyText(28, null, null), harmonyText(0, null, null), harmonyText(-1, null, null), harmonyText(33, null, null)])
-      .toEqual(['C♯♯', 'C♭♭', 'F♭♭', 'B♯♯']);
+      .toEqual(['D', 'B♭', 'E♭', 'D♭']);
+    expect(harmonyText(28, 'mi', 0)).toBe('Dm/B♭');
   });
 
   it('hyphenates begin and middle syllables', () => {

@@ -53,11 +53,15 @@ function kindText(name: string): string {
   return name.startsWith('0') ? 'ø' + name.slice(1) : name;
 }
 
-/** A note name as the tonal pitch class spells it: 14 = C, 13 = F, 12 = B♭, 20 = F♯, 7 = C♭, 0 = C♭♭. Outside -1 to 33, by pitch class. */
+/**
+ * A note name as the tonal pitch class spells it: 14 = C, 13 = F, 12 = B♭, 20 = F♯, 7 = C♭. A double sharp or flat
+ * (below 6 or above 26) and anything out of range is named by its pitch class instead, because the chord parser reads
+ * one accidental only and would take C♯♯ for C♯.
+ */
 export function spellTpc(tpc: number): string {
-  if (!Number.isInteger(tpc) || tpc < -1 || tpc > 33) return ROOT_NAMES[pcOfTpc(Math.round(tpc))] ?? '';
   const accidentals = Math.floor((tpc + 1) / 7) - 2;
-  return 'FCGDAEB'[(tpc + 1) % 7] + (accidentals > 0 ? '♯'.repeat(accidentals) : '♭'.repeat(-accidentals));
+  if (!Number.isInteger(tpc) || Math.abs(accidentals) > 1) return ROOT_NAMES[pcOfTpc(Math.round(tpc))] ?? '';
+  return 'FCGDAEB'[(tpc + 1) % 7] + (accidentals > 0 ? '♯' : accidentals < 0 ? '♭' : '');
 }
 
 /** Chord symbol text from tonal pitch classes (root, bass), spelled as the file spells them, and MuseScore's kind text. */
