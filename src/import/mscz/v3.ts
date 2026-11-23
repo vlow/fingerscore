@@ -28,10 +28,9 @@ function readVoice(bars: Bar[], staffMeasures: Element[], voiceIndex: number): V
       } else if (name === 'location') {
         pos += (fraction(text(el, 'fractions')) ?? 0) * 4;
       } else if (name === 'Harmony') {
-        sink.wait(el);
+        sink.harmony(el, pos);
       } else if (name === 'Chord' || name === 'Rest') {
         if (name === 'Chord' && isGrace(el)) continue;
-        sink.flush(pos);
         const type = text(el, 'durationType') ?? '';
         const written = type === 'measure' ? bar.length : durationQuarters(type, num(text(el, 'dots')) ?? 0);
         if (written === null) throw new Error(`unknown note value ${type}`);

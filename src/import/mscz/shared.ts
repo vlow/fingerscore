@@ -89,19 +89,15 @@ function verseOne(chord: Element): string | null {
 
 /**
  * Collects the notes, verse 1 lyrics and chord symbols of one voice. A note with a tie start continues into the next
- * note of its pitch. A chord symbol sits at the next chord or rest of its voice (`wait`, then `flush`), or at a given position (`harmony`).
+ * note of its pitch. A chord symbol sits at the position the reader gives it (`harmony`).
  */
 export function voiceSink(hasTieStart: (note: Element) => boolean) {
   const notes: RawNote[] = [];
   const lyrics: Timed[] = [];
   const harmonies: Timed[] = [];
-  let waiting: string[] = [];
   const open = new Map<number, RawNote>();     // tied notes waiting for their continuation, by pitch
   return {
-    wait(h: Element): void { const t = harmonyOf(h); if (t !== null) waiting.push(t); },
     harmony(h: Element, at: number): void { const t = harmonyOf(h); if (t !== null) harmonies.push({ at, text: t }); },
-    /** A chord or rest starts at `pos`: the symbols waiting for it go there. */
-    flush(pos: number): void { for (const text of waiting) harmonies.push({ at: pos, text }); waiting = []; },
     chord(el: Element, pos: number, dur: number): void {
       const ly = verseOne(el);
       if (ly !== null) lyrics.push({ at: pos, text: ly });
@@ -188,7 +184,11 @@ export function readScore(file: string, score: Element, version: number, dialect
   }
   // Every pitched track carries all symbols of the score, in position order, each (position, text) once.
   symbols.sort((a, b) => a.at - b.at);     // stable: symbols at one position keep their order
-  const chords = symbols.filter((s, i) => !symbols.slice(0, i).some(o => o.at === s.at && o.text === s.text));
+  const seen = new Set<string>();
+  const chords = symbols.filter(s => {
+    const key = `${Math.round(s.at * 1e6)}|${s.text}`;
+    return seen.has(key) ? false : (seen.add(key), true);
+  });
   for (const t of tracks) if (!t.percussion) t.chords = chords;
   if (!tracks.some(t => !t.percussion)) throw new ImportError(`"${file}" has no melody track.`);
 

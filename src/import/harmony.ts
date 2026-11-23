@@ -1,7 +1,7 @@
 import type { TimeSig } from '../domain/types';
+import { ROOT_NAMES } from './chordNames';
 import type { RawNote } from './types';
 
-const ROOT_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 /** Tried in this order; on equal scores the earlier one wins, so a triad beats a seventh chord that has no seventh. */
 const TEMPLATES: { suffix: string; degrees: number[] }[] = [
   { suffix: '', degrees: [0, 4, 7] },
