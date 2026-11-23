@@ -7,9 +7,9 @@ import { hydrate } from './state/store';
 
 hydrate();
 
-// Development only: the PDF proof of src/pdf/spike.ts, loaded on first call (e2e/pdf-spike.spec.ts).
+// Development only: the PDF test hook of src/pdf/devHook.ts, loaded on first call (e2e/pdf-content.spec.ts).
 if (import.meta.env.DEV) {
-  Object.assign(window, { fingerscorePdfSpike: () => import('./pdf/spike') });
+  Object.assign(window, { fingerscorePdf: () => import('./pdf/devHook') });
 }
 
 createRoot(document.getElementById('root')!).render(
