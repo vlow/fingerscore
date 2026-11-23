@@ -45,13 +45,13 @@
   color: #ffffff;
 }
 
-.primary:hover:not(:disabled) {
+.primary:hover:not([aria-disabled='true']) {
   background: var(--teal-hover);
 }
 
-.primary:disabled {
-  opacity: 0.7;
-  cursor: default;
+.primary[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .plain {

@@ -64,7 +64,6 @@ test('a Cyrillic lyric gives the unsupported-characters message and no download'
   await page.getByRole('menuitem', { name: 'Download PDF' }).click();
   await expect(page.getByRole('alert')).toHaveText(/^The PDF can't show these characters: .*П.*\. Use Print instead\.$/);
   await expect(page.getByRole('alert')).not.toContainText('Preparing');
-  await page.waitForTimeout(500);
   expect(downloads()).toBe(0);
   // The entry is usable again.
   await fileMenu(page);
@@ -94,25 +93,67 @@ test('a PDF chunk that fails to load shows the load message; the next click load
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
+/** Records every PDF Blob that is turned into a download URL (src/ui/download.ts), before the app loads. */
+async function recordPdfBlobs(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __pdfBlobs: number };
+    w.__pdfBlobs = 0;
+    const create = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = (obj: Blob | MediaSource) => {
+      if (obj instanceof Blob && obj.type === 'application/pdf') w.__pdfBlobs++;
+      return create(obj);
+    };
+  });
+}
+const pdfBlobs = (page: Page) => page.evaluate(() => (window as unknown as { __pdfBlobs: number }).__pdfBlobs);
+
+/** Polls for `ms` that no PDF Blob is made. Staying on the page, a 400-bar PDF is ready about 5.5 s after the click (see the positive control). */
+async function noPdfFor(page: Page, ms: number): Promise<void> {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    expect(await pdfBlobs(page)).toBe(0);
+    await page.waitForTimeout(250);
+  }
+}
+
+/** The sample repeated to 400 bars, as the text of a sheet file. */
+const longSheet = (page: Page, title: string) => page.evaluate(async t => {
+  const h = await (window as unknown as { fingerscorePdf: () => Promise<{ sampleDoc(): { title: string; score: { ev: { id: string }[] }[]; chords: object } }> }).fingerscorePdf();
+  const doc = h.sampleDoc();
+  const one = doc.score;
+  const score: typeof one = [];
+  let n = 0;
+  while (score.length < 400) for (const b of one) { if (score.length < 400) score.push({ ...b, ev: b.ev.map(e => ({ ...e, id: `r${++n}` })) }); }
+  doc.score = score;
+  doc.chords = {};
+  doc.title = t;
+  return JSON.stringify({ app: 'fingerscore', format: 1, savedAt: new Date().toISOString(), title: doc.title, doc });
+}, title);
+
+async function openLong(page: Page, title: string): Promise<void> {
+  const text = await longSheet(page, title);
+  await page.getByLabel('Open JSON file', { exact: true }).setInputFiles({ name: 'long.fingerscore.json', mimeType: 'application/json', buffer: Buffer.from(text) });
+  await expect(page.getByText(/long\.fingerscore\.json · fingerscore sheet/)).toBeVisible();
+}
+
+test('positive control: staying on the page, a 400-bar PDF is downloaded once', async ({ page }) => {
+  test.setTimeout(120_000);
+  await recordPdfBlobs(page);
+  await openSample(page);
+  await openLong(page, 'Long sheet');
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 90_000 }),
+    fileMenu(page).then(() => page.getByRole('menuitem', { name: 'Download PDF' }).click()),
+  ]);
+  expect(download.suggestedFilename()).toBe('long-sheet-alto-sax.pdf');
+  expect(await pdfBlobs(page)).toBe(1);
+});
+
 test('leaving the page while a 400-bar PDF is prepared downloads nothing', async ({ page }) => {
   test.setTimeout(120_000);
+  await recordPdfBlobs(page);
   await openSample(page);
-  // A sheet of 400 bars, opened from a file: the sample repeated with new event ids.
-  const file = await page.evaluate(async () => {
-    const h = await (window as unknown as { fingerscorePdf: () => Promise<{ sampleDoc(): { title: string; score: { ev: { id: string }[] }[]; chords: object } }> }).fingerscorePdf();
-    const doc = h.sampleDoc();
-    const one = doc.score;
-    const score: typeof one = [];
-    let n = 0;
-    while (score.length < 400) for (const b of one) { if (score.length < 400) score.push({ ...b, ev: b.ev.map(e => ({ ...e, id: `r${++n}` })) }); }
-    doc.score = score;
-    doc.chords = {};
-    doc.title = 'Long sheet';
-    return JSON.stringify({ app: 'fingerscore', format: 1, savedAt: new Date().toISOString(), title: doc.title, doc });
-  });
-  await page.getByLabel('Open JSON file', { exact: true }).setInputFiles({ name: 'long.fingerscore.json', mimeType: 'application/json', buffer: Buffer.from(file) });
-  await expect(page.getByText(/long\.fingerscore\.json · fingerscore sheet/)).toBeVisible();
-
+  await openLong(page, 'Long sheet');
   const downloads = countDownloads(page);
   await fileMenu(page);
   await page.getByRole('menuitem', { name: 'Download PDF' }).click();
@@ -121,7 +162,33 @@ test('leaving the page while a 400-bar PDF is prepared downloads nothing', async
   await page.keyboard.press('Escape');
   await page.getByRole('link', { name: 'Scales' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Scales with fingerings' })).toBeVisible();
-  // Staying on the page, this PDF arrives after about 5.5 s; wait past that, not only two seconds.
-  await page.waitForTimeout(8000);
+  await noPdfFor(page, 6000);
   expect(downloads()).toBe(0);
+});
+
+test('opening another sheet while a 400-bar PDF is prepared downloads nothing; the next PDF is the new sheet', async ({ page }) => {
+  test.setTimeout(120_000);
+  await recordPdfBlobs(page);
+  await openSample(page);
+  // Save the sample under its name so that the File menu lists it.
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  await openLong(page, 'Long sheet');
+  const downloads = countDownloads(page);
+  await fileMenu(page);
+  await page.getByRole('menuitem', { name: 'Download PDF' }).click();
+  await fileMenu(page);
+  await expect(page.getByRole('menuitem', { name: 'Preparing PDF…' })).toBeDisabled();
+  await page.getByRole('menuitem', { name: 'Open Auld Lang Syne' }).click();
+  await expect(page.getByRole('textbox', { name: 'Sheet title' })).toHaveValue('Auld Lang Syne');
+  await noPdfFor(page, 6000);
+  expect(downloads()).toBe(0);
+
+  await fileMenu(page);
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('menuitem', { name: 'Download PDF' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe('auld-lang-syne-alto-sax.pdf');
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });

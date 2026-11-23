@@ -414,7 +414,9 @@ describe('save and the File menu', () => {
       act(() => onProgress(2, 10));
       expect(live()).toBeEmptyDOMElement();
       act(() => onProgress(3, 12));
-      expect(live()).toHaveTextContent('Preparing PDF, page 3 of 12');
+      expect(live()).toBeEmptyDOMElement();
+      act(() => onProgress(10, 12));
+      expect(live()).toHaveTextContent('Preparing PDF, page 10 of 12');
       await job.finish();
     });
 
@@ -427,6 +429,75 @@ describe('save and the File menu', () => {
       expect(signal!.aborted).toBe(false);
       view.unmount();
       expect(signal!.aborted).toBe(true);
+    });
+
+    it('opening another sheet mid-job aborts it: no download, no error from the old job, the entry is usable again', async () => {
+      let fail!: (e: unknown) => void;
+      vi.mocked(requestSheetPdf).mockImplementationOnce(() => new Promise<void>((_, rej) => { fail = rej; }));
+      open('asax');
+      await openMenu();
+      await user.click(pdfItem());
+      const { signal } = vi.mocked(requestSheetPdf).mock.calls[0][1];
+      const text = serializeFile({ ...sampleDoc('cl'), title: 'Other sheet' });
+      await openMenu();
+      await user.click(screen.getByRole('menuitem', { name: 'Open JSON file…' }));
+      await user.upload(screen.getByLabelText('Open JSON file', { selector: 'input' }), new File([text], 'o.fingerscore.json', { type: 'application/json' }));
+      expect(await screen.findByRole('textbox', { name: 'Sheet title' })).toHaveValue('Other sheet');
+      expect(signal!.aborted).toBe(true);
+      await act(async () => fail(new PdfError('The PDF could not be made. Use Print instead.')));
+      expect(screen.queryByRole('alert')).toBeNull();
+      await openMenu();
+      expect(pdfItem()).toBeEnabled();
+      await user.click(pdfItem());
+      expect(requestSheetPdf).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(requestSheetPdf).mock.calls[1][0].title).toBe('Other sheet');
+    });
+
+    it('an import error stays when the old job finishes', async () => {
+      let finish!: () => void;
+      vi.mocked(requestSheetPdf).mockImplementationOnce(() => new Promise<void>(res => { finish = res; }));
+      open('asax');
+      await openMenu();
+      await user.click(pdfItem());
+      await user.upload(screen.getByLabelText('Open JSON file', { selector: 'input' }), new File(['{"name":"x"}'], 'package.json', { type: 'application/json' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('isn\'t a fingerscore sheet');
+      await act(async () => finish());
+      expect(screen.getByRole('alert')).toHaveTextContent('isn\'t a fingerscore sheet');
+    });
+
+    it('a saved sheet opened from the menu aborts the job too', async () => {
+      saveEntry({ ...sampleDoc('cl'), title: 'Saved one' }, null);
+      pending();
+      open('asax');
+      await openMenu();
+      await user.click(pdfItem());
+      const { signal } = vi.mocked(requestSheetPdf).mock.calls[0][1];
+      await openMenu();
+      await user.click(screen.getByRole('menuitem', { name: 'Open Saved one' }));
+      expect(signal!.aborted).toBe(true);
+    });
+
+    it('a repeated identical failure is announced again', async () => {
+      const e = () => new PdfError('The PDF could not be made. Use Print instead.');
+      vi.mocked(requestSheetPdf).mockRejectedValue(e());
+      open('asax');
+      await openMenu();
+      await user.click(pdfItem());
+      const first = await screen.findByRole('alert');
+      await openMenu();
+      await user.click(pdfItem());
+      await waitFor(() => expect(screen.getByRole('alert')).not.toBe(first));
+    });
+
+    it('the live line is cleared when the job ends', async () => {
+      const job = pending();
+      open('asax');
+      await openMenu();
+      await user.click(pdfItem());
+      act(() => vi.mocked(requestSheetPdf).mock.calls[0][1].onProgress!(10, 12));
+      expect(document.querySelector('p[aria-live="polite"]')).toHaveTextContent('Preparing PDF, page 10 of 12');
+      await job.finish();
+      expect(document.querySelector('p[aria-live="polite"]')).toBeEmptyDOMElement();
     });
 
     it('Print still prints, after stopping playback', async () => {

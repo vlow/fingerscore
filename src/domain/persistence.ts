@@ -199,15 +199,18 @@ export function canonical(doc: Doc): string {
   return text;
 }
 
-const LETTERS: Record<string, string> = { 'ł': 'l', 'Ł': 'L', 'ø': 'o', 'Ø': 'O', 'ß': 'ss', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'đ': 'd', 'Đ': 'D' };
+const LETTERS: Record<string, string> = {
+  'ł': 'l', 'Ł': 'L', 'ø': 'o', 'Ø': 'O', 'ß': 'ss', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'đ': 'd', 'Đ': 'D',
+  'ı': 'i', 'ð': 'd', 'Ð': 'D', 'þ': 'th', 'Þ': 'TH', 'ħ': 'h', 'Ħ': 'H', 'ŧ': 't', 'Ŧ': 'T', 'ŋ': 'n', 'Ŋ': 'N',
+};
 const MAX_SLUG = 80;
 
 /**
- * Accents dropped (Ž → z, ł → l, ß → ss), lower case, runs outside a-z0-9 become one hyphen, hyphens at both ends trimmed,
- * cut to 80 characters. May be empty.
+ * Compatibility forms and accents dropped (ﬁ → fi, Ž → z, ł → l, ß → ss), lower case, runs outside a-z0-9 become one hyphen,
+ * hyphens at both ends trimmed, cut to 80 characters. May be empty.
  */
 export function slug(text: string): string {
-  const plain = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[łŁøØßæÆœŒđĐ]/g, c => LETTERS[c]);
+  const plain = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[łŁøØßæÆœŒđĐıðÐþÞħĦŧŦŋŊ]/g, c => LETTERS[c]);
   return plain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, MAX_SLUG).replace(/-+$/, '');
 }
 

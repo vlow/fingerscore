@@ -79,7 +79,7 @@
   cursor: pointer;
 }
 
-.action:hover {
+.action:hover:not(:disabled) {
   background: var(--page);
 }
 
@@ -93,9 +93,14 @@
   color: #ffffff;
 }
 
-.primary:hover {
+.primary:hover:not(:disabled) {
   border-color: var(--teal-hover);
   background: var(--teal-hover);
+}
+
+.action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .rule {

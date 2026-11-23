@@ -29,6 +29,12 @@ function binaryString(buffer: ArrayBuffer): string {
   return s;
 }
 
+/** TrueType files start with 00 01 00 00 or "true". */
+function isTrueType(buffer: ArrayBuffer): boolean {
+  const b = new Uint8Array(buffer, 0, Math.min(4, buffer.byteLength));
+  return b.length === 4 && ((b[0] === 0 && b[1] === 1 && b[2] === 0 && b[3] === 0) || (b[0] === 0x74 && b[1] === 0x72 && b[2] === 0x75 && b[3] === 0x65));
+}
+
 let loading: Promise<Map<FontKey, string>> | null = null;
 
 /** Fetches the six font files once and reads their advance widths; a failed fetch is retried on the next call. */
@@ -37,8 +43,13 @@ export function loadFonts(): Promise<Map<FontKey, string>> {
     let res: Response;
     try { res = await fetch(FONT_URL[key]); } catch { throw new PdfError(LOAD_FAILED); }
     if (!res.ok) throw new PdfError(LOAD_FAILED);
-    const bytes = await res.arrayBuffer();
-    setFontMetrics(key, bytes);
+    // A body that cannot be read, or a 200 that is no font (an HTML fallback page), is a load failure too.
+    let bytes: ArrayBuffer;
+    try {
+      bytes = await res.arrayBuffer();
+      if (!isTrueType(bytes)) throw new Error('not a TrueType file');
+      setFontMetrics(key, bytes);
+    } catch { throw new PdfError(LOAD_FAILED); }
     return [key, binaryString(bytes)] as const;
   })).then(entries => new Map(entries), e => { loading = null; throw e; });
   return loading;

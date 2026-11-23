@@ -416,12 +416,23 @@ describe('Download PDF', () => {
     renderScales();
     await user.click(pdfButton());
     expect(pdfButton()).toHaveTextContent('Preparing PDF…');
-    expect(pdfButton()).toBeDisabled();
+    expect(pdfButton()).toHaveAttribute('aria-disabled', 'true');
+    pdfButton().focus();
+    expect(pdfButton()).toHaveFocus();
     await user.click(pdfButton());
     expect(requestScalePdf).toHaveBeenCalledTimes(1);
     await act(async () => finish());
     expect(pdfButton()).toHaveTextContent('Download PDF');
-    expect(pdfButton()).toBeEnabled();
+    expect(pdfButton()).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('a repeated identical failure is announced again', async () => {
+    vi.mocked(requestScalePdf).mockRejectedValue(new PdfError('The PDF could not be made. Use Print instead.'));
+    renderScales();
+    await user.click(pdfButton());
+    const first = await screen.findByRole('alert');
+    await user.click(pdfButton());
+    await waitFor(() => expect(screen.getByRole('alert')).not.toBe(first));
   });
 
   it('shows a PdfError in the alert line; a later success clears it', async () => {
@@ -442,7 +453,9 @@ describe('Download PDF', () => {
     act(() => onProgress(2, 10));
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
     act(() => onProgress(4, 11));
-    expect(screen.getByRole('status')).toHaveTextContent('Preparing PDF, page 4 of 11');
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    act(() => onProgress(10, 11));
+    expect(screen.getByRole('status')).toHaveTextContent('Preparing PDF, page 10 of 11');
     await act(async () => finish());
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });

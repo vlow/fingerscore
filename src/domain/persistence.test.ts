@@ -237,6 +237,9 @@ describe('sheet file', () => {
     expect(fileName('  Ça va?! ')).toBe('ca-va.fingerscore.json');
     expect(fileName('Žluťoučký kůň')).toBe('zlutoucky-kun.fingerscore.json');
     expect(fileName('Łódź Øl Straße Æon Œuvre Đ')).toBe('lodz-ol-strasse-aeon-oeuvre-d.fingerscore.json');
+    expect(fileName('Işık')).toBe('isik.fingerscore.json');
+    expect(fileName('þórður Ðı Ħ Ŧ Ŋ')).toBe('thordur-di-h-t-n.fingerscore.json');
+    expect(fileName('ﬁne ＡＢＣ')).toBe('fine-abc.fingerscore.json');
     expect(fileName('a'.repeat(79) + ' b')).toBe(`${'a'.repeat(79)}.fingerscore.json`);
     expect(fileName('x'.repeat(100))).toBe(`${'x'.repeat(80)}.fingerscore.json`);
     expect(fileName('')).toBe('sheet.fingerscore.json');

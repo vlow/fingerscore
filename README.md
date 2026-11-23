@@ -131,16 +131,16 @@ File, then Download PDF, makes a PDF of the sheet. The Scales page has a Downloa
 - **Paper:** A4 (210 × 297 mm). US Letter (215.9 × 279.4 mm) when the first language of the browser has the region US or CA. Margins are 12 mm. There is no setting.
 - **Layout:** a system or a scale line is never split across pages. A scale line with many stacked alternate fingerings that does not fit on the rest of a page starts a new page, which can leave white space. When the last page of a sheet would hold only the legend, the music of that page is scaled down by up to 8% instead.
 - **Text:** the PDF embeds Atkinson Hyperlegible Regular, Bold and Bold Italic (SIL Open Font License, text in `src/pdf/fonts/OFL.txt`). Lyrics, chord symbols and titles can be searched and copied. The symbols ♭ ♯ ♮ 𝄫 𝄪 ♩ Δ ‿ ● ○ ◐ are drawn as shapes, not as text. A search for "B♭" finds "B".
-- **Characters:** the PDF supports Latin and extended Latin letters (such as ł, ő, č, ř, š, ž) and the eleven symbols above. If a title, lyric or chord uses any other character, for example Cyrillic or Greek letters, no PDF is made. The alert line lists up to 12 of the characters and says "Use Print instead". Print draws them with the fonts of the browser.
+- **Characters:** the PDF supports Latin and extended Latin letters (such as ł, ő, č, ř, š, ž) and the eleven symbols above. If a title, lyric or chord uses any other character, for example Cyrillic or Greek letters, no PDF is made. The red message line lists up to 12 of the characters and says "Use Print instead". Print draws them with the fonts of the browser.
 - **File name:** `{title}-{instrument}.pdf` for a sheet, `{key}-{scale}-{instrument}.pdf` for a scale, for example `auld-lang-syne-alto-sax.pdf` and `c-major-alto-sax.pdf`. Each part is lower case. Accented letters become plain letters (`Žluťoučký kůň` gives `zlutoucky-kun`) and other characters become `-`. A part is cut at 80 characters. An untitled sheet uses `sheet`. The JSON file name follows the same rule.
-- **Loading:** the PDF code (501 kB) and the six font files (111 kB together) load when you first click Download PDF, not with the app. If they cannot load, the alert line shows the load message. Another failure shows "The PDF could not be made. Use Print instead."
-- **Progress:** the File menu entry reads "Preparing PDF…" and is disabled while the PDF is made. For a PDF of more than 10 pages the page announces "Preparing PDF, page {n} of {N}". A sheet of 2000 bars makes about 125 pages. Leaving the page stops the work and nothing is downloaded.
+- **Loading:** the PDF code and the six font files load when you first click Download PDF, not with the app. If they cannot load, the red message line shows the load message. Another failure shows "The PDF could not be made. Use Print instead." `npm run check:bundle` enforces a budget of 400,000 bytes for everything that loads at start, and fails when that code holds the PDF libraries.
+- **Progress:** the File menu entry reads "Preparing PDF…" and is disabled while the PDF is made. For a PDF of more than 10 pages the page announces "Preparing PDF, page {n} of {N}" at every 10th page and at the last. A sheet of 2000 bars makes about 125 pages. Leaving the page or opening another sheet stops the work and nothing is downloaded.
 - **Print:** unchanged. It stays in the File menu and next to Download PDF on the Scales page.
 - **Phones:** a browser that shows a PDF in a tab instead of saving it does so for this file too.
 
 ### Loading
 
-The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The entry chunk stays at 400 kB or less and holds no PDF code; `npm run check:bundle` checks both after a build.
+The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The code that loads at start (the entry chunk and the chunks it loads with it) stays at 400,000 bytes or less and holds no PDF code; `npm run check:bundle` checks both after a build.
 
 The PDF code and fonts load on the first click of Download PDF (see "PDF"). The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
 
@@ -171,7 +171,7 @@ npm run dev        # dev server on http://localhost:5173
 npm test           # unit tests (Vitest)
 npm run test:e2e   # end-to-end test (Playwright)
 npm run build      # type-check and build to dist/
-npm run check:bundle  # after a build: entry chunk at most 400 kB, no PDF library in it
+npm run check:bundle  # after a build: code loaded at start at most 400,000 bytes, no PDF library in it
 npm run demo       # regenerate the sample MIDI file
 ```
 

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PDF_FAILED, PdfError } from '../pdf/errors';
 import type { PdfRequestOptions } from '../pdf/request';
 
-/** The live line for a PDF of more than 10 pages; shorter ones finish before it would help. */
+/** The live line for a PDF of more than 10 pages, at every 10th page and the last; shorter ones finish before it would help. */
 export function progressLine(page: number, pages: number): string {
-  return pages > 10 ? `Preparing PDF, page ${page} of ${pages}` : '';
+  return pages > 10 && (page % 10 === 0 || page === pages) ? `Preparing PDF, page ${page} of ${pages}` : '';
 }
 
 /**
@@ -15,7 +15,21 @@ export function progressLine(page: number, pages: number): string {
 export function usePdfJob() {
   const [busy, setBusy] = useState(false);
   const running = useRef<AbortController | null>(null);
-  useEffect(() => () => running.current?.abort(), []);
+  const mounted = useRef(true);
+
+  /** Stops the running job; it reports nothing, and the page can start another at once. */
+  const abort = useCallback(() => {
+    const ctl = running.current;
+    if (!ctl) return;
+    ctl.abort();
+    running.current = null;
+    if (mounted.current) setBusy(false);
+  }, []);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; running.current?.abort(); };
+  }, []);
 
   const start = useCallback(async (
     request: (o: PdfRequestOptions) => Promise<void>,
@@ -25,17 +39,27 @@ export function usePdfJob() {
     const ctl = new AbortController();
     running.current = ctl;
     setBusy(true);
+    let announced = false;
     try {
-      await request({ signal: ctl.signal, onProgress: (page, pages) => { const line = progressLine(page, pages);
-        if (line && !ctl.signal.aborted) onProgress(line); } });
+      await request({
+        signal: ctl.signal,
+        onProgress: (page, pages) => {
+          const line = progressLine(page, pages);
+          if (line && !ctl.signal.aborted) { announced = true; onProgress(line); }
+        },
+      });
       return ctl.signal.aborted ? null : { error: null };
     } catch (e) {
       return ctl.signal.aborted ? null : { error: e instanceof PdfError ? e.userMessage : PDF_FAILED };
     } finally {
-      running.current = null;
-      if (!ctl.signal.aborted) setBusy(false);
+      // An aborted job has been replaced or the page has gone: it leaves the state alone.
+      if (!ctl.signal.aborted) {
+        running.current = null;
+        if (announced) onProgress('');
+        setBusy(false);
+      }
     }
   }, []);
 
-  return { busy, start };
+  return { busy, start, abort };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
 import type { Player } from '../../audio/player';
 import { fileName, importMessage, readSheet, serializeFile } from '../../domain/persistence';
 import type { Doc } from '../../domain/types';
@@ -22,10 +22,15 @@ export function useFileActions(doc: Doc, playerRef: RefObject<Player | null>, an
   }
 
   const pdf = usePdfJob();
+  // Opening or importing another sheet stops a PDF of the old one. The job reports nothing after that.
+  const sheetGen = useApp(st => st.sheetGen);
+  const abortPdf = pdf.abort;
+  useEffect(() => abortPdf, [sheetGen, abortPdf]);
   async function downloadPdf() {
     playerRef.current?.stop();
+    setFileError(null);
     const done = await pdf.start(o => requestSheetPdf(doc, o), announce);
-    if (done) setFileError(done.error);
+    if (done?.error) setFileError(done.error);
   }
 
   // Saving and files (design 4.4). fileError is the line under the page bar; the next successful action clears it.
