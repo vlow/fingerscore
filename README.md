@@ -35,6 +35,8 @@ Every voice of every part becomes a track:
 
 Percussion rows are listed and cannot be played.
 
+A song longer than 2000 bars is refused when the sheet is made. A sheet holds at most 2000 bars.
+
 MuseScore limits:
 
 - Version 1 files (MuseScore 1.x) are refused. The message says to open the file in a current MuseScore and save it again, or to export MusicXML.
@@ -49,6 +51,8 @@ ABC limits:
 
 - A key line with its own accidentals (`K:D exp ^f`) is refused. So is a key the ABC library cannot read and a key with more than seven sharps or flats.
 - Text in quotes counts as a chord symbol only when it looks like one. "D.C." and "A tempo" are ignored.
+- A short bar inside a tune is read as a pickup: it gets its own bar with rests before it. Two short bars that make one full bar, as at a repeat sign, and a short last bar stay as written.
+- A bar longer than the meter is taken as written.
 - Voice names come from the `V:` lines in order.
 - A syllable on the second note of a tie is not shown.
 - Only the first tune of a file and the first verse of lyrics are read.

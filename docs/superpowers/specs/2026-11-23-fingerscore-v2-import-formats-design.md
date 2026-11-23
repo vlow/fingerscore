@@ -69,6 +69,7 @@ One dynamic `import()` per format inside `parseFile`, so a MIDI file never loads
 - Unsupported meter and a change of meter: the two existing strings of `musicxml.ts` and `midi.ts` ("… fingerscore reads 4/4, 3/4, 2/4 and 6/8 for now.", which now also names 2/2, and "… changes its time signature. fingerscore reads one time signature per song for now."), moved into one shared helper that all four importers use.
 - A file without notes in any part: the existing `"{file}" has no melody track.`
 - A song file of any format larger than 20 MB is refused before reading: `"{file}" is larger than 20 MB and can't be opened.`
+- A track whose notes fill more than 2000 bars (the most a sheet holds) is refused when the sheet is made, and a MuseScore score of more than 4000 measures before its measures are read: `"{file}" is longer than 2000 bars and can't be opened.`
 - The three places that list formats gain both values: `Doc['source']['format']` (`domain/types.ts`), the `formats` list in `persistence.ts`, `IMPORTED` in `SheetPage.tsx`.
 
 ### 4.3 MuseScore (`src/import/mscz.ts`)
@@ -79,18 +80,18 @@ Output is a `ParsedSong`, the same shape the MusicXML importer returns.
 - Version: the root's `version` attribute. 2.x, 3.x and 4.x are read; below 2 is refused (4.2); above 4 is tried with the reader for 4.
 - Why version 2: the owner's three sample files, taken as "MuseScore 4 scores", are two files of version 2.06 (MuseScore 2.1) and one of 3.01. Scores downloaded from score sites keep the version they were uploaded in, so old versions are what players have.
 - Version 2 lists a staff's chords and rests directly in the measure and marks other voices by track and tick elements; versions 3 and 4 wrap each voice in a `<voice>` element.
-- **Tracks:** one row per part and voice that holds notes, named `{part name}` or `{part name} · voice {n}` when the part has more than one voice with notes. A part with two staves (piano) gives rows per staff and voice: `{part name} · staff {s} · voice {n}`. Instrument name from the part's instrument; a part whose instrument has `useDrumset` 1 or whose staff type group is `percussion` is listed as percussion.
+- **Tracks:** one row per staff and voice that holds notes, named `{part name}`, with ` · staff {s}` only when more than one staff of the part has notes and ` · voice {n}` only when more than one voice of that staff has notes. A part without a name is `Part {n}`, counted among the parts. Instrument name from the part's instrument; a part whose instrument has `useDrumset` 1 or whose staff type group is `percussion` is listed as percussion.
 - **Pitches** are read from `<pitch>`, the sounding pitch: in the sample saxophone quartet the soprano's first note has `<pitch>` 74 (D5) with a written spelling of E, and the piece is in D. Transposing parts need no correction. Chords (several notes in one `<Chord>`) become simultaneous notes.
-- **Time:** durations from `<durationType>` and `<dots>`, tuplets by their ratio, full-measure rests by the measure length. Positions accumulate per voice inside a measure; a measure's length comes from the time signature, or from its actual length attribute when present (pickup bar, shortened bar).
+- **Time:** durations from `<durationType>` (long and breve down to 256th) and `<dots>`, tuplets by their ratio, full-measure rests by the measure length. Positions accumulate per voice inside a measure; a measure's length comes from the time signature, or from its actual length attribute when present (pickup bar, shortened bar).
 - **Pickup:** a first measure shorter than the meter.
 - **Key:** the key signature in force at the first bar; a part without one there is in written C. A staff's key signature is the written one (the B♭ soprano of the sample shows four sharps for concert D), so the reader for versions 2 and 3 shifts it by the part's chromatic transposition, unless the score's style says `concertPitch` 1; the reader for version 4 takes `<concertKey>` as it is. Later key changes are ignored for the song's key, as in the MusicXML importer (pitches are absolute, so they stay right). Mode unknown (`mode: null`), so the key finder decides major or minor.
 - **Tempo:** the first tempo mark, converted to quarter notes per minute; default 120.
 - **Meter:** the first time signature; a later change of meter is refused with the shared message (4.2).
 - **Lyrics:** verse 1 only, attached to the note's onset; syllabic `begin`/`middle` get a trailing hyphen as in the MusicXML importer.
-- **Chord symbols:** `<Harmony>` with root and bass as tonal pitch class numbers plus the kind text, rendered to the same text form the MusicXML importer produces, in concert pitch (the convention of `ParsedTrack.chords` for every importer). The kind text is taken as MuseScore stores it; a symbol whose text the chord parser cannot read is kept as typed text, as for any import.
-- **Repeats and endings:** start and end repeat of measures, voltas 1 and 2 from the volta spanners. Other voltas, D.C., D.S. and Coda are ignored.
+- **Chord symbols:** `<Harmony>` with root and bass as tonal pitch class numbers plus the kind text, in concert pitch. Root and bass are spelled as the file spells them: the tonal pitch class gives letter and accidental (14 = C, 12 = B♭, 20 = F♯), so C♯m stays C♯m. The symbols are score-wide: every pitched track carries the symbols of all staves, each at its own position. The kind text is taken as MuseScore stores it; a symbol whose text the chord parser cannot read is kept as typed text, as for any import.
+- **Repeats and endings:** start and end repeat of measures, voltas 1 and 2 from the volta spanners. They are placed by position with the MusicXML rule, so a bar split in two measures at a repeat keeps its marks on the right bar. Other voltas, D.C., D.S. and Coda are ignored.
 - **Ties:** tied notes are merged into one note before quantising, as in the MusicXML importer.
-- Ignored: grace notes, ornaments, dynamics, articulation, hidden or cue-size notes are read as normal notes unless marked as not played.
+- Ignored: grace notes, ornaments, dynamics, articulation. Hidden and cue-size notes are read as normal notes.
 
 ### 4.4 ABC (`src/import/abc.ts`)
 
@@ -98,11 +99,12 @@ Output is a `ParsedSong`, the same shape the MusicXML importer returns.
 - **Tune:** the first tune of the file (first `X:` block; a file without `X:` is read as one tune). Text and `%` directives before the first `X:` are skipped, as in the owner's samples.
 - **Header:** `M:` meter (`C` = 4/4, `C|` = 2/2; every meter outside the five supported ones is refused), `L:` unit length (ABC's default rule when missing), `Q:` tempo converted to quarters per minute (default 120), `K:` key. Tonic and mode are read as written, for all seven modes (4.6); explicit accidentals after the key (`K:D exp ^f`) and `K:HP` are refused as unreadable keys. A key the importer cannot read is a refusal: a signature that would need more than seven sharps or flats, a key line whose tonic is not a note name (lowercase tonics included), and a key the ABC library reads differently from the file text.
 - **Tracks:** one row per `V:` voice with notes, named by the voice's name or id; a tune without voices gives one row named "Melody".
-- **Pitches:** note letter and octave marks, the key signature, explicit accidentals, and bar accidentals (an accidental holds to the end of the bar for that letter and octave). Applied voice modifiers: `octave=`, `transpose=` and clef names ending in `+8` or `-8`; every other voice or clef modifier is ignored. Chords in brackets become simultaneous notes.
+- **Pitches:** note letter and octave marks, the key signature, explicit accidentals, and bar accidentals (an accidental holds to the end of the bar for that letter and octave). Applied voice modifiers: `octave=`, `transpose=` and clef names ending in `+8` or `-8`; every other voice or clef modifier is ignored. `transpose=` moves the notes, the chord symbols and the song's key, which comes from the first voice with notes. Chords in brackets become simultaneous notes.
 - **Time:** note lengths as multiples of `L:`, broken rhythm (`>` `<`), tuplets by ABC's rules, rests `z` and `x`, full-bar rests `Z`.
 - **Pickup:** a first bar shorter than the meter.
+- **Bars:** each voice is re-anchored at its bar lines. A short bar inside the tune that is not the first bar, not the last, and not one half of a split pair (two short bars that make a full bar, as at a repeat sign inside a bar) is a pickup: it is right-aligned in its own bar, with rests before it, and the bars after it follow from there. A bar longer than the meter is taken as written.
 - **Lyrics:** `w:` lines aligned by ABC's rules (`-` splits syllables and leaves a trailing hyphen, `_` holds, `*` skips, `~` joins words with a space, `|` advances to the next bar). First verse only; `W:` lines are ignored.
-- **Chord symbols:** quoted text above a note when it has no space, starts with a note name A–G with an optional accidental, and continues with nothing or a chord-kind start (a digit, m, M, d, a, s, o, °, ø, +, -, (, /, Δ) that is not the start of a plain word, so "Coda" and "D.C." are ignored; other annotations (`"^text"`, `"_text"`) are ignored. Stored in concert pitch, the convention of `ParsedTrack.chords`.
+- **Chord symbols:** quoted text above a note when it has no space, starts with a note name A–G with an optional accidental, and continues with nothing or a chord-kind start (a digit, m, M, d, a, s, o, °, ø, +, -, (, Δ) that is not the start of a plain word, so "Coda" and "D.C." are ignored. A bass note after `/` (`C/E`, `Dm7/F♯`) is read apart from the kind; a `/` followed by anything but a note name belongs to the kind only when the kind has started (`C6/9`). Other annotations (`"^text"`, `"_text"`) are ignored. Stored in concert pitch. A voice without `transpose=` keeps the written spelling of root and bass (`#` and `b` become ♯ and ♭); a transposed voice names them by pitch class.
 - **Repeats and endings:** `|:` `:|` `::` and endings `[1` `[2` (also `|1` `:|2`). Others are ignored.
 - **Ties** (`-`) merge notes before quantising. Slurs, grace notes, decorations and inline text are ignored. An inline `M:` change is refused with the shared message (4.2). An inline `K:` change is followed for the pitches of the notes after it; the song's key stays the first one.
 
@@ -145,6 +147,11 @@ No change in behaviour: melody detection, tags, preview, lyrics and chord source
 10. A failed parser download shows the load message in the drop zone; there is no separate retry button.
 11. Key changes inside a song do not refuse the file: MuseScore pitches are absolute, ABC pitches follow the new key.
 8. Format chips: the drop zone names five formats; the hint text stays as it is.
+12. MuseScore chord symbols are score-wide and sit at their own position, not at the next chord.
+13. MuseScore repeat and ending marks are placed by position, with the MusicXML rule, not by measure count.
+14. ABC: a short bar inside a tune that is neither the first, the last nor half of a split pair is a pickup and is right-aligned in its own bar.
+15. No song longer than 2000 bars is opened: the most a sheet can hold and save.
+16. Chord symbols keep their written spelling: MuseScore always, ABC when the voice is not transposed. MusicXML is unchanged.
 
 ## 6. Left to the builder
 
