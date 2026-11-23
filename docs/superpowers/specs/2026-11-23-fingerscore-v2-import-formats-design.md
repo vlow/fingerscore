@@ -108,7 +108,7 @@ Output is a `ParsedSong`, the same shape the MusicXML importer returns.
 
 ### 4.5 Track page and sheet
 
-No change in behaviour: melody detection, tags, preview, lyrics and chord sources work on `ParsedSong` and treat the new formats like MusicXML. The page-bar chip names the format: the existing layout with the new names, for example `{file} · MuseScore · track 1 of 3 · 64 notes`. The track page's format line shows the same names.
+No change in behaviour: melody detection, tags, preview, lyrics and chord sources work on `ParsedSong` and treat the new formats like MusicXML. The page-bar chip keeps the existing layout `{format} · track {track name} of {N} · {notes} notes`, with the new format names, for example `MuseScore · track Flute of 1 · 12 notes`. A song with one usable track goes from the start page straight to the sheet, as before. The track page's format line shows the same names.
 
 ### 4.6 Modes
 

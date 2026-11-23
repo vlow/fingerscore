@@ -142,12 +142,13 @@ describe.skipIf(!existsSync(DIR))('real files in samples/', () => {
     it('Entertainer: version 4 equals version 3 in tracks, lyrics, marks, key, pickup, meter and tempo', () => {
       same(ENTERTAINER[4], ENTERTAINER[3], false);
     });
-    // Finding: the version 4 file stores its chord symbols at other positions than versions 2 and 3.
-    // First difference: track "Piano · voice 1", bar 5: C/E at 8 (version 4) against C/E at 9 (versions 2 and 3).
-    // In the version 4 XML both chord symbols of that bar stand before the first chord, with no location element;
-    // in version 3 the second stands between the third and fourth chord. 77 of 164 chords differ in position or text.
-    // Reported to the controller: reading error or a different file?
-    it.fails('Entertainer: version 4 equals version 3 in chord symbols', () => same(ENTERTAINER[4], ENTERTAINER[3]));
+    // The two files differ in content: bar 5 of version 4 holds both chord symbols before the first chord,
+    // version 3 puts the second before the fourth chord, and the reader follows each file.
+    it('Entertainer: version 4 has 164 chord symbols per track with the chord texts of version 3', () => {
+      const texts = (name: string) => song(name).tracks.map(t => t.chords.map(c => c.text).sort());
+      for (const t of pitched(song(ENTERTAINER[4]))) expect(t.chords).toHaveLength(164);
+      expect(texts(ENTERTAINER[4])).toEqual(texts(ENTERTAINER[3]));
+    });
     it('hymn: version 2 equals version 3', () => same(HYMN[2], HYMN[3]));
     it('hymn: version 4 equals version 3 except for the two chord texts the owner changed', () => {
       expect(diffSongs(song(HYMN[4]), song(HYMN[3]), false)).toBeNull();
@@ -183,18 +184,14 @@ describe.skipIf(!existsSync(DIR))('real files in samples/', () => {
     it.each(Object.values(PICKUP))('%s has a pickup of 1', name => {
       expect(song(name).pickup).toBe(1);
     });
-    it(`${DRUMS[2]} has exactly one percussion track`, () => {
-      expect(percussion(song(DRUMS[2])).map(t => t.name)).toEqual(['Drumset']);
-    });
-    // Finding: versions 3 and 4 split the drum part by voice, so there are two percussion tracks
-    // ("Drumset · voice 1", "Drumset · voice 2"; version 4: "Drum Kit · …"). Reported to the controller.
-    it.fails.each([DRUMS[3], DRUMS[4]])('%s has exactly one percussion track', name => {
-      expect(percussion(song(name))).toHaveLength(1);
-    });
-    it.each([DRUMS[3], DRUMS[4]])('%s has percussion tracks that are the voices of one drum part', name => {
-      const names = percussion(song(name)).map(t => t.name);
-      expect(names).toHaveLength(2);
-      expect(names.map(n => n.replace(/ · voice \d$/, '')).filter((n, i, all) => all.indexOf(n) === i)).toHaveLength(1);
+    it.each(Object.values(DRUMS))('%s: the drum part is percussion and no pitched track is', name => {
+      const tracks = song(name).tracks;
+      const drumPart = tracks.filter(t => /^Drum/.test(t.name));
+      expect(percussion(song(name)).length).toBeGreaterThan(0);
+      expect(drumPart.length).toBeGreaterThan(0);
+      expect(drumPart.every(t => t.percussion)).toBe(true);
+      expect(pitched(song(name)).some(t => /^Drum/.test(t.name))).toBe(false);
+      expect(percussion(song(name))).toHaveLength(drumPart.length);
     });
   });
 

@@ -37,10 +37,12 @@ MuseScore limits:
 - Only endings 1 and 2 are read.
 - A repeat or ending marked only on a lower staff is not read.
 - A change of meter is refused.
+- Chord symbols are shared by all melody tracks of a score.
 
 ABC limits:
 
-- A key line with its own accidentals (`K:D exp ^f`) is refused.
+- A key line with its own accidentals (`K:D exp ^f`) is refused. So is a key the ABC library cannot read and a key with more than seven sharps or flats.
+- Text in quotes counts as a chord symbol only when it looks like one. "D.C." and "A tempo" are ignored.
 - Voice names come from the `V:` lines in order.
 - A syllable on the second note of a tie is not shown.
 - Only the first tune of a file and the first verse of lyrics are read.
