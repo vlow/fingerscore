@@ -7,3 +7,6 @@ fingerscore-handoff/reference/
 test-results/
 playwright-report/
 *.tsbuildinfo
+
+# owner's sample files for import checks; licences unknown, not for publication
+samples/
