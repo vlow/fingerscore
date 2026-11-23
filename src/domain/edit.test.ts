@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { mkDoc, type EvSpec } from '../test/helpers';
+import { expectValidBars } from '../test/validBars';
 import { parseChord } from './chords';
 import {
-  addBarAfter, canTie, dottedOf, eventOrder, fits, lengthName, locate, nextEvent, removeBar, setLength, setLetter, shiftPitch,
-  splitLength, toggleDotted, toggleRest, toggleTie,
+  addBarAfter, canMakeTriplet, canTie, dottedOf, eventOrder, fits, inTriplet, lengthChoices, lengthName, locate, makeTriplet, nextEvent,
+  removeBar, setLength, setLetter, shiftPitch, splitLength, toggleDotted, toggleRest, toggleTie, toggleTriplet, undoTriplet,
 } from './edit';
 import { sampleDoc } from './fixture';
 import { MAX_BARS, validateDoc } from './persistence';
-import { DURATIONS } from './time';
+import { DURATIONS, isTripletLength } from './time';
 import type { Doc } from './types';
 
 const sum = (d: Doc) => d.score.every(b => b.ev.reduce((s, e) => s + e.d, 0) === b.cap);
@@ -252,5 +253,202 @@ describe('length names and the dot toggle', () => {
     expect(toggleDotted(d, c)).toBeNull();                         // a dotted half does not fit
     expect(toggleDotted(mkDoc([{ ev: [[60, 48]] }]), 't1')).toBeNull();   // no dotted whole
     expect(toggleDotted(d, 'nope')).toBeNull();
+  });
+});
+
+// ---- triplets ---------------------------------------------------------------------------------
+
+/** A 4/4 document of one bar from lengths; a negative length is a rest. Pitches count up from 60. */
+function bar(...lengths: number[]): Doc {
+  return mkDoc([{ ev: lengths.map((d, i): [number, number] => [d < 0 ? 0 : 60 + i, Math.abs(d)]) }]);
+}
+const valid = (d: Doc | null): Doc => { expect(d).not.toBeNull(); expectValidBars(d!.score, d!.timeSig); expect(uniq(d!)).toBe(true); return d!; };
+const lens = (d: Doc, b = 0) => d.score[b].ev.map(e => (e.r ? -e.d : e.d));
+const idAt = (d: Doc, k: number, b = 0) => d.score[b].ev[k].id;
+
+describe('make a triplet', () => {
+  it('quarter at tick 0: three eighth triplets; the first keeps everything, the others are new notes of the same pitch', () => {
+    const d0 = bar(12, 12, 24);
+    const a = idAt(d0, 0);
+    const d = { ...d0, chords: { [a]: parseChord('C', 0) }, fingering: { [a]: 1 }, imported: { lyrics: { [a]: 'la' }, chords: {} } };
+    d.score[0].ev[0] = { ...d.score[0].ev[0], l: 'la' };
+    const r = valid(makeTriplet(d, a));
+    expect(lens(r)).toEqual([4, 4, 4, 12, 24]);
+    const [x, y, z] = r.score[0].ev;
+    expect(x).toMatchObject({ id: a, m: 60, l: 'la', r: false });
+    expect(r.chords[a]).toEqual(d.chords[a]); expect(r.fingering[a]).toBe(1);
+    for (const e of [y, z]) { expect(e).toMatchObject({ m: 60, r: false, tie: false, l: '' }); expect(ids(d)).not.toContain(e.id); }
+  });
+  it('a rest becomes three rests', () => {
+    const r = valid(makeTriplet(bar(-12, 12, 24), idAt(bar(-12, 12, 24), 0)));
+    expect(lens(r)).toEqual([-4, -4, -4, 12, 24]);
+  });
+  it('an eighth at tick 6 gives [..., 2, 2, 2, ...]', () => {
+    const d = bar(6, 6, 6, 6, 24);
+    expect(lens(valid(makeTriplet(d, idAt(d, 1))))).toEqual([6, 2, 2, 2, 6, 6, 24]);
+  });
+  it('a half at tick 12 gives three quarter triplets', () => {
+    const d = bar(12, 24, 12);
+    expect(lens(valid(makeTriplet(d, idAt(d, 1))))).toEqual([12, 8, 8, 8, 12]);
+  });
+  it('is not allowed on a dotted quarter, a whole, a sixteenth, a misplaced quarter or a member', () => {
+    const dotted = bar(18, 6, 24); expect(canMakeTriplet(dotted, idAt(dotted, 0))).toBe(false); expect(makeTriplet(dotted, idAt(dotted, 0))).toBeNull();
+    const whole = bar(48); expect(canMakeTriplet(whole, idAt(whole, 0))).toBe(false);
+    const sixteenth = bar(3, 3, 6, 12, 24); expect(canMakeTriplet(sixteenth, idAt(sixteenth, 0))).toBe(false);
+    const off = bar(6, 24, 18); expect(canMakeTriplet(off, idAt(off, 1))).toBe(false); expect(makeTriplet(off, idAt(off, 1))).toBeNull();   // a half at tick 6
+    const off3 = bar(3, 12, 3, 6, 24); expect(canMakeTriplet(off3, idAt(off3, 1))).toBe(false);   // a quarter at tick 3
+    const and = bar(6, 12, 6, 24); expect(canMakeTriplet(and, idAt(and, 1))).toBe(true);   // a quarter at tick 6: an eighth triplet may start on the "and" (design 4.1)
+    const g = bar(4, 4, 4, 36); expect(canMakeTriplet(g, idAt(g, 0))).toBe(false);
+    expect(canMakeTriplet(g, 'nope')).toBe(false);
+  });
+  it('the tie moves to the third member when the next note has the same pitch, else it is cleared', () => {
+    const same = mkDoc([{ ev: [[60, 12, { tie: true }], [60, 36]] }]);
+    const r = valid(makeTriplet(same, same.score[0].ev[0].id));
+    expect(r.score[0].ev.map(e => e.tie)).toEqual([false, false, true, false]);
+    const other = mkDoc([{ ev: [[60, 12, { tie: true }], [62, 36]] }]);
+    expect(valid(makeTriplet(other, other.score[0].ev[0].id)).score[0].ev.some(e => e.tie)).toBe(false);
+  });
+});
+
+describe('undo a triplet', () => {
+  it('a group becomes one plain event with the first member id', () => {
+    const d = bar(4, 4, 4, 36);
+    const r = undoTriplet(d, idAt(d, 1))!; valid(r.doc);
+    expect(lens(r.doc)).toEqual([12, 36]); expect(r.selectId).toBe(idAt(d, 0)); expect(idAt(r.doc, 0)).toBe(idAt(d, 0));
+    expect(inTriplet(d, idAt(d, 1))).toBe(true); expect(inTriplet(r.doc, idAt(d, 0))).toBe(false);
+  });
+  it('first member a rest, second a note: the result takes the second member', () => {
+    const d0 = mkDoc([{ ev: [[0, 4], [64, 4], [66, 4], [60, 36]] }]);
+    const b = d0.score[0].ev[1].id;
+    d0.score[0].ev[1] = { ...d0.score[0].ev[1], l: 'ba' };
+    const d = { ...d0, chords: { [b]: parseChord('G', 0) }, fingering: { [b]: 0 }, imported: { lyrics: { [b]: 'ba' }, chords: { [d0.score[0].ev[2].id]: 'D' } } };
+    const r = undoTriplet(d, d.score[0].ev[0].id)!; valid(r.doc);
+    expect(r.selectId).toBe(b);
+    expect(r.doc.score[0].ev[0]).toMatchObject({ id: b, m: 64, r: false, l: 'ba', d: 12 });
+    expect(r.doc.chords[b]).toBeDefined(); expect(r.doc.fingering[b]).toBe(0);
+    expect(r.doc.imported.chords).toEqual({});
+  });
+  it('all rests give a rest', () => {
+    const d = bar(-4, -4, -4, 36);
+    const r = undoTriplet(d, idAt(d, 2))!;
+    expect(lens(r.doc)).toEqual([-12, 36]); expect(r.selectId).toBe(idAt(d, 0));
+  });
+  it('the tie of the last member survives when still valid; removed members lose their texts', () => {
+    const d0 = mkDoc([{ ev: [[60, 4], [60, 4], [60, 4, { tie: true }], [60, 36]] }]);
+    const [a, b, c] = d0.score[0].ev.map(e => e.id);
+    const d = { ...d0, chords: { [b]: parseChord('C', 0), [c]: parseChord('F', 0) }, fingering: { [b]: 0, [c]: 0 }, imported: { lyrics: { [c]: 'x' }, chords: { [b]: 'C' } } };
+    const r = undoTriplet(d, b)!; valid(r.doc);
+    expect(r.doc.score[0].ev[0]).toMatchObject({ id: a, d: 12, tie: true });
+    expect(r.doc.chords).toEqual({}); expect(r.doc.fingering).toEqual({}); expect(r.doc.imported).toEqual({ lyrics: {}, chords: {} });
+    const lost = mkDoc([{ ev: [[60, 4], [60, 4], [60, 4, { tie: true }], [62, 36]] }]);
+    expect(undoTriplet(lost, lost.score[0].ev[0].id)!.doc.score[0].ev[0].tie).toBe(false);
+  });
+  it('null for a plain event', () => { expect(undoTriplet(bar(12, 36), idAt(bar(12, 36), 0))).toBeNull(); });
+  it('toggleTriplet makes or undoes and names the selection', () => {
+    const d = bar(12, 36);
+    const m = toggleTriplet(d, idAt(d, 0))!; valid(m.doc); expect(m.selectId).toBe(idAt(d, 0)); expect(lens(m.doc)).toEqual([4, 4, 4, 36]);
+    const u = toggleTriplet(m.doc, m.doc.score[0].ev[1].id)!; expect(u.selectId).toBe(idAt(d, 0)); expect(lens(u.doc)).toEqual([12, 36]);
+    expect(toggleTriplet(bar(18, 6, 24), idAt(bar(18, 6, 24), 0))).toBeNull();
+  });
+});
+
+describe('length inside a group', () => {
+  it('first of [4,4,4] to 8: the second is consumed, the third stays', () => {
+    const d = bar(4, 4, 4, 36);
+    const r = valid(setLength(d, idAt(d, 0), 8));
+    expect(lens(r)).toEqual([8, 4, 36]); expect(idAt(r, 1)).toBe(idAt(d, 2));
+  });
+  it('first of [4,4,4] to 2: a triplet rest fills the gap', () => {
+    const d = bar(4, 4, 4, 36);
+    expect(lens(valid(setLength(d, idAt(d, 0), 2)))).toEqual([2, -2, 4, 4, 36]);
+  });
+  it('in [4,8] the first to 8: the partly covered member keeps id and end', () => {
+    const d = bar(4, 8, 36);
+    const r = valid(setLength(d, idAt(d, 0), 8));
+    expect(lens(r)).toEqual([8, 4, 36]); expect(idAt(r, 1)).toBe(idAt(d, 1));
+  });
+  it('in [4,4,2,2] the third to 4', () => {
+    const d = bar(4, 4, 2, 2, 36);
+    expect(lens(valid(setLength(d, idAt(d, 2), 4)))).toEqual([4, 4, 4, 36]);
+  });
+  it('a member cannot leave its window or take a plain length', () => {
+    const d = bar(4, 4, 4, 36);
+    expect(setLength(d, idAt(d, 2), 8)).toBeNull();
+    expect(setLength(d, idAt(d, 0), 6)).toBeNull();
+    expect(setLength(d, idAt(d, 0), 12)).toBeNull();
+  });
+  it('lengthChoices of an eighth triplet member', () => {
+    const d = bar(4, 4, 4, 36);
+    const c = lengthChoices(d, idAt(d, 0));
+    expect(c.map(x => x.notated)).toEqual([3, 6, 12, 24, 48]);
+    expect(c.map(x => x.enabled)).toEqual([true, true, true, false, false]);
+    expect(c.map(x => x.pressed)).toEqual([false, true, false, false, false]);
+    expect(c.slice(0, 3).map(x => x.d)).toEqual([2, 4, 8]);
+    const last = lengthChoices(d, idAt(d, 2));
+    expect(last.map(x => x.enabled)).toEqual([true, true, false, false, false]);
+  });
+  it('no choice fills a whole window; every enabled choice gives a valid bar', () => {
+    for (const d of [bar(4, 4, 4, 36), bar(2, 2, 2, 6, 36), bar(8, 8, 8, 24), bar(4, 2, 2, 4, 36)]) {
+      for (const e of d.score[0].ev) {
+        if (!inTriplet(d, e.id)) continue;
+        for (const c of lengthChoices(d, e.id)) {
+          if (!c.enabled) continue;
+          const r = valid(setLength(d, e.id, c.d));
+          expect(r.score[0].ev.some(x => isTripletLength(x.d))).toBe(true);   // a group stays a group
+        }
+      }
+    }
+  });
+  it('lengthChoices of a plain event follow fits and the base length', () => {
+    const d = bar(12, 12, 24);
+    expect(lengthChoices(d, idAt(d, 2)).map(x => x.enabled)).toEqual([true, true, true, true, false]);
+    expect(lengthChoices(d, idAt(d, 0)).map(x => [x.d, x.pressed]).slice(0, 3)).toEqual([[3, false], [6, false], [12, true]]);
+  });
+});
+
+describe('a plain edit that reaches into a group', () => {
+  it('a quarter lengthened to a half over [4,4,4] removes the group', () => {
+    const d = bar(12, 4, 4, 4, 24);
+    const r = valid(setLength(d, idAt(d, 0), 24));
+    expect(lens(r)).toEqual([24, 24]);
+  });
+  it('to a dotted quarter: the remainder becomes plain rests', () => {
+    const d = bar(12, 4, 4, 4, 24);
+    expect(lens(valid(setLength(d, idAt(d, 0), 18)))).toEqual([18, -6, 24]);
+  });
+  it('an eighth lengthened to a quarter over [2,2,2] at 12 removes the group', () => {
+    const d = bar(12, 6, 2, 2, 2, 6, 6, 12);
+    // eighth at tick 12 is idAt 1 (plain 6); [2,2,2] follows at 18
+    expect(lens(valid(setLength(d, idAt(d, 1), 12)))).toEqual([12, 12, 6, 6, 12]);
+  });
+  it('removed members lose their texts', () => {
+    const d0 = bar(12, 4, 4, 4, 24); const m = idAt(d0, 2);
+    const d = { ...d0, chords: { [m]: parseChord('C', 0) } };
+    expect(valid(setLength(d, idAt(d, 0), 24)).chords).toEqual({});
+  });
+});
+
+describe('other edits on a member', () => {
+  it('pitch, rest and tie work and keep the group', () => {
+    const d = mkDoc([{ ev: [[60, 4], [60, 4], [60, 4], [60, 36]] }]);
+    const [a, b, c] = d.score[0].ev.map(e => e.id);
+    expect(lens(valid(shiftPitch(d, b, 2)))).toEqual([4, 4, 4, 36]);
+    expect(lens(valid(toggleRest(d, b)))).toEqual([4, -4, 4, 36]);
+    expect(valid(toggleTie(d, a)).score[0].ev[0].tie).toBe(true);
+    expect(valid(toggleTie(d, c)).score[0].ev[2].tie).toBe(true);
+    expect(toggleDotted(d, a)).toBeNull();
+  });
+  it('a tie into the first member and out of the last are allowed', () => {
+    const d = mkDoc([{ ev: [[60, 12], [60, 4], [60, 4], [60, 4], [60, 24]] }]);
+    expect(valid(toggleTie(d, d.score[0].ev[0].id)).score[0].ev[0].tie).toBe(true);
+  });
+});
+
+describe('bars next to a group', () => {
+  it('add and remove bar keep every bar valid', () => {
+    const d = mkDoc([{ ev: [[60, 4], [60, 4], [60, 4], [60, 36]] }, { ev: [[62, 48]] }]);
+    const added = addBarAfter(d, 0)!; expectValidBars(added.doc.score, added.doc.timeSig); expect(added.doc.score.length).toBe(3);
+    const removed = removeBar(d, 1)!; expectValidBars(removed.doc.score, removed.doc.timeSig);
+    const gone = removeBar(d, 0)!; expectValidBars(gone.doc.score, gone.doc.timeSig); expect(gone.doc.score.length).toBe(1);
   });
 });

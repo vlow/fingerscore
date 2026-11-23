@@ -1,8 +1,9 @@
 import { inst, rangeState } from './instruments';
 import { MAX_BARS } from './persistence';
 import { keySignature, mod12, signatureLetters } from './keys';
-import { barCap, DURATIONS, isTripletLength, newId, splitDuration } from './time';
-import { notatedLength } from './triplets';
+import { barCap, isPlainLength, isTripletLength, newId, splitDuration } from './time';
+import { canStartGroup, groupOf, MEMBER_LENGTHS, notatedLength, tripletGroups, tripletRests } from './triplets';
+import type { Span, TripletGroup } from './triplets';
 import type { Bar, Doc, Ev } from './types';
 
 /** Pure edit operations on a document. Each returns a new document, or null when the edit is not allowed. */
@@ -34,7 +35,7 @@ export function nextEvent(doc: Doc, id: string): Ev | null {
   return k >= 0 && k + 1 < all.length ? all[k + 1] : null;
 }
 
-const isDuration = (d: number) => (DURATIONS as readonly number[]).includes(d);
+const isDuration = isPlainLength;
 
 /** True when d is an allowed duration and the event, lengthened or shortened to d, stays inside its bar. */
 export function fits(doc: Doc, id: string, d: number): boolean {
@@ -128,13 +129,56 @@ function previousId(doc: Doc, id: string): string | undefined {
 
 // ---- lengths ----------------------------------------------------------------------------------
 
+/** The triplet group an event belongs to, with its bar's groups; null for a plain event. */
+function groupAt(doc: Doc, at: Located): TripletGroup | null {
+  const groups = tripletGroups(doc.score[at.bar], barCap(doc.timeSig));
+  return groups ? groupOf(groups, at.ev.id) : null;
+}
+
+/** Length change of a group member: a member length of its group that ends inside the group's window; null otherwise. */
+function setMemberLength(doc: Doc, at: Located, group: TripletGroup, d: number): Doc | null {
+  const bar = doc.score[at.bar];
+  const end = group.start + group.span;
+  if (!MEMBER_LENGTHS[group.span].includes(d) || at.tick + d > end) return null;
+  if (at.ev.d === d) return doc;
+  const pitch = rememberedPitch(doc, at.ev.id);
+  const edited: Ev = { ...at.ev, d };
+  const removed = new Set<string>();
+  let after: Ev[];
+  if (d < at.ev.d) {
+    after = [...tripletRests(at.ev.d - d, group.span).map(len => rest(len, pitch)), ...bar.ev.slice(at.index + 1)];
+  } else {
+    let need = d - at.ev.d;
+    let k = at.index + 1;
+    after = [];
+    for (; k < bar.ev.length && need > 0; k++) {
+      const e = bar.ev[k];
+      if (e.d <= need) { removed.add(e.id); need -= e.d; continue; }
+      const left = e.d - need;
+      need = 0;
+      if (MEMBER_LENGTHS[group.span].includes(left)) after.push({ ...e, d: left });
+      else { removed.add(e.id); after.push(...tripletRests(left, group.span).map(len => rest(len, pitch))); }
+    }
+    after.push(...bar.ev.slice(k));
+  }
+  const next = forget(replaceBar(doc, at.bar, { ...bar, ev: [...bar.ev.slice(0, at.index), edited, ...after] }), removed);
+  return fixTies(next, [at.ev.id]);
+}
+
 /**
  * Sets an event's length. Shorter: rests fill the gap. Longer: the event consumes the following events of its bar;
- * a partly covered event keeps its id and end, or becomes rests when its remainder is no allowed duration.
+ * a partly covered event keeps its id and end, or becomes rests when its remainder is no allowed length.
+ * A group member takes a member length of its group and never leaves the group's window. A plain event that reaches
+ * into a group removes the members it covers and turns the rest of the window into plain rests.
  */
 export function setLength(doc: Doc, id: string, d: number): Doc | null {
+  const at = locate(doc, id);
+  if (!at) return null;
+  if (isTripletLength(at.ev.d)) {
+    const group = groupAt(doc, at);
+    return group ? setMemberLength(doc, at, group, d) : null;
+  }
   if (!fits(doc, id, d)) return null;
-  const at = locate(doc, id)!;
   if (at.ev.d === d) return doc;
   const bar = doc.score[at.bar];
   const pitch = rememberedPitch(doc, id);
@@ -145,14 +189,26 @@ export function setLength(doc: Doc, id: string, d: number): Doc | null {
   if (d < at.ev.d) {
     after = [...rests(at.ev.d - d, pitch), ...bar.ev.slice(at.index + 1)];
   } else {
-    let need = d - at.ev.d;
+    const groups = tripletGroups(bar, barCap(doc.timeSig)) ?? [];
+    const stop = at.tick + d;
+    let tick = at.tick + at.ev.d;
     let k = at.index + 1;
     after = [];
-    for (; k < bar.ev.length && need > 0; k++) {
+    while (k < bar.ev.length && tick < stop) {
       const e = bar.ev[k];
-      if (e.d <= need) { removed.add(e.id); need -= e.d; continue; }
-      const left = e.d - need;
-      need = 0;
+      const group = isTripletLength(e.d) ? groupOf(groups, e.id) : null;
+      if (group) {
+        for (const m of group.ids) removed.add(m);
+        const groupEnd = group.start + group.span;
+        if (groupEnd > stop) after.push(...rests(groupEnd - stop, pitch));
+        tick = groupEnd;
+        k += group.ids.length;
+        continue;
+      }
+      k += 1;
+      tick += e.d;
+      if (tick <= stop) { removed.add(e.id); continue; }
+      const left = tick - stop;
       if (isDuration(left)) after.push({ ...e, d: left });
       else { removed.add(e.id); after.push(...rests(left, pitch)); }
     }
@@ -160,6 +216,85 @@ export function setLength(doc: Doc, id: string, d: number): Doc | null {
   }
   const next = forget(replaceBar(doc, at.bar, { ...bar, ev: [...before, edited, ...after] }), removed);
   return fixTies(next, [id]);
+}
+
+/** The five length buttons as the panel shows them. For a group member `d` is the triplet length of the notated value. */
+export function lengthChoices(doc: Doc, id: string): { notated: number; d: number; enabled: boolean; pressed: boolean }[] {
+  const at = locate(doc, id);
+  const group = at && isTripletLength(at.ev.d) ? groupAt(doc, at) : null;
+  return BASE_LENGTHS.map(notated => {
+    if (!at) return { notated, d: notated, enabled: false, pressed: false };
+    if (!group) return { notated, d: notated, enabled: fits(doc, id, notated), pressed: splitLength(at.ev.d).base === notated };
+    const d = (notated * 2) / 3;
+    return { notated, d, enabled: setMemberLength(doc, at, group, d) !== null, pressed: at.ev.d === d };
+  });
+}
+
+// ---- triplets ---------------------------------------------------------------------------------
+
+function rest(d: number, m: number): Ev {
+  return { id: newId(), m, d, r: true, tie: false, l: '' };
+}
+
+/** The span of the group a plain event of this length would become, or null when no group can start there. */
+function spanOfMake(doc: Doc, at: Located): Span | null {
+  const d = at.ev.d;
+  if (d !== 6 && d !== 12 && d !== 24) return null;
+  const metric = at.tick + barCap(doc.timeSig) - doc.score[at.bar].cap;
+  return canStartGroup(metric, d) ? d : null;
+}
+
+export function canMakeTriplet(doc: Doc, id: string): boolean {
+  const at = locate(doc, id);
+  return !!at && spanOfMake(doc, at) !== null;
+}
+
+export function inTriplet(doc: Doc, id: string): boolean {
+  const at = locate(doc, id);
+  return !!at && isTripletLength(at.ev.d) && groupAt(doc, at) !== null;
+}
+
+/** Splits a plain event into three members of a third each. The first keeps the event's id and texts. */
+export function makeTriplet(doc: Doc, id: string): Doc | null {
+  const at = locate(doc, id);
+  if (!at) return null;
+  const span = spanOfMake(doc, at);
+  if (span === null) return null;
+  const third = span / 3;
+  const first: Ev = { ...at.ev, d: third, tie: false };
+  const copy = (tie: boolean): Ev => ({ id: newId(), m: at.ev.m, d: third, r: at.ev.r, tie, l: '' });
+  const last = copy(at.ev.tie);
+  const bar = doc.score[at.bar];
+  const ev = [...bar.ev.slice(0, at.index), first, copy(false), last, ...bar.ev.slice(at.index + 1)];
+  const next = fixTies(replaceBar(doc, at.bar, { ...bar, ev }), [last.id]);
+  return tripletGroups(next.score[at.bar], barCap(doc.timeSig)) ? next : null;
+}
+
+/**
+ * Turns a group into one plain event of its span. It takes the id and texts of the first member that is a note
+ * (the first member when all are rests) and the tie of the last member when that tie is still valid.
+ */
+export function undoTriplet(doc: Doc, id: string): { doc: Doc; selectId: string } | null {
+  const at = locate(doc, id);
+  if (!at || !isTripletLength(at.ev.d)) return null;
+  const group = groupAt(doc, at);
+  if (!group) return null;
+  const bar = doc.score[at.bar];
+  const members = bar.ev.filter(e => group.ids.includes(e.id));
+  const keeper = members.find(e => !e.r) ?? members[0];
+  const merged: Ev = { ...keeper, d: group.span, tie: members[members.length - 1].tie };
+  const first = bar.ev.findIndex(e => e.id === members[0].id);
+  const ev = [...bar.ev.slice(0, first), merged, ...bar.ev.slice(first + members.length)];
+  const removed = new Set(members.filter(e => e !== keeper).map(e => e.id));
+  const next = fixTies(forget(replaceBar(doc, at.bar, { ...bar, ev }), removed), [previousId(doc, members[0].id), merged.id]);
+  return { doc: next, selectId: merged.id };
+}
+
+/** Makes a triplet of a plain event or undoes the group of a member; the selection goes to the first member or the merged event. */
+export function toggleTriplet(doc: Doc, id: string): { doc: Doc; selectId: string } | null {
+  if (inTriplet(doc, id)) return undoTriplet(doc, id);
+  const next = makeTriplet(doc, id);
+  return next ? { doc: next, selectId: id } : null;
 }
 
 // ---- pitches ----------------------------------------------------------------------------------
@@ -268,7 +403,7 @@ export function removeBar(doc: Doc, barIndex: number): { doc: Doc; selectId: str
 /** The dot toggle: a dotted length goes back to its base, a base length gets its dot; null when that is not allowed. */
 export function toggleDotted(doc: Doc, id: string): Doc | null {
   const at = locate(doc, id);
-  if (!at) return null;
+  if (!at || isTripletLength(at.ev.d)) return null;
   const { base, dotted } = splitLength(at.ev.d);
   if (dotted) return setLength(doc, id, base);
   const longer = dottedOf(base);
