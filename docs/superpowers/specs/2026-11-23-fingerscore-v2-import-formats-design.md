@@ -136,7 +136,7 @@ No change in behaviour: melody detection, tags, preview, lyrics and chord source
 
 1. Part 4 is split: 4a formats and loading, 4b triplets.
 2. `.mscx` is accepted beside `.mscz`.
-3. MuseScore 2 is supported because the owner's real files are version 2; MuseScore 1 is refused with advice.
+3. MuseScore 2 is supported because the owner's real files are version 2; MuseScore 1 is refused with advice (owner's decision of 2026-11-23: version 1 stores chord kinds as numbers that need MuseScore's own GPL-licensed table, a licence question the owner does not want to open now).
 4. ABC: first tune only, first verse only.
 5. All seven modes are named, not only Dorian and Mixolydian: the rule is the same for each.
 6. Cut time is drawn as 2/2 in digits, not as the cut-C symbol.
