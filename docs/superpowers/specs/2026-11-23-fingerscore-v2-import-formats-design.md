@@ -1,0 +1,136 @@
+# fingerscore version 2, part 4a: MuseScore and ABC import, import code on demand — design
+
+Date: 2026-11-23 · Status: draft, waiting for the owner's approval
+
+This document defines part 4a of version 2: two more import formats, and loading the import code only when a file is opened. It is written for the builder. Behaviour comes from `fingerscore-handoff/SPEC.md` §4.3 and §5; this document lists what part 4a contains and where it deviates. Section numbers (§) refer to SPEC.md. Part 4b (triplets) follows with its own design; section 7 records what the owner already decided for it.
+
+## 1. Intent
+
+Players keep songs as MuseScore files and as ABC tunes, the usual format of folk tune collections. Today they must export MusicXML or MIDI first. The app should read both formats directly.
+
+## 2. Goals, non-goals, anti-goals
+
+**Goals**
+
+1. Open `.mscz` and `.mscx` files written by MuseScore 3 and 4, with parts and voices as rows on the track page, lyrics, chord symbols, repeats and endings.
+2. Open `.abc` files: the first tune, `V:` voices as rows, `w:` lyrics, quoted chord symbols, repeats and endings.
+3. The start page's entry bundle gets smaller, not larger: at most 400 kB (today 424.42 kB), with all parsers loaded on demand.
+
+**Non-goals:** triplets (part 4b; until then both new formats round them with the existing notice), MuseScore 2 and older, more than one tune per ABC file, ABC tune books as a list to choose from, dynamics, articulation, grace notes, multi-verse lyrics, meters other than 4/4, 3/4, 2/4, 6/8.
+
+**Anti-goals**
+
+- A file that opens with wrong pitches. An ABC key the importer cannot read is a refusal with a message, not a guess. MuseScore transposing parts are checked against a real file (4.6) before the format is offered.
+- Any network request with the file's content.
+- A parser library in the entry bundle.
+
+## 3. Approaches considered
+
+**ABC**
+
+| | Approach | Trade-off |
+|---|---|---|
+| **A** | **`abcjs` parser, loaded on demand** (chosen; §5.1 names it) | Handles the dialect: decorations, inline fields, line continuations, voice syntax. The importer still computes pitches itself (key signature and bar accidentals) from the parsed tune, and reads repeats from the bar types. Adds a dependency (MIT) that loads only when an `.abc` file is opened. |
+| B | Own parser for a subset | No dependency, full control. Real tune files use more of the dialect than a subset covers; each gap is a file that fails to open. |
+| C | `abcjs` audio sequence (flattened notes) | Pitches come resolved, but repeats arrive unfolded and lyrics are lost. Rejected: the sheet needs repeat marks and lyrics. |
+
+**MuseScore**
+
+| | Approach | Trade-off |
+|---|---|---|
+| **A** | **Read the `.mscx` XML with `DOMParser`, `jszip` for `.mscz`** (chosen; §5.1) | Same tools as the MusicXML importer; no new dependency. The format is not a published standard, so the importer supports the two current major versions and refuses others. |
+| B | Ask the player to export MusicXML | No code, but that is today's state. |
+
+**Loading on demand**
+
+One dynamic `import()` per format inside `parseFile`, so a MIDI file never loads the XML or ABC code. Considered and rejected: one chunk for all import code (ABC's library would load for every MIDI file).
+
+## 4. What part 4a contains
+
+### 4.1 Import code on demand
+
+- `parseFile` loads the parser for the file's format with a dynamic import: MIDI (`@tonejs/midi`, `midi-file`), MusicXML (`jszip`), MuseScore (`jszip`), ABC (`abcjs`). No parser module and none of these libraries is imported statically from the entry.
+- `index.ts` keeps `ACCEPT`, `buildOptionsFor` and `defaultBuildOptions` as static, cheap exports; only the parser modules move behind `import()`.
+- While the parser loads, the drop zone shows its existing "Reading {file} …" state. A rejected `import()` is wrapped by `parseFile` into an `ImportError` with the app's load message (the text of `LoadBoundary`): "This part of fingerscore could not be loaded. Check your connection and reload the page." The drop zone shows it with its usual [Try another file]; choosing the same file again retries the load.
+- "Try a sample" uses the same path.
+- Measured by `npm run build`: the entry chunk is at most 400 kB.
+
+### 4.2 Formats, names, messages
+
+- `ParsedSong.format` and `Doc.source.format` gain `'MuseScore'` and `'ABC'`. Both count as imported songs everywhere `MIDI` and `MusicXML` do (page-bar chip, "Change track", step indicator, validation).
+- Accepted extensions: `.mscz`, `.mscx`, `.abc` beside the existing ones.
+- Drop zone chips: MIDI .mid · MusicXML .musicxml .mxl · **MuseScore .mscz** · **ABC .abc** · Saved sheet .json.
+- Start page subline (§4.1): "Upload a MIDI, MusicXML, MuseScore or ABC file. We transpose it to a key that suits your instrument and add a fingering chart under every note."
+- Unknown extension: `"{file}" is not a format fingerscore reads. Use MIDI, MusicXML, MuseScore or ABC.`
+- Unreadable file: `"{file}" could not be read as a MuseScore file.` / `… as an ABC file.`
+- MuseScore 2 or older: `"{file}" was saved with an older MuseScore version. Open it in MuseScore 3 or 4 and save it again, or export MusicXML.`
+- Unsupported meter and a change of meter: the two existing strings of `musicxml.ts` and `midi.ts` ("… fingerscore reads 4/4, 3/4, 2/4 and 6/8 for now." and "… changes its time signature. fingerscore reads one time signature per song for now."), moved into one shared helper that all four importers use.
+- A file without notes in any part: the existing `"{file}" has no melody track.`
+- A song file of any format larger than 20 MB is refused before reading: `"{file}" is larger than 20 MB and can't be opened.`
+- The three places that list formats gain both values: `Doc['source']['format']` (`domain/types.ts`), the `formats` list in `persistence.ts`, `IMPORTED` in `SheetPage.tsx`.
+
+### 4.3 MuseScore (`src/import/mscz.ts`)
+
+Output is a `ParsedSong`, the same shape the MusicXML importer returns.
+
+- `.mscz`: a zip; the score is the first `.mscx` entry at the top level. `.mscx`: the XML itself.
+- Version: the root's `version` attribute; 3.x and 4.x are read, anything lower is refused (4.2), anything higher is tried.
+- **Tracks:** one row per part and voice that holds notes, named `{part name}` or `{part name} · voice {n}` when the part has more than one voice with notes. A part with two staves (piano) gives rows per staff and voice: `{part name} · staff {s} · voice {n}`. Instrument name from the part's instrument; percussion staves are listed as percussion.
+- **Pitches** are read from `<pitch>`, which MuseScore is believed to store as the sounding pitch, so transposing parts need no correction. This is verified with a real file that has a B♭ or E♭ part (4.6) before the task is done; if `<pitch>` turns out to be written pitch, the part's chromatic transposition is applied. Chords (several notes in one `<Chord>`) become simultaneous notes.
+- **Time:** durations from `<durationType>` and `<dots>`, tuplets by their ratio, full-measure rests by the measure length. Positions accumulate per voice inside a measure; a measure's length comes from the time signature, or from its actual length attribute when present (pickup bar, shortened bar).
+- **Pickup:** a first measure shorter than the meter.
+- **Key:** the first key signature in concert pitch; later key changes are ignored for the song's key, as in the MusicXML importer (pitches are absolute, so they stay right). Mode unknown (`mode: null`), so the key finder decides major or minor.
+- **Tempo:** the first tempo mark, converted to quarter notes per minute; default 120.
+- **Meter:** the first time signature; a later change of meter is refused with the shared message (4.2).
+- **Lyrics:** verse 1 only, attached to the note's onset; syllabic `begin`/`middle` get a trailing hyphen as in the MusicXML importer.
+- **Chord symbols:** `<Harmony>` with root and bass as tonal pitch class numbers plus the kind text, rendered to the same text form the MusicXML importer produces, in concert pitch (the convention of `ParsedTrack.chords` for every importer). The kind text is taken as MuseScore stores it; a symbol whose text the chord parser cannot read is kept as typed text, as for any import.
+- **Repeats and endings:** start and end repeat of measures, voltas 1 and 2 from the volta spanners. Other voltas, D.C., D.S. and Coda are ignored.
+- **Ties:** tied notes are merged into one note before quantising, as in the MusicXML importer.
+- Ignored: grace notes, ornaments, dynamics, articulation, hidden or cue-size notes are read as normal notes unless marked as not played.
+
+### 4.4 ABC (`src/import/abc.ts`)
+
+- Text is decoded as UTF-8, with a fallback to Latin-1 when UTF-8 decoding fails.
+- **Tune:** the first tune of the file (first `X:` block; a file without `X:` is read as one tune).
+- **Header:** `M:` meter (`C` = 4/4; `C|` and every meter outside the four supported ones are refused), `L:` unit length (ABC's default rule when missing), `Q:` tempo converted to quarters per minute (default 120), `K:` key. Major and minor keys set tonic and mode; a modal key (Dorian, Mixolydian, …) sets the signature's major tonic with `mode: null`. A key the importer cannot read is a refusal.
+- **Tracks:** one row per `V:` voice with notes, named by the voice's name or id; a tune without voices gives one row named "Melody".
+- **Pitches:** note letter and octave marks, the key signature, explicit accidentals, and bar accidentals (an accidental holds to the end of the bar for that letter and octave). Applied voice modifiers: `octave=`, `transpose=` and clef names ending in `+8` or `-8`; every other voice or clef modifier is ignored. Chords in brackets become simultaneous notes.
+- **Time:** note lengths as multiples of `L:`, broken rhythm (`>` `<`), tuplets by ABC's rules, rests `z` and `x`, full-bar rests `Z`.
+- **Pickup:** a first bar shorter than the meter.
+- **Lyrics:** `w:` lines aligned by ABC's rules (`-` splits syllables and leaves a trailing hyphen, `_` holds, `*` skips, `~` joins words with a space, `|` advances to the next bar). First verse only; `W:` lines are ignored.
+- **Chord symbols:** quoted text above a note when it starts with a note name A–G; other annotations (`"^text"`, `"_text"`) are ignored. Stored in concert pitch, the convention of `ParsedTrack.chords`.
+- **Repeats and endings:** `|:` `:|` `::` and endings `[1` `[2` (also `|1` `:|2`). Others are ignored.
+- **Ties** (`-`) merge notes before quantising. Slurs, grace notes, decorations and inline text are ignored. An inline `M:` change is refused with the shared message (4.2). An inline `K:` change is followed for the pitches of the notes after it; the song's key stays the first one.
+
+### 4.5 Track page and sheet
+
+No change in behaviour: melody detection, tags, preview, lyrics and chord sources work on `ParsedSong` and treat the new formats like MusicXML. The page-bar chip names the format: the existing layout with the new names, for example `{file} · MuseScore · track 1 of 3 · 64 notes`. The track page's format line shows the same names.
+
+### 4.6 Tests and fixtures
+
+- Unit tests per importer with hand-written fixtures in the test files: a two-voice part, a transposing part, a pickup, repeats with endings, lyrics with a melisma, chord symbols with a bass note, a triplet (rounded, `simplified` true), each refusal.
+- **Real files:** the owner supplies at least two MuseScore files (one saved by MuseScore 3, one by MuseScore 4) and two ABC tunes they play. They go to `e2e/fixtures/` only when their licence allows publishing; otherwise they stay outside git and are checked by hand. MuseScore is not installed on the build machine, so hand-written `.mscx` fixtures alone cannot prove that real files open.
+- One end-to-end test per format: drop the file, pick the track, see the sheet with the expected first notes.
+- A build check for the entry chunk limit of 4.1.
+
+## 5. Calls made by the author
+
+1. Part 4 is split: 4a formats and loading, 4b triplets.
+2. `.mscx` is accepted beside `.mscz`.
+3. MuseScore 2 and older are refused with advice instead of supported.
+4. ABC: first tune only, first verse only.
+5. Modal ABC keys keep their signature and leave the mode open; the key finder then decides major or minor as it does for MIDI.
+6. `C|` (2/2) stays unsupported until the owner decides on cut time.
+7. The entry bundle limit is 400 kB.
+9. A size limit of 20 MB for every song format.
+10. A failed parser download shows the load message in the drop zone; there is no separate retry button.
+11. Key changes inside a song do not refuse the file: MuseScore pitches are absolute, ABC pitches follow the new key.
+8. Format chips: the drop zone names five formats; the hint text stays as it is.
+
+## 6. Left to the builder
+
+Module split inside each importer, the exact XML paths for MuseScore 3 and 4 (verified against the real files of 4.6), the walk over the `abcjs` parse result (the plan's first ABC task confirms from the library's documentation and source what the parse result holds and that the parser runs under jsdom), whether `abcjs` is imported whole or by its parser entry, fixtures, CSS for the two new chips.
+
+## 7. Decided for part 4b (triplets), recorded here
+
+Owner's decision of 2026-11-23: triplets come from imported files, their pitch can be edited, and they can be added in Edit notes like regular notes. Proposed scope, to be confirmed in the 4b design: eighth and quarter triplets as complete groups of three, rests inside a group allowed; other tuplets stay rounded with the notice.
