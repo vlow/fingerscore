@@ -7,12 +7,19 @@ describe('sheetPdfName', () => {
     expect(sheetPdfName('Auld Lang Syne', 'Alto sax (E♭)')).toBe('auld-lang-syne-alto-sax.pdf');
   });
   it('an untitled sheet is "sheet"', () => expect(sheetPdfName('', 'Alto sax')).toBe('sheet-alto-sax.pdf'));
-  it('runs outside a-z0-9 become one hyphen, trimmed', () => expect(sheetPdfName('Ça ira!', 'Flute')).toBe('a-ira-flute.pdf'));
+  it('runs outside a-z0-9 become one hyphen, trimmed', () => expect(sheetPdfName('Ça ira!', 'Flute')).toBe('ca-ira-flute.pdf'));
   it('a title of only symbols counts as empty', () => expect(sheetPdfName('♭♯', 'Flute')).toBe('sheet-flute.pdf'));
   it('uses the same slug rule as the JSON file name', () => {
     const t = 'Ça ira! 2';
-    expect(fileName(t)).toBe('a-ira-2.fingerscore.json');
-    expect(sheetPdfName(t, '')).toBe('a-ira-2.pdf');
+    expect(fileName(t)).toBe('ca-ira-2.fingerscore.json');
+    expect(sheetPdfName(t, '')).toBe('ca-ira-2.pdf');
+  });
+});
+
+describe('accents', () => {
+  it('become plain letters', () => expect(sheetPdfName('Žluťoučký kůň', 'Flute')).toBe('zlutoucky-kun-flute.pdf'));
+  it('each part is cut at 80 characters', () => {
+    expect(sheetPdfName('t'.repeat(100), 'Flute')).toBe(`${'t'.repeat(80)}-flute.pdf`);
   });
 });
 

@@ -1,11 +1,16 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 import { sampleDoc } from '../domain/fixture';
 import { buildScale, scaleFingerings } from '../domain/scales';
+import { PdfError } from '../pdf/errors';
+import { requestScalePdf } from '../pdf/request';
 import { useApp } from '../state/store';
+import type { ScalePdfInput } from '../pdf/scalePdf';
 import Scales from './Scales';
+
+vi.mock('../pdf/request', () => ({ requestScalePdf: vi.fn(async () => {}) }));
 
 const user = userEvent.setup();
 
@@ -16,6 +21,8 @@ const noteNames = () => [...document.querySelectorAll('[data-name]')].map(e => e
 beforeEach(() => {
   localStorage.clear();
   useApp.setState({ instId: 'asax', doc: null });
+  vi.mocked(requestScalePdf).mockReset();
+  vi.mocked(requestScalePdf).mockResolvedValue(undefined);
 });
 
 it('opens with the preferred instrument, C major, one octave up', () => {
@@ -150,6 +157,7 @@ it('only the scale section is marked for print', () => {
   renderScales();
   expect(screen.getByRole('region', { name: 'Scale' })).toHaveAttribute('data-print-scale');
   expect(screen.getByRole('button', { name: 'Print' }).closest('[data-print-hide]')).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Download PDF' }).closest('[data-print-hide]')).not.toBeNull();
 });
 
 it('radiogroups work with arrow keys', async () => {
@@ -363,4 +371,89 @@ it('six accidentals: F♯ and G♭ are separate keys, and the choice is remember
   await user.click(within(screen.getByRole('radiogroup', { name: 'Key' })).getByRole('radio', { name: 'G♭ · sounds A' }));
   expect(within(screen.getByRole('region', { name: 'Scale' })).getByText('Alto sax in E♭ · G♭ major · sounds A major')).toBeInTheDocument();
   expect(document.querySelectorAll('[data-keysig] [data-acc="flat"]')).toHaveLength(6);
+});
+
+describe('Download PDF', () => {
+  const pdfButton = () => screen.getByRole('button', { name: /^(Download PDF|Preparing PDF…)$/ });
+  const lastInput = () => vi.mocked(requestScalePdf).mock.calls[0][0] as ScalePdfInput;
+
+  it('has a primary Download PDF and a plain Print button', () => {
+    renderScales();
+    expect(pdfButton()).toHaveTextContent('Download PDF');
+    expect(pdfButton().className).toMatch(/primary/);
+    expect(screen.getByRole('button', { name: 'Print' }).className).not.toMatch(/primary/);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('requests the PDF of the current settings', async () => {
+    renderScales();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Scale' }), 'hmin');
+    await user.click(screen.getByLabelText('Show alternate fingerings'));
+    await user.click(screen.getByLabelText('Note names'));
+    await user.click(pdfButton());
+    expect(requestScalePdf).toHaveBeenCalledTimes(1);
+    const input = lastInput();
+    expect(input).toMatchObject({
+      inst: 'asax', scaleName: 'harmonic minor', caption: 'Alto sax in E♭ · C harmonic minor · sounds E♭ harmonic minor',
+      chartStyle: 'compact', recorderSystem: 'baroque', showNames: false, showAlternates: true, overrides: {},
+    });
+    expect(input.scale.tonic).toBe('C');
+    expect(input.scale.notes).toHaveLength(8);
+  });
+
+  it('passes the picks', async () => {
+    renderScales();
+    await user.click(screen.getByRole('radio', { name: /^F · sounds A♭$/ }));
+    await user.click(screen.getAllByRole('button', { name: /^⇅ \d+ alternate fingerings for / })[0]);
+    await user.click(within(screen.getByRole('dialog')).getAllByRole('button').find(b => !/auto/.test(b.textContent!))!);
+    await user.click(pdfButton());
+    expect(Object.keys(lastInput().overrides)).toHaveLength(1);
+  });
+
+  it('reads "Preparing PDF…", is disabled and ignores a second click while the PDF is made', async () => {
+    let finish!: () => void;
+    vi.mocked(requestScalePdf).mockImplementation(() => new Promise<void>(res => { finish = res; }));
+    renderScales();
+    await user.click(pdfButton());
+    expect(pdfButton()).toHaveTextContent('Preparing PDF…');
+    expect(pdfButton()).toBeDisabled();
+    await user.click(pdfButton());
+    expect(requestScalePdf).toHaveBeenCalledTimes(1);
+    await act(async () => finish());
+    expect(pdfButton()).toHaveTextContent('Download PDF');
+    expect(pdfButton()).toBeEnabled();
+  });
+
+  it('shows a PdfError in the alert line; a later success clears it', async () => {
+    vi.mocked(requestScalePdf).mockRejectedValueOnce(new PdfError('The PDF could not be made. Use Print instead.'));
+    renderScales();
+    await user.click(pdfButton());
+    expect(await screen.findByRole('alert')).toHaveTextContent('The PDF could not be made. Use Print instead.');
+    await user.click(pdfButton());
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
+  it('shows the page in the live line only for more than 10 pages, and clears it afterwards', async () => {
+    let finish!: () => void;
+    vi.mocked(requestScalePdf).mockImplementation(() => new Promise<void>(res => { finish = res; }));
+    renderScales();
+    await user.click(pdfButton());
+    const onProgress = vi.mocked(requestScalePdf).mock.calls[0][1].onProgress!;
+    act(() => onProgress(2, 10));
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    act(() => onProgress(4, 11));
+    expect(screen.getByRole('status')).toHaveTextContent('Preparing PDF, page 4 of 11');
+    await act(async () => finish());
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('leaving the page aborts the request', async () => {
+    vi.mocked(requestScalePdf).mockImplementation(() => new Promise<void>(() => {}));
+    const view = renderScales();
+    await user.click(pdfButton());
+    const { signal } = vi.mocked(requestScalePdf).mock.calls[0][1];
+    expect(signal!.aborted).toBe(false);
+    view.unmount();
+    expect(signal!.aborted).toBe(true);
+  });
 });

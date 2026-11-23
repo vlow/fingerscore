@@ -15,11 +15,14 @@ import { MAX_BARS, serializeFile } from '../domain/persistence';
 import { mkDoc, type EvSpec } from '../test/helpers';
 import { listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
+import { PdfError } from '../pdf/errors';
+import { requestSheetPdf } from '../pdf/request';
 import { downloadText } from '../ui/download';
 import { ToastHost } from '../ui/Toast';
 import SheetPage from './SheetPage';
 
 vi.mock('../ui/download', () => ({ downloadText: vi.fn() }));
+vi.mock('../pdf/request', () => ({ requestSheetPdf: vi.fn(async () => {}) }));
 
 const fakePlayer = vi.hoisted(() => ({
   play: vi.fn(), stop: vi.fn(), playing: false,
@@ -61,6 +64,8 @@ beforeEach(() => {
   localStorage.clear();
   useApp.setState({ libraryId: null, savedSnapshot: null, saveError: null });
   vi.mocked(downloadText).mockClear();
+  vi.mocked(requestSheetPdf).mockReset();
+  vi.mocked(requestSheetPdf).mockResolvedValue(undefined);
   fakePlayer.play.mockReset();
   fakePlayer.stop.mockReset();
   fakePlayer.playing = false;
@@ -289,7 +294,7 @@ describe('save and the File menu', () => {
     await user.click(btn);
     const menu = screen.getByRole('menu');
     expect(btn).toHaveAttribute('aria-expanded', 'true');
-    expect(within(menu).getAllByRole('menuitem').slice(0, 4).map(i => i.textContent)).toEqual(['Print', 'Download JSON', 'Open JSON file…', 'New sheet']);
+    expect(within(menu).getAllByRole('menuitem').slice(0, 5).map(i => i.textContent)).toEqual(['Download PDF', 'Print', 'Download JSON', 'Open JSON file…', 'New sheet']);
     expect(within(menu).getByText('No saved sheets yet.')).toBeInTheDocument();
     expect(within(menu).getByText(/Sheets are stored only on this device/)).toBeInTheDocument();
     await user.keyboard('{Escape}');
@@ -339,6 +344,103 @@ describe('save and the File menu', () => {
     expect(print).toHaveBeenCalled();
     expect(screen.queryByRole('menu')).toBeNull();
     print.mockRestore();
+  });
+
+  describe('Download PDF', () => {
+    const openMenu = () => user.click(screen.getByRole('button', { name: /File/ }));
+    const pdfItem = (name: string | RegExp = 'Download PDF') => screen.getByRole('menuitem', { name });
+    /** A request that stays pending until `finish` is called. */
+    function pending() {
+      let finish!: () => void;
+      let fail!: (e: unknown) => void;
+      vi.mocked(requestSheetPdf).mockImplementation(() => new Promise<void>((res, rej) => { finish = res; fail = rej; }));
+      return { finish: () => act(() => finish()), fail: (e: unknown) => act(() => fail(e)) };
+    }
+
+    it('is the first, primary entry and requests the PDF of the sheet', async () => {
+      const doc = sampleDoc('asax');
+      open('asax');
+      await openMenu();
+      expect(pdfItem().className).toMatch(/primary/);
+      await user.click(pdfItem());
+      expect(requestSheetPdf).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(requestSheetPdf).mock.calls[0][0]).toEqual(doc);
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('stops playback first', async () => {
+      open('asax');
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      fakePlayer.stop.mockClear();
+      await openMenu();
+      await user.click(pdfItem());
+      expect(fakePlayer.stop).toHaveBeenCalled();
+    });
+
+    it('reads "Preparing PDF…" and is disabled while the PDF is made; a second request is ignored', async () => {
+      const job = pending();
+      open('asax');
+      await openMenu();
+      await user.click(pdfItem());
+      await openMenu();
+      const busy = pdfItem('Preparing PDF…');
+      expect(busy).toBeDisabled();
+      await user.click(busy);
+      expect(requestSheetPdf).toHaveBeenCalledTimes(1);
+      await job.finish();
+      await user.keyboard('{Escape}');
+      await openMenu();
+      expect(pdfItem()).toBeEnabled();
+    });
+
+    it('shows the text of a PdfError in the alert line; a later success clears it', async () => {
+      open('asax');
+      vi.mocked(requestSheetPdf).mockRejectedValueOnce(new PdfError('The PDF can\'t show these characters: д. Use Print instead.'));
+      await openMenu();
+      await user.click(pdfItem());
+      expect(await screen.findByRole('alert')).toHaveTextContent('The PDF can\'t show these characters: д. Use Print instead.');
+      await openMenu();
+      await user.click(pdfItem());
+      await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    });
+
+    it('announces the page only for more than 10 pages', async () => {
+      const job = pending();
+      open('asax');
+      await openMenu();
+      await user.click(pdfItem());
+      const onProgress = vi.mocked(requestSheetPdf).mock.calls[0][1].onProgress!;
+      const live = () => document.querySelector('p[aria-live="polite"]')!;
+      act(() => onProgress(2, 10));
+      expect(live()).toBeEmptyDOMElement();
+      act(() => onProgress(3, 12));
+      expect(live()).toHaveTextContent('Preparing PDF, page 3 of 12');
+      await job.finish();
+    });
+
+    it('leaving the page aborts the request', async () => {
+      pending();
+      const view = open('asax');
+      await openMenu();
+      await user.click(pdfItem());
+      const { signal } = vi.mocked(requestSheetPdf).mock.calls[0][1];
+      expect(signal!.aborted).toBe(false);
+      view.unmount();
+      expect(signal!.aborted).toBe(true);
+    });
+
+    it('Print still prints, after stopping playback', async () => {
+      const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+      open('asax');
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      fakePlayer.stop.mockClear();
+      await openMenu();
+      await user.click(pdfItem('Print'));
+      expect(print).toHaveBeenCalled();
+      expect(requestSheetPdf).not.toHaveBeenCalled();
+      expect(fakePlayer.stop).toHaveBeenCalled();
+      print.mockRestore();
+    });
   });
 
   it('Download JSON writes the file', async () => {

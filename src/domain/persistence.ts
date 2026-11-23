@@ -199,9 +199,16 @@ export function canonical(doc: Doc): string {
   return text;
 }
 
-/** Lower case, runs outside a-z0-9 become one hyphen, hyphens at both ends trimmed. May be empty. */
+const LETTERS: Record<string, string> = { 'ł': 'l', 'Ł': 'L', 'ø': 'o', 'Ø': 'O', 'ß': 'ss', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'đ': 'd', 'Đ': 'D' };
+const MAX_SLUG = 80;
+
+/**
+ * Accents dropped (Ž → z, ł → l, ß → ss), lower case, runs outside a-z0-9 become one hyphen, hyphens at both ends trimmed,
+ * cut to 80 characters. May be empty.
+ */
 export function slug(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const plain = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[łŁøØßæÆœŒđĐ]/g, c => LETTERS[c]);
+  return plain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, MAX_SLUG).replace(/-+$/, '');
 }
 
 export function fileName(title: string): string {

@@ -234,7 +234,11 @@ describe('sheet file', () => {
 
   it('file names', () => {
     expect(fileName('Auld Lang Syne')).toBe('auld-lang-syne.fingerscore.json');
-    expect(fileName('  Ça va?! ')).toBe('a-va.fingerscore.json');
+    expect(fileName('  Ça va?! ')).toBe('ca-va.fingerscore.json');
+    expect(fileName('Žluťoučký kůň')).toBe('zlutoucky-kun.fingerscore.json');
+    expect(fileName('Łódź Øl Straße Æon Œuvre Đ')).toBe('lodz-ol-strasse-aeon-oeuvre-d.fingerscore.json');
+    expect(fileName('a'.repeat(79) + ' b')).toBe(`${'a'.repeat(79)}.fingerscore.json`);
+    expect(fileName('x'.repeat(100))).toBe(`${'x'.repeat(80)}.fingerscore.json`);
     expect(fileName('')).toBe('sheet.fingerscore.json');
   });
 

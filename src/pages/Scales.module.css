@@ -19,7 +19,14 @@
   font-weight: 700;
 }
 
-.print {
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.primary,
+.plain {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -27,16 +34,40 @@
   padding: 10px 18px;
   border: none;
   border-radius: var(--radius);
-  background: var(--teal);
-  color: #ffffff;
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.print:hover {
+.primary {
+  background: var(--teal);
+  color: #ffffff;
+}
+
+.primary:hover:not(:disabled) {
   background: var(--teal-hover);
+}
+
+.primary:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.plain {
+  border: 1px solid var(--border-2);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.plain:hover {
+  background: var(--page);
+}
+
+.pdfError {
+  margin: 0;
+  color: var(--red);
+  font-size: 14px;
 }
 
 .card {

@@ -7,9 +7,11 @@ import {
 } from '../domain/scales';
 import type { InstId } from '../domain/types';
 import { ScaleStaff } from '../render/ScaleStaff';
+import { requestScalePdf } from '../pdf/request';
 import { readJSON, writeJSON } from '../state/storage';
 import { useApp } from '../state/store';
 import { Segmented } from '../ui/Segmented';
+import { usePdfJob } from '../ui/usePdfJob';
 import { useScaleAlternatives } from './scales/useScaleAlternatives';
 import '../styles/print.css';
 import s from './Scales.module.css';
@@ -94,6 +96,10 @@ export default function Scales() {
   });
   useEffect(() => { writeJSON('local', KEY, st); }, [st]);
 
+  const pdf = usePdfJob();
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pdfProgress, setPdfProgress] = useState('');
+
   const i = inst(st.inst);
   const { closeAlt, renderUnderChart } = useScaleAlternatives(i.kind, st.chartStyle, pickFingering);
   const transposing = isKeyTransposing(st.inst);
@@ -116,6 +122,17 @@ export default function Scales() {
   const current = chips.find(c => c.writtenPc === st.tonicPc && c.sharp === st.sharp) ?? chips.find(c => c.writtenPc === st.tonicPc)!;
   const caption = `${displayName(i)} · ${scale.tonic} ${name}` + (transposing ? ` · sounds ${current.concert} ${name}` : '');
 
+  async function downloadPdf() {
+    closeAlt(false);
+    setPdfProgress('');
+    const done = await pdf.start(o => requestScalePdf({
+      inst: st.inst, scale, scaleName: name, caption, chartStyle: st.chartStyle, recorderSystem: st.recorderSystem,
+      showNames: st.showNames, showAlternates: st.showAlternates, overrides: st.overrides,
+    }, o), setPdfProgress);
+    setPdfProgress('');
+    if (done) setPdfError(done.error);
+  }
+
   const chipOptions = chips.map(c => {
     if (!transposing) return { value: chipId(c), content: <span className={s.chipMain}>{c.written}</span>, name: c.written };
     const [lead, sub] = by === 'read' ? [c.written, `sounds ${c.concert}`] : [c.concert, `you read ${c.written}`];
@@ -130,12 +147,20 @@ export default function Scales() {
     <div className={s.page}>
       <div className={s.head} data-print-hide="">
         <h1 className={s.h1}>Scales with fingerings</h1>
-        <button type="button" className={s.print} onClick={() => window.print()}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M6 9V3h12v6" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v7H6z" />
-          </svg>
-          Print
-        </button>
+        <div className={s.buttons}>
+          <button type="button" className={s.primary} disabled={pdf.busy} onClick={() => void downloadPdf()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" />
+            </svg>
+            {pdf.busy ? 'Preparing PDF…' : 'Download PDF'}
+          </button>
+          <button type="button" className={s.plain} onClick={() => window.print()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 9V3h12v6" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v7H6z" />
+            </svg>
+            Print
+          </button>
+        </div>
       </div>
 
       <div className={s.card} data-print-hide="">
@@ -215,9 +240,12 @@ export default function Scales() {
         )}
       </div>
 
+      {pdfError && <p role="alert" className={s.pdfError} data-print-hide="">{pdfError}</p>}
+
       {/* The live region stays mounted so screen readers announce a notice when it appears. */}
       <div role="status" className={s.status} data-print-hide="">
         {scale.notice && <div className={s.notice}>{scale.notice}</div>}
+        {pdfProgress && <div>{pdfProgress}</div>}
       </div>
 
       <div className={s.scroll}>

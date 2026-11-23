@@ -2,7 +2,7 @@
 
 Turns a song file into sheet music with a fingering chart under every note, for woodwinds. It runs in the browser only. Nothing leaves your machine.
 
-Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files, then editing with undo and redo, then a Scales page: any scale in any key with a fingering chart under every note, then MuseScore and ABC import.
+Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files, then editing with undo and redo, then a Scales page: any scale in any key with a fingering chart under every note, then MuseScore and ABC import, then a PDF download.
 
 ## What it does
 
@@ -13,8 +13,9 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Draws the sheet and a fingering chart under every note, in compact or full key map style. Recorders come in baroque and German systems.
 - Offers alternate fingerings where published charts list them. You pick one per note.
 - Plays the sheet: Play and Stop, tempo slider, repeats, first and second endings, highlight on the current note.
+- Downloads the sheet as a PDF (File, then Download PDF). See "PDF" below.
 - Prints the sheet (A4, paper only) through the browser's print dialog.
-- Shows scales with fingerings on a Scales page, linked from the header. Pick an instrument and one of eight scales (major, natural, harmonic and melodic minor, major and minor pentatonic, blues, chromatic) in any of twelve keys; the key with six accidentals comes in both spellings (F♯ and G♭ major, D♯ and E♭ minor). Choose one octave, two octaves or the whole range, up or up and down. Letters follow the scale degrees, except that a double sharp or double flat is written as the plain neighbouring note (A♮ instead of B𝄫). On transposing instruments you name keys by what you read or by what sounds. Notes with more than one fingering get the same "⇅" pill as on a sheet: pick another fingering and the neighbouring notes adapt; "Reset all to auto" undoes your picks, and a change of instrument, scale, key, range, direction or recorder system clears them. Optional: alternate fingerings under each note, note names, and print (A4, the scale only, with your picks). The page remembers your settings and picks in this browser.
+- Shows scales with fingerings on a Scales page, linked from the header. Pick an instrument and one of eight scales (major, natural, harmonic and melodic minor, major and minor pentatonic, blues, chromatic) in any of twelve keys; the key with six accidentals comes in both spellings (F♯ and G♭ major, D♯ and E♭ minor). Choose one octave, two octaves or the whole range, up or up and down. Letters follow the scale degrees, except that a double sharp or double flat is written as the plain neighbouring note (A♮ instead of B𝄫). On transposing instruments you name keys by what you read or by what sounds. Notes with more than one fingering get the same "⇅" pill as on a sheet: pick another fingering and the neighbouring notes adapt; "Reset all to auto" undoes your picks, and a change of instrument, scale, key, range, direction or recorder system clears them. Optional: alternate fingerings under each note, note names. Download the scale as a PDF or print it (A4, the scale only, with your picks). The page remembers your settings and picks in this browser.
 - Covers 12 instruments: Xaphoon, saxophones, clarinet, flutes, recorders.
 - Ships a sample song, Auld Lang Syne. Regenerate it with `npm run demo`.
 
@@ -122,11 +123,26 @@ Width: a 4/4 bar with eighth triplets needs about a third more width than a plai
 
 The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The app validates every file on import and refuses anything else. No compatibility promise holds before the public release: a later version may change the format and reject older files.
 
+### PDF
+
+File, then Download PDF, makes a PDF of the sheet. The Scales page has a Download PDF button next to Print. The PDF is made in your browser. Nothing is uploaded.
+
+- **Contents:** a sheet has the title block, every system with its fingering charts, and the legend. A scale has its caption, every line and the legend. The sheet is drawn with your Show settings. A scale is drawn with your picks. A PDF of two or more pages has a footer on every page: `{title} · page {n} of {N}` (the caption for a scale, and `page {n} of {N}` for an untitled sheet).
+- **Paper:** A4 (210 × 297 mm). US Letter (215.9 × 279.4 mm) when the first language of the browser has the region US or CA. Margins are 12 mm. There is no setting.
+- **Layout:** a system or a scale line is never split across pages. A scale line with many stacked alternate fingerings that does not fit on the rest of a page starts a new page, which can leave white space. When the last page of a sheet would hold only the legend, the music of that page is scaled down by up to 8% instead.
+- **Text:** the PDF embeds Atkinson Hyperlegible Regular, Bold and Bold Italic (SIL Open Font License, text in `src/pdf/fonts/OFL.txt`). Lyrics, chord symbols and titles can be searched and copied. The symbols ♭ ♯ ♮ 𝄫 𝄪 ♩ Δ ‿ ● ○ ◐ are drawn as shapes, not as text. A search for "B♭" finds "B".
+- **Characters:** the PDF supports Latin and extended Latin letters (such as ł, ő, č, ř, š, ž) and the eleven symbols above. If a title, lyric or chord uses any other character, for example Cyrillic or Greek letters, no PDF is made. The alert line lists up to 12 of the characters and says "Use Print instead". Print draws them with the fonts of the browser.
+- **File name:** `{title}-{instrument}.pdf` for a sheet, `{key}-{scale}-{instrument}.pdf` for a scale, for example `auld-lang-syne-alto-sax.pdf` and `c-major-alto-sax.pdf`. Each part is lower case. Accented letters become plain letters (`Žluťoučký kůň` gives `zlutoucky-kun`) and other characters become `-`. A part is cut at 80 characters. An untitled sheet uses `sheet`. The JSON file name follows the same rule.
+- **Loading:** the PDF code (501 kB) and the six font files (111 kB together) load when you first click Download PDF, not with the app. If they cannot load, the alert line shows the load message. Another failure shows "The PDF could not be made. Use Print instead."
+- **Progress:** the File menu entry reads "Preparing PDF…" and is disabled while the PDF is made. For a PDF of more than 10 pages the page announces "Preparing PDF, page {n} of {N}". A sheet of 2000 bars makes about 125 pages. Leaving the page stops the work and nothing is downloaded.
+- **Print:** unchanged. It stays in the File menu and next to Download PDF on the Scales page.
+- **Phones:** a browser that shows a PDF in a tab instead of saving it does so for this file too.
+
 ### Loading
 
-The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The entry chunk stays at 400 kB or less; `npm run check:bundle` checks it after a build.
+The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The entry chunk stays at 400 kB or less and holds no PDF code; `npm run check:bundle` checks both after a build.
 
-The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
+The PDF code and fonts load on the first click of Download PDF (see "PDF"). The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
 
 ### Rhythm rules
 
@@ -138,7 +154,6 @@ The Tracks and Scales pages and the editing panels load when you first need them
 ## What it does not do
 
 - Editing repeats and endings, or changing the time signature, or the key signature other than by transposing.
-- A generated PDF. Use the print dialog.
 - About, Imprint and Privacy pages.
 - A full accessibility audit.
 
@@ -156,7 +171,7 @@ npm run dev        # dev server on http://localhost:5173
 npm test           # unit tests (Vitest)
 npm run test:e2e   # end-to-end test (Playwright)
 npm run build      # type-check and build to dist/
-npm run check:bundle  # after a build: entry chunk at most 400 kB
+npm run check:bundle  # after a build: entry chunk at most 400 kB, no PDF library in it
 npm run demo       # regenerate the sample MIDI file
 ```
 

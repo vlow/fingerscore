@@ -88,8 +88,8 @@ function Sheet({ doc }: { doc: Doc }) {
   });
 
   const {
-    libraryId, status, fileError, entries, setLibraryChanged, save, print, download, openFile, openSaved, deleteSaved,
-  } = useFileActions(doc, playerRef);
+    libraryId, status, fileError, entries, setLibraryChanged, save, print, pdfBusy, downloadPdf, download, openFile, openSaved, deleteSaved,
+  } = useFileActions(doc, playerRef, setAnnouncement);
 
   // Undo and redo leave the selection alone unless its event is gone from the document they bring back.
   function travel(step: 'undo' | 'redo') {
@@ -156,7 +156,7 @@ function Sheet({ doc }: { doc: Doc }) {
               <UndoRedo canUndo={undoable} canRedo={redoable} onUndo={() => travel('undo')} onRedo={() => travel('redo')}
                 onFocusLost={focusSheet} />
               <SaveControls status={status} error={saveError} onSave={save} />
-              <FileMenu entries={entries} currentId={libraryId} onPrint={print} onDownload={download}
+              <FileMenu entries={entries} currentId={libraryId} onPdf={() => void downloadPdf()} pdfBusy={pdfBusy} onPrint={print} onDownload={download}
                 onOpenFile={file => void openFile(file)} onNew={() => navigate('/')} onOpen={openSaved} onDelete={deleteSaved}
                 onOpenMenu={() => setLibraryChanged(n => n + 1)} />
             </div>

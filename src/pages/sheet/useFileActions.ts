@@ -5,18 +5,27 @@ import type { Doc } from '../../domain/types';
 import { deleteWithUndo } from '../../state/deleteWithUndo';
 import { listEntries } from '../../state/library';
 import { saveStatus, useApp } from '../../state/store';
+import { requestSheetPdf } from '../../pdf/request';
 import { downloadText } from '../../ui/download';
+import { usePdfJob } from '../../ui/usePdfJob';
 
 const MISSING = 'That sheet is no longer saved in this browser.';
 
-/** The page bar's file actions: save, print, download, open a file or a saved sheet, delete, and the error line. */
-export function useFileActions(doc: Doc, playerRef: RefObject<Player | null>) {
+/** The page bar's file actions: save, print, download as PDF or JSON, open a file or a saved sheet, delete, and the error line. */
+export function useFileActions(doc: Doc, playerRef: RefObject<Player | null>, announce: (line: string) => void) {
   const libraryId = useApp(st => st.libraryId);
   const savedSnapshot = useApp(st => st.savedSnapshot);
 
   function print() {
     playerRef.current?.stop();
     window.print();
+  }
+
+  const pdf = usePdfJob();
+  async function downloadPdf() {
+    playerRef.current?.stop();
+    const done = await pdf.start(o => requestSheetPdf(doc, o), announce);
+    if (done) setFileError(done.error);
   }
 
   // Saving and files (design 4.4). fileError is the line under the page bar; the next successful action clears it.
@@ -56,5 +65,5 @@ export function useFileActions(doc: Doc, playerRef: RefObject<Player | null>) {
     });
   }
 
-  return { libraryId, status, fileError, entries, setLibraryChanged, save, print, download, openFile, openSaved, deleteSaved };
+  return { libraryId, status, fileError, entries, setLibraryChanged, save, print, pdfBusy: pdf.busy, downloadPdf, download, openFile, openSaved, deleteSaved };
 }
