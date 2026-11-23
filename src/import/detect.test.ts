@@ -72,6 +72,11 @@ describe('detectChords', () => {
     expect(detectChords(jig, [6, 8], 0, 3)).toEqual([{ at: 0, text: 'C' }, { at: 1.5, text: 'G' }]);
   });
 
+  it('uses half bars in 2/2, like 4/4', () => {
+    const notes = [nt(0, 2, 60), nt(0, 2, 64), nt(0, 2, 67), nt(2, 2, 57), nt(2, 2, 60), nt(2, 2, 64)];
+    expect(detectChords(notes, [2, 2], 0, 4)).toEqual([{ at: 0, text: 'C' }, { at: 2, text: 'Am' }]);
+  });
+
   it('treats the pickup as its own window', () => {
     const notes = [nt(0, 1, 67), nt(0, 1, 71), nt(0, 1, 62), nt(1, 4, 60), nt(1, 4, 64), nt(1, 4, 67)];
     const c = detectChords(notes, [4, 4], 1, 5);

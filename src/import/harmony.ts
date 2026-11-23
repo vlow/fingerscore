@@ -13,7 +13,7 @@ const EPS = 1e-9;
 /** Window length in quarter notes: half a bar in 4/4 and 6/8, a whole bar in 3/4 and 2/4. */
 function windowLength(ts: TimeSig): number {
   const bar = (ts[0] * 4) / ts[1];
-  return ts[0] === 4 || ts[1] === 8 ? bar / 2 : bar;
+  return ts[0] === 4 || ts[1] === 8 || (ts[0] === 2 && ts[1] === 2) ? bar / 2 : bar;
 }
 
 function bestChord(weights: number[]): string | null {
