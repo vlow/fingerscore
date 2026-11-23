@@ -219,7 +219,7 @@ it('the detected card lists time and an editable tempo under its own label', () 
 
 it('simplified notice', () => {
   open('fl', { source: { file: 'a.mid', format: 'MIDI', track: '1', trackCount: 1, simplified: true } });
-  expect(screen.getByText(/Rhythm simplified/)).toBeInTheDocument();
+  expect(screen.getByText('Rhythm simplified: notes shorter than a sixteenth and tuplets other than triplets were rounded.')).toBeInTheDocument();
 });
 
 it('range text', () => {

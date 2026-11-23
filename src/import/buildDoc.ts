@@ -58,8 +58,8 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
   const rawPickup = Number.isFinite(song.pickup) ? Math.max(0, song.pickup * TPQ) : 0;
   let pickupTicks = Math.round(rawPickup / 3) * 3;
   if (pickupTicks >= barCap(song.timeSig)) pickupTicks = 0; // a full bar or more is no pickup
-  const simplified = q.simplified || Math.abs(pickupTicks - rawPickup) > 0.02 * TPQ;
-  const score = toBars(melody, song.timeSig, pickupTicks, song.marks);
+  const { bars: score, rounded } = toBars(melody, song.timeSig, pickupTicks, song.marks);
+  const simplified = q.simplified || rounded || Math.abs(pickupTicks - rawPickup) > 0.02 * TPQ;
   const placed = place(score);
 
   const lyricTrack = o.lyricsFrom ? song.tracks.find(t => t.id === o.lyricsFrom) : undefined;

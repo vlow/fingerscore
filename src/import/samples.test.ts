@@ -1,7 +1,13 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { parseFile } from './index';
+import { barCap } from '../domain/time';
+import { tripletGroups } from '../domain/triplets';
+import { DEFAULT_PREFS } from '../domain/transpose';
+import type { Doc } from '../domain/types';
+import { expectValidBars } from '../test/validBars';
+import { buildDoc } from './buildDoc';
+import { buildOptionsFor, defaultBuildOptions, parseFile } from './index';
 import type { ParsedSong, ParsedTrack } from './types';
 
 // Reads the owner's real files from samples/ (git-ignored). The whole file is skipped when the folder is absent.
@@ -219,6 +225,51 @@ describe.skipIf(!existsSync(DIR))('real files in samples/', () => {
     });
     it.each(Object.values(HYMN))('%s has 22 chord symbols on every track', name => {
       for (const t of song(name).tracks) expect(t.chords).toHaveLength(22);
+    });
+  });
+
+  describe('sheets built with the default options', () => {
+    const sheets = new Map<string, Doc>();
+    const sheet = (name: string) => {
+      let doc = sheets.get(name);
+      if (!doc) {
+        doc = buildDoc(song(name), defaultBuildOptions(song(name), 'asax', DEFAULT_PREFS));
+        sheets.set(name, doc);
+      }
+      return doc;
+    };
+    /** Number of triplet groups per span. */
+    const groupCounts = (doc: Doc) => {
+      const counts: Record<number, number> = { 6: 0, 12: 0, 24: 0 };
+      for (const b of doc.score) for (const g of tripletGroups(b, barCap(doc.timeSig)) ?? []) counts[g.span] += 1;
+      return counts;
+    };
+    const total = (doc: Doc) => Object.values(groupCounts(doc)).reduce((a, b) => a + b, 0);
+
+    it.each(sampleFiles.filter(n => n !== V1))('%s: every bar is valid', name => {
+      const doc = sheet(name);
+      expectValidBars(doc.score, doc.timeSig);
+    });
+    it.each([CAPRICE_3, CAPRICE_4])('%s has at least 15 eighth-triplet and 30 sixteenth-triplet groups', name => {
+      const counts = groupCounts(sheet(name));
+      expect(counts[12]).toBeGreaterThanOrEqual(15);
+      expect(counts[6]).toBeGreaterThanOrEqual(30);
+    });
+    it('Caprice: the version 3 and 4 sheets have equal lengths bar by bar', () => {
+      const lengths = (doc: Doc) => doc.score.map(b => b.ev.map(e => e.d));
+      expect(lengths(sheet(CAPRICE_3))).toEqual(lengths(sheet(CAPRICE_4)));
+    });
+    // The recommended track is voice 2; the triplet is in voice 1.
+    it('Entertainer: from voice 1, the tuplets copy has exactly one more group than version 2', () => {
+      const voice1 = (name: string) => {
+        const s = song(name);
+        const track = s.tracks.find(t => t.name === 'Piano · voice 1');
+        if (!track) throw new Error(`${name} has no voice 1`);
+        const doc = buildDoc(s, buildOptionsFor(s, track.id, 'asax', DEFAULT_PREFS));
+        expectValidBars(doc.score, doc.timeSig);
+        return doc;
+      };
+      expect(total(voice1(TUPLETS))).toBe(total(voice1(ENTERTAINER[2])) + 1);
     });
   });
 

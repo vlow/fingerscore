@@ -1,21 +1,27 @@
 import type { RawNote } from './types';
 
-/** Positions in ticks (12 per quarter) on the 3-tick grid (sixteenths). */
+/** Positions in whole ticks (12 per quarter). Not always on the sixteenth grid: triplets need ticks of 2 and 4. */
 export interface QNote { start: number; dur: number; midi: number }
 
 const GRID = 3;
 const TPQ = 12;
 const ROUND_LIMIT = 0.02; // quarter notes
 
-const snap = (ticks: number): number => Math.round(ticks / GRID) * GRID;
+/** The nearest whole tick when it is within ROUND_LIMIT, otherwise the nearest sixteenth (`moved` true). */
+function snap(quarters: number): { tick: number; moved: boolean } {
+  const ticks = quarters * TPQ;
+  const whole = Math.round(ticks);
+  if (Math.abs(whole - ticks) <= ROUND_LIMIT * TPQ) return { tick: whole, moved: false };
+  return { tick: Math.round(ticks / GRID) * GRID, moved: true };
+}
 
 export function quantise(notes: RawNote[]): { notes: QNote[]; simplified: boolean } {
   let simplified = false;
   const out = notes.map(n => {
-    const start = snap(n.start * TPQ);
-    const dur = Math.max(GRID, snap(n.dur * TPQ));
-    if (Math.abs(start / TPQ - n.start) > ROUND_LIMIT || Math.abs(dur / TPQ - n.dur) > ROUND_LIMIT) simplified = true;
-    return { start, dur, midi: n.midi };
+    const start = snap(n.start);
+    const end = snap(n.start + n.dur);
+    if (start.moved || end.moved) simplified = true;
+    return { start: start.tick, dur: Math.max(1, end.tick - start.tick), midi: n.midi };
   });
   out.sort((a, b) => a.start - b.start || a.midi - b.midi);
   return { notes: out, simplified };

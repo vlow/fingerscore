@@ -1,8 +1,11 @@
 import JSZip from 'jszip';
 import { afterEach, vi } from 'vitest';
+import { DEFAULT_PREFS } from '../domain/transpose';
+import { expectValidBars } from '../test/validBars';
+import { buildDoc } from './buildDoc';
 import { parseFile } from './index';
 import { parseMuseScore } from './mscz';
-import { ImportError } from './types';
+import { ImportError, type ParsedSong } from './types';
 import { harmonyText, lyricText } from './mscz/common';
 
 // ---- fixture helpers: a few bars of hand-written MuseScore XML ----
@@ -39,6 +42,12 @@ const c2 = (type: string, p: number, extra = '', track?: number) => chord2(type,
 
 const bytes = (s: string) => new TextEncoder().encode(s);
 const parse = (xml: string, file = 'x.mscx') => parseMuseScore(file, bytes(xml));
+/** Bar lengths of the sheet built from the first track, every bar checked for validity. */
+const sheetLengths = (song: ParsedSong) => {
+  const doc = buildDoc(song, { trackId: song.tracks[0].id, keep: 'top', lyricsFrom: null, chordsFrom: null, instId: 'fl', prefs: DEFAULT_PREFS });
+  expectValidBars(doc.score, doc.timeSig);
+  return { lengths: doc.score.map(b => b.ev.map(e => e.d)), simplified: doc.source.simplified };
+};
 const rejection = async (p: Promise<unknown>) => {
   try { await p; } catch (e) { return e; }
   throw new Error('did not throw');
@@ -146,6 +155,7 @@ describe('notes and time', () => {
     expect(n).toHaveLength(4);
     [0, 1 / 3, 2 / 3].forEach((s, i) => { expect(n[i].start).toBeCloseTo(s); expect(n[i].dur).toBeCloseTo(1 / 3); });
     expect(n[3].start).toBeCloseTo(1);
+    expect(sheetLengths(song)).toEqual({ lengths: [[4, 4, 4, 36]], simplified: false });
   });
 
   it('a grace chord does not move the note after it', async () => {
@@ -600,6 +610,7 @@ describe('version 2', () => {
       expect(n).toHaveLength(4);
       [0, 1 / 3, 2 / 3].forEach((s, i) => { expect(n[i].start).toBeCloseTo(s); expect(n[i].dur).toBeCloseTo(1 / 3); });
       expect(n[3].start).toBeCloseTo(1);
+      expect(sheetLengths(song)).toEqual({ lengths: [[4, 4, 4, 36]], simplified: false });
     });
 
     it('a rest inside a tuplet uses the ratio too', async () => {

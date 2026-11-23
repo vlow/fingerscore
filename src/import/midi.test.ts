@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { writeMidi, type MidiEvent } from 'midi-file';
 import { DEFAULT_PREFS } from '../domain/transpose';
+import { expectValidBars } from '../test/validBars';
 import { buildDoc } from './buildDoc';
 import { parseFile } from './index';
 import { parseMidi } from './midi';
@@ -43,6 +44,15 @@ describe('parseMidi', () => {
     expect(t.lyrics.slice(0, 5).map(l => l.text)).toEqual(['Should', 'auld', 'ac-', 'quain-', 'tance']);
     expect(t.lyrics[1].at).toBe(1);
     expect(t.lyrics.every(l => t.notes.some(n => Math.abs(n.start - l.at) < 1e-9))).toBe(true);
+  });
+
+  it('three notes at exact thirds of a quarter become a triplet', () => {
+    const bytes = midiBytes([track(note(0, 60, 0, 160), note(0, 62, 0, 160), note(0, 64, 0, 160), note(0, 65, 0, 480 * 3))]);
+    const s = parseMidi('t.mid', bytes);
+    const doc = buildDoc(s, { trackId: s.tracks[0].id, keep: 'top', lyricsFrom: null, chordsFrom: null, instId: 'asax', prefs: DEFAULT_PREFS });
+    expectValidBars(doc.score, doc.timeSig);
+    expect(doc.score[0].ev.map(e => e.d)).toEqual([4, 4, 4, 36]);
+    expect(doc.source.simplified).toBe(false);
   });
 
   it('garbage bytes give a readable error', () => {

@@ -1,4 +1,7 @@
+import { DEFAULT_PREFS } from '../domain/transpose';
+import { expectValidBars } from '../test/validBars';
 import { parseAbc } from './abc';
+import { buildDoc } from './buildDoc';
 import { ImportError, type ParsedSong } from './types';
 
 const enc = (s: string) => new TextEncoder().encode(s);
@@ -134,6 +137,14 @@ describe('parseAbc', () => {
         expect(n.dur).toBeCloseTo(1 / 3);
         expect(n.start).toBeCloseTo(i / 3);
       });
+    });
+
+    it('a triplet becomes three triplet eighths on the sheet', async () => {
+      const s = await parse(tune('(3abc d2 e4', 'M:4/4\nL:1/8\nK:C'));
+      const doc = buildDoc(s, { trackId: s.tracks[0].id, keep: 'top', lyricsFrom: null, chordsFrom: null, instId: 'fl', prefs: DEFAULT_PREFS });
+      expectValidBars(doc.score, doc.timeSig);
+      expect(doc.score[0].ev.map(e => e.d)).toEqual([4, 4, 4, 12, 24]);
+      expect(doc.source.simplified).toBe(false);
     });
 
     it('rests z, x and Z advance time', async () => {

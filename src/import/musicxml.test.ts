@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import JSZip from 'jszip';
 import { DEFAULT_PREFS } from '../domain/transpose';
+import { expectValidBars } from '../test/validBars';
 import { buildDoc } from './buildDoc';
 import { parseMusicXml } from './musicxml';
 import { ImportError, type ParsedSong } from './types';
@@ -138,15 +139,16 @@ describe('parseMusicXml', () => {
     expect(octave.tracks[0].notes[0].midi).toBe(60);
   });
 
-  it('reads triplets at their sounding length, a tempo from <sound>, and buildDoc reports simplified', async () => {
+  it('reads triplets at their sounding length, a tempo from <sound>, and buildDoc makes them a triplet', async () => {
     const s = await load('triplet.musicxml');
     expect(s.tempo).toBe(100);
     expect(s.tracks[0].notes.map(x => x.start)).toEqual([0, 1 / 3, 2 / 3, 1]);
     expect(s.tracks[0].notes.slice(0, 3).every(x => Math.abs(x.dur - 1 / 3) < 1e-9)).toBe(true);
     const doc = buildDoc(s, opts(s));
-    expect(doc.source.simplified).toBe(true);
+    expect(doc.source.simplified).toBe(false);
     expect(doc.tempo).toBe(100);
-    expect(doc.score.every(b => b.ev.reduce((a, e) => a + e.d, 0) === b.cap)).toBe(true);
+    expect(doc.score[0].ev.map(e => e.d)).toEqual([4, 4, 4, 36]);
+    expectValidBars(doc.score, doc.timeSig);
   });
 
   it('reads harmony with alter, bass, offset and a kind text fallback, and skips rootless harmonies', async () => {
