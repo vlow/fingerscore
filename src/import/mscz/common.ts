@@ -30,7 +30,7 @@ const TYPE_QUARTERS: Record<string, number> = {
 export function durationQuarters(type: string, dots: number): number | null {
   const base = TYPE_QUARTERS[type];
   if (base === undefined) return null;
-  return dots === 1 ? base * 1.5 : dots === 2 ? base * 1.75 : base;
+  return Number.isInteger(dots) && dots >= 0 && dots <= 4 ? base * (2 - 2 ** -dots) : null;
 }
 
 /** Pitch class of a tonal pitch class number (14 = C, 15 = G, 13 = F, 16 = D, ...). */
@@ -45,13 +45,11 @@ export const majorTonicOfFifths = (fifths: number): number => mod12(fifths * 7);
 export const lyricText = (text: string, syllabic: string | null): string =>
   syllabic === 'begin' || syllabic === 'middle' ? `${text}-` : text;
 
-/** The kind text as MuseScore stores it, with its short leading token written out: `mi` → `m`, `ma` → `maj`, `o` → `°`, `0` → `ø`. */
+/** The kind text as MuseScore stores it, with its short leading token written out: `mi` → `m`, `ma` → `maj`, `o` → `°`, `0` → `ø`. A token followed by a lowercase letter is part of a longer word (`min7`, `madd9`, `omit5`) and stays. */
 function kindText(name: string): string {
-  if (/^mi(?!n)/.test(name)) return 'm' + name.slice(2);
-  if (/^ma(?!j)/.test(name)) return 'maj' + name.slice(2);
-  if (name.startsWith('o')) return '°' + name.slice(1);
-  if (name.startsWith('0')) return 'ø' + name.slice(1);
-  return name;
+  const short = /^(mi|ma|o)(?![a-z])/.exec(name);
+  if (short) return ({ mi: 'm', ma: 'maj', o: '°' })[short[1] as 'mi' | 'ma' | 'o'] + name.slice(short[1].length);
+  return name.startsWith('0') ? 'ø' + name.slice(1) : name;
 }
 
 /** Chord symbol text from tonal pitch classes (root, bass) and MuseScore's kind text. */

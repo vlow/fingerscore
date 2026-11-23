@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { parseFile } from './index';
 import { parseMuseScore } from './mscz';
 import { ImportError } from './types';
@@ -36,11 +36,28 @@ const rejection = async (p: Promise<unknown>) => {
 };
 
 describe('refusals', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
   it('refuses version 1.14', async () => {
     const e = await rejection(parse('<museScore version="1.14"><Score/></museScore>', 'old.mscx'));
     expect(e).toBeInstanceOf(ImportError);
     expect((e as ImportError).userMessage).toBe(
       '"old.mscx" was saved with a MuseScore version fingerscore does not read. Open it in a current MuseScore and save it again, or export MusicXML.');
+  });
+
+  it('checks the length after unpacking when the entry declares no size', async () => {
+    const entry = { name: 'big.mscx', dir: false, async: vi.fn().mockResolvedValue(new Uint8Array(51 * 1024 * 1024)) };
+    vi.spyOn(JSZip, 'loadAsync').mockResolvedValueOnce({ files: { 'big.mscx': entry } } as unknown as JSZip);
+    const e = await rejection(parseMuseScore('big.mscz', new Uint8Array([0x50, 0x4b, 3, 4])));
+    expect((e as ImportError).userMessage).toBe('"big.mscz" could not be read as a MuseScore file.');
+    expect(entry.async).toHaveBeenCalled();
+  });
+
+  it('a missing or non-numeric version is unreadable, not too old', async () => {
+    for (const root of ['<museScore><Score/></museScore>', '<museScore version=""><Score/></museScore>', '<museScore version="x"><Score/></museScore>']) {
+      const e = await rejection(parse(root, 'v.mscx'));
+      expect((e as ImportError).userMessage).toBe('"v.mscx" could not be read as a MuseScore file.');
+    }
   });
 
   it('refuses a root other than museScore, and a zip without a score', async () => {
@@ -59,7 +76,6 @@ describe('refusals', () => {
     const e = await rejection(parseMuseScore('big.mscz', new Uint8Array([0x50, 0x4b, 3, 4])));
     expect((e as ImportError).userMessage).toBe('"big.mscz" could not be read as a MuseScore file.');
     expect(entry.async).not.toHaveBeenCalled();
-    vi.restoreAllMocks();
   });
 });
 
@@ -277,6 +293,9 @@ describe('harmonyText and lyricText', () => {
     expect(harmonyText(14, 'm', null)).toBe('Cm');
     expect(harmonyText(14, '07', null)).toBe('Cø7');
     expect(harmonyText(14, 'o', null)).toBe('C°');
+    expect(harmonyText(14, 'mi', null)).toBe('Cm');
+    expect(harmonyText(14, 'madd9', null)).toBe('Cmadd9');
+    expect(harmonyText(14, 'omit5', null)).toBe('Comit5');
   });
 
   it('spells roots with flats by pitch class', () => {
@@ -329,13 +348,16 @@ describe('chord symbols', () => {
     expect(song.tracks[0].chords).toEqual([{ at: 1, text: 'G' }]);
   });
 
-  it('every track of a part gets the symbols of all its staves and voices, in order', async () => {
-    const xml = mscx('3.02', part({ name: 'Piano', staves: [1, 2] }) +
+  it('every pitched track carries the symbols of the whole score; percussion gets none', async () => {
+    const xml = mscx('3.02', part({ name: 'Piano', staves: [1, 2] }) + part({ name: 'Flute', staves: [3] }) + part({ name: 'Drums', staves: [4], drums: true }) +
       staff(1, bar('', TS() + harmony3(14) + chord('half', [72]) + chord('half', [74]), chord('whole', [60]))) +
-      staff(2, bar('', TS() + chord('half', [48]) + harmony3(15) + chord('half', [50]))));
+      staff(2, bar('', TS() + harmony3(14) + chord('half', [48]) + harmony3(15) + chord('half', [50]))) +
+      staff(3, bar('', TS() + chord('whole', [76]))) +
+      staff(4, bar('', TS() + chord('whole', [36]))));
     const song = await parse(xml);
-    expect(song.tracks).toHaveLength(3);
-    for (const t of song.tracks) expect(t.chords).toEqual([{ at: 0, text: 'C' }, { at: 2, text: 'G' }]);
+    expect(song.tracks.map(t => t.name)).toEqual(['Piano · staff 1 · voice 1', 'Piano · staff 1 · voice 2', 'Piano · staff 2', 'Flute', 'Drums']);
+    for (const t of song.tracks.slice(0, 4)) expect(t.chords).toEqual([{ at: 0, text: 'C' }, { at: 2, text: 'G' }]);
+    expect(song.tracks[4].chords).toEqual([]);
   });
 });
 
@@ -376,5 +398,75 @@ describe('repeats and endings', () => {
       withRepeat('<startRepeat/>', chord('whole', [60])),
       withRepeat('<endRepeat>2</endRepeat>', chord('whole', [60])));
     expect((await parse(xml)).marks).toEqual([{ bar: 1, rs: true }, { bar: 2, re: true }]);
+  });
+});
+
+describe('edge cases', () => {
+  const tupletOpen = '<Tuplet><normalNotes>2</normalNotes><actualNotes>3</actualNotes><baseNote>eighth</baseNote></Tuplet>';
+
+  it('three or more dots lengthen the note', async () => {
+    const song = await parse(simple(bar('', TS() + chord('half', [60], '<dots>3</dots>') + chord('eighth', [62], '<dots>3</dots>'))));
+    expect(song.tracks[0].notes.map(n => n.dur)).toEqual([3.75, 0.9375]);
+  });
+
+  it('a tuplet may hold a rest and a dotted note', async () => {
+    const song = await parse(simple(bar('', TS() + tupletOpen + chord('quarter', [60], '<dots>1</dots>') + rest('eighth') + '<endTuplet/>' + chord('half', [62]))));
+    const n = song.tracks[0].notes;
+    expect(n[0].dur).toBeCloseTo(1);
+    expect(n[1].start).toBeCloseTo(1.333333, 5);
+  });
+
+  it('a chain of three tied notes is one note', async () => {
+    const mid = '<Chord><durationType>quarter</durationType><Note><Spanner type="Tie"><prev/></Spanner><Spanner type="Tie"><Tie/><next/></Spanner><pitch>60</pitch></Note></Chord>';
+    const song = await parse(simple(bar('', TS() + tieStart(60) + mid + tieEnd(60) + chord('quarter', [62]))));
+    expect(song.tracks[0].notes).toEqual([{ start: 0, dur: 3, midi: 60 }, { start: 3, dur: 1, midi: 62 }]);
+  });
+
+  it('in a chord where one note is tied, only that note continues', async () => {
+    const first = '<Chord><durationType>half</durationType><Note><Spanner type="Tie"><Tie/><next/></Spanner><pitch>60</pitch></Note><Note><pitch>64</pitch></Note></Chord>';
+    const second = '<Chord><durationType>half</durationType><Note><pitch>60</pitch></Note><Note><pitch>64</pitch></Note></Chord>';
+    const song = await parse(simple(bar('', TS() + first + second)));
+    expect(song.tracks[0].notes).toEqual([
+      { start: 0, dur: 4, midi: 60 }, { start: 0, dur: 2, midi: 64 }, { start: 2, dur: 2, midi: 64 },
+    ]);
+  });
+
+  it('a location gap at the start of voice 2 moves only voice 2', async () => {
+    const song = await parse(simple(bar('', TS() + chord('whole', [72]), '<location><fractions>1/4</fractions></location>' + chord('quarter', [60]))));
+    expect(song.tracks[1].notes).toEqual([{ start: 1, dur: 1, midi: 60 }]);
+  });
+
+  it('a negative location before a Harmony and its positive twin leave later notes in place', async () => {
+    const song = await parse(simple(bar('', TS() + chord('quarter', [60]) +
+      '<location><fractions>-1/4</fractions></location>' + harmony3(14) + '<location><fractions>1/4</fractions></location>' + chord('quarter', [62]))));
+    expect(song.tracks[0].notes).toEqual([{ start: 0, dur: 1, midi: 60 }, { start: 1, dur: 1, midi: 62 }]);
+  });
+
+  it('names a part by staff only when more than one of its staves has notes', async () => {
+    const xml = mscx('3.02', part({ name: 'Piano', staves: [1, 2] }) +
+      staff(1, bar('', TS() + chord('whole', [72]))) + staff(2, bar('', TS() + rest('whole'))));
+    expect((await parse(xml)).tracks.map(t => t.name)).toEqual(['Piano']);
+    const second = mscx('3.02', part({ name: 'Piano', staves: [1, 2] }) +
+      staff(1, bar('', TS() + rest('whole'))) + staff(2, bar('', TS() + chord('whole', [48]))));
+    expect((await parse(second)).tracks.map(t => t.name)).toEqual(['Piano']);
+  });
+
+  it('a note without pitch is skipped', async () => {
+    const song = await parse(simple(bar('', TS() + '<Chord><durationType>half</durationType><Note><tpc>14</tpc></Note></Chord>' + chord('half', [62]))));
+    expect(song.tracks[0].notes).toEqual([{ start: 2, dur: 2, midi: 62 }]);
+  });
+
+  it('a chord without durationType is reported as unreadable through parseFile', async () => {
+    const xml = simple(bar('', TS() + '<Chord><Note><pitch>60</pitch></Note></Chord>'));
+    const e = await rejection(parseFile(new File([bytes(xml)], 'cut.mscx')));
+    expect((e as ImportError).userMessage).toBe('"cut.mscx" could not be read as a MuseScore file.');
+  });
+
+  it('a measure length of zero or below falls back to the meter', async () => {
+    for (const len of ['0/4', '-1/4']) {
+      const song = await parse(simple(bar(` len="${len}"`, TS() + chord('whole', [60])), bar('', chord('whole', [62]))));
+      expect(song.pickup).toBe(0);
+      expect(song.tracks[0].notes.map(n => n.start)).toEqual([0, 4]);
+    }
   });
 });

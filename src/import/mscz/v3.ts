@@ -55,7 +55,8 @@ function readGrid(measures: Element[]): { bars: Bar[]; sigs: [number, number][] 
         if (n !== null && d !== null && d > 0) { sigs.push([n, d]); meter = n * 4 / d; }
       }
     }
-    const length = (fraction(m.getAttribute('len') ?? undefined) ?? NaN) * 4 || meter;
+    const declared = (fraction(m.getAttribute('len') ?? undefined) ?? NaN) * 4;
+    const length = declared > 0 ? declared : meter;     // a zero, negative or missing length is the meter's
     bars.push({ el: m, start, length });
     start += length;
   }
@@ -151,7 +152,7 @@ function readMarks(bars: Bar[]): ParsedSong['marks'] {
       const endings = text(kid(spanner, 'Volta'), 'endings');
       const next = kid(spanner, 'next');
       if ((endings !== '1' && endings !== '2') || !next) continue;
-      // The end sits `measures` bars on, plus a part of a bar when `fractions` is there: an ending inside one bar has no `measures`.
+      // Rule from the Entertainer sample: the end sits `measures` bars on, plus a part of a bar when `fractions` is there: an ending inside one bar has no `measures`.
       const location = kid(next, 'location');
       const length = (num(text(location, 'measures')) ?? 0) + ((fraction(text(location, 'fractions')) ?? 0) > 0 ? 1 : 0);
       for (let b = i; b < Math.min(i + Math.max(length, 1), bars.length); b++) at(b).volta = endings;
@@ -204,26 +205,29 @@ export const readV3: ScoreReader = (file, score, version) => {
   const pickup = bars.length > 0 && bars[0].length < meter - EPS ? bars[0].length : 0;
 
   const tracks: ParsedTrack[] = [];
+  const symbols: Timed[] = [];     // chord symbols of the whole score
   for (const part of parts) {
-    const firstOfPart = tracks.length;
-    const chords: Timed[] = [];
-    for (const staffId of part.staffIds) {
+    const staffReads = part.staffIds.map(staffId => {
       const measures = byId.get(staffId) ?? [];
       const read = Array.from({ length: MAX_VOICES }, (_, v) => ({ voice: v + 1, ...readVoice(bars, measures, v) }));
-      for (const r of read) chords.push(...r.harmonies);
-      const voices = read.filter(v => v.notes.length > 0);
+      for (const r of read) symbols.push(...r.harmonies);
+      return { staffId, staffNo: part.staffIds.indexOf(staffId) + 1, voices: read.filter(v => v.notes.length > 0) };
+    });
+    const staffCount = staffReads.filter(r => r.voices.length > 0).length;
+    for (const { staffId, staffNo, voices } of staffReads) {
       for (const { voice, notes, lyrics } of voices) {
-        const staffNo = part.staffIds.indexOf(staffId) + 1;
-        const name = part.name + (part.staffIds.length > 1 ? ` · staff ${staffNo}` : '') + (voices.length > 1 ? ` · voice ${voice}` : '');
+        const name = part.name + (staffCount > 1 ? ` · staff ${staffNo}` : '') + (voices.length > 1 ? ` · voice ${voice}` : '');
         tracks.push({
           id: `${staffId}:${voice}`, name, instrument: part.instrument, channel: part.percussion ? 10 : null,
           percussion: part.percussion, notes, lyrics, chords: [],
         });
       }
     }
-    chords.sort((a, b) => a.at - b.at);     // stable: symbols at one position keep their order
-    for (const t of tracks.slice(firstOfPart)) t.chords = chords;
   }
+  // Every pitched track carries all symbols of the score, in position order, each (position, text) once.
+  symbols.sort((a, b) => a.at - b.at);     // stable: symbols at one position keep their order
+  const chords = symbols.filter((s, i) => !symbols.slice(0, i).some(o => o.at === s.at && o.text === s.text));
+  for (const t of tracks) if (!t.percussion) t.chords = chords;
   if (!tracks.some(t => !t.percussion)) throw new ImportError(`"${file}" has no melody track.`);
 
   const keyPart = parts.find(p => !p.percussion && p.staffIds.length > 0);
