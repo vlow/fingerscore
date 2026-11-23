@@ -199,9 +199,13 @@ export function canonical(doc: Doc): string {
   return text;
 }
 
+/** Lower case, runs outside a-z0-9 become one hyphen, hyphens at both ends trimmed. May be empty. */
+export function slug(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 export function fileName(title: string): string {
-  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return `${base || 'sheet'}.fingerscore.json`;
+  return `${slug(title) || 'sheet'}.fingerscore.json`;
 }
 
 export function importMessage(file: string, reason: 'not-a-sheet' | 'damaged'): string {
