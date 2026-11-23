@@ -59,7 +59,7 @@ const pdfOf = async (page: Page, spec: Spec, language?: string) => {
   return { input, bytes, info: await readPdf(bytes) };
 };
 
-/** Names of the notes of one line of the page (those within the vertical band between two item y values). */
+/** The written names of the scale's notes, in order (e.g. "C4", "F♯4"). */
 const namesOf = (input: ScaleInput) => input.scale.notes.map(n => n.spelled.name);
 
 const planOf = (page: Page, input: ScaleInput, language = 'de-DE') => hookCall<Plan>(page, 'scalePlan', input, { language });
@@ -78,7 +78,6 @@ function lineOn(plan: Plan, index: number): { page: number; block: Placed } {
 const pageX = (p: PdfPage, b: Placed, x: number) => MARGIN + (b.x0 + x * b.scale) * unitOf(p);
 const pageY = (p: PdfPage, b: Placed, plan: Plan, line: number, v: number) => MARGIN + (b.y + (v - plan.lines[line].viewTop) * b.scale) * unitOf(p);
 
-const isFooter = (p: PdfPage, y: number) => y > p.height - MARGIN + 0.01;
 const strip = (s: string) => s.replace(/[♭♯♮𝄫𝄪]/gu, '');
 
 /**
@@ -154,6 +153,9 @@ test('the legend of a xaphoon shows three discs', async ({ page }) => {
   expectSymbolBetween(p, legend[1], legend[2], 11 * u);
 });
 
+/** Ink that may reach past a line's box, in units: measured 0 (the tolerance only absorbs rounding). */
+const OVERHANG = 0.1;
+
 const WHOLE: Spec = { inst: 'asax', range: 'all', direction: 'updown', showAlternates: true };
 
 for (const [title, spec] of [
@@ -169,27 +171,91 @@ for (const [title, spec] of [
     pages.forEach((p, n) => expect(p.text.find(t => t.str === ` major · page ${n + 1} of ${pages.length}`), `footer of page ${n + 1}`).toBeDefined());
 
     const seen = new Set<number>();
+    const footerOf = (n: number) => ` major · page ${n + 1} of ${pages.length}`;
     pages.forEach((p, n) => {
       const u = unitOf(p);
-      const tol = 3 * u;
-      const ranges = plan.pages[n].blocks.map(b => [MARGIN + b.y * u - (b.kind === 'line' ? tol : 0), MARGIN + (b.y + b.height) * u + (b.kind === 'line' ? tol : 0)]);
-      const inRange = (y1: number, y2: number) => ranges.some(([top, bottom]) => y1 >= top - 0.01 && y2 <= bottom + 0.01);
-      // The footer stands in the bottom margin; nothing else reaches it.
-      for (const t of p.text) if (!isFooter(p, t.y)) expect(t.y, `text "${t.str}" on page ${n + 1}`).toBeLessThanOrEqual(p.height - MARGIN + 0.01);
-      for (const q of p.paths) if (q.y1 < p.height - MARGIN) expect(q.y2, `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)} on page ${n + 1}`).toBeLessThanOrEqual(p.height - MARGIN + 0.01);
-      // Every text and path lies inside the box of the caption, a line or the legend: no part of a line continues elsewhere.
-      for (const t of p.text) if (!isFooter(p, t.y)) expect(inRange(t.y - 12 * u, t.y + 4 * u), `text "${t.str}" outside every block on page ${n + 1}`).toBe(true);
-      for (const q of p.paths) if (q.y1 < p.height - MARGIN) expect(inRange(q.y1, q.y2), `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)} outside every block on page ${n + 1}`).toBe(true);
-      // Each line's names and option labels under its notes are the ones the page draws, on the page of the line.
-      for (const b of plan.pages[n].blocks.filter(x => x.kind === 'line')) {
+      const where = `page ${n + 1}`;
+
+      // The footer is the text pieces on the baseline of the item "… major · page n of N" and the two ♭ outlines among them.
+      const footerTail = p.text.filter(t => t.str === footerOf(n));
+      expect(footerTail, `one footer on ${where}`).toHaveLength(1);
+      const fy = footerTail[0].y;
+      const footerTexts = p.text.filter(t => Math.abs(t.y - fy) < 0.3);
+      expect(footerTexts.map(t => t.str).join(''), `footer text on ${where}`).toBe(`Alto sax in E · C major · sounds E${footerOf(n)}`);
+      const [fx1, fx2] = [Math.min(...footerTexts.map(t => t.x)), Math.max(...footerTexts.map(t => t.x + t.width))];
+      const isFooterPath = (q: PdfPath) => q.y1 >= fy - 12 * u && q.y2 <= fy + 3 * u && q.x1 >= fx1 - 0.5 && q.x2 <= fx2 + 0.5;
+      expect(p.paths.filter(isFooterPath), `the footer's two ♭ outlines on ${where}`).toHaveLength(2);
+      expect(fy, 'the footer stands in the bottom margin').toBeGreaterThan(p.height - MARGIN);
+      expect(fx1).toBeGreaterThanOrEqual(MARGIN);
+      expect(fx2).toBeLessThanOrEqual(p.width - MARGIN);
+
+      // Everything else ends above the bottom margin line, starts below the top one and lies between the side margins.
+      const texts = p.text.filter(t => Math.abs(t.y - fy) >= 0.3);
+      const paths = p.paths.filter(q => !isFooterPath(q));
+      for (const t of texts) expectInside(p, t.x, t.y, t.x + t.width, t.y, `text "${t.str}" on ${where}`);
+      for (const q of paths) expectInside(p, q.x1, q.y1, q.x2, q.y2, `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)} on ${where}`);
+
+      // Each item belongs to exactly one block by its vertical centre (a text's centre: 4 units above its baseline) and lies inside it.
+            const blocks = plan.pages[n].blocks.map(blk => ({ blk, top: MARGIN + blk.y * u, bottom: MARGIN + (blk.y + blk.height) * u }));
+      const owner = (centre: number) => {
+        const hit = blocks.filter(x => centre >= x.top && centre <= x.bottom);
+        expect(hit.length, `item centred at y=${centre.toFixed(1)} on ${where} is in exactly one block`).toBe(1);
+        return hit[0];
+      };
+      const items = new Map<Placed, { texts: PdfText[]; paths: PdfPath[] }>(blocks.map(x => [x.blk, { texts: [], paths: [] }]));
+      for (const t of texts) {
+        const x = owner(t.y - 4 * u);
+        items.get(x.blk)!.texts.push(t);
+        expect(t.y, `text "${t.str}" in its block`).toBeGreaterThanOrEqual(x.top - OVERHANG * u);
+        expect(t.y, `text "${t.str}" in its block`).toBeLessThanOrEqual(x.bottom + OVERHANG * u);
+      }
+      for (const q of paths) {
+        const x = owner((q.y1 + q.y2) / 2);
+        items.get(x.blk)!.paths.push(q);
+        expect(q.y1, `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)} in its block`).toBeGreaterThanOrEqual(x.top - OVERHANG * u);
+        expect(q.y2, `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)} in its block`).toBeLessThanOrEqual(x.bottom + OVERHANG * u);
+      }
+
+      // Each line's names, option labels and charts are what the page model plans for it, on the page of the line.
+      for (const { blk: b } of blocks.filter(x => x.blk.kind === 'line')) {
         const line = b.index!;
+        const mine = items.get(b)!;
+        const us = u * b.scale;
         seen.add(line);
         expect(columnTexts(p, plan, line, b, BOLD), `note names of line ${line + 1}`).toEqual(plan.lines[line].notes.map(k => strip(k.name)).sort());
         const labels = plan.lines[line].notes.flatMap(k => k.options.flatMap(o => o.lines.map(strip)));
         expect(labels.length, `line ${line + 1} has option labels`).toBeGreaterThan(0);
         expect(columnTexts(p, plan, line, b, REGULAR), `option labels of line ${line + 1}`).toEqual(labels.sort());
-        // Its charts: painted paths inside the line's box under the names.
-        expect(p.paths.filter(q => q.y1 >= MARGIN + b.y * u && q.y2 <= MARGIN + (b.y + b.height) * u + tol).length).toBeGreaterThan(50);
+        expect(mine.texts.filter(t => t.font !== BOLD && t.font !== REGULAR), `line ${line + 1} has only names and option labels as texts`).toEqual([]);
+
+        // Charts: each stacked option of each note is one box under its note (88 units tall, ending 12 above its label's baseline).
+        // Expected from the plan: one non-empty chart box per (note, option); every path below the names is inside one of them.
+        const notes = plan.lines[line].notes;
+        const boxes = notes.flatMap((k, c) => k.options.map(o => ({
+          c, x: pageX(p, b, k.x), top: pageY(p, b, plan, line, o.labelY - 12 - 88), bottom: pageY(p, b, plan, line, o.labelY - 12),
+        })));
+        const chartsTop = Math.min(...boxes.map(x => x.top));
+        const chartPaths = mine.paths.filter(q => (q.y1 + q.y2) / 2 >= chartsTop - 0.3);
+        const claimed = new Set<PdfPath>();
+        let nonEmpty = 0;
+        for (const x of boxes) {
+          const inside = chartPaths.filter(q => q.x1 >= x.x - 25 * us && q.x2 <= x.x + 25 * us && q.y1 >= x.top - 0.3 && q.y2 <= x.bottom + 0.3);
+          inside.forEach(q => claimed.add(q));
+          if (inside.length > 0) nonEmpty++;
+          expect(x.bottom, `chart of note ${x.c + 1} of line ${line + 1} ends inside the line's box`).toBeLessThanOrEqual(MARGIN + (b.y + b.height) * u + OVERHANG * u);
+        }
+        expect(nonEmpty, `line ${line + 1}: charts drawn = options stacked`).toBe(boxes.length);
+        // Under each column's box lies its label band, from the box's bottom to the last label line: it holds the label's symbol
+        // outlines (♯, ♭) and the low satellite keys that hang below the column (up to 11.1 units on alto and tenor sax, as on screen).
+        const rawLabels = notes.flatMap(k => k.options.flatMap(o => o.lines));
+        const symbolCount = rawLabels.join('').replace(/[^♭♯♮𝄫𝄪]/gu, '').length;
+        const bands = notes.flatMap(k => k.options.map(o => ({
+          x: pageX(p, b, k.x), top: pageY(p, b, plan, line, o.labelY - 12), bottom: pageY(p, b, plan, line, o.labelY + (o.lines.length - 1) * 12 + 4),
+        })));
+        const inBand = chartPaths.filter(q => !claimed.has(q) && bands.some(z => Math.abs((q.x1 + q.x2) / 2 - z.x) < 25 * us && q.y1 >= z.top - 0.3 && q.y2 <= z.bottom + 0.3));
+        expect(inBand.length, `line ${line + 1}: the label bands hold at least the labels' symbol outlines`).toBeGreaterThanOrEqual(symbolCount);
+        inBand.forEach(q => claimed.add(q));
+        expect(chartPaths.filter(q => !claimed.has(q)).length, `line ${line + 1}: paths under the names outside any chart`).toBe(0);
       }
     });
     expect([...seen].sort((a, b) => a - b)).toEqual(plan.lines.map((_, i) => i));
@@ -204,7 +270,7 @@ test('names with accidentals are drawn as pieces around an outline, centred on t
   const p = pages[n];
   const u = unitOf(p);
   const sharps = plan.lines[0].notes.filter(k => /[♭♯]/.test(k.name));
-  expect(sharps.map(k => k.name)).toContain('F♯4');
+  expect(sharps.map(k => k.name), 'precondition (spelling): F♯ major on flute names F♯4').toContain('F♯4');
   for (const note of sharps) {
     const cx = pageX(p, block, note.x);
     const items = p.text.filter(t => t.font === BOLD && Math.abs(t.x + t.width / 2 - cx) < 20 * u
@@ -250,7 +316,7 @@ test('the fingering the player picked is the chart drawn: it equals the auto PDF
   // The note with the most options; its last block in the auto stack is the pick.
   let note = { line: 0, col: 0, count: 0 };
   autoPlan.lines.forEach((l, line) => l.notes.forEach((k, col) => { if (k.options.length > note.count) note = { line, col, count: k.options.length }; }));
-  expect(note.count).toBeGreaterThanOrEqual(3);
+  expect(note.count, 'precondition (fingering data): a note on alto sax with at least three options').toBeGreaterThanOrEqual(3);
   const index = note.line * 15 + note.col;
   const stack = autoPlan.lines[note.line].notes[note.col].options;
   const pos = note.count - 1;
@@ -318,12 +384,20 @@ test('a legend that would stand alone stays on the page: the lines shrink, the l
   const spec: Spec = { inst: 'ssax', scale: 'chrom', range: 'two', direction: 'up', showAlternates: true, showNames: false, caption: 'Soprano sax · C chromatic' };
   const input = await inputOf(page, spec);
   const plan = await planOf(page, input);
-  expect(plan.pages).toHaveLength(1);
+  expect(plan.pages, 'precondition (fingering data): this scale fits one page only with the shrunk lines').toHaveLength(1);
   const blocks = plan.pages[0].blocks;
   const lines = blocks.filter(b => b.kind === 'line');
-  expect(lines.length).toBeGreaterThan(1);
+  expect(lines.length, 'precondition: several lines').toBeGreaterThan(1);
   for (const b of lines) expect(b.scale).toBeCloseTo(0.98, 2);
-  expect(blocks.find(b => b.kind === 'legend')!.scale).toBe(1);
+  const legendBlock = blocks.find(b => b.kind === 'legend')!;
+  expect(legendBlock.scale).toBe(1);
+  // Without the rule the legend would stand alone on a second page: the caption (40) and the lines (each followed by a gap of
+  // 8, src/render/ScaleStaff.module.css, except the last) fit an A4 content box of (297 - 24) / ((210 - 24) / 860) units, the legend added does not.
+  const pageUnits = (297 - 24) / ((210 - 24) / 860);
+  const beforeLegend = 40 + lines.reduce((sum, b) => sum + b.height / b.scale, 0) + 8 * (lines.length - 1);
+  expect(beforeLegend, 'caption and lines fit the page without the legend').toBeLessThanOrEqual(pageUnits);
+  expect(beforeLegend + legendBlock.height, 'with the legend they do not: without the rule it would be alone on page 2').toBeGreaterThan(pageUnits);
+  expect(lines[0].scale, 'the shrink is exactly what makes room for the legend').toBeCloseTo((pageUnits - legendBlock.height) / beforeLegend, 3);
   const { pages } = await readPdf((await makePdf(page, input)).bytes);
   expect(pages).toHaveLength(1);
   const p = pages[0];

@@ -3,6 +3,7 @@ import { chooseFingerings, type ChooserItem } from '../domain/chooser';
 import { optionsFor } from '../domain/fingerings';
 import { buildScale, type ScaleResult } from '../domain/scales';
 import type { InstId } from '../domain/types';
+import { pathBox } from './pathBox';
 import { ScaleStaff, scaleLines } from './ScaleStaff';
 
 const draw = (o: Partial<Parameters<typeof ScaleStaff>[0]> & { scale: ScaleResult; inst: InstId }) =>
@@ -251,32 +252,64 @@ describe('scaleLines', () => {
     expect(scaleLines({ ...base, renderUnderChart: () => null })[0].height).toBeGreaterThan(scaleLines(base)[0].height);
   });
 
-  it('the reported height holds the lowest drawn option label of a tall stack', () => {
-    // Alto sax, whole range, alternates shown: the line with the most stacked, wrapped option names.
+  it('the reported height holds every drawn element of a tall stack', () => {
+    // Alto sax, whole range, alternates shown: lines with long stacks of wrapped option names.
     const scale = buildScale({ inst: 'asax', scale: 'maj', tonicPc: 0, range: 'all', direction: 'updown' });
     const props = { inst: 'asax' as const, scale, chartStyle: 'compact' as const, recorderSystem: 'baroque' as const, showNames: true, showAlternates: true };
-    const LABEL_LINE = 12;       // the spacing of wrapped label lines
-    const BOTTOM_PAD = 16;
-    let tallest = { count: 0, slack: Infinity };
-    scaleLines(props).forEach(line => {
+    const NUM = '-?\\d+(?:\\.\\d+)?(?:e-?\\d+)?';
+    const attr = (e: Element, name: string) => Number(e.getAttribute(name) ?? 0);
+    /** Vertical offset of the group translations around an element, inside the svg. */
+    const offset = (e: Element) => {
+      let y = 0;
+      for (let g = e.parentElement; g && g.tagName !== 'svg'; g = g.parentElement) {
+        const m = g.getAttribute('transform')?.match(new RegExp(`translate\\((${NUM})[ ,]+(${NUM})\\)`));
+        if (m) y += Number(m[2]);
+      }
+      return y;
+    };
+    /** [top, bottom] of one drawn element from its emitted attributes (text: the baselines of the text and of each tspan). */
+    const extent = (e: Element): [number, number][] => {
+      const o = offset(e);
+      switch (e.tagName) {
+        case 'rect': return [[attr(e, 'y') + o, attr(e, 'y') + attr(e, 'height') + o]];
+        case 'circle': return [[attr(e, 'cy') - attr(e, 'r') + o, attr(e, 'cy') + attr(e, 'r') + o]];
+        case 'ellipse': { const r = Math.max(attr(e, 'rx'), attr(e, 'ry')); return [[attr(e, 'cy') - r + o, attr(e, 'cy') + r + o]]; }
+        case 'path': {
+          const b = pathBox(e.getAttribute('d')!);
+          const t = e.getAttribute('transform')?.match(new RegExp(`translate\\((${NUM})[ ,]+(${NUM})\\) scale\\((${NUM})[ ,]+(${NUM})\\)`));
+          if (!t) return [[b.y1 + o, b.y2 + o]];
+          const [ty, s] = [Number(t[2]), Number(t[3])];
+          return [[ty - b.y2 * s + o, ty - b.y1 * s + o]];
+        }
+        case 'text': {
+          let y = attr(e, 'y');
+          const out: [number, number][] = [[y + o, y + o]];
+          for (const span of e.querySelectorAll('tspan')) {
+            if (span.hasAttribute('y')) y = attr(span, 'y');
+            y += attr(span, 'dy');
+            out.push([y + o, y + o]);
+          }
+          return out;
+        }
+        default: return [];
+      }
+    };
+    let tallest = 0;
+    scaleLines(props).forEach((line, i) => {
       const { container, unmount } = render(line.render());
       const svg = container.querySelector('[data-testid="scale-line"]')!;
       const viewTop = Number(svg.getAttribute('viewBox')!.split(' ')[1]);
-      const bottom = viewTop + line.height;
-      for (const note of svg.querySelectorAll('[data-note]')) {
-        const options = note.querySelectorAll('text[data-option-name]');
-        tallest.count = Math.max(tallest.count, options.length);
-        for (const label of options) {
-          const lines = label.querySelectorAll('tspan').length;
-          // the baseline of the label's last line, as the emitted tspans place it
-          const last = Number(label.getAttribute('y')) + (lines - 1) * LABEL_LINE;
-          expect(last, 'the label ends inside the line').toBeLessThanOrEqual(bottom - BOTTOM_PAD);
-          tallest.slack = Math.min(tallest.slack, bottom - last);
-        }
-      }
+      const all = Array.from(svg.querySelectorAll('rect, circle, ellipse, path, text'), extent).flat();
+      expect(all.length, `line ${i + 1} has drawn elements`).toBeGreaterThan(50);
+      const top = Math.min(...all.map(x => x[0]));
+      const bottom = Math.max(...all.map(x => x[1]));
+      expect(top, `line ${i + 1}: highest element inside the box`).toBeGreaterThanOrEqual(viewTop);
+      expect(bottom, `line ${i + 1}: lowest element inside the reported height`).toBeLessThanOrEqual(viewTop + line.height);
+      // The box is not much taller than the drawing: the bottom pad is 16, a label's baseline sits 4 above its block's end.
+      expect(viewTop + line.height - bottom, `line ${i + 1}: no large empty band`).toBeLessThanOrEqual(24);
+      tallest = Math.max(tallest, svg.querySelectorAll('tspan').length);
       unmount();
     });
-    expect(tallest.count).toBeGreaterThanOrEqual(6);                // a tall stack was exercised
-    expect(tallest.slack).toBeLessThan(BOTTOM_PAD + 12);            // and the height is not far larger than the drawing
+    expect(tallest, 'precondition (fingerings): a line with many wrapped label lines').toBeGreaterThanOrEqual(20);
   });
 });
