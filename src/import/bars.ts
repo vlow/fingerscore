@@ -1,7 +1,7 @@
-import { barCap, newId, splitDuration } from '../domain/time';
+import { barCap, newId } from '../domain/time';
 import type { Bar, Ev, TimeSig } from '../domain/types';
 import type { QNote } from './quantise';
-import { findWindows, windowPieces } from './tripletWindows';
+import { findWindows, plainPieces, windowPieces, type Piece } from './tripletWindows';
 import type { ParsedSong } from './types';
 
 const DEFAULT_REST_PITCH = 60;
@@ -25,14 +25,33 @@ function withoutOverlaps(notes: QNote[]): QNote[] {
 }
 
 /**
- * Bars of the meter after a pickup of `pickupTicks`. Triplet windows (see tripletWindows) become groups;
- * elsewhere every start and end is rounded to the sixteenth grid (`rounded` reports when that moved anything).
- * A note is split and tied at window edges and bar lines.
+ * Moves every note start and end at `tick` to the nearest sixteenth. A note that shrinks to nothing keeps a sixteenth
+ * when the next note leaves room, otherwise it is dropped. Notes are changed in place: their identity marks ties.
+ */
+function roundPosition(melody: QNote[], tick: number): void {
+  const to = round3(tick);
+  for (const n of melody) {
+    const stop = n.start + n.dur;
+    if (n.start === tick) n.start = to;
+    n.dur = (stop === tick ? to : stop) - n.start;
+  }
+  for (let i = 0; i < melody.length; i++) {
+    const n = melody[i];
+    if (n.dur > 0) continue;
+    const next = melody[i + 1];
+    n.dur = Math.min(GRID, next ? next.start - n.start : GRID);
+    if (n.dur <= 0) { melody.splice(i, 1); i -= 1; }
+  }
+}
+
+/**
+ * Bars of the meter after a pickup of `pickupTicks`. Each bar is cut by `findWindows`: triplet windows become groups,
+ * the rest is split into plain lengths. A start or end off the sixteenth grid that no cut explains is rounded to it
+ * (`rounded` true) and the bar is cut again. A note is split and tied at window edges and bar lines.
  */
 export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: ParsedSong['marks']): { bars: Bar[]; rounded: boolean } {
   if (notes.length === 0) return { bars: [], rounded: false };
   const melody = withoutOverlaps(notes);
-  const end = melody.reduce((m, n) => Math.max(m, n.start + n.dur), 0);
   const full = barCap(ts);
   const bars: Bar[] = [];
   const placed: { ev: Ev; note: QNote | null }[] = [];   // every event in order, with the note it comes from
@@ -40,50 +59,44 @@ export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: 
   let lastPitch = DEFAULT_REST_PITCH;
   let first = 0;       // index of the first note that may reach into the current bar
   let barStart = 0;
+  const lastEnd = () => melody.reduce((m, n) => Math.max(m, n.start + n.dur), 0);
+  let end = lastEnd();
 
   while (barStart < end) {
     const cap = bars.length === 0 && pickupTicks > 0 ? pickupTicks : full;
     const barEnd = barStart + cap;
     while (first < melody.length && melody[first].start + melody[first].dur <= barStart) first += 1;
-    const inBar: QNote[] = [];
-    for (let i = first; i < melody.length && melody[i].start < barEnd; i++) inBar.push(melody[i]);
+    const inBar = (): QNote[] => {
+      const out: QNote[] = [];
+      for (let i = first; i < melody.length && melody[i].start < barEnd; i++) out.push(melody[i]);
+      return out;
+    };
+    let notesHere = inBar();
+    let cut = findWindows(notesHere, barStart, cap, full);
+    while ('unexplained' in cut) {
+      roundPosition(melody, cut.unexplained);
+      rounded = true;
+      end = lastEnd();
+      notesHere = inBar();
+      cut = findWindows(notesHere, barStart, cap, full);
+    }
 
     const ev: Ev[] = [];
-    const push = (d: number, note: QNote | null) => {
-      const e: Ev = { id: newId(), m: note ? note.midi : lastPitch, d, r: !note, tie: false, l: '' };
-      if (note) lastPitch = note.midi;
-      ev.push(e);
-      placed.push({ ev: e, note });
-    };
-    /** [a, b) outside any window: starts and ends rounded to sixteenths, then split into plain lengths. */
-    const plain = (a: number, b: number) => {
-      let cursor = a;
-      for (const n of inBar) {
-        const stop = n.start + n.dur;
-        if (stop <= a || n.start >= b) continue;
-        const s = Math.max(n.start, a);
-        const e = Math.min(stop, b);
-        let rs = round3(s);
-        let re = round3(e);
-        if (n.start >= a && re < rs + GRID) re = rs + GRID;   // a note keeps at least a sixteenth
-        rs = Math.max(rs, cursor);
-        re = Math.min(re, b);
-        if (rs !== s || re !== e) rounded = true;
-        if (re <= rs) continue;
-        if (rs > cursor) for (const d of splitDuration(rs - cursor)) push(d, null);
-        for (const d of splitDuration(re - rs)) push(d, n);
-        cursor = re;
+    const emit = (ps: Piece[] | null) => {
+      for (const p of ps!) {   // findWindows checked that every stretch splits
+        const e: Ev = { id: newId(), m: p.note ? p.note.midi : lastPitch, d: p.len, r: !p.note, tie: false, l: '' };
+        if (p.note) lastPitch = p.note.midi;
+        ev.push(e);
+        placed.push({ ev: e, note: p.note });
       }
-      if (cursor < b) for (const d of splitDuration(b - cursor)) push(d, null);
     };
-
     let t = barStart;
-    for (const w of findWindows(inBar, barStart, cap, full)) {
-      if (w.start > t) plain(t, w.start);
-      for (const p of windowPieces(inBar, w.start, w.span)!) push(p.len, p.note);   // findWindows checked they tile
+    for (const w of cut.windows) {
+      if (w.start > t) emit(plainPieces(notesHere, t, w.start));
+      emit(windowPieces(notesHere, w.start, w.span));
       t = w.start + w.span;
     }
-    if (t < barEnd) plain(t, barEnd);
+    if (t < barEnd) emit(plainPieces(notesHere, t, barEnd));
     bars.push({ cap, rs: false, re: false, volta: '', ev });
     barStart = barEnd;
   }

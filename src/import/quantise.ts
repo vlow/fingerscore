@@ -5,14 +5,16 @@ export interface QNote { start: number; dur: number; midi: number }
 
 const GRID = 3;
 const TPQ = 12;
-const ROUND_LIMIT = 0.02; // quarter notes
+const ROUND_LIMIT = 0.02;    // quarter notes: rounding by more than this marks the song simplified
+const EXACT_LIMIT = 0.005;   // quarter notes: a position this near a whole tick is kept as that tick
 
-/** The nearest whole tick when it is within ROUND_LIMIT, otherwise the nearest sixteenth (`moved` true). */
+/** The nearest whole tick when it is within EXACT_LIMIT, otherwise the nearest sixteenth (`moved` when that is more than ROUND_LIMIT away). */
 function snap(quarters: number): { tick: number; moved: boolean } {
   const ticks = quarters * TPQ;
   const whole = Math.round(ticks);
-  if (Math.abs(whole - ticks) <= ROUND_LIMIT * TPQ) return { tick: whole, moved: false };
-  return { tick: Math.round(ticks / GRID) * GRID, moved: true };
+  if (Math.abs(whole - ticks) <= EXACT_LIMIT * TPQ) return { tick: whole, moved: false };
+  const sixteenth = Math.round(ticks / GRID) * GRID;
+  return { tick: sixteenth, moved: Math.abs(sixteenth - ticks) > ROUND_LIMIT * TPQ };
 }
 
 export function quantise(notes: RawNote[]): { notes: QNote[]; simplified: boolean } {
