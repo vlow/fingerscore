@@ -250,4 +250,33 @@ describe('scaleLines', () => {
     const base = { inst: 'asax' as const, scale, chartStyle: 'compact' as const, recorderSystem: 'baroque' as const, showNames: true, showAlternates: true };
     expect(scaleLines({ ...base, renderUnderChart: () => null })[0].height).toBeGreaterThan(scaleLines(base)[0].height);
   });
+
+  it('the reported height holds the lowest drawn option label of a tall stack', () => {
+    // Alto sax, whole range, alternates shown: the line with the most stacked, wrapped option names.
+    const scale = buildScale({ inst: 'asax', scale: 'maj', tonicPc: 0, range: 'all', direction: 'updown' });
+    const props = { inst: 'asax' as const, scale, chartStyle: 'compact' as const, recorderSystem: 'baroque' as const, showNames: true, showAlternates: true };
+    const LABEL_LINE = 12;       // the spacing of wrapped label lines
+    const BOTTOM_PAD = 16;
+    let tallest = { count: 0, slack: Infinity };
+    scaleLines(props).forEach(line => {
+      const { container, unmount } = render(line.render());
+      const svg = container.querySelector('[data-testid="scale-line"]')!;
+      const viewTop = Number(svg.getAttribute('viewBox')!.split(' ')[1]);
+      const bottom = viewTop + line.height;
+      for (const note of svg.querySelectorAll('[data-note]')) {
+        const options = note.querySelectorAll('text[data-option-name]');
+        tallest.count = Math.max(tallest.count, options.length);
+        for (const label of options) {
+          const lines = label.querySelectorAll('tspan').length;
+          // the baseline of the label's last line, as the emitted tspans place it
+          const last = Number(label.getAttribute('y')) + (lines - 1) * LABEL_LINE;
+          expect(last, 'the label ends inside the line').toBeLessThanOrEqual(bottom - BOTTOM_PAD);
+          tallest.slack = Math.min(tallest.slack, bottom - last);
+        }
+      }
+      unmount();
+    });
+    expect(tallest.count).toBeGreaterThanOrEqual(6);                // a tall stack was exercised
+    expect(tallest.slack).toBeLessThan(BOTTOM_PAD + 12);            // and the height is not far larger than the drawing
+  });
 });

@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { parseChord } from '../domain/chords';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
+import { legend } from '../domain/fingerings';
 import { inst } from '../domain/instruments';
 import { mod12 } from '../domain/keys';
 import { DEFAULT_PREFS } from '../domain/transpose';
@@ -15,14 +16,15 @@ import { COLUMN_BOTTOM } from '../render/NoteView';
 import { drawText, fontsOf, textWidth } from './drawText';
 import { Paper } from '../render/Paper';
 import { buildScale, scaleFingerings } from '../domain/scales';
-import { drawSvgScaled, loadFonts, newPdf, pageMm, registerFonts, renderOffscreen } from './engine';
+import { scaleLines } from '../render/ScaleStaff';
+import { drawSvgScaled, loadFonts, newPdf, pageMm, placeBlocks, registerFonts, renderOffscreen } from './engine';
 import { pageHeightUnits, pageSizeFor, paginate, unitMm } from './pageModel';
 import { prepareSvg } from './prepareSvg';
-import { makeScalePdf, type ScalePdfInput } from './scalePdf';
+import { makeScalePdf, planScale, type ScalePdfInput } from './scalePdf';
 import { makeSheetPdf, META, planSheet, SUBTITLE, TITLE } from './sheetPdf';
 
 /** Helpers the tests use to build documents in the page. */
-export { buildScale, derive, inst, mod12, parseChord, sampleDoc, scaleFingerings };
+export { buildScale, derive, inst, legend, mod12, parseChord, sampleDoc, scaleFingerings };
 
 export interface HookResult {
   /** The PDF, base64. */
@@ -179,4 +181,51 @@ export async function showPaper(doc: Doc): Promise<{ squeezed: { text: string; t
     tuplets: Array.from(host.querySelectorAll('svg[data-testid="system"]')).flatMap((svg, system) =>
       Array.from(svg.querySelectorAll('[data-tuplet] text'), t => ({ x: Number(t.getAttribute('x')), y: Number(t.getAttribute('y')), system }))),
   };
+}
+
+/** What a scale PDF lays out, for the tests: per page the placed blocks, per line what the page draws under each note. */
+export interface ScalePlanView {
+  /** Blocks in units of the content box, after the group's scale: a line's `height` is its drawn height. */
+  pages: { blocks: { kind: string; index?: number; y: number; height: number; scale: number; x0: number }[] }[];
+  /** `viewTop`: the line svg's viewBox top; notes with x, name and per option the first label baseline and the label lines (line svg coordinates). */
+  lines: { viewTop: number; notes: { x: number; name: string; options: { option: number; labelY: number; lines: string[] }[] }[] }[];
+}
+
+/** The page model's plan of a scale PDF, with the option labels the page draws (`detail` false skips rendering them). */
+export async function scalePlan(input: ScalePdfInput, o: { language: string; detail?: boolean }): Promise<ScalePlanView> {
+  await loadFonts();
+  const plan = planScale(input);
+  const size = pageSizeFor(o.language);
+  const lines = scaleLines({ ...input });
+  const pages = paginate(plan.blocks, pageHeightUnits(size)).map(groups => ({
+    blocks: placeBlocks(groups).map(({ block, y, scale, x0 }) => ({
+      kind: block.kind, index: block.index, y, scale, x0,
+      height: (block.kind === 'line' ? lines[block.index!].height : block.height) * scale,
+    })),
+  }));
+  const details: ScalePlanView['lines'] = [];
+  if (o.detail !== false) {
+    for (const line of lines) {
+      const off = renderOffscreen(line.render());
+      try {
+        const svg = off.host.querySelector('svg[data-testid="scale-line"]')!;
+        const notes = Array.from(svg.querySelectorAll('g[data-note]'), g => ({
+          x: Number(g.querySelector('[data-name]')?.getAttribute('x') ?? g.querySelector('[data-option-name]')?.getAttribute('x') ?? NaN),
+          name: g.querySelector('[data-name]')?.textContent ?? '',
+          options: Array.from(g.querySelectorAll('g[data-option]'), og => {
+            const t = og.querySelector('text[data-option-name]');
+            return {
+              option: Number(og.getAttribute('data-option')),
+              labelY: Number(t?.getAttribute('y') ?? NaN),
+              lines: t ? Array.from(t.querySelectorAll('tspan'), x => x.textContent ?? '') : [],
+            };
+          }),
+        }));
+        details.push({ viewTop: Number(svg.getAttribute('viewBox')!.split(' ')[1]), notes });
+      } finally {
+        off.dispose();
+      }
+    }
+  }
+  return { pages, lines: details };
 }

@@ -1,22 +1,28 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { readPdf, renderPdfPage, type PdfPage, type PdfText } from './readPdf';
+import { expectInside, expectSymbolBetween, lineOf, MARGIN, MM, pdfTitle, unitOf } from './pdfHelpers';
+import { readPdf, renderPdfPage, type PdfPage, type PdfPath, type PdfText } from './readPdf';
 
-/** PDF points per millimetre; per unit of the 860-unit line that fills the width between the 12 mm margins. */
-const MM = 72 / 25.4;
-const MARGIN = 12 * MM;
-const unitOf = (p: PdfPage) => (p.width - 2 * MARGIN) / 860;
-/** Where the images for looking at go; PDF_OUT overrides it. */
-const OUT = process.env.PDF_OUT ?? 'test-results/pdf';
+/** Where the images for looking at go; the images test runs only when PDF_OUT is set. */
+const OUT = process.env.PDF_OUT;
+
+const REGULAR = 'AtkinsonHyperlegible-Regular';
+const BOLD = 'AtkinsonHyperlegible-Bold';
 
 interface Spec {
   inst: string; scale?: string; tonicPc?: number; range?: 'one' | 'two' | 'all'; direction?: 'up' | 'updown';
-  showAlternates?: boolean; showNames?: boolean; caption?: string; overrides?: Record<number, number>;
+  sharp?: boolean; showAlternates?: boolean; showNames?: boolean; caption?: string; overrides?: Record<number, number>;
 }
 
 interface HookResult { pdf?: string; type?: string; error?: { name: string; message: string }; progress: [number, number][]; progressAfterAbort: number; ms: number }
-interface ScaleInput { inst: string; scale: { notes: { spelled: { name: string } }[] }; caption: string; overrides: Record<number, number> }
+interface ScaleInput { inst: string; scale: { notes: { spelled: { name: string } }[] }; caption: string; overrides: Record<number, number>; legend: string }
+
+/** What the page model lays out (src/pdf/devHook.ts `scalePlan`), in units of the content box. */
+interface Plan {
+  pages: { blocks: { kind: string; index?: number; y: number; height: number; scale: number; x0: number }[] }[];
+  lines: { viewTop: number; notes: { x: number; name: string; options: { option: number; labelY: number; lines: string[] }[] }[] }[];
+}
 
 /** The input of makeScalePdf for a scale page's settings, made in the page by the dev hook's helpers (src/pdf/devHook.ts). */
 async function inputOf(page: Page, spec: Spec): Promise<ScaleInput> {
@@ -25,9 +31,9 @@ async function inputOf(page: Page, spec: Spec): Promise<ScaleInput> {
     if (!load) throw new Error('no PDF hook on this page');
     const h = await load();
     const scale = s.scale ?? 'maj';
-    const built = h.buildScale({ inst: s.inst, scale, tonicPc: s.tonicPc ?? 0, range: s.range ?? 'one', direction: s.direction ?? 'up' });
+    const built = h.buildScale({ inst: s.inst, scale, tonicPc: s.tonicPc ?? 0, sharp: s.sharp ?? false, range: s.range ?? 'one', direction: s.direction ?? 'up' });
     return {
-      inst: s.inst, scale: built, scaleName: scale === 'maj' ? 'major' : scale, caption: s.caption ?? 'Alto sax in E♭ · C major · sounds E♭ major',
+      inst: s.inst, legend: h.legend(s.inst) as string, scale: built, scaleName: scale === 'maj' ? 'major' : scale, caption: s.caption ?? 'Alto sax in E♭ · C major · sounds E♭ major',
       chartStyle: 'compact', recorderSystem: 'baroque', showNames: s.showNames ?? true, showAlternates: s.showAlternates ?? false, overrides: s.overrides ?? {},
     };
   }, spec) as Promise<ScaleInput>;
@@ -53,25 +59,47 @@ const pdfOf = async (page: Page, spec: Spec, language?: string) => {
   return { input, bytes, info: await readPdf(bytes) };
 };
 
-/** The items on the baseline of the exact item `str`, left to right. */
-function lineOf(p: PdfPage, str: string): PdfText[] {
-  const item = p.text.find(t => t.str === str);
-  expect(item, `text item "${str}"`).toBeDefined();
-  return p.text.filter(t => Math.abs(t.y - item!.y) < 0.3).sort((a, b) => a.x - b.x);
-}
-
-/** A symbol outline: a filled path inside the gap between two neighbouring items of a line. */
-function expectSymbolBetween(p: PdfPage, left: PdfText, right: PdfText | null, em: number): void {
-  const from = left.x + left.width;
-  const to = right ? right.x : from + 1.2 * em;
-  expect(to - from, `gap after "${left.str}"`).toBeGreaterThan(0.2 * em);
-  const ink = p.paths.filter(q => q.fill !== null && q.x1 >= from - 0.01 && q.x2 <= to + 0.01
-    && q.y2 > left.y - 1.2 * em && q.y1 < left.y + 0.5 * em && q.x2 - q.x1 > 0.1);
-  expect(ink.length, `symbol outline between "${left.str}" and "${right?.str ?? '(end)'}"`).toBeGreaterThan(0);
-}
-
 /** Names of the notes of one line of the page (those within the vertical band between two item y values). */
 const namesOf = (input: ScaleInput) => input.scale.notes.map(n => n.spelled.name);
+
+const planOf = (page: Page, input: ScaleInput, language = 'de-DE') => hookCall<Plan>(page, 'scalePlan', input, { language });
+
+type Placed = Plan['pages'][number]['blocks'][number];
+/** The page with line `index` and the line's block on it. */
+function lineOn(plan: Plan, index: number): { page: number; block: Placed } {
+  for (let n = 0; n < plan.pages.length; n++) {
+    const block = plan.pages[n].blocks.find(b => b.kind === 'line' && b.index === index);
+    if (block) return { page: n, block };
+  }
+  throw new Error(`line ${index} is on no page`);
+}
+
+/** Points on the page of a position in units: x along the line, v in the line svg's coordinates. */
+const pageX = (p: PdfPage, b: Placed, x: number) => MARGIN + (b.x0 + x * b.scale) * unitOf(p);
+const pageY = (p: PdfPage, b: Placed, plan: Plan, line: number, v: number) => MARGIN + (b.y + (v - plan.lines[line].viewTop) * b.scale) * unitOf(p);
+
+const isFooter = (p: PdfPage, y: number) => y > p.height - MARGIN + 0.01;
+const strip = (s: string) => s.replace(/[♭♯♮𝄫𝄪]/gu, '');
+
+/**
+ * The texts of one font inside the line's box, one string per note column and baseline: the pieces of a text
+ * (symbols are outlines, not text) joined left to right. A text belongs to the column whose note is nearest.
+ */
+function columnTexts(p: PdfPage, plan: Plan, line: number, b: Placed, font: string): string[] {
+  const u = unitOf(p);
+  const top = MARGIN + b.y * u - 3 * u;
+  const bottom = top + 3 * u + b.height * u + 3 * u;
+  const xs = plan.lines[line].notes.map(n => pageX(p, b, n.x));
+  const groups = new Map<string, PdfText[]>();
+  for (const t of p.text) {
+    if (t.font !== font || t.y < top || t.y > bottom) continue;
+    const c = t.x + t.width / 2;
+    const col = xs.reduce((best, x, k) => (Math.abs(x - c) < Math.abs(xs[best] - c) ? k : best), 0);
+    const key = `${col}|${t.y.toFixed(1)}`;
+    groups.set(key, [...(groups.get(key) ?? []), t]);
+  }
+  return [...groups.values()].map(g => g.sort((a, c) => a.x - c.x).map(t => t.str).join('')).sort();
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -105,9 +133,9 @@ test('C major on alto sax, one octave: one A4 page with caption, eight names, le
 
   // Legend: two discs, the rest of it, and the site on the same line.
   const legend = lineOf(p, ' pressed ');
-  expect(legend.map(t => t.str)).toEqual([
-    ' pressed ', ' open · top left = octave key · small keys around the column = palm, side and pinky keys · fingering data: draft', 'fingerscore.eu',
-  ]);
+  // "● pressed   ○ open · …": the discs are outlines, the white space runs collapse as on the page.
+  const [, pressed, open] = input.legend.replace(/\s+/g, ' ').match(/^● (pressed) ○ (open.*)$/)!;
+  expect(legend.map(t => t.str)).toEqual([` ${pressed} `, ` ${open}`, 'fingerscore.eu']);
   expectSymbolBetween(p, { ...legend[0], x: MARGIN, width: 0 }, legend[0], 11 * u);
   expectSymbolBetween(p, legend[0], legend[1], 11 * u);
   expect(p.text.filter(t => t.str === 'fingerscore.eu')).toHaveLength(1);
@@ -126,30 +154,67 @@ test('the legend of a xaphoon shows three discs', async ({ page }) => {
   expectSymbolBetween(p, legend[1], legend[2], 11 * u);
 });
 
-test('whole range, up and down, alternates shown: several pages, no line split, footer from page 2', async ({ page }) => {
-  const caption = 'Alto sax in E♭ · C major · sounds E♭ major';
-  const { input, info } = await pdfOf(page, { inst: 'asax', range: 'all', direction: 'updown', showAlternates: true, caption });
-  const { pages } = info;
-  expect(pages.length).toBeGreaterThan(1);
-  // Each page's footer: "… · page n of N" with the caption's ♭ as an outline, so the text pieces are matched by their tail.
-  pages.forEach((p, n) => {
-    const tail = p.text.find(t => t.str === ` major · page ${n + 1} of ${pages.length}`);
-    expect(tail, `footer of page ${n + 1}`).toBeDefined();
+const WHOLE: Spec = { inst: 'asax', range: 'all', direction: 'updown', showAlternates: true };
+
+for (const [title, spec] of [
+  ['alto sax C major, whole range up and down', WHOLE],
+  ['tenor sax C major, whole range up and down (the last page is shrunk to keep the legend)', { ...WHOLE, inst: 'tsax' }],
+] as [string, Spec][]) {
+  test(`${title}: pages, footer, every line whole with its names, charts and option labels on one page`, async ({ page }) => {
+    const input = await inputOf(page, { ...spec, caption: 'Alto sax in E♭ · C major · sounds E♭ major' });
+    const plan = await planOf(page, input);
+    const { pages } = (await pdfOf(page, { ...spec, caption: input.caption })).info;
+    expect(pages).toHaveLength(plan.pages.length);
+    expect(pages.length).toBeGreaterThan(1);
+    pages.forEach((p, n) => expect(p.text.find(t => t.str === ` major · page ${n + 1} of ${pages.length}`), `footer of page ${n + 1}`).toBeDefined());
+
+    const seen = new Set<number>();
+    pages.forEach((p, n) => {
+      const u = unitOf(p);
+      const tol = 3 * u;
+      const ranges = plan.pages[n].blocks.map(b => [MARGIN + b.y * u - (b.kind === 'line' ? tol : 0), MARGIN + (b.y + b.height) * u + (b.kind === 'line' ? tol : 0)]);
+      const inRange = (y1: number, y2: number) => ranges.some(([top, bottom]) => y1 >= top - 0.01 && y2 <= bottom + 0.01);
+      // The footer stands in the bottom margin; nothing else reaches it.
+      for (const t of p.text) if (!isFooter(p, t.y)) expect(t.y, `text "${t.str}" on page ${n + 1}`).toBeLessThanOrEqual(p.height - MARGIN + 0.01);
+      for (const q of p.paths) if (q.y1 < p.height - MARGIN) expect(q.y2, `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)} on page ${n + 1}`).toBeLessThanOrEqual(p.height - MARGIN + 0.01);
+      // Every text and path lies inside the box of the caption, a line or the legend: no part of a line continues elsewhere.
+      for (const t of p.text) if (!isFooter(p, t.y)) expect(inRange(t.y - 12 * u, t.y + 4 * u), `text "${t.str}" outside every block on page ${n + 1}`).toBe(true);
+      for (const q of p.paths) if (q.y1 < p.height - MARGIN) expect(inRange(q.y1, q.y2), `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)} outside every block on page ${n + 1}`).toBe(true);
+      // Each line's names and option labels under its notes are the ones the page draws, on the page of the line.
+      for (const b of plan.pages[n].blocks.filter(x => x.kind === 'line')) {
+        const line = b.index!;
+        seen.add(line);
+        expect(columnTexts(p, plan, line, b, BOLD), `note names of line ${line + 1}`).toEqual(plan.lines[line].notes.map(k => strip(k.name)).sort());
+        const labels = plan.lines[line].notes.flatMap(k => k.options.flatMap(o => o.lines.map(strip)));
+        expect(labels.length, `line ${line + 1} has option labels`).toBeGreaterThan(0);
+        expect(columnTexts(p, plan, line, b, REGULAR), `option labels of line ${line + 1}`).toEqual(labels.sort());
+        // Its charts: painted paths inside the line's box under the names.
+        expect(p.paths.filter(q => q.y1 >= MARGIN + b.y * u && q.y2 <= MARGIN + (b.y + b.height) * u + tol).length).toBeGreaterThan(50);
+      }
+    });
+    expect([...seen].sort((a, b) => a - b)).toEqual(plan.lines.map((_, i) => i));
   });
-  // Every note name is drawn exactly once, and the names of one line lie on one page.
-  const names = namesOf(input);
-  const perPage = pages.map(p => p.text.filter(t => t.font === 'AtkinsonHyperlegible-Bold' && names.includes(t.str)));
-  const lineCount = Math.ceil(names.length / 15);
-  expect(lineCount).toBeGreaterThan(2);
-  // Lines are consecutive blocks of 15 notes: the names of each block appear together on one page, in order.
-  const order = perPage.flatMap((items, n) => items.sort((a, b) => a.y - b.y || a.x - b.x).map(t => ({ page: n, str: t.str })));
-  expect(order.map(o => o.str).join(' ')).toBe(names.map(n => n.replace(/[♭♯]/g, '')).join(' '));
-  for (let line = 0; line < lineCount; line++) {
-    const pagesOfLine = new Set(order.slice(line * 15, (line + 1) * 15).map(o => o.page));
-    expect(pagesOfLine.size, `line ${line + 1} on one page`).toBe(1);
+}
+
+test('names with accidentals are drawn as pieces around an outline, centred on the note', async ({ page }) => {
+  const input = await inputOf(page, { inst: 'fl', tonicPc: 6, sharp: true, caption: 'Flute C · F♯ major' });
+  const plan = await planOf(page, input);
+  const { pages } = await readPdf((await makePdf(page, input)).bytes);
+  const { page: n, block } = lineOn(plan, 0);
+  const p = pages[n];
+  const u = unitOf(p);
+  const sharps = plan.lines[0].notes.filter(k => /[♭♯]/.test(k.name));
+  expect(sharps.map(k => k.name)).toContain('F♯4');
+  for (const note of sharps) {
+    const cx = pageX(p, block, note.x);
+    const items = p.text.filter(t => t.font === BOLD && Math.abs(t.x + t.width / 2 - cx) < 20 * u
+      && t.y > MARGIN + block.y * u && t.y < MARGIN + (block.y + block.height) * u && !/[a-z]/.test(t.str))
+      .sort((a, c) => a.x - c.x);
+    expect(items.map(t => t.str), `pieces of ${note.name}`).toEqual([note.name[0], note.name.slice(-1)]);
+    expect(Math.abs(items[0].y - items[1].y)).toBeLessThan(0.3);
+    expectSymbolBetween(p, items[0], items[1], 12 * u);
+    expect(Math.abs((items[0].x + items[1].x + items[1].width) / 2 - cx), `${note.name} centred`).toBeLessThan(1 * u);
   }
-  // The option names of the alternates are drawn (one text item per wrapped line, each centred under its note).
-  expect(pages[0].text.some(t => t.font === 'AtkinsonHyperlegible-Regular' && t.str.length > 3 && !/page|fingerscore/.test(t.str))).toBe(true);
 });
 
 test('the legend and the site stay together on the last page', async ({ page }) => {
@@ -178,43 +243,109 @@ test('a page is written in reading order: caption, lines, legend, site, footer',
   expect(ordered[ordered.length - 1].str).toBe(` major · page ${pages.length} of ${pages.length}`);
 });
 
-test('the fingering the player picked is the one drawn under the note', async ({ page }) => {
-  // The first note with several options: its auto choice and a picked other option, as the option names under it.
-  const probe = await page.evaluate(async () => {
-    const load = (window as unknown as { fingerscorePdf: () => Promise<Record<string, (...a: unknown[]) => unknown>> }).fingerscorePdf;
-    return Object.keys(await load());
-  });
-  expect(probe).toContain('scalePdf');
+test('the fingering the player picked is the chart drawn: it equals the auto PDF\'s block of that option', async ({ page }) => {
   const base: Spec = { inst: 'asax', range: 'all', showAlternates: true };
-  const picked = await page.evaluate(async s => {
-    const load = (window as unknown as { fingerscorePdf: () => Promise<Record<string, (...a: unknown[]) => unknown>> }).fingerscorePdf;
-    const h = await load() as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
-    const scale = h.buildScale({ inst: s.inst, scale: 'maj', tonicPc: 0, range: 'all', direction: 'up' });
-    const f = h.scaleFingerings(s.inst, scale.notes, 'baroque', {});
-    const index = f.findIndex((x: { options: unknown[] }) => x.options.length >= 2);
-    const other = f[index].options.findIndex((_: unknown, j: number) => j !== f[index].auto);
-    return { index, other, autoName: f[index].options[f[index].auto].n as string, otherName: f[index].options[other].n as string, note: scale.notes[index].spelled.name as string };
-  }, base);
-  expect(picked.index).toBeGreaterThanOrEqual(0);
-  const first = (name: string) => name.split(' ')[0];
+  const autoInput = await inputOf(page, base);
+  const autoPlan = await planOf(page, autoInput);
+  // The note with the most options; its last block in the auto stack is the pick.
+  let note = { line: 0, col: 0, count: 0 };
+  autoPlan.lines.forEach((l, line) => l.notes.forEach((k, col) => { if (k.options.length > note.count) note = { line, col, count: k.options.length }; }));
+  expect(note.count).toBeGreaterThanOrEqual(3);
+  const index = note.line * 15 + note.col;
+  const stack = autoPlan.lines[note.line].notes[note.col].options;
+  const pos = note.count - 1;
+  const other = stack[pos].option;
+  expect(other).not.toBe(stack[0].option);
 
-  /** The option name texts directly under the note's chart (the first one under the note name): the picked or auto choice. */
-  const underNote = async (overrides: Record<number, number>) => {
-    const { info } = await pdfOf(page, { ...base, overrides });
-    for (const p of info.pages) {
-      const name = p.text.find(t => t.str === picked.note.replace(/[♭♯]/g, ''));
-      if (!name) continue;
-      const cx = name.x + name.width / 2;
-      return p.text.filter(t => Math.abs(t.x + t.width / 2 - cx) < 6 && t.y > name.y && t.str.length > 1)
-        .sort((a, b) => a.y - b.y).map(t => t.str);
-    }
-    throw new Error('note not found');
+  const pickedInput = await inputOf(page, { ...base, overrides: { [index]: other } });
+  const pickedPlan = await planOf(page, pickedInput);
+  expect(pickedPlan.lines[note.line].notes[note.col].options[0].option).toBe(other);
+
+  /** The painted paths of one chart block of the note's column, relative to the column and the block's top, in units. */
+  const chart = async (input: ScaleInput, plan: Plan, at: number) => {
+    const { page: n, block } = lineOn(plan, note.line);
+    const p = (await readPdf((await makePdf(page, input)).bytes)).pages[n];
+    const u = unitOf(p) * block.scale;
+    const cx = pageX(p, block, plan.lines[note.line].notes[note.col].x);
+    const labelY = plan.lines[note.line].notes[note.col].options[at].labelY;
+    // A chart is 88 units tall and ends 12 units above its label's baseline.
+    const top = pageY(p, block, plan, note.line, labelY - 12 - 88);
+    const bottom = pageY(p, block, plan, note.line, labelY - 12);
+    return p.paths.filter(q => q.x1 >= cx - 25 * u && q.x2 <= cx + 25 * u && q.y1 >= top - 0.3 && q.y2 <= bottom + 0.3)
+      .map(q => [(q.x1 - cx) / u, (q.y1 - top) / u, (q.x2 - cx) / u, (q.y2 - top) / u, q.fill ?? '-', q.stroke ?? '-'] as const)
+      .sort((a, b) => a[1] - b[1] || a[0] - b[0] || a[2] - b[2] || a[3] - b[3]);
   };
-  const auto = await underNote({});
-  const chosen = await underNote({ [picked.index]: picked.other });
-  expect(auto[0]).toContain(first(picked.autoName));
-  expect(chosen[0]).toContain(first(picked.otherName));
-  expect(chosen[0]).not.toBe(auto[0]);
+  const autoFirst = await chart(autoInput, autoPlan, 0);
+  const autoAtPos = await chart(autoInput, autoPlan, pos);
+  const pickedFirst = await chart(pickedInput, pickedPlan, 0);
+  expect(autoFirst.length).toBeGreaterThan(5);
+  const same = (a: typeof autoFirst, b: typeof autoFirst) => a.length === b.length
+    && a.every((r, i) => [0, 1, 2, 3].every(k => Math.abs((r[k] as number) - (b[i][k] as number)) <= 0.5) && r[4] === b[i][4] && r[5] === b[i][5]);
+  expect(same(pickedFirst, autoFirst), 'the picked chart differs from the auto chart').toBe(false);
+  expect(same(pickedFirst, autoAtPos), 'the picked chart equals the auto PDF\'s block of that option').toBe(true);
+});
+
+test('reading order on the first and the last page: caption, note names, legend, site, footer', async ({ page }) => {
+  const input = await inputOf(page, WHOLE);
+  const plan = await planOf(page, input);
+  const { pages } = (await makePdf(page, input).then(r => readPdf(r.bytes)));
+  const u = unitOf(pages[0]);
+  const inBlock = (n: number, b: Placed) => pages[n].text.filter(t => t.y >= MARGIN + b.y * u - 3 * u && t.y <= MARGIN + (b.y + b.height) * u + 6 * u);
+  const firstPage = plan.pages[0].blocks;
+  const caption = pages[0].text.find(t => t.str === 'Alto sax in E')!;
+  const firstLine = inBlock(0, firstPage.find(b => b.kind === 'line')!);
+  expect(firstLine.length).toBeGreaterThan(0);
+  expect(caption.seq).toBeLessThan(Math.min(...firstLine.map(t => t.seq)));
+
+  const n = pages.length - 1;
+  const last = pages[n];
+  const lastBlocks = plan.pages[n].blocks;
+  const lastLine = lastBlocks.filter(b => b.kind === 'line').pop()!;
+  const names = columnTexts(last, plan, lastLine.index!, lastLine, BOLD);
+  expect(names.length).toBeGreaterThan(0);
+  const lineTexts = inBlock(n, lastLine);
+  const legend = last.text.find(t => t.str === ' pressed ')!;
+  const site = last.text.find(t => t.str === 'fingerscore.eu')!;
+  const footer = last.text.find(t => t.str === ` major · page ${n + 1} of ${pages.length}`)!;
+  expect(Math.max(...lineTexts.map(t => t.seq))).toBeLessThan(legend.seq);
+  expect(legend.seq).toBeLessThan(site.seq);
+  expect(site.seq).toBeLessThan(footer.seq);
+  expect(Math.max(...last.text.map(t => t.seq))).toBe(footer.seq);
+});
+
+test('a legend that would stand alone stays on the page: the lines shrink, the legend keeps its size', async ({ page }) => {
+  // Soprano sax, chromatic, two octaves, alternates, no names: one page only because the page model shrinks the lines to 0.98.
+  const spec: Spec = { inst: 'ssax', scale: 'chrom', range: 'two', direction: 'up', showAlternates: true, showNames: false, caption: 'Soprano sax · C chromatic' };
+  const input = await inputOf(page, spec);
+  const plan = await planOf(page, input);
+  expect(plan.pages).toHaveLength(1);
+  const blocks = plan.pages[0].blocks;
+  const lines = blocks.filter(b => b.kind === 'line');
+  expect(lines.length).toBeGreaterThan(1);
+  for (const b of lines) expect(b.scale).toBeCloseTo(0.98, 2);
+  expect(blocks.find(b => b.kind === 'legend')!.scale).toBe(1);
+  const { pages } = await readPdf((await makePdf(page, input)).bytes);
+  expect(pages).toHaveLength(1);
+  const p = pages[0];
+  const u = unitOf(p);
+  expect(p.text.some(t => t.str === 'fingerscore.eu')).toBe(true);
+  expect(p.text.filter(t => /page \d+ of \d+/.test(t.str))).toEqual([]);
+  for (const t of p.text) expectInside(p, t.x, t.y, t.x + t.width, t.y, `text "${t.str}"`);
+  for (const q of p.paths) expectInside(p, q.x1, q.y1, q.x2, q.y2, `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)}`);
+  // The staff lines of a shrunk line are 860 × 0.98 units wide, centred; the legend's rule is the full width.
+  const wide = p.paths.filter((q: PdfPath) => q.x2 - q.x1 > 600 * u && q.y2 - q.y1 < 2 * u);
+  const rule = wide.filter(q => q.x2 - q.x1 > 859 * u).length;
+  const staff = wide.filter(q => q.x2 - q.x1 <= 859 * u);
+  expect(rule).toBe(1);
+  expect(staff.length).toBeGreaterThanOrEqual(5);   // the five staff lines of each full-width line
+  for (const q of staff.filter(q => q.x2 - q.x1 > 0.97 * 860 * u)) expect((q.x1 + q.x2) / 2).toBeCloseTo(p.width / 2, 0);
+  expect(Math.max(...staff.map(q => q.x2 - q.x1)) / u).toBeCloseTo(860 * 0.98, 0);
+});
+
+test('the document title is the caption', async ({ page }) => {
+  const caption = 'Alto sax in E♭ · C major · sounds E♭ major';
+  const { bytes } = await makePdf(page, await inputOf(page, { inst: 'asax', caption }));
+  expect(await pdfTitle(bytes)).toBe(caption);
 });
 
 test('a caption with ♯ is drawn in full', async ({ page }) => {
@@ -268,18 +399,19 @@ test('an aborted signal rejects with AbortError', async ({ page }) => {
   expect(during.progressAfterAbort).toBeLessThanOrEqual(1);
 });
 
-test.describe('images for review', () => {
+test.describe('images for review (set PDF_OUT to run)', () => {
+  test.skip(!OUT, 'PDF_OUT is not set');
   test.use({ deviceScaleFactor: 2, viewport: { width: 1100, height: 900 } });
 
   /** The Scales page with the same settings as the PDF, as stored settings of the page. */
   async function screenshotOf(page: Page, settings: Record<string, unknown>, file: string) {
     await page.evaluate(s => localStorage.setItem('fingerscore.scales', JSON.stringify(s)), settings);
     await page.goto('/scales');
-    await page.locator('[data-print-scale]').screenshot({ path: join(OUT, file) });
+    await page.locator('[data-print-scale]').screenshot({ path: join(OUT!, file) });
   }
 
   test('page 1 of a one-octave and of an alternates scale PDF, and the same Scales pages on screen', async ({ page }) => {
-    mkdirSync(OUT, { recursive: true });
+    mkdirSync(OUT!, { recursive: true });
     const base = { inst: 'asax', scale: 'maj', tonicPc: 0, sharp: false, by: 'read', chartStyle: 'compact', recorderSystem: 'baroque', showNames: true, overrides: {} };
     const one = { ...base, range: 'one', direction: 'up', showAlternates: false };
     const all = { ...base, range: 'all', direction: 'updown', showAlternates: true };
@@ -291,8 +423,8 @@ test.describe('images for review', () => {
       });
       const input = await inputOf(page, { inst: s.inst, range: s.range as 'one', direction: s.direction as 'up', showAlternates: s.showAlternates, caption: caption! });
       const { bytes } = await makePdf(page, input);
-      writeFileSync(join(OUT, `${name}.pdf`), bytes);
-      writeFileSync(join(OUT, `${name}-p1.png`), await renderPdfPage(bytes, 1, 150));
+      writeFileSync(join(OUT!, `${name}.pdf`), bytes);
+      writeFileSync(join(OUT!, `${name}-p1.png`), await renderPdfPage(bytes, 1, 150));
       await screenshotOf(page, s, `${name}-screen.png`);
     }
   });
