@@ -145,7 +145,7 @@ function Beams(p: { group: BeamGroup; notes: Placed[] }) {
 }
 
 export interface SystemViewProps {
-  doc: Doc; derived: Derived; system: SystemLayout; beams: BeamGroup[]; tuplets: TupletMark[]; ties: TieSegment[];
+  doc: Doc; derived: Derived; system: SystemLayout; beams: BeamGroup[][]; tuplets: TupletMark[][]; ties: TieSegment[];
   /** What to draw; defaults to doc.show (Paper widens it in Lyrics and Chords mode). */
   show?: Doc['show'];
   playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
@@ -161,8 +161,8 @@ export function SystemView(p: SystemViewProps): JSX.Element {
   const accPos = derived.sig > 0 ? SHARP_POS : FLAT_POS;
   const placed: Placed[] = system.bars.flatMap(bar => bar.events.map(e => ({ ev: derived.byId[e.id], x: e.x, y: e.y })));
   const byId = new Map(placed.map(n => [n.ev.id, n]));
-  const groups = p.beams.filter(g => byId.has(g.ids[0]));
-  const beamed = new Set(groups.flatMap(g => g.ids));
+  const groups = system.bars.flatMap(bar => p.beams[bar.bar] ?? []);
+  const beamOf = new Map(groups.flatMap(g => g.ids.map(id => [id, g] as const)));
   const full = barCap(doc.timeSig);
   const fullBarRest = (bar: BarLayout) => {
     const evs = doc.score[bar.bar].ev;
@@ -197,13 +197,16 @@ export function SystemView(p: SystemViewProps): JSX.Element {
         {system.bars.map(bar => bar.events.map(e => (
           <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}
             show={show} playing={p.playingId === e.id} selected={p.selectedId === e.id}
-            beamed={beamed.has(e.id)} fullBarRest={fullBarRest(bar)} />
+            beamed={beamOf.has(e.id)} fullBarRest={fullBarRest(bar)} />
         )))}
         {groups.map(g => <Beams key={g.ids[0]} group={g} notes={g.ids.map(id => byId.get(id)!)} />)}
-        {p.tuplets.filter(m => byId.has(m.ids[0])).map(m => (
-          <Tuplet key={m.ids[0]} mark={m} byId={byId} beams={groups} marks={p.tuplets}
-            barIds={system.bars.find(b => b.bar === m.bar)!.events.map(e => e.id)} volta={doc.score[m.bar].volta !== ''} />
-        ))}
+        {system.bars.map(bar => {
+          const marks = p.tuplets[bar.bar] ?? [];
+          const barIds = bar.events.map(e => e.id);
+          return marks.map(m => (
+            <Tuplet key={m.ids[0]} mark={m} byId={byId} beamOf={beamOf} marks={marks} barIds={barIds} volta={doc.score[m.bar].volta !== ''} />
+          ));
+        })}
         {p.ties.map((t, i) => <Tie key={i} {...t} />)}
         {columns.map(c => (
           <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={SHEET.chordY} width={c.width} height={COLUMN_BOTTOM - SHEET.chordY}

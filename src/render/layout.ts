@@ -17,7 +17,8 @@ export interface SystemLayout { index: number; y: number; headerWidth: number; s
 export interface BeamGroup { ids: string[]; beams: 1 | 2 | 'mixed' }
 /** One triplet group: its number (and bracket unless `beamed`: one beam joins all members). */
 export interface TupletMark { bar: number; ids: string[]; beamed: boolean }
-export interface SheetLayout { systems: SystemLayout[]; height: number; beams: BeamGroup[]; tuplets: TupletMark[] }
+/** `beams` and `tuplets` are indexed by bar: a system draws only the entries of its own bars. */
+export interface SheetLayout { systems: SystemLayout[]; height: number; beams: BeamGroup[][]; tuplets: TupletMark[][] }
 
 const MAX_BARS_PER_SYSTEM = 4;
 const STAFF_MIDDLE = (SHEET.staffTop + SHEET.staffBottom) / 2;
@@ -140,15 +141,15 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
 
   const beat = beatTicks(doc.timeSig);
   const full = barCap(doc.timeSig);
-  const beams: BeamGroup[] = [];
-  const tuplets: TupletMark[] = [];
+  const beams: BeamGroup[][] = [];
+  const tuplets: TupletMark[][] = [];
   byBar.forEach((evs, bar) => {
     const groups = tripletGroups(doc.score[bar], full) ?? [];
     const barBeams = beamGroups(evs, beat, groups);
-    beams.push(...barBeams);
-    for (const g of groups) {
-      tuplets.push({ bar, ids: g.ids, beamed: barBeams.some(b => b.ids.length === g.ids.length && b.ids[0] === g.ids[0]) });
-    }
+    beams.push(barBeams);
+    tuplets.push(groups.map(g => ({
+      bar, ids: g.ids, beamed: barBeams.some(b => b.ids.length === g.ids.length && b.ids[0] === g.ids[0]),
+    })));
   });
   return { systems, height: systems.length * SHEET.systemHeight, beams, tuplets };
 }

@@ -73,8 +73,8 @@ const union = (boxes: Box[]): Box => ({
 
 export interface TupletProps {
   mark: TupletMark;
-  /** Every beam group, placed event and mark of the system, and the ids of the mark's bar in order. */
-  beams: BeamGroup[]; byId: Map<string, Placed>; marks: TupletMark[]; barIds: string[];
+  /** The beam group of each beamed event and every placed event of the system; the marks and ids of the mark's bar. */
+  beamOf: Map<string, BeamGroup>; byId: Map<string, Placed>; marks: TupletMark[]; barIds: string[];
   volta: boolean;
 }
 
@@ -86,21 +86,23 @@ interface Candidate { side: 'above' | 'below'; x1: number; x2: number; line: num
  * Side, in order of preference. A beamed group: at its beam, on the stem side. A bracketed group: above.
  * When that position is taken (above: it would reach the ending bracket line, or the lyric band without one;
  * below: it would enter the fingering chart row) the other side is tried; when neither is free the preferred
- * side is used and the upper limit is given up, never the chart row.
+ * side is used: above it gives up the upper limit, below it rises to the chart limit and gives up the clearance
+ * from its neighbours; it never enters the chart row.
  * Within a side the mark moves out in steps until it keeps CLEAR units from the ink of the events next to the
  * group (its bracket ends shorten to the heads first).
  */
 export function Tuplet(p: TupletProps): JSX.Element {
-  const { mark, beams, byId } = p;
+  const { mark, byId } = p;
   const members = mark.ids.map(id => byId.get(id)!);
-  const beamOf = (id: string): BeamGeo | undefined => {
-    const g = beams.find(b => b.ids.includes(id));
-    return g && beamGeometry(g.ids.map(i => byId.get(i)!));
+  const notesOf = (g: BeamGroup) => g.ids.map(i => byId.get(i)!);
+  const geoOf = (id: string): BeamGeo | undefined => {
+    const g = p.beamOf.get(id);
+    return g && beamGeometry(notesOf(g));
   };
   const own = union(members.flatMap(n => {
-    const g = beams.find(b => b.ids.includes(n.ev.id));
-    const geo = g && beamGeometry(g.ids.map(i => byId.get(i)!));
-    return [...eventInk(n, geo), ...(g && geo ? [beamInk(g.ids.map(i => byId.get(i)!), geo)] : [])];
+    const g = p.beamOf.get(n.ev.id);
+    const geo = g && beamGeometry(notesOf(g));
+    return [...eventInk(n, geo), ...(g && geo ? [beamInk(notesOf(g), geo)] : [])];
   }));
   const first = members[0];
   const last = members[members.length - 1];
@@ -113,15 +115,15 @@ export function Tuplet(p: TupletProps): JSX.Element {
   for (const id of [p.barIds[i0 - 1], p.barIds[i1 + 1]]) {
     const n = id === undefined ? undefined : byId.get(id);
     if (!n) continue;
-    near.push(...eventInk(n, beamOf(id!)));
-    const g = beams.find(b => b.ids.includes(id!));
-    if (g) near.push(beamInk(g.ids.map(i => byId.get(i)!), beamGeometry(g.ids.map(i => byId.get(i)!))));
+    near.push(...eventInk(n, geoOf(id!)));
+    const g = p.beamOf.get(id!);
+    if (g) near.push(beamInk(notesOf(g), beamGeometry(notesOf(g))));
     const other = p.marks.find(m => m !== mark && m.ids.includes(id!) && !m.beamed);
     if (other) near.push({ x1: n.x - 6, x2: n.x + 7, y1: -1e6, y2: 1e6 });
   }
 
-  const beam = mark.beamed ? beams.find(b => b.ids[0] === mark.ids[0] && b.ids.length === mark.ids.length) : undefined;
-  const beamUp = beam ? beamGeometry(beam.ids.map(i => byId.get(i)!)).up : true;
+  const beam = mark.beamed ? p.beamOf.get(mark.ids[0]) : undefined;
+  const beamUp = beam ? beamGeometry(notesOf(beam)).up : true;
   const preferred: 'above' | 'below' = mark.beamed ? (beamUp ? 'above' : 'below') : 'above';
   const limit = p.volta ? SHEET.voltaY + 14 : SHEET.voltaY;
 
@@ -155,10 +157,16 @@ export function Tuplet(p: TupletProps): JSX.Element {
     for (let k = 1; !c.ok && k <= MAX_STEPS; k++) c = candidate(side, k);
     return c;
   };
+  // Neither side fits: a mark below is lifted to the chart limit, giving up clearance from its neighbours.
+  const intoLimit = (c: Candidate): Candidate => {
+    const up = c.side === 'below' ? Math.max(0, c.y2 - CHART_LIMIT) : 0;
+    return { ...c, line: c.line - up, baseline: c.baseline - up, y1: c.y1 - up, y2: c.y2 - up };
+  };
   const fits = (c: Candidate) => (c.side === 'above' ? c.y1 > limit : c.y2 <= CHART_LIMIT);
   const other = preferred === 'above' ? 'below' : 'above';
   const a = place(preferred);
-  const chosen = fits(a) ? a : fits(place(other)) ? place(other) : a;
+  const b = fits(a) ? a : place(other);
+  const chosen = fits(b) ? b : intoLimit(a);
 
   const half = Math.max(2, Math.min(HALF_GAP, (chosen.x2 - chosen.x1) / 2 - 2));
   const hook = chosen.side === 'above' ? HOOK : -HOOK;

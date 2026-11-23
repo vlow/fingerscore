@@ -387,6 +387,16 @@ describe('triplets', () => {
     expect(ev(container, 't5').querySelector('[data-head="open"]')).not.toBeNull();
     expect(ev(container, 't6').querySelector('[data-head="filled"]')).not.toBeNull();
   });
+  it('a pickup of 15 ticks with an off-beat group [3,4,4,4]: one mark, one beam over the three members', () => {
+    const doc = mkDoc([bar(3, 4, 4, 4), bar(12, 12, 24)]);
+    expect(doc.score[0].cap).toBe(15);
+    const { container } = renderDoc(doc);
+    const marks = container.querySelectorAll('[data-tuplet]');
+    expect(marks).toHaveLength(1);
+    expect(marks[0].querySelector('[data-tuplet-bracket]')).toBeNull();
+    const beams = [...container.querySelectorAll('[data-beam-group]')].map(g => g.getAttribute('data-beam-group'));
+    expect(beams).toEqual(['t2 t3 t4']);
+  });
   it('a triplet eighth rest is the eighth rest glyph; no dots inside a group', () => {
     const { container } = renderDoc(mkDoc([bar(4, 'r', 4, 12, 24)]));
     expect(ev(container, 't2').querySelector('[data-rest="restEighth"]')).not.toBeNull();
@@ -482,6 +492,14 @@ describe('triplet marks keep clear of neighbouring ink', () => {
     expect(m.getAttribute('data-tuplet-side')).toBe('above');
     expect(markBox(m).y2).toBeLessThan(SHEET.chartY);
     expectNeighboursClear(container, m, ['t1', 't2']);
+  });
+  it('a beamed group with stems down and the space above taken: the number stays out of the chart row', () => {
+    const { container, doc } = solo([[53, 4], [84, 4], [84, 4], [67, 12], [67, 24]]);
+    expect(derive(doc, DEFAULT_PREFS).events.slice(0, 3).map(e => e.pos)).toEqual([-6, 12, 12]);
+    const [m] = marksOf(container);
+    expect(m.querySelector('[data-tuplet-bracket]')).toBeNull();
+    expect(m.getAttribute('data-tuplet-side')).toBe('below');
+    expect(markBox(m).y2).toBeLessThan(SHEET.chartY);
   });
   it('a beamed number stands at its beam, on the stem side', () => {
     const up = solo(specs(4, 4, 4, 12, 24));

@@ -38,13 +38,13 @@ describe('layoutSheet', () => {
   });
   it('beams follow the meter', () => {
     const doc68 = mkDoc([bar68of(6,6,6,6,6,6)], [6,8]);
-    expect(layoutSheet(doc68, derive(doc68, DEFAULT_PREFS)).beams.map(g => g.ids.length)).toEqual([3,3]);
+    expect(layoutSheet(doc68, derive(doc68, DEFAULT_PREFS)).beams.flat().map(g => g.ids.length)).toEqual([3,3]);
     const doc44 = mkDoc([bar44of(6,6,3,3,6,12,12)]);
-    expect(layoutSheet(doc44, derive(doc44, DEFAULT_PREFS)).beams.map(g => [g.ids.length, g.beams])).toEqual([[2,1],[3,'mixed']]);
+    expect(layoutSheet(doc44, derive(doc44, DEFAULT_PREFS)).beams.flat().map(g => [g.ids.length, g.beams])).toEqual([[2,1],[3,'mixed']]);
   });
   it('beams in 2/2 group four eighths per half-note beat', () => {
     const doc = mkDoc([{ ev: Array.from({ length: 8 }, () => [64, 6] as [number, number]) }], [2,2]);
-    expect(layoutSheet(doc, derive(doc, DEFAULT_PREFS)).beams.map(g => g.ids.length)).toEqual([4,4]);
+    expect(layoutSheet(doc, derive(doc, DEFAULT_PREFS)).beams.flat().map(g => g.ids.length)).toEqual([4,4]);
   });
   it('first system has no number; without a pickup bars count from 1', () => {
     const doc = mkDoc([bar44of(12,12,12,12), bar44of(12,12,12,12), bar44of(12,12,12,12), bar44of(12,12,12,12), bar44of(48)]);
@@ -73,7 +73,8 @@ describe('layoutSheet', () => {
     const run = (bars: BarSpec[], ts: TimeSig = [4, 4]) => {
       const doc = mkDoc(bars, ts);
       const d = derive(doc, DEFAULT_PREFS);
-      return { doc, d, L: layoutSheet(doc, d) };
+      const sheet = layoutSheet(doc, d);
+      return { doc, d, L: { ...sheet, beams: sheet.beams.flat(), tuplets: sheet.tuplets.flat() } };
     };
     const idsOf = (d: ReturnType<typeof derive>, ...idx: number[]) => idx.map(i => d.events[i].id);
 
@@ -118,7 +119,7 @@ describe('layoutSheet', () => {
     });
     it('plain eighths still beam by beat', () => {
       const doc = mkDoc([bar68of(6, 6, 6, 6, 6, 6), bar68of(6, 6, 6, 6, 6, 6)], [6, 8]);
-      expect(layoutSheet(doc, derive(doc, DEFAULT_PREFS)).beams.map(g => g.ids.length)).toEqual([3, 3, 3, 3]);
+      expect(layoutSheet(doc, derive(doc, DEFAULT_PREFS)).beams.flat().map(g => g.ids.length)).toEqual([3, 3, 3, 3]);
     });
     it('a bar of 24 twos: increasing x, eight beam groups of three', () => {
       const { L } = run([bar(...Array<number>(24).fill(2))]);
