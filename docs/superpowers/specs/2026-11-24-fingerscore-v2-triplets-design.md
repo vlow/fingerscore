@@ -58,6 +58,7 @@ The importers already deliver exact note positions. Recognition happens once, in
   3. then the smallest total span of the windows.
   A quarter-triplet window is used on import only when its members are triplet quarters and triplet halves (8 and 16); it is not used to hold triplet eighths.
 - So: a long-short figure is one eighth-triplet group of two notes, not a sixteenth-triplet group with a tie; a triplet with a silent middle is one group with one rest; three triplet quarters are one quarter-triplet group; a plain quarter tied into a triplet stays a quarter tied to the first of three triplet eighths.
+- **No triplet beside a rounded note.** A window is used only when every note that has a piece in it has both its start and its end exact. One note slightly off next to an exact triplet position would otherwise give a stray small triplet with a tie; loosely played MIDI would show such strays in several bars of a hundred.
 - A triplet position that no placement explains is rounded to the sixteenth grid, and the song is marked simplified.
 - A note that reaches past its window is split at the window's end and tied, like a note across a bar line. A note that starts before a window and ends inside it is split at the window's start and tied.
 - Silence inside a group becomes triplet rests, the longest member values first.
