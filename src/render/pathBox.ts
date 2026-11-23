@@ -44,6 +44,7 @@ export function pathBox(d: string): Box {
       case 'T': { const qx = 2 * x - cx, qy = 2 * y - cy, ex = ox + num(), ey = oy + num(); curve([x, qx, ex], [y, qy, ey]); cx = qx; cy = qy; x = ex; y = ey; break; }
       case 'C': { const ax = ox + num(), ay = oy + num(), bx = ox + num(), by = oy + num(), ex = ox + num(), ey = oy + num(); curve([x, ax, bx, ex], [y, ay, by, ey]); cx = bx; cy = by; x = ex; y = ey; break; }
       case 'S': { const ax = 2 * x - cx, ay = 2 * y - cy, bx = ox + num(), by = oy + num(), ex = ox + num(), ey = oy + num(); curve([x, ax, bx, ex], [y, ay, by, ey]); cx = bx; cy = by; x = ex; y = ey; break; }
+      case 'A': { num(); num(); num(); num(); num(); x = ox + num(); y = oy + num(); add(x, y); cx = x; cy = y; break; }   // endpoint only: exact for the quarter arcs of flags
       case 'Z': x = sx; y = sy; cx = x; cy = y; break;
       default: throw new Error(`unsupported path command ${cmd}`);
     }

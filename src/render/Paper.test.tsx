@@ -422,6 +422,154 @@ describe('triplets', () => {
   });
 });
 
+describe('triplet marks keep clear of neighbouring ink', () => {
+  const N = 67;
+  const specs = (...ds: number[]): EvSpec[] => ds.map(d => [N, d]);
+  const solo = (ev: EvSpec[], volta: Doc['score'][number]['volta'] = '') => {
+    const doc = mkDoc([{ ev, volta }]);          // one bar: the last system, not stretched
+    const r = renderDoc(doc);
+    return { doc, ...r };
+  };
+  const marksOf = (c: HTMLElement) => [...c.querySelectorAll('[data-tuplet]')];
+
+  it('[8,4,4,8,24] at the least width: the second bracket clears the flag of the first group', () => {
+    // A is high with its stem up, B low: B's bracket sits at the height of A's flag.
+    const { doc, container } = solo([[69, 8], [69, 4], [64, 4], [64, 8], [67, 24]]);
+    const d = derive(doc, DEFAULT_PREFS);
+    const L = layoutSheet(doc, d).systems[0].bars[0].events;
+    expect(L[2].x - L[1].x).toBeCloseTo(20, 6);
+    const marks = marksOf(container);
+    expect(marks).toHaveLength(2);
+    marks.forEach((m, i) => expectNeighboursClear(container, m, i === 0 ? ['t1', 't2'] : ['t3', 't4']));
+  });
+  it('[4,8,8,4,24] at the least width', () => {
+    const { container } = solo([[69, 4], [69, 8], [64, 8], [64, 4], [67, 24]]);
+    const marks = marksOf(container);
+    expect(marks).toHaveLength(2);
+    marks.forEach((m, i) => expectNeighboursClear(container, m, i === 0 ? ['t1', 't2'] : ['t3', 't4']));
+  });
+  it('a plain flagged eighth directly before and after a bracketed group', () => {
+    const { container } = solo([[69, 6], [64, 8], [64, 4], [69, 6], [67, 24]]);
+    const marks = marksOf(container);
+    expect(marks).toHaveLength(1);
+    expectNeighboursClear(container, marks[0], ['t2', 't3']);
+  });
+  it('stems down: flags point left and the next note may sit close', () => {
+    const { container } = solo([[81, 8], [81, 4], [81, 4], [81, 8], [81, 24]]);
+    marksOf(container).forEach((m, i) => expectNeighboursClear(container, m, i === 0 ? ['t1', 't2'] : ['t3', 't4']));
+  });
+  it('a group next to plain notes on ledger lines', () => {
+    const { container, doc } = solo([[57, 6], [67, 8], [67, 4], [57, 6], [67, 24]]);
+    expect(derive(doc, DEFAULT_PREFS).events[0].pos).toBeLessThan(-2);
+    const marks = marksOf(container);
+    expect(marks).toHaveLength(1);
+    expectNeighboursClear(container, marks[0], ['t2', 't3']);
+    const high = solo([[88, 6], [75, 8], [75, 4], [88, 6], [75, 24]]);
+    marksOf(high.container).forEach(m => expectNeighboursClear(high.container, m, ['t2', 't3']));
+  });
+  it('a bracketed group of high notes in a bar without an ending: below, clear of the bands and of its own notes', () => {
+    const { container, doc } = solo([[81, 8], [83, 4], [81, 12], [81, 24]]);
+    expect(derive(doc, DEFAULT_PREFS).events[0].pos).toBeGreaterThan(9);
+    const [m] = marksOf(container);
+    expect(m.getAttribute('data-tuplet-side')).toBe('below');
+    expectClear(m, false);
+    expectNeighboursClear(container, m, ['t1', 't2']);
+  });
+  it('a group with a very low and a very high note keeps out of the chart row: above, giving up the upper limit', () => {
+    const { container, doc } = solo([[52, 8], [84, 4], [67, 12], [67, 24]]);
+    expect(derive(doc, DEFAULT_PREFS).events[0].pos).toBeLessThanOrEqual(-6);
+    const [m] = marksOf(container);
+    expect(m.getAttribute('data-tuplet-side')).toBe('above');
+    expect(markBox(m).y2).toBeLessThan(SHEET.chartY);
+    expectNeighboursClear(container, m, ['t1', 't2']);
+  });
+  it('a beamed number stands at its beam, on the stem side', () => {
+    const up = solo(specs(4, 4, 4, 12, 24));
+    const [mu] = marksOf(up.container);
+    expect(mu.getAttribute('data-tuplet-side')).toBe('above');
+    const beamUp = Number(up.container.querySelector('[data-beam]')!.getAttribute('y'));
+    expect(markBox(mu).y2).toBeLessThan(beamUp);
+    expect(markBox(mu).y2).toBeGreaterThan(beamUp - 12);
+    const down = solo([[75, 4], [75, 4], [75, 4], [75, 12], [75, 24]]);
+    const [md] = marksOf(down.container);
+    expect(md.getAttribute('data-tuplet-side')).toBe('below');
+    const beamDown = Number(down.container.querySelector('[data-beam]')!.getAttribute('y')) + 4;
+    expect(markBox(md).y1).toBeGreaterThan(beamDown);
+    expect(markBox(md).y1).toBeLessThan(beamDown + 12);
+  });
+  it('a number over a staff line has a white halo; a bracket never lies on a staff line', () => {
+    const { container } = renderDoc(mkDoc([{ ev: specs(8, 4, 12, 24) }, { ev: [[69, 8], [71, 4], [72, 12], [74, 24]] }, { ev: [[64, 8], [64, 4], [64, 12], [64, 24]] }]));
+    for (const t of container.querySelectorAll('[data-tuplet] text')) {
+      expect(t.getAttribute('stroke')).toBe('#fff');
+      expect(t.getAttribute('paint-order')).toBe('stroke');
+    }
+    for (const path of container.querySelectorAll('[data-tuplet-bracket]')) {
+      const line = Number(path.getAttribute('d')!.match(/V(-?[\d.]+)H/)![1]);
+      for (let i = 0; i < 5; i++) expect(Math.abs(line - (SHEET.staffTop + 10 * i + 0.5))).toBeGreaterThanOrEqual(1.5);
+    }
+  });
+  it('a bar whose triplet lengths sit in no group draws without a mark and does not throw', () => {
+    const { container } = solo([[67, 4], [67, 44]]);
+    expect(marksOf(container)).toHaveLength(0);
+  });
+});
+
+interface InkBox { x1: number; x2: number; y1: number; y2: number; owner: string[] }
+
+/** Ink of everything drawn in the mark's system, from the emitted attributes. */
+function inkBoxes(m: Element): InkBox[] {
+  const svg = m.closest('svg')!;
+  const n = (e: Element, a: string) => Number(e.getAttribute(a));
+  const ownerOf = (e: Element): string[] => {
+    const ev = e.closest('[data-ev]');
+    if (ev) return [ev.getAttribute('data-ev')!];
+    const g = e.closest('[data-beam-group]');
+    return g ? g.getAttribute('data-beam-group')!.split(' ') : [];
+  };
+  const out: InkBox[] = [];
+  for (const e of svg.querySelectorAll('[data-head]')) out.push({ x1: n(e, 'cx') - 6, x2: n(e, 'cx') + 6, y1: n(e, 'cy') - 5, y2: n(e, 'cy') + 5, owner: ownerOf(e) });
+  for (const e of svg.querySelectorAll('[data-stem],[data-ledger],[data-beam],[data-beam-stub]')) {
+    out.push({ x1: n(e, 'x'), x2: n(e, 'x') + n(e, 'width'), y1: n(e, 'y'), y2: n(e, 'y') + n(e, 'height'), owner: ownerOf(e) });
+  }
+  for (const e of svg.querySelectorAll('[data-flag]')) {
+    const b = pathBox(e.getAttribute('d')!);
+    out.push({ x1: b.x1 - 1, x2: b.x2 + 1, y1: b.y1, y2: b.y2, owner: ownerOf(e) });
+  }
+  for (const e of svg.querySelectorAll('[data-rest]')) {
+    const ev = e.closest('[data-ev]')!;
+    out.push({ x1: -1e6, x2: 1e6, y1: 0, y2: 0, owner: [ev.getAttribute('data-ev')!] });
+  }
+  return out;
+}
+
+const gap = (a: { x1: number; x2: number; y1: number; y2: number }, b: { x1: number; x2: number; y1: number; y2: number }) => ({
+  x: Math.max(a.x1 - b.x2, b.x1 - a.x2), y: Math.max(a.y1 - b.y2, b.y1 - a.y2),
+});
+
+/** The mark's bracket and number touch none of the group's own ink and keep 3 units from all other ink and marks. */
+function expectNeighboursClear(container: HTMLElement, m: Element, members: string[]) {
+  const t = m.querySelector('text')!;
+  const x = Number(t.getAttribute('x')), y = Number(t.getAttribute('y'));
+  const mine = [{ x1: x - 5, x2: x + 5, y1: y - 9, y2: y }];
+  for (const p of m.querySelectorAll('[data-tuplet-bracket]')) mine.push(pathBox(p.getAttribute('d')!));
+  for (const box of inkBoxes(m)) {
+    if (box.x1 === -1e6) continue;       // rests: drawn as glyphs; their box is checked through the group's own notes
+    const own = box.owner.some(id => members.includes(id));
+    for (const b of mine) {
+      const g = gap(b, box);
+      if (own) expect(g.x > 0 || g.y > 0).toBe(true);
+      else expect(g.x >= 3 || g.y >= 3).toBe(true);
+    }
+  }
+  for (const other of container.querySelectorAll('[data-tuplet]')) {
+    if (other === m) continue;
+    const tt = other.querySelector('text')!;
+    const boxes = [{ x1: Number(tt.getAttribute('x')) - 5, x2: Number(tt.getAttribute('x')) + 5, y1: Number(tt.getAttribute('y')) - 9, y2: Number(tt.getAttribute('y')) }];
+    for (const p of other.querySelectorAll('[data-tuplet-bracket]')) boxes.push(pathBox(p.getAttribute('d')!));
+    for (const a of mine) for (const b of boxes) { const g = gap(a, b); expect(g.x >= 3 || g.y >= 3).toBe(true); }
+  }
+}
+
 /** Box of a mark from its attributes: the number's text and the bracket path. */
 function markBox(m: Element) {
   const t = m.querySelector('text')!;
