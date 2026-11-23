@@ -186,7 +186,7 @@ describe.skipIf(!existsSync(DIR))('real files in samples/', () => {
       expect(song(name).pickup).toBe(1);
     });
     it.each(Object.values(DRUMS))('%s: one drum part, all percussion, and no pitched track shares its name', name => {
-      const partOf = (t: ParsedTrack) => t.name.replace(/ · voice \d+$/, '');
+      const partOf = (t: ParsedTrack) => t.name.replace(/ · voice \d+$/, '').replace(/ · staff \d+$/, '');
       const parts = new Set(percussion(song(name)).map(partOf));
       expect(parts.size).toBe(1);
       const sameName = song(name).tracks.filter(t => parts.has(partOf(t)));

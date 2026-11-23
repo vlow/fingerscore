@@ -308,8 +308,14 @@ describe('harmonyText and lyricText', () => {
     expect(harmonyText(14, 'omit5', null)).toBe('Comit5');
   });
 
-  it('spells roots with flats by pitch class', () => {
+  it('spells root and bass as the tonal pitch class writes them', () => {
     expect(harmonyText(12, null, 11)).toBe('B♭/E♭');
+    expect(harmonyText(21, 'mi', null)).toBe('C♯m');
+    expect(harmonyText(9, null, 24)).toBe('D♭/A♯');
+    expect([harmonyText(13, null, null), harmonyText(19, null, null), harmonyText(20, null, null), harmonyText(7, null, null), harmonyText(6, null, null)])
+      .toEqual(['F', 'B', 'F♯', 'C♭', 'F♭']);
+    expect([harmonyText(28, null, null), harmonyText(0, null, null), harmonyText(-1, null, null), harmonyText(33, null, null)])
+      .toEqual(['C♯♯', 'C♭♭', 'F♭♭', 'B♯♯']);
   });
 
   it('hyphenates begin and middle syllables', () => {
@@ -891,5 +897,38 @@ describe('marks sit on the bar their position falls in (both readers)', () => {
       m2('<endSpanner id="1"/>' + volta2(2, '2') + c2('whole', 67)),
       m2('<endSpanner id="2"/>' + c2('whole', 69)))));
     for (const song of [v3, v2]) expect(song.marks).toEqual([{ bar: 2, volta: '1' }, { bar: 3, volta: '2' }]);
+  });
+});
+
+describe('hardening and limits', () => {
+  const v2 = (...bars: string[]) => mscx('2.06', '<Division>480</Division>' + part() + staff(1, ...bars));
+
+  it('a durationType that names an inherited property is unreadable, not NaN (both readers)', async () => {
+    for (const xml of [simple(bar('', TS() + chord('constructor', [60]))), v2(m2(TS() + c2('toString', 60)))]) {
+      const e = await rejection(parseFile(new File([bytes(xml)], 'x.mscx')));
+      expect((e as ImportError).userMessage).toBe('"x.mscx" could not be read as a MuseScore file.');
+    }
+  });
+
+  it('reads breve, long, 128th and 256th notes', async () => {
+    const a = await parse(simple(bar('', TS() + chord('128th', [60]) + chord('256th', [62])), bar('', chord('breve', [64])), bar('', chord('long', [65]))));
+    const b = await parse(v2(m2(TS() + c2('128th', 60) + c2('256th', 62)), m2(c2('breve', 64)), m2(c2('long', 65))));
+    for (const song of [a, b]) expect(song.tracks[0].notes.map(n => n.dur)).toEqual([1 / 32, 1 / 64, 8, 16]);
+  });
+
+  it('a part without a name is Part n, counted among the parts', async () => {
+    const unnamed = '<Part><Staff id="2"><StaffType group="pitched"/></Staff><trackName></trackName><Instrument id="x"><trackName> </trackName></Instrument></Part>';
+    const xml = mscx('3.02', part({ name: 'Flute' }) + unnamed +
+      staff(1, bar('', TS() + chord('whole', [72]))) + staff(2, bar('', TS() + chord('whole', [60]))));
+    expect((await parse(xml)).tracks.map(t => t.name)).toEqual(['Flute', 'Part 2']);
+  });
+
+  it('refuses a score of more than 4000 measures before reading them', async () => {
+    const many = (n: number) => Array.from({ length: n }, (_, i) => bar('', (i === 0 ? TS() : '') + rest('measure')));
+    const e = await rejection(parse(simple(...many(4001)), 'long.mscx'));
+    expect((e as ImportError).userMessage).toBe('"long.mscx" is longer than 2000 bars and can\'t be opened.');
+    const e2 = await rejection(parse(v2(...Array.from({ length: 4001 }, () => m2(rest2('measure')))), 'long.mscx'));
+    expect((e2 as ImportError).userMessage).toBe('"long.mscx" is longer than 2000 bars and can\'t be opened.');
+    await expect(parse(simple(...many(4000).slice(0, -1), bar('', chord('whole', [60]))))).resolves.toBeDefined();
   });
 });

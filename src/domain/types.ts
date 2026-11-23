@@ -6,7 +6,7 @@ export interface Bar { cap: number; rs: boolean; re: boolean; volta: '' | '1' | 
 export interface ChordSym { raw: string; ok: boolean; pc: number; rest: string; bass: number | null; tk: number }
 export interface Doc {
   score: Bar[]; timeSig: TimeSig;
-  originalTonicPc: number; originalMode: Mode;     // minor: tonic of the minor key
+  originalTonicPc: number; originalMode: Mode;     // originalTonicPc: the mode's own tonic
   tempo: number; inst: InstId; shift: number;
   fingering: Record<string, number>;               // event id → option index
   chords: Record<string, ChordSym>;                // event id → chord

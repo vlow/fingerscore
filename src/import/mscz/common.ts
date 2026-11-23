@@ -1,4 +1,5 @@
 import { ROOT_NAMES } from '../chordNames';
+import { own } from '../own';
 import type { ParsedSong } from '../types';
 
 /** Reads one version's main score. `score` is the root's `<Score>` child; `version` is the root's `version` attribute. */
@@ -23,12 +24,12 @@ export const num = (s: string | undefined): number | null => {
 export const mod12 = (x: number): number => ((x % 12) + 12) % 12;
 
 const TYPE_QUARTERS: Record<string, number> = {
-  whole: 4, half: 2, quarter: 1, eighth: 0.5, '16th': 0.25, '32nd': 0.125, '64th': 0.0625,
+  long: 16, breve: 8, whole: 4, half: 2, quarter: 1, eighth: 0.5, '16th': 0.25, '32nd': 0.125, '64th': 0.0625, '128th': 1 / 32, '256th': 1 / 64,
 };
 
 /** Length in quarter notes of a written note value. `measure` (a full-measure rest) is the caller's: null here. */
 export function durationQuarters(type: string, dots: number): number | null {
-  const base = TYPE_QUARTERS[type];
+  const base = own(TYPE_QUARTERS, type);
   if (base === undefined) return null;
   return Number.isInteger(dots) && dots >= 0 && dots <= 4 ? base * (2 - 2 ** -dots) : null;
 }
@@ -52,9 +53,16 @@ function kindText(name: string): string {
   return name.startsWith('0') ? 'ø' + name.slice(1) : name;
 }
 
-/** Chord symbol text from tonal pitch classes (root, bass) and MuseScore's kind text. */
+/** A note name as the tonal pitch class spells it: 14 = C, 13 = F, 12 = B♭, 20 = F♯, 7 = C♭, 0 = C♭♭. Outside -1 to 33, by pitch class. */
+export function spellTpc(tpc: number): string {
+  if (!Number.isInteger(tpc) || tpc < -1 || tpc > 33) return ROOT_NAMES[pcOfTpc(Math.round(tpc))] ?? '';
+  const accidentals = Math.floor((tpc + 1) / 7) - 2;
+  return 'FCGDAEB'[(tpc + 1) % 7] + (accidentals > 0 ? '♯'.repeat(accidentals) : '♭'.repeat(-accidentals));
+}
+
+/** Chord symbol text from tonal pitch classes (root, bass), spelled as the file spells them, and MuseScore's kind text. */
 export const harmonyText = (rootTpc: number, name: string | null, bassTpc: number | null): string =>
-  ROOT_NAMES[pcOfTpc(rootTpc)] + kindText(name ?? '') + (bassTpc === null ? '' : `/${ROOT_NAMES[pcOfTpc(bassTpc)]}`);
+  spellTpc(rootTpc) + kindText(name ?? '') + (bassTpc === null ? '' : `/${spellTpc(bassTpc)}`);
 
 /**
  * The text of a `<Harmony>`, or null when it has no root. Version 3 puts `<root>`, `<name>` and `<base>` in the element,
