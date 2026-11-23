@@ -24,6 +24,10 @@ export const FORMATS: Format[] = [
     name: 'MusicXML', extensions: ['.musicxml', '.xml', '.mxl'], article: 'a',
     load: async () => (await import('./musicxml')).parseMusicXml,
   },
+  {
+    name: 'MuseScore', extensions: ['.mscz', '.mscx'], article: 'a',
+    load: async () => (await import('./mscz')).parseMuseScore,
+  },
 ];
 
 export const ACCEPT = [...FORMATS.flatMap(f => f.extensions), '.json'].join(',');

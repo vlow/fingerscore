@@ -109,6 +109,6 @@ describe('parseFile', () => {
   });
 
   it('accepts the table extensions and .json', () => {
-    expect(ACCEPT).toBe('.mid,.midi,.musicxml,.xml,.mxl,.json');
+    expect(ACCEPT).toBe('.mid,.midi,.musicxml,.xml,.mxl,.mscz,.mscx,.json');
   });
 });
