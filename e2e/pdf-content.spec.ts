@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { expectPagesInsideMargins } from './pdfHelpers';
 import { readPdf, renderPdfPage, renderPdfPixels, type PdfPage, type PdfText } from './readPdf';
 
 /** PDF points per millimetre; per unit of the 860-unit system that fills the width between the 12 mm margins. */
@@ -338,6 +339,48 @@ test('triplets, endings, a tie across systems, out-of-range notes, raised extens
   expect(inked(px.width - m, 0, px.width, px.height), 'right margin').toBe(0);
   expect(inked(0, px.height - m, px.width, px.height - mm(7.5)), 'bottom margin above the footer').toBe(0);
   expect(inked(0, px.height - mm(4), px.width, px.height), 'bottom margin below the footer').toBe(0);
+});
+
+/** A 6/8 sheet of 30 bars: a pickup bar of two eighths, then bars of six; lyrics and chords on some. */
+const sixEight: Builder = `h => {
+  const d = h.sampleDoc();
+  d.title = 'Six Eight';
+  d.timeSig = [6, 8];
+  const ev = (id, m, dur, l = '') => ({ id, m, d: dur, r: false, tie: false, l });
+  const bar = (k, notes, cap) => ({ cap, rs: false, re: false, volta: '', ev: notes.map((m, i) => ev('b' + k + 'n' + i, m, cap / notes.length, i === 0 ? 'la' : '')) });
+  d.score = [bar(0, [67, 69], 12)];
+  for (let k = 1; k < 30; k++) d.score.push(bar(k, [69, 71, 72, 74, 72, 71], 36));
+  d.chords = {};
+  const tk = h.mod12(d.shift + h.inst(d.inst).off);
+  d.chords['b1n0'] = h.parseChord('F♯m7♭5', tk);
+  d.chords['b2n0'] = h.parseChord('B♭maj7', tk);
+  return d;
+}`;
+
+test.describe('texts and paths stay inside the four margins', () => {
+  const footerOf = (title: string) => (n: number, total: number) => `${title} · page ${n} of ${total}`;
+
+  test('chart style "full key map" on flute', async ({ page }) => {
+    const { bytes } = await makePdf(page, `h => { const d = h.sampleDoc('fl'); d.chartStyle = 'full'; return d; }`);
+    const { pages } = await readPdf(bytes);
+    expect(pages.length).toBeGreaterThan(1);
+    expectPagesInsideMargins(pages, footerOf('The Water Is Wide'));
+  });
+
+  test('soprano recorder in the German system', async ({ page }) => {
+    const { bytes } = await makePdf(page, `h => { const d = h.sampleDoc('rs'); d.recorderSystem = 'german'; return d; }`);
+    const { pages } = await readPdf(bytes);
+    expect(pages.length).toBeGreaterThan(1);
+    expectPagesInsideMargins(pages, footerOf('The Water Is Wide'));
+  });
+
+  test('6/8 with a pickup bar', async ({ page }) => {
+    const { bytes } = await makePdf(page, sixEight);
+    const { pages } = await readPdf(bytes);
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages[0].text.map(t => t.str)).toContain('Six Eight');
+    expectPagesInsideMargins(pages, footerOf('Six Eight'));
+  });
 });
 
 test('a character outside the fonts: the hook rejects with the message', async ({ page }) => {

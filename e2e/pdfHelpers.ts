@@ -34,6 +34,15 @@ export function expectInside(p: PdfPage, x1: number, y1: number, x2: number, y2:
   expect(y2, what).toBeLessThanOrEqual(p.height - MARGIN + eps);
 }
 
+/** Every text (the footer excepted: it stands in the bottom margin) and every path of every page lies inside the four margins. */
+export function expectPagesInsideMargins(pages: PdfPage[], footerOf: (page: number, pages: number) => string): void {
+  pages.forEach((p, n) => {
+    const footer = footerOf(n + 1, pages.length);
+    for (const t of p.text) if (t.str !== footer) expectInside(p, t.x, t.y, t.x + t.width, t.y, `text "${t.str}" on page ${n + 1}`);
+    for (const q of p.paths) expectInside(p, q.x1, q.y1, q.x2, q.y2, `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)} on page ${n + 1}`);
+  });
+}
+
 /** The document's Title property. */
 export async function pdfTitle(bytes: Uint8Array): Promise<string | undefined> {
   const task = getDocument({ data: bytes.slice(), useSystemFonts: false });
