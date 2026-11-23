@@ -43,7 +43,7 @@ describe('quantise', () => {
     const start = (q: number) => quantise([n(q, 1 - q)]);
     expect(start(1 / 3 + 0.004)).toEqual({ notes: [{ start: 4, dur: 8, midi: 60 }], simplified: false });
     for (const q of [1 / 3 + 0.006, 0.345, 0.354]) {
-      expect(start(q).notes[0].start).toBe(3);
+      expect(start(q).notes[0]).toEqual({ start: 3, dur: 9, midi: 60, roundedStart: true });
       expect(start(q).simplified).toBe(true);
     }
   });
@@ -71,6 +71,12 @@ describe('monophonic', () => {
     const chord = [{ start: 0, dur: 12, midi: 60 }, { start: 0, dur: 12, midi: 67 }];
     expect(monophonic(chord, 'top')).toEqual([{ start: 0, dur: 12, midi: 67 }]);
     expect(monophonic(chord, 'bottom')).toEqual([{ start: 0, dur: 12, midi: 60 }]);
+  });
+  it('an end cut at the next onset is rounded only when that onset was', () => {
+    const rounded = { start: 12, dur: 12, midi: 62, roundedStart: true as const };
+    expect(monophonic([{ start: 0, dur: 24, midi: 60 }, rounded], 'top')[0]).toEqual({ start: 0, dur: 12, midi: 60, roundedEnd: true });
+    expect(monophonic([{ start: 0, dur: 24, midi: 60, roundedEnd: true }, { start: 12, dur: 12, midi: 62 }], 'top')[0])
+      .toEqual({ start: 0, dur: 12, midi: 60 });
   });
   it('cuts an overlapping earlier note at the next onset', () => {
     expect(monophonic([{ start: 0, dur: 24, midi: 60 }, { start: 12, dur: 12, midi: 62 }], 'top'))
@@ -355,11 +361,52 @@ describe('triplet recognition', () => {
       expect(at(q).source.simplified).toBe(false);
     }
   });
-  it('an exact position next to a rounded one can still be a triplet', () => {
-    // 0.354 rounds to tick 3; 2/3 stays tick 8 and a sixteenth-triplet window [6, 12) explains it.
+  it('no triplet window holds a note with a rounded edge', () => {
+    // 0.354 rounds to tick 3; the second note then has a rounded start, so 2/3 is rounded too.
     const doc = build([n(0, 0.354, 60), n(0.354, 2 / 3 - 0.354, 62), n(2 / 3, 1 / 3, 64), ...tail]);
-    expect(shape(doc.score[0])).toEqual([3, '3t', 2, 4, 12, 24]);
+    expect(noTriplet(doc.score[0])).toBe(true);
     expect(doc.source.simplified).toBe(true);
+  });
+  it('a triplet rest bounded by a rounded note edge makes no window', () => {
+    // the silence 8..12 ends where a note starts at 0.95 quarter, rounded to tick 12
+    const doc = build([n(0, 1 / 3, 60), n(1 / 3, 1 / 3, 62), n(0.95, 1.05, 64), n(2, 2, 65)]);
+    expect(noTriplet(doc.score[0])).toBe(true);
+    expect(doc.source.simplified).toBe(true);
+  });
+  it('triplet rests next to exact neighbours', () => {
+    expect(shape(build([n(0.5, 1 / 3), n(5 / 6, 1 / 3), n(7 / 6, 1 / 3), n(1.5, 0.5), n(2, 2)]).score[0])).toEqual(['r6', 4, 4, 4, 6, 24]);
+    expect(shape(build([n(0, 1), n(4 / 3, 1 / 3), n(5 / 3, 1 / 3), n(2, 2)]).score[0])).toEqual([12, 'r4', 4, 4, 24]);
+    expect(shape(build([n(0, 1 / 3), n(1 / 3, 1 / 3), n(1, 1), n(2, 2)]).score[0])).toEqual([4, 4, 'r4', 12, 24]);
+    expect(shape(build([n(0, 2 / 3), n(1, 1), n(2, 2)]).score[0])).toEqual([8, 'r4', 12, 24]);
+    expect(shape(build([n(0, 1), n(1, 1), n(2, 1), n(3, 2 / 3)]).score[0])).toEqual([12, 12, 12, 8, 'r4']);   // silence to the bar line
+  });
+  it('MIDI at ppq 100: thirds summed from 33-tick lengths are rounded; thirds rounded per onset are a triplet', () => {
+    const summed = build([0, 33, 66].map(t => n(t / 100, 0.33, 60 + t)).concat(tail));
+    expect(noTriplet(summed.score[0])).toBe(true);
+    expect(summed.source.simplified).toBe(true);
+    const perOnset = build([[0, 33], [33, 67], [67, 100]].map(([a, b]) => n(a / 100, (b - a) / 100, 60 + a)).concat(tail));
+    expect(shape(perOnset.score[0])).toEqual([4, 4, 4, 12, 24]);
+    expect(perOnset.source.simplified).toBe(false);
+  });
+  it('an exact triplet beside a quintuplet stays a triplet', () => {
+    const quintuplet = Array.from({ length: 5 }, (_, i) => n(1 + i / 5, 1 / 5, 70 + i));
+    const doc = build([n(0, 1 / 3, 60), n(1 / 3, 1 / 3, 62), n(2 / 3, 1 / 3, 64), ...quintuplet, n(2, 2, 65)]);
+    expect(shape(doc.score[0]).slice(0, 3)).toEqual([4, 4, 4]);
+    expect(doc.score[0].ev.slice(3).every(e => isPlainLength(e.d))).toBe(true);
+    expect(doc.source.simplified).toBe(true);
+  });
+  it('a quarter-triplet group with triplet eighths comes back as eighth-triplet groups', () => {
+    const notes = (...lengths: number[]) => {
+      let t = 0;
+      return lengths.map((d, i) => { const q = n(t / 12, d / 12, 60 + i); t += d; return q; }).concat([n(2, 2, 70)]);
+    };
+    expect(shape(build(notes(16, 4, 4)).score[0])).toEqual(['12t', 4, 4, 4, 24]);
+    expect(shape(build(notes(4, 4, 16)).score[0])).toEqual([4, 4, '4t', 12, 24]);
+    expect(shape(build(notes(4, 16, 4)).score[0])).toEqual([4, '8t', 8, 4, 24]);
+    expect(shape(build(notes(8, 8, 4, 4)).score[0])).toEqual([8, '4t', 4, 4, 4, 24]);
+    const doc = build(notes(8, 4, 4, 8));
+    expect(shape(doc.score[0])).toEqual([8, 4, 4, 8, 24]);
+    expect(groups(doc.score[0])).toEqual([{ start: 0, span: 12 }, { start: 12, span: 12 }]);
   });
   it('a lyric and a chord at a triplet position land on that member', () => {
     const song = mkSong([n(0, 1 / 3), n(1 / 3, 1 / 3), n(2 / 3, 1 / 3), ...tail],

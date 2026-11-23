@@ -53,9 +53,32 @@ function pieces(notes: QNote[], a: number, b: number, split: (ticks: number) => 
 
 const plainSplit = (ticks: number): number[] | null => (ticks % GRID === 0 ? splitDuration(ticks) : null);
 
-/** The members of the window [start, start + span), or null when the notes and silence do not split into members. */
+/**
+ * A window is admissible only when every note with a piece in it has both edges exact, and every note edge that
+ * bounds a silence inside the window (the end before it, the start after it) is exact; a silence with no note
+ * before or after it in `notes` (the bar's notes) is bounded there by the bar line, which is exact.
+ */
+function admissible(notes: QNote[], start: number, end: number): boolean {
+  for (let i = 0; i <= notes.length; i++) {
+    const prev = i > 0 ? notes[i - 1] : undefined;
+    const next = i < notes.length ? notes[i] : undefined;
+    if (next && next.start < end && next.start + next.dur > start && (next.roundedStart || next.roundedEnd)) return false;
+    const gapStart = prev ? prev.start + prev.dur : -Infinity;
+    const gapEnd = next ? next.start : Infinity;
+    const silenceInside = Math.max(gapStart, start) < Math.min(gapEnd, end);
+    if (silenceInside && (prev?.roundedEnd || next?.roundedStart)) return false;
+  }
+  return true;
+}
+
+/**
+ * The members of the window [start, start + span), or null when the window is not admissible or the notes and
+ * silence do not split into members. `notes` are the bar's notes, sorted and not overlapping.
+ */
 export function windowPieces(notes: QNote[], start: number, span: Span): Piece[] | null {
-  return pieces(notes, start, start + span, ticks => members(ticks, span));
+  const end = start + span;
+  if (!admissible(notes, start, end)) return null;
+  return pieces(notes, start, end, ticks => members(ticks, span));
 }
 
 /** The plain events of [a, b), or null when a position inside is off the sixteenth grid. */
@@ -77,6 +100,8 @@ export function findWindows(notes: QNote[], barStart: number, cap: number, fullC
   const barEnd = barStart + cap;
   const shift = fullCap - cap;
   const inBar = notes.filter(n => n.start < barEnd && n.start + n.dur > barStart);
+  // Without a position off the sixteenth grid a window only adds events: the whole bar is plain.
+  if (inBar.every(n => n.start % GRID === 0 && (n.start + n.dur) % GRID === 0)) return { windows: [] };
   // Boundaries: ticks on the sixteenth grid of the meter. best[i] is the cheapest cut of [barStart, bounds[i]).
   const bounds: number[] = [];
   for (let p = barStart; p <= barEnd; p++) if ((p - barStart + shift) % GRID === 0 || p === barEnd) bounds.push(p);

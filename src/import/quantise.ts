@@ -1,20 +1,34 @@
 import type { RawNote } from './types';
 
-/** Positions in whole ticks (12 per quarter). Not always on the sixteenth grid: triplets need ticks of 2 and 4. */
-export interface QNote { start: number; dur: number; midi: number }
+/**
+ * Positions in whole ticks (12 per quarter). Not always on the sixteenth grid: triplets need ticks of 2 and 4.
+ * `roundedStart` / `roundedEnd` (present only when true): that edge was rounded to the sixteenth grid, not taken as exact.
+ */
+export interface QNote { start: number; dur: number; midi: number; roundedStart?: true; roundedEnd?: true }
+
+/** The note with the given rounding marks; a mark that is false is left out. */
+export function withEdges(n: QNote, roundedStart: boolean, roundedEnd: boolean): QNote {
+  const out: QNote = { start: n.start, dur: n.dur, midi: n.midi };
+  if (roundedStart) out.roundedStart = true;
+  if (roundedEnd) out.roundedEnd = true;
+  return out;
+}
 
 const GRID = 3;
 const TPQ = 12;
 const ROUND_LIMIT = 0.02;    // quarter notes: rounding by more than this marks the song simplified
 const EXACT_LIMIT = 0.005;   // quarter notes: a position this near a whole tick is kept as that tick
 
-/** The nearest whole tick when it is within EXACT_LIMIT, otherwise the nearest sixteenth (`moved` when that is more than ROUND_LIMIT away). */
-function snap(quarters: number): { tick: number; moved: boolean } {
+/**
+ * The nearest whole tick when it is within EXACT_LIMIT, otherwise the nearest sixteenth (`rounded`).
+ * `moved`: rounded by more than ROUND_LIMIT.
+ */
+function snap(quarters: number): { tick: number; rounded: boolean; moved: boolean } {
   const ticks = quarters * TPQ;
   const whole = Math.round(ticks);
-  if (Math.abs(whole - ticks) <= EXACT_LIMIT * TPQ) return { tick: whole, moved: false };
+  if (Math.abs(whole - ticks) <= EXACT_LIMIT * TPQ) return { tick: whole, rounded: false, moved: false };
   const sixteenth = Math.round(ticks / GRID) * GRID;
-  return { tick: sixteenth, moved: Math.abs(sixteenth - ticks) > ROUND_LIMIT * TPQ };
+  return { tick: sixteenth, rounded: true, moved: Math.abs(sixteenth - ticks) > ROUND_LIMIT * TPQ };
 }
 
 export function quantise(notes: RawNote[]): { notes: QNote[]; simplified: boolean } {
@@ -23,7 +37,7 @@ export function quantise(notes: RawNote[]): { notes: QNote[]; simplified: boolea
     const start = snap(n.start);
     const end = snap(n.start + n.dur);
     if (start.moved || end.moved) simplified = true;
-    return { start: start.tick, dur: Math.max(1, end.tick - start.tick), midi: n.midi };
+    return withEdges({ start: start.tick, dur: Math.max(1, end.tick - start.tick), midi: n.midi }, start.rounded, end.rounded);
   });
   out.sort((a, b) => a.start - b.start || a.midi - b.midi);
   return { notes: out, simplified };
@@ -44,7 +58,8 @@ export function monophonic(notes: QNote[], keep: 'top' | 'bottom'): QNote[] {
   }
   return picked.map((n, i) => {
     const next = picked[i + 1];
-    const dur = next ? Math.min(n.dur, next.start - n.start) : n.dur;
-    return { ...n, dur };
+    if (!next || n.dur <= next.start - n.start) return n;
+    // cut at the next onset: the end is as exact as that onset
+    return withEdges({ ...n, dur: next.start - n.start }, n.roundedStart === true, next.roundedStart === true);
   });
 }

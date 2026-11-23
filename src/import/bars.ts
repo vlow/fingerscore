@@ -1,6 +1,6 @@
 import { barCap, newId } from '../domain/time';
 import type { Bar, Ev, TimeSig } from '../domain/types';
-import type { QNote } from './quantise';
+import { withEdges, type QNote } from './quantise';
 import { findWindows, plainPieces, windowPieces, type Piece } from './tripletWindows';
 import type { ParsedSong } from './types';
 
@@ -14,34 +14,50 @@ function withoutOverlaps(notes: QNote[]): QNote[] {
   const sorted = [...notes].sort((a, b) => a.start - b.start);
   const out: QNote[] = [];
   let cursor = 0;
+  let cursorRounded = false;
   for (const n of sorted) {
-    const start = Math.max(n.start, cursor);
     const stop = n.start + n.dur;
+    const cut = n.start < cursor;
+    const start = cut ? cursor : n.start;
     if (stop <= start) continue;
-    out.push({ start, dur: stop - start, midi: n.midi });
+    // a start moved to the earlier note's end is as exact as that end
+    out.push(withEdges({ start, dur: stop - start, midi: n.midi }, cut ? cursorRounded : n.roundedStart === true, n.roundedEnd === true));
     cursor = stop;
+    cursorRounded = n.roundedEnd === true;
   }
   return out;
 }
 
 /**
- * Moves every note start and end at `tick` to the nearest sixteenth. A note that shrinks to nothing keeps a sixteenth
- * when the next note leaves room, otherwise it is dropped. Notes are changed in place: their identity marks ties.
+ * Moves every start and end at `tick` among `notes` (one bar's notes, in order; `after` is the note that follows them)
+ * to the nearest sixteenth and marks those edges rounded. A note that shrinks to nothing keeps a sixteenth when the
+ * next note leaves room, otherwise its length becomes 0 and it is skipped from then on. Notes change in place:
+ * their identity marks ties.
  */
-function roundPosition(melody: QNote[], tick: number): void {
+function roundPosition(notes: QNote[], after: QNote | undefined, tick: number): void {
   const to = round3(tick);
-  for (const n of melody) {
+  for (const n of notes) {
     const stop = n.start + n.dur;
-    if (n.start === tick) n.start = to;
+    if (n.start === tick) { n.start = to; n.roundedStart = true; }
+    if (stop === tick) n.roundedEnd = true;
     n.dur = (stop === tick ? to : stop) - n.start;
   }
-  for (let i = 0; i < melody.length; i++) {
-    const n = melody[i];
-    if (n.dur > 0) continue;
-    const next = melody[i + 1];
-    n.dur = Math.min(GRID, next ? next.start - n.start : GRID);
-    if (n.dur <= 0) { melody.splice(i, 1); i -= 1; }
+  notes.forEach((n, i) => {
+    if (n.dur > 0) return;
+    const next = i + 1 < notes.length ? notes[i + 1] : after;
+    n.dur = Math.max(0, Math.min(GRID, next ? next.start - n.start : GRID));
+  });
+}
+
+/** An edge off the sixteenth grid inside (barStart, barEnd) of a note that has a rounded edge; or null. */
+function hopeless(notes: QNote[], barStart: number, barEnd: number): number | null {
+  const inside = (t: number) => t % GRID !== 0 && t > barStart && t < barEnd;
+  for (const n of notes) {
+    if (!n.roundedStart && !n.roundedEnd) continue;
+    if (inside(n.start)) return n.start;
+    if (inside(n.start + n.dur)) return n.start + n.dur;
   }
+  return null;
 }
 
 /**
@@ -59,27 +75,37 @@ export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: 
   let lastPitch = DEFAULT_REST_PITCH;
   let first = 0;       // index of the first note that may reach into the current bar
   let barStart = 0;
-  const lastEnd = () => melody.reduce((m, n) => Math.max(m, n.start + n.dur), 0);
+  // Notes are sorted and do not overlap, so the song ends where the last note that still sounds ends.
+  const lastEnd = () => {
+    for (let i = melody.length - 1; i >= 0; i--) if (melody[i].dur > 0) return melody[i].start + melody[i].dur;
+    return 0;
+  };
   let end = lastEnd();
 
   while (barStart < end) {
     const cap = bars.length === 0 && pickupTicks > 0 ? pickupTicks : full;
     const barEnd = barStart + cap;
     while (first < melody.length && melody[first].start + melody[first].dur <= barStart) first += 1;
-    const inBar = (): QNote[] => {
-      const out: QNote[] = [];
-      for (let i = first; i < melody.length && melody[i].start < barEnd; i++) out.push(melody[i]);
-      return out;
-    };
-    let notesHere = inBar();
+    let stop = first;      // index after the last note that starts in this bar
+    while (stop < melody.length && melody[stop].start < barEnd) stop += 1;
+    const touched = melody.slice(first, stop);
+    const sounding = () => touched.filter(n => n.dur > 0);
+    // An off-grid edge of a note with a rounded edge can lie in no window: round it without searching.
+    for (let tick = hopeless(sounding(), barStart, barEnd); tick !== null; tick = hopeless(sounding(), barStart, barEnd)) {
+      roundPosition(touched, melody[stop], tick);
+      rounded = true;
+    }
+    let notesHere = sounding();
     let cut = findWindows(notesHere, barStart, cap, full);
     while ('unexplained' in cut) {
-      roundPosition(melody, cut.unexplained);
+      roundPosition(touched, melody[stop], cut.unexplained);
       rounded = true;
-      end = lastEnd();
-      notesHere = inBar();
+      notesHere = sounding();
       cut = findWindows(notesHere, barStart, cap, full);
     }
+    if (stop === melody.length) end = lastEnd();
+    // a start rounded up to the bar line belongs to the next bar
+    notesHere = notesHere.filter(n => n.start < barEnd);
 
     const ev: Ev[] = [];
     const emit = (ps: Piece[] | null) => {
