@@ -5,7 +5,10 @@ import Header from './ui/Header';
 import { ToastHost } from './ui/Toast';
 import SheetPage from './pages/SheetPage';
 import Start from './pages/Start';
-import Tracks from './pages/Tracks';
+
+// Pages besides the start page and the sheet load on demand; the main area stays empty until their code has arrived.
+const Tracks = lazy(() => import('./pages/Tracks'));
+const pageFallback = <div aria-busy="true" />;
 
 // Dev-only renderer preview; the import is dropped from production builds.
 const DevSheet = import.meta.env.DEV ? lazy(() => import('./pages/DevSheet')) : null;
@@ -17,7 +20,7 @@ export default function App() {
       <main className="app-main">
         <Routes>
           <Route path="/" element={<Start />} />
-          <Route path="/tracks" element={<Tracks />} />
+          <Route path="/tracks" element={<Suspense fallback={pageFallback}><Tracks /></Suspense>} />
           <Route path="/sheet" element={<SheetPage />} />
           {DevSheet && <Route path="/dev/sheet" element={<Suspense fallback={null}><DevSheet /></Suspense>} />}
           <Route path="*" element={<Navigate to="/" replace />} />

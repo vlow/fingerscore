@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { Player } from '../audio/player';
@@ -747,7 +747,7 @@ describe('modes, undo and redo', () => {
     await clickEvent(first);
     expect(screen.queryByRole('group', { name: /panel/ })).toBeNull();
     await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
-    const panel = screen.getByRole('group', { name: 'Edit notes panel' });
+    const panel = await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(panel.closest('[data-print-hide]')).not.toBeNull();
     const system = document.querySelector(`[data-hit="${first}"]`)!.closest('svg')!.parentElement!;
     expect(system.nextElementSibling).toContainElement(panel);
@@ -761,7 +761,7 @@ describe('modes, undo and redo', () => {
     await user.click(screen.getByRole('radio', { name: 'Chords' }));
     const last = events[events.length - 1].id;
     await clickEvent(last);
-    const panel = screen.getByRole('group', { name: 'Chords panel' });
+    const panel = await screen.findByRole('group', { name: 'Chords panel' });
     const systems = screen.getAllByTestId('system');
     expect(systems[systems.length - 1].parentElement!.nextElementSibling).toContainElement(panel);
     expect(screen.getAllByRole('group', { name: /panel/ })).toHaveLength(1);
@@ -851,7 +851,7 @@ describe('modes, undo and redo', () => {
     expect(radios[3]).toBeChecked();
     expect(radios[3]).toHaveFocus();
     await user.click(radios[2]);
-    expect(screen.getByRole('textbox', { name: 'Lyric' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Lyric' })).toHaveFocus());
   });
 
   it('Tab on the sheet goes into the open Lyric or Chord field', async () => {
@@ -861,6 +861,7 @@ describe('modes, undo and redo', () => {
       sheet().focus();
       await user.keyboard('{Home}{ArrowRight}');
       expect(sheet()).toHaveFocus();
+      await screen.findByRole('textbox', { name: label });
       await user.keyboard('{Tab}');
       expect(screen.getByRole('textbox', { name: label })).toHaveFocus();
     }
@@ -1043,7 +1044,7 @@ describe('modes, undo and redo', () => {
     expect(selected()).toBe(r.rest);
     await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
     expect(selected()).toBe(r.next);
-    expect(screen.getByRole('group', { name: 'Lyrics panel' })).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: 'Lyrics panel' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Lyric' })).toHaveFocus();   // design 4.4: focused on open
   });
 });
@@ -1076,6 +1077,7 @@ describe('Edit notes panel and keys', () => {
     const d0 = current();
     const q = d0.score.flatMap(b => b.ev).find(e => !e.r && e.d === 12)!;
     await clickEvent(q.id);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(button('Quarter')).toHaveAttribute('aria-pressed', 'true');
     await user.click(button('Eighth'));
     const d1 = current();
@@ -1096,6 +1098,7 @@ describe('Edit notes panel and keys', () => {
     const last = pickup[pickup.length - 1];   // the pickup bar ends with a quarter
     expect(last).toMatchObject({ r: false, d: 12 });
     await clickEvent(last.id);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     for (const name of ['Half', 'Whole', 'Dotted']) expect(button(name)).toBeDisabled();
     for (const name of ['Sixteenth', 'Eighth', 'Quarter']) expect(button(name)).toBeEnabled();
     await user.click(button('Half'));
@@ -1107,6 +1110,7 @@ describe('Edit notes panel and keys', () => {
     const n = firstNote();
     await clickEvent(n.id);
     const name = () => derive(current(), DEFAULT_PREFS).byId[n.id].spelled.name;
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(within(panel()).getByText(name())).toBeInTheDocument();
     const before = name();
     await user.click(button('Semitone up'));
@@ -1130,6 +1134,7 @@ describe('Edit notes panel and keys', () => {
     const score = base.score.map((b, k) => (k === 0 ? { ...b, ev: b.ev.map((e, j) => (j === 0 ? { ...e, m: 127 } : e)) } : b));
     await edit('asax', { score });
     await clickEvent(n.id);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(button('Semitone up')).toBeDisabled();
     expect(button('Octave up')).toBeDisabled();
     expect(button('Semitone down')).toBeEnabled();
@@ -1142,6 +1147,7 @@ describe('Edit notes panel and keys', () => {
     const dotted = s[2].ev[2];          // a dotted quarter
     expect(dotted.d).toBe(18);
     await clickEvent(dotted.id);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(button('Quarter')).toHaveAttribute('aria-pressed', 'true');
     expect(button('Dotted')).toHaveAttribute('aria-pressed', 'true');
     await user.click(button('Dotted'));
@@ -1176,6 +1182,7 @@ describe('Edit notes panel and keys', () => {
     const n = current().score[2].ev[1];
     await clickEvent(n.id);
     expect(document.querySelectorAll('[data-bar]')).toHaveLength(count);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     await user.click(button('+ Bar after'));
     expect(current().score).toHaveLength(count + 1);
     expect(document.querySelectorAll('[data-bar]')).toHaveLength(count + 1);
@@ -1303,6 +1310,7 @@ describe('Edit notes panel and keys', () => {
     await edit();
     const n = current().score[2].ev[1];
     await clickEvent(n.id);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     await user.click(button('Semitone up'));
     expect(ev(n.id).m).toBe(n.m + 1);
     expect(sheet()).toHaveFocus();
@@ -1320,6 +1328,7 @@ describe('Edit notes panel and keys', () => {
     await edit();
     const n = current().score[2].ev[1];
     await clickEvent(n.id);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     button('Semitone up').focus();
     await user.keyboard('{Enter}');
     expect(ev(n.id).m).toBe(n.m + 1);
@@ -1333,6 +1342,7 @@ describe('Edit notes panel and keys', () => {
     const score = sampleDoc('asax').score.slice(2, 4);
     await edit('asax', { score });
     await clickEvent(score[0].ev[0].id);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     button('Remove bar').focus();
     await user.keyboard('{Enter}');
     expect(current().score).toHaveLength(1);
@@ -1346,6 +1356,7 @@ describe('Edit notes panel and keys', () => {
     await edit();
     await clickEvent(current().score[2].ev[1].id);
     const keys = (name: string) => button(name).getAttribute('aria-keyshortcuts');
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(['Octave down', 'Semitone down', 'Semitone up', 'Octave up'].map(keys))
       .toEqual(['Control+ArrowDown Meta+ArrowDown', 'ArrowDown', 'ArrowUp', 'Control+ArrowUp Meta+ArrowUp']);
     expect(['Sixteenth', 'Eighth', 'Quarter', 'Half', 'Whole', 'Dotted', 'Tie', 'Turn into rest'].map(keys))
@@ -1358,6 +1369,7 @@ describe('Edit notes panel and keys', () => {
     const full = mkDoc(Array.from({ length: MAX_BARS }, () => ({ ev: [[0, 48]] as EvSpec[] })));
     await edit('asax', { score: full.score, chords: {}, imported: { lyrics: {}, chords: {} } });
     await clickEvent(full.score[0].ev[0].id);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(button('+ Bar after')).toBeDisabled();
     expect(button('Remove bar')).toBeEnabled();
   });
@@ -1388,6 +1400,7 @@ describe('Edit notes panel and keys', () => {
     await user.click(screen.getByRole('button', { name: 'Play from selected' }));
     expect(fakePlayer.play).toHaveBeenCalledTimes(1);
     fakePlayer.stop.mockClear();
+    await screen.findByRole('group', { name: 'Edit notes panel' });
     await user.click(button('Semitone up'));
     expect(fakePlayer.stop).toHaveBeenCalled();
     expect(selectedId()).toBe(n.id);
@@ -1417,6 +1430,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     await lyrics();
     const notes = lyricNotes();
     await clickEvent(notes[0].id);
+    await waitFor(() => expect(field()).toHaveFocus());
     const f = field();
     expect(f).toHaveFocus();
     expect(f).toHaveValue(notes[0].l);
@@ -1444,6 +1458,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     await lyrics();
     const notes = lyricNotes();
     await clickEvent(notes[0].id);
+    await waitFor(() => expect(field()).toHaveFocus());
     await user.keyboard('{Tab}');
     expect(selectedId()).toBe(notes[1].id);
     expect(field()).toHaveFocus();
@@ -1473,6 +1488,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     await lyrics();
     const notes = lyricNotes();
     await clickEvent(notes[0].id);
+    await screen.findByRole('textbox', { name: 'Lyric' });
     const f = field() as HTMLInputElement;
     await user.clear(f);
     await user.type(f, 'ab');
@@ -1496,7 +1512,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
     await clickEvent(notes[3].id);
     expect(selectedId()).toBe(notes[4].id);
-    expect(field()).toHaveFocus();
+    await waitFor(() => expect(field()).toHaveFocus());
     expect(field()).toHaveValue(notes[4].l);
   });
 
@@ -1508,7 +1524,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     await user.keyboard('{Home}{ArrowRight}');
     expect(selectedId()).toBe(notes[1].id);
     expect(sheet).toHaveFocus();
-    expect(field()).toHaveValue(notes[1].l);
+    expect(await screen.findByRole('textbox', { name: 'Lyric' })).toHaveValue(notes[1].l);
   });
 
   it('bulk card: fill from the selection, clear, edit count, restore', async () => {
@@ -1518,7 +1534,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     const range = screen.getByRole('region', { name: 'Range check' });
     expect(range.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(card.closest('[data-print-hide]')).not.toBeNull();
-    expect(within(card).getByText('0 edits to lyrics and chords')).toBeInTheDocument();
+    expect(await within(card).findByText('0 edits to lyrics and chords')).toBeInTheDocument();
     const restore = within(card).getByRole('button', { name: 'Restore from file' });
     expect(restore).toBeDisabled();
     await clickEvent(notes[2].id);
@@ -1549,7 +1565,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     open('xc');
     const notes = lyricNotes();
     const card = screen.getByRole('region', { name: 'Lyrics & chords' });
-    await user.type(within(card).getByRole('textbox', { name: 'Type or paste a verse' }), 'Oh');
+    await user.type(await within(card).findByRole('textbox', { name: 'Type or paste a verse' }), 'Oh');
     await user.click(within(card).getByRole('button', { name: 'Fill lyrics' }));
     expect(ev(notes[0].id).l).toBe('Oh');
     expect(within(card).getByText('1 edit to lyrics and chords')).toBeInTheDocument();
@@ -1562,13 +1578,13 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
     const sheet = screen.getByRole('group', { name: /Sheet music/ });
     await clickEvent(notes[4].id);
-    expect(field()).toHaveFocus();
+    await waitFor(() => expect(field()).toHaveFocus());
     sheet.focus();
     await clickEvent(notes[3].id);   // the rest hands the selection to the same note again
     expect(selectedId()).toBe(notes[4].id);
     expect(field()).toHaveFocus();
     await user.click(screen.getByRole('radio', { name: 'Chords' }));
-    expect(screen.getByRole('textbox', { name: 'Chord' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Chord' })).toHaveFocus());
     await user.click(screen.getByRole('radio', { name: 'View' }));
     await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
     expect(field()).toHaveFocus();
@@ -1582,7 +1598,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
     await user.click(screen.getByRole('button', { name: 'Play from selected' }));
     fakePlayer.stop.mockClear();
-    await user.type(field(), 'x');
+    await user.type(await screen.findByRole('textbox', { name: 'Lyric' }), 'x');
     expect(ev(notes[0].id).l).toBe(`${notes[0].l}x`);
     act(() => { useApp.getState().applyEdit(setChord(current(), notes[1].id, 'G7', 0)); });
     await user.keyboard('{Control>}z{/Control}');
@@ -1596,7 +1612,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
   it('bulk card: a keyboard-activated button that disables itself hands the focus to the verse field', async () => {
     open('xc');
     const card = screen.getByRole('region', { name: 'Lyrics & chords' });
-    const verse = within(card).getByRole('textbox', { name: 'Type or paste a verse' });
+    const verse = await within(card).findByRole('textbox', { name: 'Type or paste a verse' });
     const btn = (name: string) => within(card).getByRole('button', { name });
     for (const name of ['Clear chords', 'Clear lyrics', 'Restore from file']) {
       btn(name).focus();
@@ -1610,7 +1626,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
   it('a sheet with nothing imported says so and cannot be restored', async () => {
     open('xc', { imported: { lyrics: {}, chords: {} } });
     const card = screen.getByRole('region', { name: 'Lyrics & chords' });
-    expect(within(card).getByRole('status')).toHaveTextContent('Nothing was imported with this sheet.');
+    expect(await within(card).findByRole('status')).toHaveTextContent('Nothing was imported with this sheet.');
     expect(within(card).queryByText(/edits? to lyrics and chords/)).toBeNull();
     expect(within(card).getByRole('button', { name: 'Restore from file' })).toBeDisabled();
   });
@@ -1618,7 +1634,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
   it('the verse field keeps the browser\'s own undo; Ctrl+S still saves', async () => {
     open('xc');
     act(() => useApp.getState().patchDoc({ tempo: 120 }));
-    const t = screen.getByRole('textbox', { name: 'Type or paste a verse' });
+    const t = await screen.findByRole('textbox', { name: 'Type or paste a verse' });
     t.focus();
     for (const init of [{ key: 'z', ctrlKey: true }, { key: 'z', metaKey: true }, { key: 'z', ctrlKey: true, shiftKey: true }, { key: 'y', ctrlKey: true }]) {
       const e = new KeyboardEvent('keydown', { code: `Key${init.key.toUpperCase()}`, bubbles: true, cancelable: true, ...init });
@@ -1654,6 +1670,7 @@ describe('Chords mode', () => {
     await chords('fl');
     const e = firstEvent();
     await clickEvent(e.id);
+    await waitFor(() => expect(field()).toHaveFocus());
     const f = field();
     expect(f).toHaveFocus();
     expect(screen.getByText('b → ♭ and # → ♯ after a note name')).toBeInTheDocument();
@@ -1673,6 +1690,7 @@ describe('Chords mode', () => {
   it('prettifying keeps the caret where it was typed', async () => {
     await chords('fl');
     await clickEvent(firstEvent().id);
+    await screen.findByRole('textbox', { name: 'Chord' });
     const f = field();
     await user.clear(f);
     await user.type(f, 'A7');
@@ -1691,6 +1709,7 @@ describe('Chords mode', () => {
     await chords('fl', { score: restDoc.score });
     await clickEvent(note.id);
     expect(selectedId()).toBe(note.id);
+    await screen.findByRole('textbox', { name: 'Chord' });
     const f = field();
     expect(f).toHaveValue('');
     await user.type(f, 'N.C.');
@@ -1712,6 +1731,7 @@ describe('Chords mode', () => {
   it('buttons insert at the caret; "( )" puts the caret inside', async () => {
     await chords('fl');
     await clickEvent(firstEvent().id);
+    await screen.findByRole('textbox', { name: 'Chord' });
     const f = field();
     expect(within(panel()).getAllByRole('button').map(b => b.getAttribute('aria-label'))).toEqual([
       'Insert ♭', 'Insert ♯', 'Insert m', 'Insert °', 'Insert ø', 'Insert Δ7', 'Insert 7', 'Insert sus4', 'Insert add9', 'Insert 6', 'Insert /', 'Insert ( )',
@@ -1743,7 +1763,7 @@ describe('Chords mode', () => {
     await chords('fl', { score: restDoc.score });
     const [a, rest, after] = [all0[k], all0[k + 1], all0[k + 2]];
     await clickEvent(a.id);
-    await user.type(field(), 'G{Enter}');
+    await user.type(await screen.findByRole('textbox', { name: 'Chord' }), 'G{Enter}');
     expect(selectedId()).toBe(rest.id);
     expect(field()).toHaveFocus();
     await user.type(field(), 'C7{Tab}');
@@ -1768,6 +1788,7 @@ describe('Chords mode', () => {
     const all = events();
     await clickEvent(all[0].id);
     const back = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    await screen.findByRole('textbox', { name: 'Chord' });
     act(() => { field().dispatchEvent(back); });
     expect(back.defaultPrevented).toBe(true);   // back to the sheet, the selection stays
     expect(screen.getByRole('group', { name: /Sheet music/ })).toHaveFocus();

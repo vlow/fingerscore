@@ -1,31 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { createPlayer, type Player } from '../audio/player';
-import { derive, type DerivedEvent } from '../domain/derive';
-import { BASE_LENGTHS, lengthName, locate, setLength, setLetter, shiftPitch, toggleDotted, toggleRest, toggleTie } from '../domain/edit';
+import { derive } from '../domain/derive';
+import { locate } from '../domain/edit';
 import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
 import { keySignature, spell } from '../domain/keys';
-import { fileName, importMessage, readSheet, serializeFile } from '../domain/persistence';
-import { buildSchedule, firstTickOf, sliceSchedule } from '../domain/playback';
-import { barCap } from '../domain/time';
 import type { Doc } from '../domain/types';
 import { usableTracks } from '../import/melody';
-import { SHEET, layoutSheet } from '../render/layout';
+import { layoutSheet } from '../render/layout';
 import { Paper } from '../render/Paper';
-import { deleteWithUndo } from '../state/deleteWithUndo';
-import { listEntries } from '../state/library';
-import { canRedo, canUndo, saveStatus, useApp } from '../state/store';
-import AltFingeringPopover, { popoverWidth } from '../ui/AltFingeringPopover';
+import { canRedo, canUndo, useApp } from '../state/store';
 import Banners from '../ui/Banners';
-import ChordPanel from '../ui/ChordPanel';
-import BulkCard from '../ui/BulkCard';
-import { downloadText } from '../ui/download';
 import FileMenu from '../ui/FileMenu';
 import KeyBridge from '../ui/KeyBridge';
-import LyricPanel from '../ui/LyricPanel';
-import { ModeSwitch, type Mode } from '../ui/ModeSwitch';
-import NotePanel from '../ui/NotePanel';
+import { ModeSwitch } from '../ui/ModeSwitch';
 import PageBar from '../ui/PageBar';
 import RangeMeter from '../ui/RangeMeter';
 import SaveControls from '../ui/SaveControls';
@@ -34,39 +22,24 @@ import Steps from '../ui/Steps';
 import Transport from '../ui/Transport';
 import { UndoRedo } from '../ui/UndoRedo';
 import { useSheetShortcuts } from '../ui/useSheetShortcuts';
+import Card from './sheet/Card';
+import Toggle from './sheet/Toggle';
+import { useAltFingering } from './sheet/useAltFingering';
+import { preloadPanel, useEditPanelSlot } from './sheet/useEditPanelSlot';
+import { useFileActions } from './sheet/useFileActions';
+import { usePlayback } from './sheet/usePlayback';
+import { useSelection } from './sheet/useSelection';
+import { useSheetKeys } from './sheet/useSheetKeys';
 import '../styles/print.css';
 import s from './SheetPage.module.css';
 
+// The bulk card loads on demand; the side column shows nothing in its place until it has arrived.
+const BulkCard = lazy(() => import('../ui/BulkCard'));
+
 const SIMPLIFIED = 'Rhythm simplified: triplets and notes shorter than a sixteenth were rounded.';
 const SHEET_LABEL = 'Sheet music. Arrow keys select a note, Enter plays from it.';
-/** Keys pressed here keep their own meaning: the title inputs, the pills and the alternate-fingering popover. */
-const OWN_KEYS = 'input, textarea, select, button, a, [role="dialog"]';
-/** While one of these is open, editing keys on the sheet do nothing. */
-const OPEN_LAYERS = '[role="dialog"], [role="menu"]';
-/** Letter keys in the order setLetter numbers them (0 = C … 6 = B). */
-const LETTERS = 'cdefgab';
-/**
- * The Edit notes key a key press means: e.key when it is a Latin letter, a digit or ".", else the physical key from
- * e.code (KeyA–KeyZ, Digit0–Digit9, Period), so Cyrillic, Greek or Hebrew letters and AZERTY's shifted digits work.
- */
-function editKey(e: KeyboardEvent<HTMLElement>): string {
-  if (e.key.length !== 1) return e.key;
-  const key = e.key.toLowerCase();
-  if (/^[a-z0-9.]$/.test(key)) return key;
-  const letter = /^Key([A-Z])$/.exec(e.code);
-  if (letter) return letter[1].toLowerCase();
-  const digit = /^Digit([0-9])$/.exec(e.code);
-  if (digit) return digit[1];
-  return e.code === 'Period' ? '.' : key;
-}
-const MISSING = 'That sheet is no longer saved in this browser.';
 /** Sources that went through the import steps; a sheet opened from a file or the library did not. */
 const IMPORTED: Doc['source']['format'][] = ['MIDI', 'MusicXML', 'sample'];
-const PANEL: Record<Exclude<Mode, 'view'>, string> = { notes: 'Edit notes panel', lyrics: 'Lyrics panel', chords: 'Chords panel' };
-/** Width of an editing panel under a system (prototype .edp). */
-const PANEL_WIDTH = 360;
-/** A note that can carry a syllable: not a rest, not a tied continuation. */
-const takesSyllable = (ev: DerivedEvent) => !ev.rest && !ev.tiedFrom;
 
 export default function SheetPage() {
   const doc = useApp(st => st.doc);
@@ -86,41 +59,15 @@ export default function SheetPage() {
   return <Sheet doc={doc} />;
 }
 
-function Card(p: { heading: ReactNode; badge?: ReactNode; children: ReactNode; labelledBy?: string }) {
-  return (
-    <section className={s.card} aria-labelledby={p.labelledBy}>
-      <div className={s.cardHead}>{p.heading}{p.badge}</div>
-      {p.children}
-    </section>
-  );
-}
-
-function Toggle<T extends string>(p: { label: string; options: { value: T; name: string; sub?: string }[]; value: T; onPick(v: T): void }) {
-  return (
-    <div role="group" aria-label={p.label} className={s.segment}>
-      {p.options.map(o => (
-        <button key={o.value} type="button" className={s.segButton} aria-pressed={p.value === o.value}
-          aria-describedby={o.sub ? `seg-${o.value}` : undefined} onClick={() => p.onPick(o.value)}>
-          {o.name}
-          {o.sub && <span id={`seg-${o.value}`} className={s.segSub} aria-hidden="true">{o.sub}</span>}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function Sheet({ doc }: { doc: Doc }) {
   const song = useApp(st => st.song);
   const prefs = useApp(st => st.prefs);
   const setInstrument = useApp(st => st.setInstrument);
   const setShift = useApp(st => st.setShift);
   const patchDoc = useApp(st => st.patchDoc);
-  const setFingering = useApp(st => st.setFingering);
   const resetFingerings = useApp(st => st.resetFingerings);
-  const libraryId = useApp(st => st.libraryId);
   const undoable = useApp(canUndo);
   const redoable = useApp(canRedo);
-  const savedSnapshot = useApp(st => st.savedSnapshot);
   const saveError = useApp(st => st.saveError);
   const navigate = useNavigate();
 
@@ -128,215 +75,19 @@ function Sheet({ doc }: { doc: Doc }) {
   const layout = useMemo(() => layoutSheet(doc, derived), [doc, derived]);
   const i = derived.inst;
 
-  // Selection: one event, UI state only. Ids are stable across instrument, key and tempo changes;
-  // an id the document no longer has counts as no selection, and loading another sheet clears it.
-  const [mode, setMode] = useState<Mode>('view');
-  const [selection, setSelection] = useState<string | null>(null);
-  /**
-   * The event whose Lyric or Chord field takes focus, and a count that re-focuses it: a click on the sheet (also one
-   * that lands on the selected note again), a switch to Lyrics or Chords mode, Enter/Tab in the field. Arrow keys on
-   * the sheet clear it, so the arrows keep working.
-   */
-  const [fieldFocus, setFieldFocus] = useState<{ id: string; n: number } | null>(null);
-  const focusField = (id: string) => setFieldFocus(f => ({ id, n: (f?.n ?? 0) + 1 }));
-  const [announcement, setAnnouncement] = useState('');
-  const selectedId = selection !== null && derived.byId[selection] ? selection : null;
-  const paperRef = useRef<HTMLDivElement | null>(null);
-  const scrollToSelection = useRef(false);
-  const sheetGen = useApp(st => st.sheetGen);
-  useEffect(() => { setSelection(null); setAnnouncement(''); }, [sheetGen]);
-  const firstBar = doc.score.length > 0 && doc.score[0].cap < barCap(doc.timeSig) ? 0 : 1;
+  const {
+    mode, selection, setSelection, selectedId, fieldFocus, focusField, announcement, setAnnouncement, paperRef, firstBar,
+    select, applyNoteEdit, changeMode, stops,
+  } = useSelection(doc, derived);
+  const { playerRef, playing, playingId, playError, togglePlay } = usePlayback(doc, selectedId);
+  const { openAlt, closeAlt, renderUnderChart } = useAltFingering(doc, firstBar, i.kind);
+  const { onSheetKey, onToolbarKey } = useSheetKeys({
+    doc, derived, mode, selectedId, openAlt, stops, paperRef, select, applyNoteEdit, togglePlay,
+  });
 
-  /** In Lyrics mode a rest or tied continuation hands the selection to the next note that can carry a syllable. */
-  function landing(id: string, m: Mode): string {
-    if (m !== 'lyrics' || takesSyllable(derived.byId[id])) return id;
-    const k = derived.events.indexOf(derived.byId[id]);
-    const notes = derived.events.flatMap((ev, j) => (takesSyllable(ev) ? [{ id: ev.id, j }] : []));
-    // At the end of the song there is no next note: the nearest earlier one takes the syllable.
-    const to = notes.find(n => n.j > k) ?? notes.filter(n => n.j < k).pop();
-    return to ? to.id : id;
-  }
-
-  const barLabel = (ev: DerivedEvent) => (ev.bar + firstBar === 0 ? 'pickup bar' : `bar ${ev.bar + firstBar}`);
-
-  function select(picked: string | null, byKeyboard = false) {
-    const id = picked === null ? null : landing(picked, mode);
-    setSelection(id);
-    if (byKeyboard || id === null) setFieldFocus(null);
-    else focusField(id);
-    scrollToSelection.current = byKeyboard && id !== null;
-    if (id === null) { setAnnouncement('Selection cleared'); return; }
-    const ev = derived.byId[id];
-    setAnnouncement(`Selected: ${ev.rest ? 'rest' : ev.spelled.name}, ${barLabel(ev)}`);
-  }
-
-  useEffect(() => {
-    if (!scrollToSelection.current || selectedId === null) return;
-    scrollToSelection.current = false;
-    const paper = paperRef.current;
-    const el = paper?.querySelector(`[data-hit="${selectedId}"]`);
-    el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-    // A bar edit can move the panel to another system; the clicked button is gone, so the sheet takes the keys again.
-    if (paper && !paper.contains(document.activeElement)) paper.focus({ preventScroll: true });
-  }, [selectedId]);
-
-  // Edits from the Edit notes panel and keys (design 4.3). The edited event is announced once the document has changed.
-  const announceEdit = useRef<string | null>(null);
-  useEffect(() => {
-    const id = announceEdit.current;
-    announceEdit.current = null;
-    const ev = id === null ? undefined : derived.byId[id];
-    if (ev) setAnnouncement(`${ev.rest ? 'rest' : ev.spelled.name}, ${lengthName(ev.d)}, ${barLabel(ev)}`);
-  }, [derived]);
-
-  function applyNoteEdit(next: Doc | null, selectId?: string) {
-    if (selectedId === null || !useApp.getState().applyEdit(next)) return;
-    if (selectId !== undefined) {
-      setSelection(selectId);
-      scrollToSelection.current = true;
-    }
-    announceEdit.current = selectId ?? selectedId;
-  }
-
-  /** The Edit notes keys; true when the key is one of them (handled, or doing nothing because its edit is disabled). */
-  function noteKey(e: KeyboardEvent<HTMLDivElement>): boolean {
-    if (mode !== 'notes' || selectedId === null || e.altKey || e.nativeEvent.isComposing) return false;
-    if (openAlt !== null || document.querySelector(OPEN_LAYERS)) return false;
-    const id = selectedId;
-    const octave = e.ctrlKey || e.metaKey;
-    const key = editKey(e);
-    // French AZERTY needs Shift for digits and the dot; Shift with any other key does nothing.
-    if (e.shiftKey && !/^[0-9.]$/.test(key)) return false;
-    let next: Doc | null;
-    if (key === 'ArrowUp' || key === 'ArrowDown') {
-      next = shiftPitch(doc, id, (key === 'ArrowUp' ? 1 : -1) * (octave ? 12 : 1));
-    } else if (octave) {
-      return false;
-    } else if (key.length === 1 && LETTERS.includes(key)) {
-      next = setLetter(doc, id, LETTERS.indexOf(key), 'nearest');
-    } else if (key >= '2' && key <= '6' && key.length === 1) {
-      next = setLength(doc, id, BASE_LENGTHS[Number(key) - 2]);
-    } else if (key === '.') {
-      next = toggleDotted(doc, id);
-    } else if (key === 'r') {
-      next = toggleRest(doc, id);
-    } else if (key === 't') {
-      next = toggleTie(doc, id);
-    } else if (key === 'Delete' || key === 'Backspace') {
-      next = derived.byId[id].rest ? null : toggleRest(doc, id);
-    } else {
-      return false;
-    }
-    e.preventDefault();
-    applyNoteEdit(next);
-    return true;
-  }
-
-  /** A click on Lyrics or Chords focuses the field of the selected note; arrow keys leave the focus on the switch. */
-  function changeMode(m: Mode, byClick: boolean) {
-    setMode(m);
-    if (selectedId === null) return;
-    const id = landing(selectedId, m);
-    if (id !== selectedId) select(id);
-    if (byClick && (m === 'lyrics' || m === 'chords')) focusField(id);
-    else setFieldFocus(null);
-  }
-
-  // Keyboard order: every event in score order. Edit notes and Chords mode include tied continuations
-  // (they can be edited); View skips them; Lyrics mode stops only on notes that can carry a syllable.
-  // Positions are indices into derived.events, so a clicked continuation still has neighbours.
-  const stops = useMemo(() => derived.events.flatMap((ev, k) => {
-    const stop = mode === 'notes' || mode === 'chords' ? true : mode === 'lyrics' ? takesSyllable(ev) : !ev.tiedFrom;
-    return stop ? [{ id: ev.id, k }] : [];
-  }), [derived, mode]);
-
-  function onSheetKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.target instanceof Element && e.target.closest(OWN_KEYS)) return;
-    if (noteKey(e)) return;
-    // Tab from the sheet goes into the open Lyric or Chord field (the keyboard path after arrow keys).
-    const field = e.key === 'Tab' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey
-      ? paperRef.current?.querySelector<HTMLInputElement>('[data-panel] input') : null;
-    if (field) { e.preventDefault(); field.focus(); return; }
-    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-    if (stops.length === 0) return;
-    const at = selectedId === null ? -1 : derived.events.indexOf(derived.byId[selectedId]);
-    const after = stops.find(st => st.k > at);
-    const before = [...stops].reverse().find(st => st.k < at);
-    let next: string;
-    switch (e.key) {
-      case 'ArrowRight': next = (after ?? stops[stops.length - 1]).id; break;
-      case 'ArrowLeft': next = (selectedId === null ? stops[stops.length - 1] : before ?? stops[0]).id; break;
-      case 'Home': next = stops[0].id; break;
-      case 'End': next = stops[stops.length - 1].id; break;
-      case 'Escape':
-        if (selectedId === null) return;
-        e.preventDefault();
-        select(null);
-        return;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        togglePlay();
-        return;
-      default:
-        return;
-    }
-    e.preventDefault();
-    if (next !== selectedId) select(next, true);
-  }
-
-  // Playback. The player (and its AudioContext) is created on the first Play.
-  const playerRef = useRef<Player | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [playingId, setPlayingId] = useState<string | null>(null);
-  const [playError, setPlayError] = useState(false);
-  // Playback stops when what it plays changes: pitches, lengths, rests, ties, bars and their repeats, key, instrument,
-  // tempo. Lyrics live on the events too, but typing one must not stop the music.
-  const audible = useMemo(() => doc.score.map(b => `${b.cap}${b.rs ? 's' : ''}${b.re ? 'e' : ''}${b.volta}:`
-    + b.ev.map(e => `${e.m},${e.d}${e.r ? 'r' : ''}${e.tie ? 't' : ''}`).join(';')).join('|'), [doc.score]);
-  useEffect(() => () => playerRef.current?.stop(), [audible, doc.shift, doc.inst, doc.tempo]);
-
-  function togglePlay() {
-    const current = playerRef.current;
-    if (playing && current) {
-      current.stop();
-      setPlaying(false);
-      setPlayingId(null);
-      return;
-    }
-    try {
-      const player = current ?? createPlayer();
-      playerRef.current = player;
-      const from = selectedId === null ? null : firstTickOf(doc, selectedId);
-      const full = buildSchedule(doc);
-      player.play(from === null ? full : sliceSchedule(full, from), doc, id => {
-        setPlayingId(id);
-        setPlaying(player.playing);
-      });
-      setPlayError(false);
-      setPlaying(true);
-    } catch {
-      setPlayError(true);
-      setPlaying(false);
-      setPlayingId(null);
-    }
-  }
-
-  function print() {
-    playerRef.current?.stop();
-    window.print();
-  }
-
-  // Saving and files (design 4.4). fileError is the line under the page bar; the next successful action clears it.
-  const status = useMemo(() => saveStatus({ doc, libraryId, savedSnapshot }), [doc, libraryId, savedSnapshot]);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [libraryChanged, setLibraryChanged] = useState(0);
-  // The menu reads the library each time it opens, and again after a save, open, delete or undo here.
-  const entries = useMemo(() => listEntries(), [libraryId, savedSnapshot, libraryChanged]);
-
-  const save = useCallback(() => {
-    if (useApp.getState().saveSheet()) setFileError(null);
-  }, []);
+  const {
+    libraryId, status, fileError, entries, setLibraryChanged, save, print, download, openFile, openSaved, deleteSaved,
+  } = useFileActions(doc, playerRef);
 
   // Undo and redo leave the selection alone unless its event is gone from the document they bring back.
   function travel(step: 'undo' | 'redo') {
@@ -346,154 +97,18 @@ function Sheet({ doc }: { doc: Doc }) {
     // The same word twice in a row would leave the live region unchanged, and a screen reader
     // would stay silent on the second press: a zero-width space makes the repeat a new text.
     const word = step === 'undo' ? 'Undone' : 'Redone';
-    setAnnouncement(prev => (prev === word ? `${word}\u200B` : word));
+    setAnnouncement(prev => (prev === word ? `${word}​` : word));
     const now = useApp.getState().doc;
     if (selection !== null && (!now || locate(now, selection) === null)) setSelection(null);
   }
 
   useSheetShortcuts({ onSave: save, onUndo: () => travel('undo'), onRedo: () => travel('redo') });
 
-  function download() {
-    downloadText(fileName(doc.title), serializeFile(doc));
-    setFileError(null);
-  }
-
-  async function openFile(file: File) {
-    const r = await readSheet(file);
-    if (!r.ok) { setFileError(importMessage(file.name, r.reason)); return; }
-    const opened = useApp.getState().openImported(r.doc, file.name);
-    setFileError(opened.saved ? null : opened.message);
-  }
-
-  function openSaved(id: string) {
-    if (useApp.getState().openEntry(id)) { setFileError(null); return; }
-    setFileError(MISSING);
-    setLibraryChanged(n => n + 1);
-  }
-
-  function deleteSaved(id: string) {
-    deleteWithUndo(id, {
-      onChanged: () => setLibraryChanged(n => n + 1),
-      onDeleted: () => setFileError(null),
-      onFailed: setFileError,
-    });
-  }
-
-  // Alternate fingerings: one popover at a time, anchored to its pill.
-  const [openAlt, setOpenAlt] = useState<string | null>(null);
-  const anchorRef = useRef<HTMLButtonElement | null>(null);
-  const closeAlt = useCallback((focusAnchor: boolean) => {
-    if (focusAnchor) anchorRef.current?.focus();
-    setOpenAlt(null);
-  }, []);
-  useEffect(() => setOpenAlt(null), [doc.shift, doc.inst]);
-
-  const renderUnderChart = (ev: DerivedEvent, x: number, y: number, _system: number, lastSystem: boolean) => {
-    if (ev.options.length < 2) return null;
-    const open = openAlt === ev.id;
-    const width = popoverWidth(ev.options.length);
-    const tone = open ? s.pillOpen : ev.overridden ? s.pillChanged : '';
-    return (
-      <>
-        <button type="button" className={`${s.pill} ${tone}`} data-print-hide="" style={{ left: x - 13, top: y }}
-          aria-haspopup="dialog" aria-expanded={open} aria-label={`⇅ ${ev.options.length} alternate fingerings for ${ev.spelled.name}`}
-          onClick={e => {
-            if (open) { closeAlt(false); return; }
-            anchorRef.current = e.currentTarget;
-            setOpenAlt(ev.id);
-          }}>
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" />
-          </svg>
-          {ev.options.length}
-        </button>
-        {open && (
-          <AltFingeringPopover ev={ev} bar={ev.bar + firstBar} kind={i.kind} chartStyle={doc.chartStyle}
-            left={Math.round(Math.max(0, Math.min(SHEET.systemWidth - width, x - width / 2)))}
-            top={lastSystem ? SHEET.chartY - 148 : SHEET.chartY + 112}
-            anchor={anchorRef.current}
-            onPick={k => { setFingering(ev.id, k === ev.auto ? null : k); closeAlt(true); }}
-            onClose={closeAlt} />
-        )}
-      </>
-    );
-  };
-
-  // Where each event sits: its system and its x in system coordinates, for the editing panel.
-  const place = useMemo(() => {
-    const m = new Map<string, { system: number; x: number }>();
-    for (const system of layout.systems) for (const bar of system.bars) for (const e of bar.events) m.set(e.id, { system: system.index, x: e.x });
-    return m;
-  }, [layout]);
-
-  /** Enter or Tab in a panel's field: the selection moves and the field keeps the focus. */
-  function moveField(id: string) {
-    select(id, true);
-    focusField(id);
-  }
-
-  const focusSheet = useCallback(() => paperRef.current?.focus({ preventScroll: true }), []);
-
-  /** Esc in a panel's field clears the selection; the sheet takes the keys again. */
-  function closePanel() {
-    select(null);
-    paperRef.current?.focus({ preventScroll: true });
-  }
-
   const applyTextEdit = (next: Doc | null, coalesceKey?: string) => { useApp.getState().applyEdit(next, coalesceKey); };
 
-  // Panel buttons never take the focus from a click: it stays on the sheet (Edit notes keys keep working) or in the
-  // Lyric/Chord field. A button reached by Tab keeps it; Esc there clears the selection like on the sheet.
-  function keepFocusOffButtons(e: MouseEvent<HTMLDivElement>) {
-    if (e.target instanceof Element && e.target.closest('button')) e.preventDefault();
-  }
-
-  function onPanelKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key !== 'Escape' || e.defaultPrevented || !(e.target instanceof Element && e.target.closest('button'))) return;
-    e.preventDefault();
-    closePanel();
-  }
-
-  // A focused panel button that became disabled or disappeared hands the focus to the sheet. Focus that moves
-  // anywhere else (a click outside, Tab) ends the watch.
-  const panelFocus = useRef(false);
-  const gone = (el: EventTarget) => el instanceof HTMLButtonElement && (el.disabled || !el.isConnected);
-  useEffect(() => {
-    if (!panelFocus.current) return;
-    const a = document.activeElement;
-    const lost = a === null || a === document.body || !a.isConnected || (a instanceof HTMLButtonElement && a.disabled);
-    if (!lost) return;
-    panelFocus.current = false;
-    paperRef.current?.focus({ preventScroll: true });
+  const { renderUnderSystem, focusSheet } = useEditPanelSlot({
+    doc, derived, layout, mode, selectedId, fieldFocus, paperRef, select, focusField, applyNoteEdit, applyTextEdit,
   });
-
-  // The editing panel of the current mode, directly under the system that holds the selected event.
-  // Esc closes a panel by clearing the selection.
-  const renderUnderSystem = (systemIndex: number) => {
-    const at = selectedId === null ? undefined : place.get(selectedId);
-    if (mode === 'view' || selectedId === null || !at || at.system !== systemIndex) return null;
-    const left = Math.round(Math.max(0, Math.min(SHEET.systemWidth - PANEL_WIDTH, at.x - PANEL_WIDTH / 2)));
-    return (
-      <div role="group" aria-label={PANEL[mode]} data-panel="" className={s.panel} style={{ left }}
-        onMouseDown={keepFocusOffButtons} onKeyDown={onPanelKey} onFocus={() => { panelFocus.current = true; }}
-        onBlur={e => { if (!gone(e.target)) panelFocus.current = false; }}>
-        {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
-        {mode === 'chords' && (
-          <ChordPanel doc={doc} derived={derived} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null}
-            onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} onExit={focusSheet} />
-        )}
-        {mode === 'lyrics' && (
-          <LyricPanel doc={doc} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} onExit={focusSheet} />
-        )}
-      </div>
-    );
-  };
-
-  function onToolbarKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key !== 'Escape' || e.defaultPrevented || selectedId === null) return;
-    e.preventDefault();
-    select(null);
-  }
 
   const sounding = doc.score.flatMap(b => b.ev).filter(e => !e.r).map(e => e.m);
   const origSig = keySignature(doc.originalTonicPc, doc.originalMode);
@@ -599,7 +214,9 @@ function Sheet({ doc }: { doc: Doc }) {
           </Card>
 
           <Card heading={<h2 id="text-h" className={s.cardTitle}>Lyrics &amp; chords</h2>} labelledBy="text-h">
-            <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
+            <Suspense fallback={null}>
+              <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
+            </Suspense>
           </Card>
 
           <Card heading={<h2 id="show-h" className={s.cardTitle}>Show on sheet</h2>} labelledBy="show-h">
@@ -612,7 +229,7 @@ function Sheet({ doc }: { doc: Doc }) {
             <Banners doc={doc} derived={derived} onShift={setShift} />
           </div>
           <div className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
-            <ModeSwitch mode={mode} onMode={changeMode} />
+            <ModeSwitch mode={mode} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
             <div className={s.toolbarEnd}>
               {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
               <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')} />
