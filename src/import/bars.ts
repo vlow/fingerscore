@@ -1,7 +1,7 @@
 import { barCap, newId } from '../domain/time';
 import type { Bar, Ev, TimeSig } from '../domain/types';
 import { withEdges, type QNote } from './quantise';
-import { findWindows, plainPieces, windowPieces, type Piece } from './tripletWindows';
+import { findWindows } from './tripletWindows';
 import type { ParsedSong } from './types';
 
 const DEFAULT_REST_PITCH = 60;
@@ -60,10 +60,17 @@ function hopeless(notes: QNote[], barStart: number, barEnd: number): number | nu
   return null;
 }
 
+/** The last note before index `i` that still sounds, or undefined. */
+function lastSounding(melody: QNote[], i: number): QNote | undefined {
+  for (let k = i - 1; k >= 0; k--) if (melody[k].dur > 0) return melody[k];
+  return undefined;
+}
+
 /**
  * Bars of the meter after a pickup of `pickupTicks`. Each bar is cut by `findWindows`: triplet windows become groups,
  * the rest is split into plain lengths. A start or end off the sixteenth grid that no cut explains is rounded to it
- * (`rounded` true) and the bar is cut again. A note is split and tied at window edges and bar lines.
+ * (`rounded` true) and the bar is cut again. The bar's events are the pieces of the chosen cut. A note is split and
+ * tied at window edges and bar lines.
  */
 export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: ParsedSong['marks']): { bars: Bar[]; rounded: boolean } {
   if (notes.length === 0) return { bars: [], rounded: false };
@@ -95,34 +102,29 @@ export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: 
       roundPosition(touched, melody[stop], tick);
       rounded = true;
     }
-    let notesHere = sounding();
-    let cut = findWindows(notesHere, barStart, cap, full);
+    // A window is also judged by the edges of the notes that end on this bar's first or start on its last bar line.
+    const before = lastSounding(melody, first);
+    const after = stop < melody.length ? melody[stop] : undefined;
+    const judged = () => [
+      ...(before && before.start + before.dur === barStart ? [before] : []),
+      ...sounding(),
+      ...(after && after.start === barEnd ? [after] : []),
+    ];
+    let cut = findWindows(judged(), barStart, cap, full);
     while ('unexplained' in cut) {
       roundPosition(touched, melody[stop], cut.unexplained);
       rounded = true;
-      notesHere = sounding();
-      cut = findWindows(notesHere, barStart, cap, full);
+      cut = findWindows(judged(), barStart, cap, full);
     }
     if (stop === melody.length) end = lastEnd();
-    // a start rounded up to the bar line belongs to the next bar
-    notesHere = notesHere.filter(n => n.start < barEnd);
 
     const ev: Ev[] = [];
-    const emit = (ps: Piece[] | null) => {
-      for (const p of ps!) {   // findWindows checked that every stretch splits
-        const e: Ev = { id: newId(), m: p.note ? p.note.midi : lastPitch, d: p.len, r: !p.note, tie: false, l: '' };
-        if (p.note) lastPitch = p.note.midi;
-        ev.push(e);
-        placed.push({ ev: e, note: p.note });
-      }
-    };
-    let t = barStart;
-    for (const w of cut.windows) {
-      if (w.start > t) emit(plainPieces(notesHere, t, w.start));
-      emit(windowPieces(notesHere, w.start, w.span));
-      t = w.start + w.span;
+    for (const p of cut.pieces) {
+      const e: Ev = { id: newId(), m: p.note ? p.note.midi : lastPitch, d: p.len, r: !p.note, tie: false, l: '' };
+      if (p.note) lastPitch = p.note.midi;
+      ev.push(e);
+      placed.push({ ev: e, note: p.note });
     }
-    if (t < barEnd) emit(plainPieces(notesHere, t, barEnd));
     bars.push({ cap, rs: false, re: false, volta: '', ev });
     barStart = barEnd;
   }

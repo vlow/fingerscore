@@ -373,6 +373,35 @@ describe('triplet recognition', () => {
     expect(noTriplet(doc.score[0])).toBe(true);
     expect(doc.source.simplified).toBe(true);
   });
+  it('a rounded edge strictly outside a window does not matter, however long the silence before it', () => {
+    // the first note ends at 30.3 ticks, rounded to 30; after a rest an exact triplet sixteenth [46, 48) fills window [42, 48)
+    const doc = build([n(2, 30.3 / 12 - 2, 60), n(46 / 12, 2 / 12, 62), n(4, 4, 64)]);
+    expect(shape(doc.score[0])).toEqual(['r24', 6, 'r12', 'r4', 2]);
+    expect(groups(doc.score[0])).toEqual([{ start: 42, span: 6 }]);
+  });
+  it('a rounded onset on the window boundary vetoes the window', () => {
+    // exact [30, 32), triplet rest 32..36, then an onset at 36.4 ticks rounded to 36: no window [30, 36) or [24, 36)
+    const doc = build([n(30 / 12, 2 / 12, 60), n(36.4 / 12, 4 - 36.4 / 12, 62)]);
+    expect(noTriplet(doc.score[0])).toBe(true);
+    expect(doc.source.simplified).toBe(true);
+  });
+  it('a note crossing the bar line by an odd tick: rounded to the bar line, nothing throws', () => {
+    // 3/4: [29, 37) and [55, 57). Bar 1 rounds 37 to the bar line 36; that rounded end lies outside the window
+    // [51, 57) that holds the second note, so the window stands.
+    const doc = build([n(29 / 12, 8 / 12, 60), n(55 / 12, 2 / 12, 62)], { timeSig: [3, 4] });
+    expect(doc.score.map(shape)).toEqual([['r24', 'r3', 'r2', '4t', 3], ['r12', 'r3', 'r4', 2, 'r12', 'r3']]);
+  });
+  it('a note end rounded to the bar line vetoes a window that starts there, not one a beat later', () => {
+    // [45, 49) ends at 49, rounded to the bar line 48; then a triplet rest and two triplet eighths
+    const figure = (at: number) => [n(at + 1 / 3, 1 / 3, 62), n(at + 2 / 3, 1 / 3, 64)];
+    const atLine = build([n(45 / 12, 4 / 12, 60), ...figure(4), n(5, 3, 70)]);
+    expect(noTriplet(atLine.score[1])).toBe(true);
+    const later = build([n(45 / 12, 4 / 12, 60), ...figure(5), n(6, 2, 70)]);
+    expect(shape(later.score[1])).toEqual(['r12', 'r4', 4, 4, 24]);
+    // the same when quantising already rounded the end (at 49.4 ticks) to the bar line
+    const quantised = build([n(45 / 12, 4.4 / 12, 60), ...figure(4), n(5, 3, 70)]);
+    expect(noTriplet(quantised.score[1])).toBe(true);
+  });
   it('triplet rests next to exact neighbours', () => {
     expect(shape(build([n(0.5, 1 / 3), n(5 / 6, 1 / 3), n(7 / 6, 1 / 3), n(1.5, 0.5), n(2, 2)]).score[0])).toEqual(['r6', 4, 4, 4, 6, 24]);
     expect(shape(build([n(0, 1), n(4 / 3, 1 / 3), n(5 / 3, 1 / 3), n(2, 2)]).score[0])).toEqual([12, 'r4', 4, 4, 24]);
