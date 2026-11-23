@@ -1,11 +1,9 @@
 import JSZip from 'jszip';
 import { ImportError, type ParsedSong } from './types';
-import type { ScoreReader } from './mscz/common';
+import { readV2 } from './mscz/v2';
 import { readV3 } from './mscz/v3';
 
 const MAX_UNPACKED = 50 * 1024 * 1024;
-/** Version 2 files (Task 6 adds the reader); until then they get the same refusal as version 1. */
-const readV2: ScoreReader | null = null;
 
 const unreadable = (file: string) => new ImportError(`"${file}" could not be read as a MuseScore file.`);
 const tooOld = (file: string) => new ImportError(
@@ -36,7 +34,5 @@ export async function parseMuseScore(file: string, bytes: Uint8Array): Promise<P
   if (version < 2) throw tooOld(file);
   const score = Array.from(root.children).find(c => c.localName === 'Score');
   if (!score) throw unreadable(file);
-  const reader = version < 3 ? readV2 : readV3;
-  if (!reader) throw tooOld(file);
-  return reader(file, score, version);
+  return (version < 3 ? readV2 : readV3)(file, score, version);
 }

@@ -470,3 +470,221 @@ describe('edge cases', () => {
     }
   });
 });
+
+// ---- version 2: no <voice> wrapper; voices by <track>, positions by <tick> ----
+
+describe('version 2', () => {
+  const chord2 = (type: string, pitches: number[], extra = '', track?: number) =>
+    `<Chord>${track === undefined ? '' : `<track>${track}</track>`}${extra}<durationType>${type}</durationType>` +
+    `${pitches.map(p => `<Note>${track === undefined ? '' : `<track>${track}</track>`}<pitch>${p}</pitch></Note>`).join('')}</Chord>`;
+  const rest2 = (type: string, track?: number) =>
+    `<Rest>${track === undefined ? '' : `<track>${track}</track>`}<durationType>${type}</durationType></Rest>`;
+  const tick = (n: number) => `<tick>${n}</tick>`;
+  const m2 = (content: string, attrs = '') => `<Measure${attrs}>${content}</Measure>`;
+  const score2 = (staves: string, opts: PartOpts = {}, style = '', division = '<Division>480</Division>') =>
+    mscx('2.06', division + style + part(opts) + staves);
+  const one = (...bars: string[]) => score2(staff(1, ...bars));
+  const harmony2 = (root: number, extra = '') => `<Harmony><root>${root}</root>${extra}</Harmony>`;
+  const volta2 = (id: number, endings: string) => `<Volta id="${id}"><endings>${endings}</endings></Volta>`;
+  const endSpanner = (id: number) => `<endSpanner id="${id}"/>`;
+
+  it('reads notes, rests, dots, chords, meter and tempo', async () => {
+    const song = await parse(one(m2(TS() + '<Tempo><tempo>1.33333</tempo></Tempo>' + chord2('quarter', [72], '<dots>1</dots>') + rest2('eighth') +
+      chord2('quarter', [60, 64]) + chord2('quarter', [67]))));
+    expect(song.tracks[0].notes).toEqual([
+      { start: 0, dur: 1.5, midi: 72 }, { start: 2, dur: 1, midi: 60 }, { start: 2, dur: 1, midi: 64 }, { start: 3, dur: 1, midi: 67 }]);
+    expect(song).toMatchObject({ timeSig: [4, 4], tempo: 80, pickup: 0, marks: [] });
+  });
+
+  it('a short first measure is the pickup; a measure rest lasts the measure', async () => {
+    const song = await parse(one(m2(TS() + chord2('quarter', [60]), ' len="1/4"'), m2(rest2('measure')), m2(chord2('whole', [62]))));
+    expect(song.pickup).toBe(1);
+    expect(song.tracks[0].notes).toEqual([{ start: 0, dur: 1, midi: 60 }, { start: 5, dur: 4, midi: 62 }]);
+  });
+
+  it('a measure length of zero or below falls back to the meter', async () => {
+    const song = await parse(one(m2(TS() + chord2('whole', [60]), ' len="0/4"'), m2(chord2('whole', [62]))));
+    expect(song.pickup).toBe(0);
+    expect(song.tracks[0].notes.map(n => n.start)).toEqual([0, 4]);
+  });
+
+  it('merges tied notes: a Tie child starts a tie, across a bar line too', async () => {
+    const tied = (pitch: number, start: boolean) =>
+      `<Chord><durationType>quarter</durationType><Note>${start ? '<Tie id="1"/>' : '<endSpanner id="1"/>'}<pitch>${pitch}</pitch></Note></Chord>`;
+    const song = await parse(one(m2(TS() + chord2('half', [72]) + chord2('quarter', [60]) + tied(62, true)), m2(tied(62, false) + chord2('half', [64]) + chord2('quarter', [62]))));
+    expect(song.tracks[0].notes).toEqual([
+      { start: 0, dur: 2, midi: 72 }, { start: 2, dur: 1, midi: 60 }, { start: 3, dur: 2, midi: 62 }, { start: 5, dur: 2, midi: 64 }, { start: 7, dur: 1, midi: 62 }]);
+  });
+
+  it('marks percussion by the drumset or by the staff type', async () => {
+    const xml = mscx('2.06', part({ name: 'Drums', drums: true }) + part({ name: 'Kit', staves: [2], staffType: 'percussion' }) + part({ name: 'Flute', staves: [3] }) +
+      staff(1, m2(TS() + chord2('whole', [36]))) + staff(2, m2(TS() + chord2('whole', [38]))) + staff(3, m2(TS() + chord2('whole', [72]))));
+    const song = await parse(xml);
+    expect(song.tracks.map(t => [t.name, t.percussion, t.channel])).toEqual([['Drums', true, 10], ['Kit', true, 10], ['Flute', false, null]]);
+  });
+
+  it('a part with two staves names the staves', async () => {
+    const xml = mscx('2.06', part({ name: 'Piano', staves: [1, 2] }) + staff(1, m2(TS() + chord2('whole', [72]))) + staff(2, m2(TS() + chord2('whole', [48]))));
+    expect((await parse(xml)).tracks.map(t => [t.id, t.name])).toEqual([['1:1', 'Piano · staff 1'], ['2:1', 'Piano · staff 2']]);
+  });
+
+  describe('key', () => {
+    const keyed = (sig: string, opts: PartOpts, style = '') => score2(staff(1, m2(sig + TS() + chord2('whole', [72])) + m2(chord2('whole', [72]))), opts, style);
+    it('the written signature is shifted by the transposition', async () => {
+      expect((await parse(keyed('<KeySig><accidental>4</accidental></KeySig>', { transpose: -2 }))).key).toEqual({ tonicPc: 2, mode: null });
+    });
+    it('concert pitch style leaves the signature as it is', async () => {
+      expect((await parse(keyed('<KeySig><accidental>2</accidental></KeySig>', { transpose: -2 }, '<Style><concertPitch>1</concertPitch></Style>'))).key)
+        .toEqual({ tonicPc: 2, mode: null });
+    });
+    it('no signature on a transposing part is written C', async () => {
+      expect((await parse(keyed('', { transpose: -9 }))).key).toEqual({ tonicPc: 3, mode: null });
+    });
+  });
+
+  describe('voices', () => {
+    it('a second voice written as a tick rewind and track 1 gives two tracks', async () => {
+      const song = await parse(one(
+        m2(TS() + chord2('whole', [72]) + tick(0) + chord2('quarter', [60], '', 1) + chord2('quarter', [62], '', 1) + rest2('half', 1)),
+        m2(chord2('whole', [74]) + tick(1920) + chord2('half', [64], '', 1))));
+      expect(song.tracks.map(t => [t.id, t.name])).toEqual([['1:1', 'Flute · voice 1'], ['1:2', 'Flute · voice 2']]);
+      expect(song.tracks[0].notes).toEqual([{ start: 0, dur: 4, midi: 72 }, { start: 4, dur: 4, midi: 74 }]);
+      expect(song.tracks[1].notes).toEqual([{ start: 0, dur: 1, midi: 60 }, { start: 1, dur: 1, midi: 62 }, { start: 4, dur: 2, midi: 64 }]);
+    });
+
+    it('track numbers count four per staff: track 5 is voice 2 of staff 2', async () => {
+      const xml = mscx('2.06', part({ name: 'Piano', staves: [1, 2] }) +
+        staff(1, m2(TS() + chord2('whole', [72], '', 0))) +
+        staff(2, m2(TS() + chord2('whole', [48], '', 4) + tick(0) + chord2('whole', [50], '', 5))));
+      expect((await parse(xml)).tracks.map(t => [t.name, t.notes[0].midi])).toEqual([
+        ['Piano · staff 1', 72], ['Piano · staff 2 · voice 1', 48], ['Piano · staff 2 · voice 2', 50]]);
+    });
+
+    it('a voice that ends early does not shift the next measure', async () => {
+      const song = await parse(one(
+        m2(TS() + chord2('whole', [72]) + tick(0) + chord2('quarter', [60], '', 1)),
+        m2(chord2('whole', [74]) + chord2('quarter', [62], '', 1))));
+      expect(song.tracks[1].notes).toEqual([{ start: 0, dur: 1, midi: 60 }, { start: 4, dur: 1, midi: 62 }]);
+    });
+
+    it('a tick is an absolute position: Division other than 480 scales it', async () => {
+      const xml = score2(staff(1, m2(TS() + chord2('whole', [72])), m2(chord2('whole', [74]) + tick(11520) + chord2('quarter', [62], '', 1))), {}, '', '<Division>1920</Division>');
+      expect((await parse(xml)).tracks[1].notes).toEqual([{ start: 6, dur: 1, midi: 62 }]);
+    });
+
+    it('a missing Division means 480', async () => {
+      const xml = score2(staff(1, m2(TS() + chord2('whole', [72]) + tick(960) + chord2('quarter', [62], '', 1))), {}, '', '');
+      expect((await parse(xml)).tracks[1].notes).toEqual([{ start: 2, dur: 1, midi: 62 }]);
+    });
+  });
+
+  describe('tuplets and grace notes', () => {
+    const decl = '<Tuplet id="1"><normalNotes>2</normalNotes><actualNotes>3</actualNotes><baseNote>eighth</baseNote></Tuplet>';
+    const member = (pitch: number) => `<Chord><Tuplet>1</Tuplet><durationType>eighth</durationType><Note><pitch>${pitch}</pitch></Note></Chord>`;
+
+    it('a triplet by id takes a quarter', async () => {
+      const song = await parse(one(m2(TS() + decl + member(60) + member(62) + member(64) + chord2('half', [65], '<dots>1</dots>'))));
+      const n = song.tracks[0].notes;
+      expect(n).toHaveLength(4);
+      [0, 1 / 3, 2 / 3].forEach((s, i) => { expect(n[i].start).toBeCloseTo(s); expect(n[i].dur).toBeCloseTo(1 / 3); });
+      expect(n[3].start).toBeCloseTo(1);
+    });
+
+    it('a rest inside a tuplet uses the ratio too', async () => {
+      const r = '<Rest><Tuplet>1</Tuplet><durationType>eighth</durationType></Rest>';
+      const song = await parse(one(m2(TS() + decl + r + member(62) + member(64) + chord2('half', [65]))));
+      expect(song.tracks[0].notes[0].start).toBeCloseTo(1 / 3);
+    });
+
+    it('a tuplet inside a tuplet multiplies the ratios', async () => {
+      const inner = '<Tuplet id="2"><Tuplet>1</Tuplet><normalNotes>2</normalNotes><actualNotes>3</actualNotes><baseNote>eighth</baseNote></Tuplet>';
+      const nested = (pitch: number) => `<Chord><Tuplet>2</Tuplet><durationType>eighth</durationType><Note><pitch>${pitch}</pitch></Note></Chord>`;
+      const song = await parse(one(m2(TS() + decl + inner + nested(60) + nested(62))));
+      expect(song.tracks[0].notes[1].start).toBeCloseTo(0.5 * 4 / 9);
+    });
+
+    it('skips acciaccatura, appoggiatura and grace children', async () => {
+      const song = await parse(one(m2(TS() + chord2('eighth', [83], '<acciaccatura/>') + chord2('eighth', [84], '<appoggiatura/>') + chord2('16th', [85], '<grace16/>') + chord2('whole', [60]))));
+      expect(song.tracks[0].notes).toEqual([{ start: 0, dur: 4, midi: 60 }]);
+    });
+  });
+
+  it('reads lyrics of verse 1 with hyphens', async () => {
+    const song = await parse(one(m2(TS() + chord2('quarter', [60], lyric('won', 'begin')) + rest2('quarter') +
+      chord2('half', [62], lyric('der', 'end') + lyric('wan', '', '<no>1</no>')))));
+    expect(song.tracks[0].lyrics).toEqual([{ at: 0, text: 'won-' }, { at: 2, text: 'der' }]);
+  });
+
+  describe('chord symbols', () => {
+    it('reads Gm and C/D from root, name and base directly inside Harmony', async () => {
+      const song = await parse(one(m2(TS() + harmony2(15, '<name>m</name>') + chord2('half', [60]) + harmony2(14, '<extension>1</extension><base>16</base>') + chord2('half', [62]))));
+      expect(song.tracks[0].chords).toEqual([{ at: 0, text: 'Gm' }, { at: 2, text: 'C/D' }]);
+    });
+
+    it('a Harmony after a tick sits at that tick; one without root is skipped', async () => {
+      const song = await parse(one(m2(TS() + chord2('whole', [60]) + tick(960) + harmony2(15) + '<Harmony><name>x</name></Harmony>')));
+      expect(song.tracks[0].chords).toEqual([{ at: 2, text: 'G' }]);
+    });
+
+    it('every pitched track carries the score-wide symbols once; percussion gets none', async () => {
+      const xml = mscx('2.06', part({ name: 'Flute' }) + part({ name: 'Drums', staves: [2], drums: true }) +
+        staff(1, m2(TS() + harmony2(14) + chord2('half', [72]) + harmony2(15) + chord2('half', [74]) + tick(0) + harmony2(14) + chord2('whole', [60], '', 1))) +
+        staff(2, m2(TS() + chord2('whole', [36]))));
+      const song = await parse(xml);
+      expect(song.tracks.map(t => t.name)).toEqual(['Flute · voice 1', 'Flute · voice 2', 'Drums']);
+      for (const t of song.tracks.slice(0, 2)) expect(t.chords).toEqual([{ at: 0, text: 'C' }, { at: 2, text: 'G' }]);
+      expect(song.tracks[2].chords).toEqual([]);
+    });
+  });
+
+  describe('repeats and endings', () => {
+    it('reads repeats and endings by Volta id and endSpanner id', async () => {
+      const song = await parse(one(
+        m2('<startRepeat/>' + TS() + chord2('whole', [60])),
+        m2(chord2('whole', [60])),
+        m2('<endRepeat>2</endRepeat>' + volta2(1, '1') + chord2('whole', [60])),
+        m2(endSpanner(1) + volta2(2, '2') + chord2('whole', [60])),
+        m2(endSpanner(2) + chord2('whole', [60]))));
+      expect(song.marks).toEqual([{ bar: 0, rs: true }, { bar: 2, re: true, volta: '1' }, { bar: 3, volta: '2' }]);
+    });
+
+    it('a longer ending covers every measure up to the one that holds its end', async () => {
+      const song = await parse(one(m2(TS() + volta2(2, '2') + chord2('whole', [60])), m2(chord2('whole', [60])), m2(endSpanner(2) + chord2('whole', [60]))));
+      expect(song.marks).toEqual([{ bar: 0, volta: '2' }, { bar: 1, volta: '2' }]);
+    });
+
+    it('an ending whose end is never found covers its own measure only', async () => {
+      const song = await parse(one(m2(TS() + chord2('whole', [60])), m2(volta2(7, '1') + chord2('whole', [60])), m2(chord2('whole', [60]))));
+      expect(song.marks).toEqual([{ bar: 1, volta: '1' }]);
+    });
+
+    it('ignores other endings and lists; ids do not mix up', async () => {
+      const song = await parse(one(m2(TS() + volta2(1, '3') + chord2('whole', [60])), m2(volta2(2, '1, 2') + endSpanner(1) + chord2('whole', [60]))));
+      expect(song.marks).toEqual([]);
+    });
+  });
+
+  it('gives the same tracks, marks, key, pickup and timeSig as the version 3 form of one tune', async () => {
+    const v2 = mscx('2.06', '<Division>480</Division>' + part({ transpose: -2 }) + staff(1,
+      m2('<startRepeat/>' + '<KeySig><accidental>4</accidental></KeySig>' + TS(3, 4) + harmony2(15, '<name>m</name>') + chord2('quarter', [62], lyric('a', 'begin')) + chord2('eighth', [64]) + chord2('eighth', [65]) +
+        tick(0) + chord2('half', [50], '', 1) + chord2('quarter', [52], '', 1), ' len="3/4"'),
+      m2('<endRepeat>2</endRepeat>' + volta2(1, '1') + chord2('half', [67], lyric('b', 'end'), 0) + chord2('quarter', [69]), ''),
+      m2(endSpanner(1) + volta2(2, '2') + chord2('half', [67], '<dots>1</dots>'))));
+    const v3 = mscx('3.02', part({ transpose: -2 }) + staff(1,
+      `<Measure len="3/4"><startRepeat/><voice><KeySig><accidental>4</accidental></KeySig>${TS(3, 4)}${harmony3(15, '<name>m</name>')}${chord('quarter', [62], lyric('a', 'begin'))}${chord('eighth', [64])}${chord('eighth', [65])}</voice>` +
+        `<voice>${chord('half', [50])}${chord('quarter', [52])}</voice></Measure>`,
+      `<Measure><endRepeat>2</endRepeat><voice>${volta('1', 1)}${chord('half', [67], lyric('b', 'end'))}${chord('quarter', [69])}</voice></Measure>`,
+      `<Measure><voice>${voltaEnd}${volta('2', 1)}${chord('half', [67], '<dots>1</dots>')}</voice></Measure>`));
+    const a = await parse(v2), b = await parse(v3);
+    expect(a.tracks).toEqual(b.tracks);
+    expect(a.marks).toEqual(b.marks);
+    expect([a.key, a.pickup, a.timeSig, a.tempo]).toEqual([b.key, b.pickup, b.timeSig, b.tempo]);
+    expect(a.marks).toEqual([{ bar: 0, rs: true }, { bar: 1, re: true, volta: '1' }, { bar: 2, volta: '2' }]);
+  });
+
+  it('a chord without durationType is reported as unreadable through parseFile', async () => {
+    const xml = one(m2(TS() + '<Chord><Note><pitch>60</pitch></Note></Chord>'));
+    const e = await rejection(parseFile(new File([bytes(xml)], 'x.mscx')));
+    expect((e as ImportError).userMessage).toBe('"x.mscx" could not be read as a MuseScore file.');
+  });
+});
