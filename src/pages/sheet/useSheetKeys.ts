@@ -1,6 +1,6 @@
 import type { KeyboardEvent, RefObject } from 'react';
 import type { Derived } from '../../domain/derive';
-import { BASE_LENGTHS, setLength, setLetter, shiftPitch, toggleDotted, toggleRest, toggleTie } from '../../domain/edit';
+import { lengthChoices, setLength, setLetter, shiftPitch, toggleDotted, toggleRest, toggleTie, toggleTriplet } from '../../domain/edit';
 import type { Doc } from '../../domain/types';
 import type { Mode } from '../../ui/ModeSwitch';
 
@@ -53,6 +53,7 @@ export function useSheetKeys(p: SheetKeys) {
     // French AZERTY needs Shift for digits and the dot; Shift with any other key does nothing.
     if (e.shiftKey && !/^[0-9.]$/.test(key)) return false;
     let next: Doc | null;
+    let selectId: string | undefined;
     if (key === 'ArrowUp' || key === 'ArrowDown') {
       next = shiftPitch(doc, id, (key === 'ArrowUp' ? 1 : -1) * (octave ? 12 : 1));
     } else if (octave) {
@@ -60,9 +61,15 @@ export function useSheetKeys(p: SheetKeys) {
     } else if (key.length === 1 && LETTERS.includes(key)) {
       next = setLetter(doc, id, LETTERS.indexOf(key), 'nearest');
     } else if (key >= '2' && key <= '6' && key.length === 1) {
-      next = setLength(doc, id, BASE_LENGTHS[Number(key) - 2]);
+      // The buttons' own rule: inside a group the digit means the notated value; a disabled choice does nothing.
+      const choice = lengthChoices(doc, id)[Number(key) - 2];
+      next = choice.enabled ? setLength(doc, id, choice.d) : null;
     } else if (key === '.') {
       next = toggleDotted(doc, id);
+    } else if (key === 'p') {
+      const made = toggleTriplet(doc, id);
+      next = made ? made.doc : null;
+      selectId = made?.selectId;
     } else if (key === 'r') {
       next = toggleRest(doc, id);
     } else if (key === 't') {
@@ -73,7 +80,7 @@ export function useSheetKeys(p: SheetKeys) {
       return false;
     }
     e.preventDefault();
-    applyNoteEdit(next);
+    applyNoteEdit(next, selectId);
     return true;
   }
 

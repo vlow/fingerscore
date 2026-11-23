@@ -7,7 +7,7 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
-import { addBarAfter, locate, shiftPitch, toggleRest } from '../domain/edit';
+import { addBarAfter, locate, setLength, shiftPitch, toggleRest, toggleTriplet } from '../domain/edit';
 import { setChord } from '../domain/editText';
 import { inst } from '../domain/instruments';
 import { mod12, signatureLetters } from '../domain/keys';
@@ -1359,10 +1359,10 @@ describe('Edit notes panel and keys', () => {
     await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(['Octave down', 'Semitone down', 'Semitone up', 'Octave up'].map(keys))
       .toEqual(['Control+ArrowDown Meta+ArrowDown', 'ArrowDown', 'ArrowUp', 'Control+ArrowUp Meta+ArrowUp']);
-    expect(['Sixteenth', 'Eighth', 'Quarter', 'Half', 'Whole', 'Dotted', 'Tie', 'Turn into rest'].map(keys))
-      .toEqual(['2', '3', '4', '5', '6', '.', 'T', 'R']);
+    expect(['Sixteenth', 'Eighth', 'Quarter', 'Half', 'Whole', 'Dotted', 'Triplet', 'Tie', 'Turn into rest'].map(keys))
+      .toEqual(['2', '3', '4', '5', '6', '.', 'P', 'T', 'R']);
     expect(within(panel()).getAllByRole('button').filter(b => b.hasAttribute('title'))).toEqual([]);
-    expect(within(panel()).getByText('Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · R rest · T tie')).toBeInTheDocument();
+    expect(within(panel()).getByText('Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · P triplet · R rest · T tie')).toBeInTheDocument();
   });
 
   it('+ Bar after is disabled at the bar limit', async () => {
@@ -1406,6 +1406,133 @@ describe('Edit notes panel and keys', () => {
     expect(selectedId()).toBe(n.id);
     expect(ev(n.id).m).toBe(n.m + 1);
     expect(panel()).toBeInTheDocument();
+  });
+});
+
+describe('Triplet button and key', () => {
+  const panel = () => screen.getByRole('group', { name: 'Edit notes panel' });
+  const button = (name: string) => within(panel()).getByRole('button', { name });
+  const current = () => useApp.getState().doc!;
+  const sheet = () => screen.getByRole('group', { name: /Sheet music/ });
+  const live = () => sheet().querySelector('[aria-live="polite"]')!;
+  const selectedId = () => document.querySelector('[data-selected="true"]')?.getAttribute('data-ev') ?? null;
+  const events = () => current().score.flatMap(b => b.ev);
+  const withLyric = (doc: Doc, id: string, l: string): Doc => ({
+    ...doc, score: doc.score.map(b => ({ ...b, ev: b.ev.map(e => (e.id === id ? { ...e, l } : e)) })),
+  });
+  /** Two 4/4 bars: quarter, quarter, half. The first quarter (t1) carries the lyric "la"; the second (t2) starts at tick 12. */
+  const start = async (prepare: (d: Doc) => Doc = d => d) => {
+    const doc = prepare(withLyric(mkDoc([{ ev: [[67, 12], [69, 12], [71, 24]] }, { ev: [[67, 12], [69, 12], [71, 24]] }]), 't1', 'la'));
+    useApp.setState({ doc, instId: 'asax', song: null, prefs: DEFAULT_PREFS, past: [], future: [], libraryId: null, savedSnapshot: null });
+    renderSheet();
+    await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
+  };
+  const pick = async (id: string) => {
+    await user.click(document.querySelector(`[data-hit="${id}"]`)!);
+    await screen.findByRole('group', { name: 'Edit notes panel' });
+  };
+  /** The first quarter of the first bar made into an eighth triplet (members t1 and two new ones, each of 4 ticks). */
+  const eighthTriplet = (d: Doc): Doc => toggleTriplet(d, 't1')!.doc;
+
+  it('the Triplet button follows Dotted and names the key P', async () => {
+    await start();
+    await pick('t1');
+    const names = within(panel()).getAllByRole('button').map(b => b.getAttribute('aria-label') ?? b.textContent);
+    expect(names.indexOf('Triplet')).toBe(names.indexOf('Dotted') + 1);
+    expect(button('Triplet')).toHaveAttribute('aria-keyshortcuts', 'P');
+    expect(button('Triplet')).toHaveAttribute('aria-pressed', 'false');
+    expect(within(panel()).getByText('Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · P triplet · R rest · T tie')).toBeInTheDocument();
+  });
+
+  it('the button is disabled for a sixteenth and for a whole note', async () => {
+    await start(d => setLength(d, 't1', 48)!);
+    await pick('t1');
+    expect(button('Whole')).toHaveAttribute('aria-pressed', 'true');
+    expect(button('Triplet')).toBeDisabled();
+    await user.click(button('Sixteenth'));
+    expect(button('Triplet')).toBeDisabled();
+  });
+
+  it('a click on a quarter makes three events and keeps the selection on the first; one undo restores the quarter and its lyric', async () => {
+    await start();
+    const before = current();
+    await pick('t1');
+    await user.click(button('Triplet'));
+    expect(events().length).toBe(before.score.flatMap(b => b.ev).length + 2);
+    expect(events().slice(0, 3).map(e => e.d)).toEqual([4, 4, 4]);
+    expect(selectedId()).toBe('t1');
+    expect(button('Triplet')).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(useApp.getState().doc).toBe(before);
+    expect(events()[0]).toMatchObject({ id: 't1', d: 12, l: 'la' });
+  });
+
+  it('a click on a member gives one event and selects it', async () => {
+    await start(eighthTriplet);
+    const member = events()[1];
+    expect(member.d).toBe(4);
+    await pick(member.id);
+    expect(button('Triplet')).toHaveAttribute('aria-pressed', 'true');
+    await user.click(button('Triplet'));
+    expect(events().filter(e => e.d === 4 || e.d === 2 || e.d === 8)).toEqual([]);
+    expect(selectedId()).toBe('t1');
+    expect(button('Triplet')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('inside an eighth triplet the Length buttons show what fits and Dotted is off', async () => {
+    await start(eighthTriplet);
+    const member = events()[1];
+    await pick(member.id);
+    const state = (name: string) => [button(name).hasAttribute('disabled'), button(name).getAttribute('aria-pressed')];
+    expect(state('Sixteenth')).toEqual([false, 'false']);
+    expect(state('Eighth')).toEqual([false, 'true']);
+    expect(state('Quarter')).toEqual([false, 'false']);
+    expect(state('Half')[0]).toBe(true);
+    expect(state('Whole')[0]).toBe(true);
+    expect(button('Dotted')).toBeDisabled();
+    expect(button('Dotted')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('P makes and undoes a triplet; the announcement names the triplet length', async () => {
+    await start();
+    await pick('t1');
+    await user.keyboard('p');
+    expect(events().slice(0, 3).map(e => e.d)).toEqual([4, 4, 4]);
+    expect(selectedId()).toBe('t1');
+    await waitFor(() => expect(live().textContent).toMatch(/, triplet eighth, /));
+    await user.keyboard('P');
+    expect(events()[0]).toMatchObject({ id: 't1', d: 12, l: 'la' });
+    expect(events().length).toBe(6);
+  });
+
+  it('4 inside an eighth triplet sets the triplet quarter; 5 and . do nothing there', async () => {
+    await start(eighthTriplet);
+    const first = events()[0];
+    await pick(first.id);
+    const before = current();
+    await user.keyboard('5');
+    await user.keyboard('.');
+    expect(useApp.getState().doc).toBe(before);
+    await user.keyboard('4');
+    expect(current()).not.toBe(before);
+    expect(events()[0]).toMatchObject({ id: first.id, d: 8 });
+    await waitFor(() => expect(live().textContent).toMatch(/, triplet quarter, /));
+  });
+
+  it('P in View mode does nothing, and P in the Lyric field types a letter', async () => {
+    await start();
+    await pick('t1');
+    await user.click(screen.getByRole('radio', { name: 'View' }));
+    const before = current();
+    sheet().focus();
+    await user.keyboard('p');
+    expect(useApp.getState().doc).toBe(before);
+    await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
+    const field = await screen.findByRole('textbox', { name: 'Lyric' });
+    await user.clear(field);
+    await user.type(field, 'p');
+    expect(field).toHaveValue('p');
+    expect(events().slice(0, 3).map(e => e.d)).toEqual([12, 12, 24]);
   });
 });
 

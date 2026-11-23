@@ -62,7 +62,7 @@ ABC limits:
 
 A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chords. Click a note or rest to select it. The panel for the mode opens under that system. Esc clears the selection.
 
-- **Edit notes:** change the pitch by semitone or octave. Set the length from sixteenth to whole, with a dot. Tie a note to the next note of the same pitch. Turn a note into a rest and back. Add a bar after the selected one, or remove it. Every bar keeps its full length.
+- **Edit notes:** change the pitch by semitone or octave. Set the length from sixteenth to whole, with a dot. Tie a note to the next note of the same pitch. Turn a note into a rest and back. Turn an eighth, quarter or half note into a triplet and back. Add a bar after the selected one, or remove it. Every bar keeps its full length.
 - **Lyrics:** type one syllable per note. Enter moves to the next note that can carry a syllable. The card "Lyrics & chords" fills a pasted verse from the selected note: `wat-er` puts "wat-" and "er" on two notes, and a lone `_` leaves a note empty. "Clear lyrics" and "Clear chords" empty them.
 - **Chords:** type a chord such as Am7 or F♯m7♭5 on any note or rest. The app stores it relative to the original key, so it follows every transposition and instrument. Text that is not a chord stays, in red, and is not transposed.
 - **Restore from file:** the card shows how many lyric and chord edits you made. "Restore from file" returns lyrics and chords to what the file had.
@@ -82,6 +82,7 @@ A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chord
 | A–G | Edit notes | Jump to that note name, nearest to the current pitch |
 | 2 3 4 5 6 | Edit notes | Sixteenth, eighth, quarter, half, whole |
 | . | Edit notes | Dot |
+| P | Edit notes | Triplet: make three equal notes, or undo the group |
 | R | Edit notes | Note or rest |
 | T | Edit notes | Tie |
 | Delete, Backspace | Edit notes | Turn into rest |
@@ -91,6 +92,23 @@ A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chord
 | Esc | Lyric or Chord field | Clear the selection |
 
 The Edit notes keys follow the key's position on layouts without Latin letters, and on French AZERTY the digits and the dot work with Shift.
+
+### Triplets
+
+Import:
+
+- Eighth, quarter and sixteenth triplets are imported from MIDI, MusicXML, MuseScore and ABC. A group shows the number 3, with a bracket when one beam does not join its notes.
+- A sextuplet shows as two triplets of sixteenths.
+- A triplet position in a MIDI file must be exact (within 0.005 quarter). Loosely played MIDI stays rounded to the sixteenth grid.
+- Groups of five or seven and half-note triplets are rounded, and the song shows the "Rhythm simplified" notice.
+- A MIDI file exported with swing playback has its eighths in a 2:1 ratio. The sheet shows a triplet quarter and a triplet eighth on every beat. MusicXML, MuseScore and ABC carry written values and are not affected.
+
+Editing:
+
+- In Edit notes, the Triplet button or the key P turns a sixteenth-aligned eighth, quarter or half note into three equal notes. The same button or key turns the group back into one note.
+- Inside a triplet the Length buttons offer the values that fit, and the dot is off.
+
+Width: a 4/4 bar with eighth triplets needs about a third more width than a plain bar, so a line holds two or three bars. A bar with triplet sixteenths usually fills a line.
 
 ### Saving and files
 
@@ -112,13 +130,12 @@ The Tracks and Scales pages and the editing panels load when you first need them
 
 - Meters: 4/4, 3/4, 2/4, 2/2 (cut time) and 6/8. One meter per song. Any other meter, or a meter change inside the song, is refused with a message.
 - Note lengths: whole down to sixteenth, with dotted values. Longer lengths that fit no single value become tied notes.
-- Triplets and notes shorter than a sixteenth are rounded to the sixteenth grid. The "Detected in file" card says so. Tuplets stay rounded until part 4b.
+- Notes shorter than a sixteenth and tuplets other than triplets are rounded to the sixteenth grid. The "Detected in file" card says so.
 - Keys: major, minor, Dorian, Phrygian, Lydian, Mixolydian and Locrian, named in full ("D Dorian"). ABC and MusicXML give the mode. MIDI and MuseScore do not, so the key finder picks major or minor.
 
 ## What it does not do
 
 - Editing repeats and endings, or changing the time signature, or the key signature other than by transposing.
-- Triplets.
 - A generated PDF. Use the print dialog.
 - About, Imprint and Privacy pages.
 - A full accessibility audit.

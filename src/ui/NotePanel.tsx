@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import {
-  addBarAfter, BASE_LENGTHS, canAddBar, canTie, dottedOf, fits, LENGTH_NAMES, locate, removeBar, setLength, shiftPitch, splitLength, toggleDotted,
-  toggleRest, toggleTie,
+  addBarAfter, canAddBar, canMakeTriplet, canTie, dottedOf, fits, inTriplet, LENGTH_NAMES, lengthChoices, locate, removeBar, setLength,
+  shiftPitch, splitLength, toggleDotted, toggleRest, toggleTie, toggleTriplet,
 } from '../domain/edit';
 import type { Doc } from '../domain/types';
 import s from './NotePanel.module.css';
@@ -36,6 +36,7 @@ export default function NotePanel(p: Props): JSX.Element | null {
   const shown = p.derived.byId[id];
   if (!at || !shown) return null;
   const ev = at.ev;
+  const member = inTriplet(doc, id);
   const { base, dotted } = splitLength(ev.d);
   const longer = dottedOf(base);
   const pitch = (step: number, name: string, label: string, keys: string) => (
@@ -55,15 +56,19 @@ export default function NotePanel(p: Props): JSX.Element | null {
       </div>
       <div className={`${s.label} ${s.gap}`} aria-hidden="true">Length</div>
       <div role="group" aria-label="Length" className={s.row}>
-        {BASE_LENGTHS.map(d => (
-          <button key={d} type="button" className={s.symb} aria-label={BASE_NAMES[d]} aria-keyshortcuts={KEY_OF_LENGTH[d]}
-            aria-pressed={base === d} disabled={!fits(doc, id, d)} onClick={() => onEdit(setLength(doc, id, d))}>
-            <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true">{ICONS[d]}</svg>
+        {lengthChoices(doc, id).map(c => (
+          <button key={c.notated} type="button" className={s.symb} aria-label={BASE_NAMES[c.notated]} aria-keyshortcuts={KEY_OF_LENGTH[c.notated]}
+            aria-pressed={c.pressed} disabled={!c.enabled} onClick={() => { if (c.enabled) onEdit(setLength(doc, id, c.d)); }}>
+            <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true">{ICONS[c.notated]}</svg>
           </button>
         ))}
         <button type="button" className={s.symb} aria-label="Dotted" aria-keyshortcuts="." aria-pressed={dotted}
-          disabled={!dotted && (longer === null || !fits(doc, id, longer))} onClick={() => onEdit(toggleDotted(doc, id))}>
+          disabled={member || (!dotted && (longer === null || !fits(doc, id, longer)))} onClick={() => onEdit(toggleDotted(doc, id))}>
           <svg width="8" height="20" viewBox="0 0 8 20" aria-hidden="true"><circle cx="4" cy="12" r="2.6" fill="currentColor" /></svg>
+        </button>
+        <button type="button" className={s.symb} aria-label="Triplet" aria-keyshortcuts="P" aria-pressed={member}
+          disabled={!member && !canMakeTriplet(doc, id)} onClick={() => { const r = toggleTriplet(doc, id); if (r) onEdit(r.doc, r.selectId); }}>
+          <span aria-hidden="true">3</span>
         </button>
         <span className={s.spacer} />
         <button type="button" className={s.symb} aria-label="Tie" aria-keyshortcuts="T" aria-pressed={ev.tie}
@@ -83,7 +88,7 @@ export default function NotePanel(p: Props): JSX.Element | null {
           Remove bar
         </button>
       </div>
-      <p className={s.keys}>Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · R rest · T tie</p>
+      <p className={s.keys}>Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · P triplet · R rest · T tie</p>
     </div>
   );
 }
