@@ -1,4 +1,4 @@
-import { inst, ORDER } from './instruments';
+import { inst, noteNameFlat, ORDER } from './instruments';
 import type { Spelled } from './keys';
 import { buildScale, isKeyTransposing, isMinorType, keyChips, scaleName, SCALE_IDS, type ScaleDirection, type ScaleId, type ScaleRange, type ScaleResult } from './scales';
 import type { InstId } from './types';
@@ -88,8 +88,26 @@ it('a scale that does not fit is cut at the top (review focus 2)', () => {
   const r = build('xc', 'maj', 11, 'two');   // Xaphoon C4–C6: B4 + 24 = B6
   expect(r.notes[0].written).toBe(71);
   expect(Math.max(...r.notes.map(n => n.written))).toBeLessThanOrEqual(84);
-  expect(r.notice).toBe('The second octave does not fit this instrument. Shown up to C6, the top of the extended range.');
+  expect(Math.max(...r.notes.map(n => n.written))).toBe(83);
+  expect(r.notice).toBe('The second octave does not fit this instrument. Shown up to B5.');
   expect(r.notes.every(n => n.state === 'ok')).toBe(true);
+});
+
+it('a cut scale with amber notes names the last note shown and the amber limit (review focus 2)', () => {
+  const r = build('afl', 'maj', 11, 'two');   // alto flute: hi G6 (91), ext A6 (93); B major stops at G♯6 (92)
+  expect(Math.max(...r.notes.map(n => n.written))).toBe(92);
+  expect(r.notice).toBe('The second octave does not fit this instrument. Shown up to A♭6. Notes above G6 need extended fingerings and are marked amber.');
+});
+
+it('every cut notice names the last note shown, and the amber limit exactly when there are amber notes', () => {
+  for (const id of ORDER) for (const sc of SCALE_IDS) for (let pc = 0; pc < 12; pc++) for (const range of ['one', 'two'] as const) {
+    const s = build(id, sc, pc, range);
+    if (!s.notice?.includes('Shown up to')) continue;
+    const top = Math.max(...s.notes.map(n => n.written));
+    expect(s.notice, `${id} ${sc} ${pc} ${range}`).toContain(`Shown up to ${noteNameFlat(top)}.`);
+    expect(s.notice.startsWith(range === 'two' ? 'The second octave does not fit this instrument. ' : 'This octave does not fit this instrument. ')).toBe(true);
+    expect(s.notice.includes(' Notes above '), `${id} ${sc} ${pc} ${range}`).toBe(s.notes.some(n => n.state === 'ext'));
+  }
 });
 
 it('one octave within the normal range has no notice; whole range has none either', () => {
@@ -127,6 +145,18 @@ it('one and two octaves, up and down: every instrument, scale and key stays with
       expect(Math.abs(n.spelled.alter)).toBeLessThanOrEqual(2);
       expect(spelledMidi(n.spelled)).toBe(n.written);
     }
+  }
+});
+
+it('whole range, up and down: melodic minor descends as natural minor down to its lowest note in range', () => {
+  const r = build('asax', 'mmin', 0, 'all', 'updown');   // ascent from B3 (59); the natural-minor descent reaches B♭3 (58)
+  expect(r.notes[0].written).toBe(59);
+  expect(r.notes[r.notes.length - 1].written).toBe(58);
+  expect(r.notes[r.notes.length - 1].spelled.name).toBe('B♭3');
+  for (const id of ORDER) for (let pc = 0; pc < 12; pc++) {
+    const w = build(id, 'mmin', pc, 'all', 'updown').notes.map(n => n.written);
+    const natural = build(id, 'nmin', pc, 'all', 'up').notes.map(n => n.written);
+    expect(w[w.length - 1], `${id} ${pc}`).toBe(natural[0]);
   }
 });
 

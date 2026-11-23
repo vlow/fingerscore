@@ -3,6 +3,7 @@ import { optionsFor, type FingeringOption, type RecorderSystem } from '../domain
 import { inst as instrument, type Instrument } from '../domain/instruments';
 import { staffPos } from '../domain/keys';
 import type { ScaleNote, ScaleResult } from '../domain/scales';
+import { TPQ } from '../domain/time';
 import type { InstId } from '../domain/types';
 import { FingeringChart, MissingChart } from './FingeringChart';
 import { Glyph, glyphInk } from './Glyph';
@@ -14,7 +15,7 @@ import { FLAT_POS, SHARP_POS, STAFF } from './SystemView';
 
 export const NOTES_PER_LINE = 15;
 
-const WHOLE = 48;                                   // ticks of a whole note
+const WHOLE = 4 * TPQ;                              // ticks of a whole note
 const { systemWidth: WIDTH, staffTop, staffBottom } = SHEET;
 const STAFF_H = staffBottom - staffTop + 1;
 const CLEF_REACH = 20;                              // Bravura clef ink: about 14px above the top line, 18px below the bottom line
@@ -88,7 +89,7 @@ function ScaleLine(p: LineProps) {
 
   return (
     <>
-      <p className={styles.srOnly}>{p.notes.map(n => n.note.spelled.name).join(', ')}</p>
+      <p className={styles.srOnly}>{p.notes.map(n => n.note.spelled.name + (n.note.state === 'ext' ? ' (extended)' : '')).join(', ')}</p>
       <svg data-testid="scale-line" aria-hidden="true" className={styles.line}
         width={WIDTH} height={height} viewBox={`0 ${top} ${WIDTH} ${height}`}>
         {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={STAFF} />)}

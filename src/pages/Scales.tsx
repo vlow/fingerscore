@@ -163,11 +163,13 @@ export default function Scales() {
         </div>
       </div>
 
-      {scale.notice && <div role="status" className={s.notice} data-print-hide="">{scale.notice}</div>}
+      {/* The live region stays mounted so screen readers announce a notice when it appears. */}
+      <div role="status" className={s.status} data-print-hide="">
+        {scale.notice && <div className={s.notice}>{scale.notice}</div>}
+      </div>
 
       <div className={s.scroll}>
-        {/* A region named by title: an aria-label or aria-labelledby "Scale" would make the Scale select's label ambiguous. */}
-        <section role="region" title="Scale" className={s.paper} data-print-scale="">
+        <section aria-label="Scale" className={s.paper} data-print-scale="">
           <h2 className={s.caption}>{caption}</h2>
           <ScaleStaff inst={st.inst} scale={scale} chartStyle={st.chartStyle} recorderSystem={st.recorderSystem}
             showNames={st.showNames} showAlternates={st.showAlternates} />

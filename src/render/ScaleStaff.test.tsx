@@ -59,6 +59,22 @@ it('a note without a sourced fingering shows a box (review focus 4)', () => {
   const { container } = draw({ inst: 'tsax', scale: { ...scale, notes: [...scale.notes, gap, { ...last }] } });
   expect(container.querySelectorAll('[data-missing]')).toHaveLength(1);
   expect(container.querySelectorAll('[data-chart]')).toHaveLength(9);
+  // The chooser run breaks at the gap: the notes before it are chosen as a run of their own, the note after as a new run.
+  const options = (w: number) => optionsFor('tsax', w, 'baroque');
+  const before = chooseFingerings(scale.notes.map((n, i) => ({ id: `n${i}`, written: n.written, options: options(n.written) })), {});
+  const after = chooseFingerings([{ id: 'a', written: last.written, options: options(last.written) }], {});
+  const got = [...container.querySelectorAll('[data-note]')].map(g => g.querySelector('[data-chart]')?.getAttribute('data-option'));
+  expect(got.slice(0, 8)).toEqual(scale.notes.map((_, i) => String(before[`n${i}`])));
+  expect(got[8]).toBeUndefined();
+  expect(got[9]).toBe(String(after.a));
+});
+
+it('the text alternative marks notes in the extended range', () => {
+  const scale = buildScale({ inst: 'asax', scale: 'maj', tonicPc: 7, range: 'two', direction: 'up' });   // written G4–G6: F♯6 and G6 are above hi
+  draw({ inst: 'asax', scale });
+  const text = scale.notes.map(n => n.spelled.name + (n.state === 'ext' ? ' (extended)' : '')).join(', ');
+  expect(text).toContain('(extended)');
+  expect(screen.getByText(text)).toBeInTheDocument();
 });
 
 it('names can be hidden; alternates can be shown', () => {

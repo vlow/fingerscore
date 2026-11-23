@@ -68,9 +68,12 @@ export function buildScale(o: { inst: InstId; scale: ScaleId; tonicPc: number; r
   } else {
     top = start + (o.range === 'one' ? 12 : 24);
     if (top > i.ext) {
-      const prefix = o.range === 'two' ? 'The second octave does not fit this instrument. ' : 'This octave does not fit this instrument. ';
-      notice = `${prefix}Shown up to ${noteNameFlat(i.ext)}, the top of the extended range.`;
       top = i.ext;
+      const shown = pitchesIn(o.scale, tonicPc, start, top);
+      const last = shown[shown.length - 1];
+      const prefix = o.range === 'two' ? 'The second octave does not fit this instrument. ' : 'This octave does not fit this instrument. ';
+      const amber = last > i.hi ? ` Notes above ${noteNameFlat(i.hi)} need extended fingerings and are marked amber.` : '';
+      notice = `${prefix}Shown up to ${noteNameFlat(last)}.${amber}`;
     } else if (top > i.hi) {
       notice = `Notes above ${noteNameFlat(i.hi)} need extended fingerings and are marked amber. Try 1 octave or another key for an easier scale.`;
     }
@@ -78,7 +81,10 @@ export function buildScale(o: { inst: InstId; scale: ScaleId; tonicPc: number; r
 
   const up = pitchesIn(o.scale, tonicPc, start, top);
   const downScale = def.down ?? o.scale;
-  const down = o.direction === 'updown' && up.length > 0 ? pitchesIn(downScale, tonicPc, up[0], up[up.length - 1] - 1).reverse() : [];
+  // The descent ends where the ascent started; over the whole range it reaches the descending form's lowest note
+  // (melodic minor's natural-minor descent can go below the ascent's first note).
+  const bottom = o.range === 'all' ? i.lo : up[0];
+  const down = o.direction === 'updown' && up.length > 0 ? pitchesIn(downScale, tonicPc, bottom, up[up.length - 1] - 1).reverse() : [];
 
   // Chromatic: sharps ascending unless the tonic's major key has flats; flats descending (design 4.2).
   const chromaticSig = (ascending: boolean) => (ascending && keySignature(tonicPc, 'major') >= 0 ? 1 : -1);
