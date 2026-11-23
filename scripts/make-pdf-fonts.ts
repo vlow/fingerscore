@@ -3,7 +3,7 @@
 // each subset maps, as sorted inclusive ranges. Run: npm run fonts
 // WOFF 1 is an sfnt whose tables are each zlib-compressed; this script inflates them with node:zlib and writes a
 // new sfnt table directory. opentype.js (devDependency) only reads, to check the result.
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,8 +13,8 @@ import opentype from 'opentype.js';
 
 const require = createRequire(import.meta.url);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const PKG = '@fontsource/atkinson-hyperlegible';
-const OUT_DIR = join(ROOT, 'src/pdf/fonts');
+export const PKG = '@fontsource/atkinson-hyperlegible';
+export const OUT_DIR = join(ROOT, 'src/pdf/fonts');
 const SUBSETS = { latin: 'latin', latinExt: 'latin-ext' } as const;
 const STYLES = ['400-normal', '700-normal', '700-italic'] as const;
 
@@ -97,29 +97,45 @@ function ranges(cps: number[]): number[][] {
 
 const parse = (bytes: Uint8Array) => opentype.parse(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
 
-const pkgDir = dirname(require.resolve(`${PKG}/package.json`));
-mkdirSync(OUT_DIR, { recursive: true });
-const coverage: Record<string, number[][]> = {};
-for (const [key, subset] of Object.entries(SUBSETS)) {
-  let common: Set<number> | null = null;
-  for (const style of STYLES) {
-    const name = `atkinson-hyperlegible-${subset}-${style}`;
-    const woff = new Uint8Array(readFileSync(join(pkgDir, 'files', `${name}.woff`)));
-    const ttf = woffToSfnt(woff);
-    const fromWoff = parse(woff);
-    const fromTtf = parse(ttf);
-    if (fromTtf.numGlyphs !== fromWoff.numGlyphs || fromTtf.numGlyphs < 2) {
-      throw new Error(`${name}: ${fromTtf.numGlyphs} glyphs in the TrueType file, ${fromWoff.numGlyphs} in the WOFF`);
+/** The six TrueType files, the coverage ranges and the licence text made from the WOFF files in the font package's folder. Writes nothing. */
+export function convertFonts(pkgDir: string): { files: Map<string, Uint8Array>; coverage: Record<string, number[][]>; licence: Uint8Array; log: string[] } {
+  const files = new Map<string, Uint8Array>();
+  const coverage: Record<string, number[][]> = {};
+  const log: string[] = [];
+  for (const [key, subset] of Object.entries(SUBSETS)) {
+    let common = null as Set<number> | null;
+    for (const style of STYLES) {
+      const name = `atkinson-hyperlegible-${subset}-${style}`;
+      const woff = new Uint8Array(readFileSync(join(pkgDir, 'files', `${name}.woff`)));
+      const ttf = woffToSfnt(woff);
+      const fromWoff = parse(woff);
+      const fromTtf = parse(ttf);
+      if (fromTtf.numGlyphs !== fromWoff.numGlyphs || fromTtf.numGlyphs < 2) {
+        throw new Error(`${name}: ${fromTtf.numGlyphs} glyphs in the TrueType file, ${fromWoff.numGlyphs} in the WOFF`);
+      }
+      files.set(`${name}.ttf`, ttf);
+      const cps = Object.keys(fromTtf.tables.cmap.glyphIndexMap).map(Number);
+      const mine: Set<number> = new Set(cps);
+      common = common === null ? mine : new Set([...common].filter(cp => mine.has(cp)));
+      log.push(`${name}.ttf: ${ttf.length} bytes, ${fromTtf.numGlyphs} glyphs, ${cps.length} code points`);
     }
-    writeFileSync(join(OUT_DIR, `${name}.ttf`), ttf);
-    const cps = Object.keys(fromTtf.tables.cmap.glyphIndexMap).map(Number);
-    const mine: Set<number> = new Set(cps);
-    common = common === null ? mine : new Set([...common].filter(cp => mine.has(cp)));
-    console.log(`${name}.ttf: ${ttf.length} bytes, ${fromTtf.numGlyphs} glyphs, ${cps.length} code points`);
+    // A character counts as covered only when every style of the subset has it.
+    coverage[key] = ranges([...(common ?? [])].sort((a, b) => a - b));
   }
-  // A character counts as covered only when every style of the subset has it.
-  coverage[key] = ranges([...(common ?? [])].sort((a, b) => a - b));
+  return { files, coverage, licence: new Uint8Array(readFileSync(join(pkgDir, 'LICENSE'))), log };
 }
-copyFileSync(join(pkgDir, 'LICENSE'), join(OUT_DIR, 'OFL.txt'));
-writeFileSync(join(OUT_DIR, 'coverage.json'), `${JSON.stringify(coverage)}\n`);
-console.log(`wrote ${OUT_DIR}/coverage.json and OFL.txt`);
+
+/** The text of coverage.json for a coverage. */
+export const coverageJson = (coverage: Record<string, number[][]>) => `${JSON.stringify(coverage)}\n`;
+
+// Run as a script (npm run fonts); importing this file, as the font check test does, writes nothing.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const pkgDir = dirname(require.resolve(`${PKG}/package.json`));
+  mkdirSync(OUT_DIR, { recursive: true });
+  const { files, coverage, licence, log } = convertFonts(pkgDir);
+  for (const [name, bytes] of files) writeFileSync(join(OUT_DIR, name), bytes);
+  writeFileSync(join(OUT_DIR, 'OFL.txt'), licence);
+  writeFileSync(join(OUT_DIR, 'coverage.json'), coverageJson(coverage));
+  for (const line of log) console.log(line);
+  console.log(`wrote ${OUT_DIR}/coverage.json and OFL.txt`);
+}
