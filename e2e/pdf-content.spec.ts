@@ -85,6 +85,18 @@ async function hook<T>(page: Page, fn: string, build: Builder, ...args: unknown[
   }, [fn, build, args] as const) as Promise<T>;
 }
 
+/** Calls a function of src/pdf/devHook.ts with plain arguments. */
+async function call<T>(page: Page, fn: string, ...args: unknown[]): Promise<T> {
+  return page.evaluate(async ([name, rest]) => {
+    const load = (window as unknown as { fingerscorePdf?: () => Promise<Record<string, (...a: unknown[]) => Promise<unknown>>> }).fingerscorePdf;
+    if (!load) throw new Error('no PDF hook on this page');
+    return (await load())[name as string](...(rest as unknown[]));
+  }, [fn, args] as const) as Promise<T>;
+}
+
+/** Layout constants of the sheet (src/render/layout.ts SHEET) and the title block's height, from the dev hook. */
+interface Geometry { chordY: number; lyricY: number; chartY: number; chartBottom: number; systemHeight: number; titleBlock: number }
+
 async function makePdf(page: Page, build: Builder, language = 'de-DE', extra: Record<string, unknown> = {}): Promise<{ result: HookResult; bytes: Uint8Array }> {
   const result = await hook<HookResult>(page, 'sheetPdf', build, { language, ...extra });
   if (result.error) throw new Error(`${result.error.name}: ${result.error.message}`);
@@ -106,6 +118,40 @@ function expectSymbolBetween(p: PdfPage, left: PdfText, right: PdfText | null, e
   const ink = p.paths.filter(q => q.fill !== null && q.x1 >= from - 0.01 && q.x2 <= to + 0.01
     && q.y2 > left.y - 1.2 * em && q.y1 < left.y + 0.5 * em && q.x2 - q.x1 > 0.1);
   expect(ink.length, `symbol outline between "${left.str}" and "${right?.str ?? '(end)'}"`).toBeGreaterThan(0);
+}
+
+/**
+ * Width / height of each symbol's outline (glyphs.json bounding boxes; the drawn Δ, ‿ and discs), and the stroke in em
+ * that thickens the music font's accidentals beside regular and bold text (src/pdf/drawText.ts).
+ */
+const ASPECT: Record<string, number> = {
+  '♭': 226 / 614, '♯': 249 / 698, '♮': 168 / 676, '𝄫': 411 / 612, '𝄪': 247 / 252, '♩': 332 / 1016,
+  'Δ': 823 / 1000, '‿': 1000 / 380, '●': 1, '○': 1, '◐': 1,
+};
+const ACCIDENTAL_STROKE = { regular: 0.012, bold: 0.03 };
+/** Ink height of each symbol in em (drawText's table: as Chromium draws the character beside Atkinson Hyperlegible). */
+const INK_EM: Record<string, number> = {
+  '♭': 0.565, '♯': 0.605, '♮': 0.605, '𝄫': 0.565, '𝄪': 0.29, '♩': 0.891, 'Δ': 0.705, '‿': 0.176, '●': 0.789, '○': 0.789, '◐': 0.789,
+};
+const CAP_HEIGHT = 0.668;
+
+/**
+ * The outline of `ch` between two items: its box has the outline's aspect ratio (within 15%), an accidental is no taller
+ * than the capitals around it, and the gap is at most the outline's width plus 0.3 em.
+ */
+function expectSymbolShape(p: PdfPage, left: PdfText, right: PdfText, ch: string, em: number, weight: 'regular' | 'bold'): void {
+  expectSymbolBetween(p, left, right, em);
+  const from = left.x + left.width;
+  const box = p.paths.filter(q => q.fill !== null && q.x1 >= from - 0.01 && q.x2 <= right.x + 0.01 && q.y2 > left.y - 1.2 * em && q.y1 < left.y + 0.5 * em)
+    .reduce((a, q) => ({ x1: Math.min(a.x1, q.x1), x2: Math.max(a.x2, q.x2), y1: Math.min(a.y1, q.y1), y2: Math.max(a.y2, q.y2) }), { x1: Infinity, x2: -Infinity, y1: Infinity, y2: -Infinity });
+  const w = box.x2 - box.x1;
+  const h = box.y2 - box.y1;
+  const stroke = '♭♯♮𝄫𝄪'.includes(ch) ? ACCIDENTAL_STROKE[weight] * em : 0;
+  const ink = INK_EM[ch] * em;
+  const expected = (ASPECT[ch] * ink + stroke) / (ink + stroke);
+  expect(Math.abs(w / h / expected - 1), `aspect of ${ch}`).toBeLessThan(0.15);
+  if (stroke > 0) expect(h, `height of ${ch}`).toBeLessThanOrEqual(CAP_HEIGHT * em);
+  expect(right.x - from, `gap of ${ch}`).toBeLessThanOrEqual(w + 0.3 * em);
 }
 
 function expectInside(p: PdfPage, x1: number, y1: number, x2: number, y2: number, what: string): void {
@@ -196,7 +242,7 @@ test('every Latin and extended-Latin character is drawn as text and each symbol 
 
   const subtitle = lineOf(p, 'a');
   expect(subtitle.map(t => t.str)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']);
-  for (let i = 0; i + 1 < subtitle.length; i++) expectSymbolBetween(p, subtitle[i], subtitle[i + 1], 14 * u);
+  [...'♭♯♮𝄫𝄪♩Δ‿●○◐'].forEach((ch, i) => expectSymbolShape(p, subtitle[i], subtitle[i + 1], ch, 14 * u, 'bold'));
 
   /** Some line has the exact items `left` and `right` next to each other, with a symbol outline between them. */
   const pair = (left: string, right: string, px: number) => {
@@ -234,23 +280,14 @@ test('every Latin and extended-Latin character is drawn as text and each symbol 
 
 test('with the Show switches off there is no lyric, chord or chart', async ({ page }) => {
   const off = `h => { const d = h.sampleDoc(); d.show = { fingerings: false, chords: false, lyrics: false, raiseExtensions: true }; return d; }`;
-  const chartPaths = (p: PdfPage) => {
-    const u = unitOf(p);
-    return p.paths.filter(q => {
-      const cy = (q.y1 + q.y2) / 2;
-      return [0, 1, 2, 3].some(i => {
-        const top = MARGIN + (96 + 290 * i) * u;
-        return cy > top + 160 * u && cy < top + 260 * u;
-      });
-    });
-  };
-  const bands = (p: PdfPage) => {
-    const u = unitOf(p);
-    return p.text.filter(t => [0, 1, 2, 3].some(i => {
-      const top = MARGIN + (96 + 290 * i) * u;
-      return t.y > top && t.y < top + 45 * u;
-    }));
-  };
+  const g = await call<Geometry>(page, 'geometry');
+  const tops = (p: PdfPage) => [0, 1, 2, 3].map(i => MARGIN + (g.titleBlock + g.systemHeight * i) * unitOf(p));
+  const chartPaths = (p: PdfPage) => p.paths.filter(q => {
+    const cy = (q.y1 + q.y2) / 2;
+    return tops(p).some(top => cy > top + g.chartY * unitOf(p) && cy < top + g.chartBottom * unitOf(p));
+  });
+  // The chord band starts at chordY; the lyric baseline is 12 units below lyricY.
+  const bands = (p: PdfPage) => p.text.filter(t => tops(p).some(top => t.y > top + g.chordY * unitOf(p) && t.y < top + (g.lyricY + 16) * unitOf(p)));
   const on = (await readPdf((await makePdf(page, sample)).bytes)).pages[0];
   expect(chartPaths(on).length).toBeGreaterThan(0);
   expect(bands(on).length).toBeGreaterThan(0);
@@ -328,6 +365,160 @@ test('a 400-bar sheet completes and reports every page', async ({ page }) => {
   expect(result.progress).toEqual(Array.from({ length: total }, (_, i) => [i + 1, total]));
   expect((await readPdf(bytes)).pages).toHaveLength(total);
   console.log(`400 bars: ${total} pages, ${bytes.length} bytes, ${Math.round(result.ms)} ms`);
+});
+
+test('a page is written in reading order: title block, systems, legend, site, footer', async ({ page }) => {
+  const { pages } = await readPdf((await makePdf(page, sample)).bytes);
+  const seqOf = (p: PdfPage, str: string) => {
+    const t = p.text.find(x => x.str === str);
+    expect(t, `text item "${str}"`).toBeDefined();
+    return t!.seq;
+  };
+  const byOrder = (p: PdfPage) => [...p.text].sort((a, b) => a.seq - b.seq);
+  const first = pages[0];
+  expect(byOrder(first).slice(0, 3).map(t => t.str)).toEqual(['The Water Is Wide', 'Traditional', ' = 100']);
+  expect(seqOf(first, ' = 100')).toBeLessThan(seqOf(first, 'The'));
+  expect(byOrder(first).pop()!.str).toBe('The Water Is Wide · page 1 of 2');
+  const last = pages[pages.length - 1];
+  const legendSeq = seqOf(last, ' pressed ');
+  const legendY = last.text.find(t => t.str === ' pressed ')!.y;
+  const music = last.text.filter(t => t.y < legendY - 1);
+  expect(music.length).toBeGreaterThan(0);
+  expect(Math.max(...music.map(t => t.seq))).toBeLessThan(legendSeq);
+  expect(legendSeq).toBeLessThan(seqOf(last, 'fingerscore.eu'));
+  expect(byOrder(last).pop()!.str).toBe('The Water Is Wide · page 2 of 2');
+});
+
+test('the triplet\'s white outline is a shape under the one text item "3"', async ({ page }) => {
+  const screen = await hook<{ tupletSides: string[] }>(page, 'showPaper', everything);
+  const { pages, embeddedFonts } = await readPdf((await makePdf(page, everything)).bytes);
+  expect(embeddedFonts).toEqual(['AtkinsonHyperlegible-Bold', 'AtkinsonHyperlegible-BoldItalic', 'AtkinsonHyperlegible-Regular']);
+  const threes = pages.flatMap(p => p.text.filter(t => t.str === '3' && t.font === 'AtkinsonHyperlegible-BoldItalic').map(t => ({ p, t })));
+  expect(threes).toHaveLength(screen.tupletSides.length);
+  for (const { p, t } of threes) {
+    const halo = p.paths.filter(q => q.fill === '#ffffff' && q.stroke === null && q.seq < t.seq
+      && q.x1 < t.x && q.x2 > t.x + t.width && q.y2 > t.y && q.y1 < t.y - 6 * unitOf(p));
+    expect(halo, `white shape under the 3 at ${t.x.toFixed(1)}`).toHaveLength(1);
+    expect(halo[0].x2 - halo[0].x1).toBeLessThan(16 * unitOf(p));
+  }
+});
+
+test('a squeezed text with symbols is scaled as a whole, outlines included', async ({ page }) => {
+  const items = [
+    { text: 'B♭m7', px: 13, weight: 700, squeezeTo: 24 },
+    { text: 'a‿b', px: 12, weight: 400, squeezeTo: 12 },
+  ];
+  const result = await call<{ pdf: string; natural: number[] }>(page, 'drawTextPdf', items);
+  const p = (await readPdf(new Uint8Array(Buffer.from(result.pdf, 'base64')))).pages[0];
+  const u = unitOf(p);
+  const check = (left: string, right: string, squeezeTo: number, natural: number, px: number) => {
+    const l = p.text.find(t => t.str === left)!;
+    const r = p.text.find(t => t.str === right && Math.abs(t.y - l.y) < 0.3)!;
+    expect(l, left).toBeDefined();
+    expect(r, right).toBeDefined();
+    expect(natural).toBeGreaterThan(squeezeTo);
+    expect((r.x + r.width - l.x) / u).toBeCloseTo(squeezeTo, 1);
+    expectSymbolBetween(p, l, r, px * u * (squeezeTo / natural));
+  };
+  check('B', 'm7', 24, result.natural[0], 13);
+  check('a', 'b', 12, result.natural[1], 12);
+});
+
+test('nothing stays in the document: not after a failed render, a finished PDF or an aborted one', async ({ page }) => {
+  expect(await call<{ before: number; after: number; error: string }>(page, 'renderFailure')).toEqual(expect.objectContaining({ error: 'render failed' }));
+  const failed = await call<{ before: number; after: number }>(page, 'renderFailure');
+  expect(failed.after).toBe(failed.before);
+  const done = await hook<HookResult & { bodyBefore: number; bodyAfter: number }>(page, 'sheetPdf', sample, { language: 'de-DE' });
+  expect(done.pdf).toBeDefined();
+  expect(done.bodyAfter).toBe(done.bodyBefore);
+  const aborted = await hook<HookResult & { bodyBefore: number; bodyAfter: number }>(page, 'sheetPdf', repeated(36), { language: 'de-DE', abortAtPage: 1 });
+  expect(aborted.error?.name).toBe('AbortError');
+  expect(aborted.bodyAfter).toBe(aborted.bodyBefore);
+});
+
+test('four systems: one page, the legend kept on it by shrinking the systems, centred, no footer', async ({ page }) => {
+  const four = repeated(16);
+  const { bytes } = await makePdf(page, four);
+  const { pages } = await readPdf(bytes);
+  expect(await hook<number>(page, 'expectedPages', four, 'de-DE')).toBe(1);
+  expect(pages).toHaveLength(1);
+  const p = pages[0];
+  const u = unitOf(p);
+  const strs = p.text.map(t => t.str);
+  expect(strs).toContain(' pressed ');
+  expect(strs).toContain('fingerscore.eu');
+  expect(strs.filter(s => /page \d+ of \d+/.test(s))).toEqual([]);
+  for (const t of p.text) expectInside(p, t.x, t.y, t.x + t.width, t.y, `text "${t.str}"`);
+  for (const q of p.paths) expectInside(p, q.x1, q.y1, q.x2, q.y2, `path at ${q.x1.toFixed(1)}, ${q.y1.toFixed(1)}`);
+  // Staff lines: the widest paths of the systems, narrower than the content width and centred on the page.
+  const ruleY = p.paths.find(q => q.fill === '#e3e3e8' || q.fill === '#e2e4e8')?.y1 ?? Infinity;
+  const staff = p.paths.filter(q => q.y2 < ruleY && q.x2 - q.x1 > 600 * u);
+  expect(staff.length).toBeGreaterThanOrEqual(20);
+  for (const q of staff) {
+    expect(q.x2 - q.x1).toBeLessThan(860 * u - 5);
+    expect((q.x1 + q.x2) / 2).toBeCloseTo(p.width / 2, 0);
+  }
+  mkdirSync(OUT, { recursive: true });
+  writeFileSync(join(OUT, 'sheet-four-systems.pdf'), bytes);
+  writeFileSync(join(OUT, 'sheet-four-systems-p1.png'), await renderPdfPage(bytes, 1, 150));
+});
+
+test('ink above a system\'s box is drawn where the paper draws it: a high triplet mark', async ({ page }) => {
+  const high = `h => {
+    const d = h.sampleDoc();
+    const ev = (id, m, dur) => ({ id, m, d: dur, r: false, tie: false, l: '' });
+    d.score[2].ev = [ev('c1', 40, 8), ev('c2', 96, 4), ev('c3', 62, 12), ev('c4', 62, 24)];
+    return d;
+  }`;
+  const screen = await hook<{ tuplets: { x: number; y: number; system: number }[] }>(page, 'showPaper', high);
+  const mark = screen.tuplets.find(t => t.system === 0)!;
+  expect(mark.y).toBeLessThan(0);
+  const g = await call<Geometry>(page, 'geometry');
+  const p = (await readPdf((await makePdf(page, high)).bytes)).pages[0];
+  const u = unitOf(p);
+  const top = MARGIN + g.titleBlock * u;
+  const three = p.text.find(t => t.str === '3');
+  expect(three).toBeDefined();
+  expect(three!.y).toBeCloseTo(top + mark.y * u, 0);
+  expect(three!.x + three!.width / 2).toBeCloseTo(MARGIN + mark.x * u, 0);
+  const bracket = p.paths.filter(q => q.stroke !== null && q.y1 < top && Math.abs((q.x1 + q.x2) / 2 - (MARGIN + mark.x * u)) < 10 * u);
+  expect(bracket.length).toBeGreaterThan(0);
+});
+
+test.describe('degenerate documents', () => {
+  test('no title and no subtitle: the page starts with the tempo line', async ({ page }) => {
+    const bare = `h => { const d = h.sampleDoc(); d.title = ''; d.subtitle = ''; return d; }`;
+    const { pages } = await readPdf((await makePdf(page, bare)).bytes);
+    expect(pages).toHaveLength(await hook<number>(page, 'expectedPages', bare, 'de-DE'));
+    const first = [...pages[0].text].sort((a, b) => a.seq - b.seq)[0];
+    expect(first.str).toBe(' = 100');
+    expect(first.y).toBeLessThan(MARGIN + 20 * unitOf(pages[0]));
+    expect(pages[1].text.map(t => t.str)).toContain('page 2 of 2');
+  });
+
+  test('a 300-character title is one line ending in "…", inside the margins', async ({ page }) => {
+    const long = `h => { const d = h.sampleDoc(); d.title = 'Long title '.repeat(28).slice(0, 300); return d; }`;
+    const p = (await readPdf((await makePdf(page, long)).bytes)).pages[0];
+    const title = p.text.filter(t => t.str.startsWith('Long title') && t.font === 'AtkinsonHyperlegible-Bold');
+    expect(title).toHaveLength(1);
+    expect(title[0].str.endsWith('…')).toBe(true);
+    expectInside(p, title[0].x, title[0].y, title[0].x + title[0].width, title[0].y, 'title');
+  });
+
+  test('a sheet of rests only', async ({ page }) => {
+    const rests = `h => { const d = h.sampleDoc(); d.score = d.score.slice(1, 5).map((b, i) => ({ ...b, rs: false, re: false, volta: '', ev: [{ id: 'z' + i, m: 0, d: b.cap, r: true, tie: false, l: '' }] })); d.chords = {}; return d; }`;
+    const { pages } = await readPdf((await makePdf(page, rests)).bytes);
+    expect(pages).toHaveLength(1);
+    expect(pages[0].text.map(t => t.str)).toContain('fingerscore.eu');
+  });
+
+  test('a document with one bar', async ({ page }) => {
+    const one = `h => { const d = h.sampleDoc(); d.score = d.score.slice(0, 1); return d; }`;
+    const { pages } = await readPdf((await makePdf(page, one)).bytes);
+    expect(pages).toHaveLength(1);
+    const strs = pages[0].text.map(t => t.str);
+    expect(strs).toEqual(expect.arrayContaining(['The Water Is Wide', 'The', 'fingerscore.eu']));
+  });
 });
 
 test.describe('images for review', () => {

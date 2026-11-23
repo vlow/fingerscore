@@ -7,9 +7,12 @@ export interface PageSize { name: 'A4' | 'Letter'; widthMm: number; heightMm: nu
 const A4: PageSize = { name: 'A4', widthMm: 210, heightMm: 297 };
 const LETTER: PageSize = { name: 'Letter', widthMm: 215.9, heightMm: 279.4 };
 
-/** Letter when the language tag has the region US or CA (en-US, fr-CA); A4 otherwise. */
-export function pageSizeFor(language: string): PageSize {
-  const region = language.split('-')[1]?.toUpperCase();
+/**
+ * Letter when the language tag's region is US or CA (en-US, fr-CA, zh-Hant-US); A4 otherwise and without a tag.
+ * The region is the first segment after the language that is two letters or three digits.
+ */
+export function pageSizeFor(language: string | null | undefined): PageSize {
+  const region = (language ?? '').split('-').slice(1).find(s => /^([a-z]{2}|\d{3})$/i.test(s))?.toUpperCase();
   return region === 'US' || region === 'CA' ? LETTER : A4;
 }
 
@@ -31,12 +34,17 @@ export interface PageGroup { blocks: Block[]; scale: number }
 
 const EPS = 1e-9;
 
+/** The least shrink of a page's other blocks that keeps the legend off a page of its own. */
+export const MIN_LEGEND_SHRINK = 0.92;
+
 /**
  * Blocks arrive in page order. Each page is a list of groups: one group of scale 1 holding the blocks
  * that share the page, or a single block taller than a page alone with scale < 1.
  * A block that does not fit starts a new page; a block exactly as tall as the remaining space fits.
- * A legend that does not fit goes to a new page alone, like any block that does not fit,
- * and is the last block, so nothing follows it.
+ * The legend is the last block. When it would stand alone on the last page, it stays on the page before if that
+ * page's blocks (H units) shrunk to (pageHeight - legend) / H, at least MIN_LEGEND_SHRINK, make room for it: that page
+ * then holds a group of its blocks at that scale and the legend at scale 1. A page with a block taller than a page
+ * keeps its own rule.
  */
 export function paginate(blocks: Block[], pageHeight: number): PageGroup[][] {
   const pages: PageGroup[][] = [];
@@ -58,6 +66,19 @@ export function paginate(blocks: Block[], pageHeight: number): PageGroup[][] {
     used += b.height;
   }
   flush();
+
+  const n = pages.length;
+  const last = pages[n - 1];
+  const before = pages[n - 2];
+  if (n >= 2 && last.length === 1 && last[0].blocks.length === 1 && last[0].blocks[0].kind === 'legend'
+    && before.length === 1 && before[0].scale === 1) {
+    const legend = last[0].blocks[0];
+    const h = before[0].blocks.reduce((s, b) => s + b.height, 0);
+    const scale = (pageHeight - legend.height) / h;
+    if (scale >= MIN_LEGEND_SHRINK) {
+      pages.splice(n - 2, 2, [{ blocks: before[0].blocks, scale }, { blocks: [legend], scale: 1 }]);
+    }
+  }
   return pages;
 }
 
@@ -89,7 +110,7 @@ export function wrapLegend(
   legend: string, footer: string, widthOf: (text: string) => number, maxWidth: number,
 ): { lines: string[]; footerOwnLine: boolean } {
   const pieces: string[] = [];
-  for (const segment of legend.split(' · ')) {
+  for (const segment of legend.split(' · ').map(t => t.trim()).filter(t => t !== '')) {
     if (widthOf(segment) <= maxWidth) { pieces.push(segment); continue; }
     let line = '';
     for (const word of segment.split(' ')) {

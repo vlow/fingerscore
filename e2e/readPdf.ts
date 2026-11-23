@@ -1,9 +1,10 @@
 // Reads a PDF back for the tests, with pdfjs-dist in Node (development dependency only).
 import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
-export interface PdfText { str: string; x: number; y: number; width: number; font: string }
+/** `seq` is the item's place in the page's drawing order, shared by texts and paths. */
+export interface PdfText { str: string; x: number; y: number; width: number; font: string; seq: number }
 /** A painted path: its bounding box (a stroke's half line width included) and its fill and stroke colours, null when not painted. */
-export interface PdfPath { x1: number; y1: number; x2: number; y2: number; fill: string | null; stroke: string | null }
+export interface PdfPath { x1: number; y1: number; x2: number; y2: number; fill: string | null; stroke: string | null; seq: number }
 export interface PdfPage { width: number; height: number; text: PdfText[]; paths: PdfPath[] }
 export interface PdfInfo { pages: PdfPage[]; fonts: string[]; embeddedFonts: string[] }
 
@@ -60,6 +61,7 @@ export async function readPdf(bytes: Uint8Array): Promise<PdfInfo> {
       let tm = IDENTITY;
       let size = 0, charSpacing = 0, wordSpacing = 0, hScale = 1;
       let font = '';
+      let seq = 0;
       ops.fnArray.forEach((fn, i) => {
         const args = ops.argsArray[i] as unknown[];
         switch (fn) {
@@ -93,7 +95,7 @@ export async function readPdf(bytes: Uint8Array): Promise<PdfInfo> {
               advance = inkEnd + (charSpacing + (g.unicode === ' ' ? wordSpacing : 0)) * hScale;
             }
             const m = times(tm, gs.ctm);
-            if (str !== '') text.push({ str, x: m[4], y: height - m[5], width: inkEnd * Math.hypot(m[0], m[1]), font });
+            if (str !== '') text.push({ str, x: m[4], y: height - m[5], width: inkEnd * Math.hypot(m[0], m[1]), font, seq: seq++ });
             tm = times([1, 0, 0, 1, advance, 0], tm);
             break;
           }
@@ -109,7 +111,7 @@ export async function readPdf(bytes: Uint8Array): Promise<PdfInfo> {
             const half = stroked ? (gs.lineWidth * Math.hypot(gs.ctm[0], gs.ctm[1])) / 2 : 0;
             paths.push({
               x1: Math.min(...xs) - half, x2: Math.max(...xs) + half, y1: Math.min(...ys) - half, y2: Math.max(...ys) + half,
-              fill: filled ? gs.fill : null, stroke: stroked ? gs.stroke : null,
+              fill: filled ? gs.fill : null, stroke: stroked ? gs.stroke : null, seq: seq++,
             });
             break;
           }

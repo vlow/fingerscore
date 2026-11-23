@@ -5,9 +5,10 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { svg2pdf } from 'svg2pdf.js';
 import { LOAD_FAILED } from '../loadFailed';
-import { drawText, FONT_KEYS, FONT_NAME, fontsOf, setFontMetrics, textWidth, type Anchor, type FontKey, type Weight } from './drawText';
+import { drawText, fontsOf, textWidth, type Anchor } from './drawText';
+import { FONT_KEYS, FONT_NAME, setFontMetrics, type FontKey, type Weight } from './fontMetrics';
 import { PdfError } from './errors';
-import { fitText, footerText, MARGIN_MM, UNITS, unitMm, type PageSize } from './pageModel';
+import { fitText, footerText, MARGIN_MM, UNITS, unitMm, type Block, type PageGroup, type PageSize } from './pageModel';
 import latin400 from './fonts/atkinson-hyperlegible-latin-400-normal.ttf?url';
 import latin700 from './fonts/atkinson-hyperlegible-latin-700-normal.ttf?url';
 import latin700i from './fonts/atkinson-hyperlegible-latin-700-italic.ttf?url';
@@ -88,17 +89,36 @@ export function renderOffscreen(content: ReactElement): { host: HTMLElement; dis
   host.style.cssText = 'position:absolute;left:-100000px;top:0;width:860px;pointer-events:none;';
   document.body.appendChild(host);
   const root = createRoot(host);
-  flushSync(() => root.render(content));
-  return { host, dispose: () => { root.unmount(); host.remove(); } };
+  const dispose = () => { root.unmount(); host.remove(); };
+  try {
+    flushSync(() => root.render(content));
+  } catch (e) {
+    dispose();
+    throw e;
+  }
+  return { host, dispose };
 }
 
 export function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw new DOMException('The PDF was cancelled.', 'AbortError');
 }
 
-/** Lets the browser handle input and paint, then checks the signal. */
+interface Scheduler { postTask(task: () => void, options?: { priority?: string }): Promise<void> }
+
+/**
+ * Lets the browser handle input and paint, then checks the signal. A task posted to the scheduler or through a
+ * MessageChannel is not throttled in a background tab, as setTimeout is (to one call a second).
+ */
 export async function nextTurn(signal: AbortSignal | undefined): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, 0));
+  const scheduler = (globalThis as { scheduler?: Scheduler }).scheduler;
+  if (scheduler?.postTask) await scheduler.postTask(() => {}, { priority: 'user-visible' });
+  else {
+    await new Promise<void>(resolve => {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = () => { channel.port1.close(); resolve(); };
+      channel.port2.postMessage(null);
+    });
+  }
   throwIfAborted(signal);
 }
 
@@ -149,6 +169,25 @@ export function drawFooter(pdf: Pdf, title: string, page: number, pages: number)
   const s = footerText(cut, page, pages)!;
   const yUnits = (pdf.size.heightMm - FOOTER_BOTTOM_MM - MARGIN_MM) / unitMm(pdf.size);
   text(pdf, s, UNITS / 2, yUnits, FOOTER_PX, 400, 'middle', MUTED);
+}
+
+export interface PlacedBlock { block: Block; y: number; scale: number; x0: number }
+
+/**
+ * Where each block of a page goes: its top y in units of the content box and the scale of its group. A group with
+ * scale < 1 is shrunk as a whole and centred between the margins; x0 is the left edge of its 860-unit frame.
+ */
+export function placeBlocks(groups: PageGroup[]): PlacedBlock[] {
+  const out: PlacedBlock[] = [];
+  let y = 0;
+  for (const g of groups) {
+    const x0 = (UNITS - UNITS * g.scale) / 2;
+    for (const block of g.blocks) {
+      out.push({ block, y, scale: g.scale, x0 });
+      y += block.height * g.scale;
+    }
+  }
+  return out;
 }
 
 /** Draws a prepared SVG of `width` × `height` units at y, shrunk by `scale` (< 1 for a block taller than a page) and centred in the content width. */

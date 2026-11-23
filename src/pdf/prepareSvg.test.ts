@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { FONT_KEYS, FONT_NAME, setFontMetrics, textWidth, type FontKey } from './drawText';
+import { textWidth } from './drawText';
+import { FONT_KEYS, FONT_NAME, setFontMetrics, type FontKey } from './fontMetrics';
 import { prepareSvg } from './prepareSvg';
 
 const FILE: Record<FontKey, string> = {
@@ -87,14 +88,38 @@ describe('prepareSvg', () => {
     expect(Number(texts[1].getAttribute('x'))).toBeCloseTo(textWidth('C', 13, 700) + 1, 6);
   });
 
-  it('turns a white halo into a stroked copy under the plain digit', () => {
+  it('turns a white halo into a rounded white rectangle around the digit\'s ink, under the one digit', () => {
     const svg = svgOf(`<text x="50" y="60" text-anchor="middle" font-size="12" font-weight="700" font-style="italic" ${FONT} fill="#15171C" stroke="#fff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">3</text>`);
     prepareSvg(svg);
-    const [halo, digit] = [...svg.querySelectorAll('g')];
-    expect([halo.getAttribute('fill'), halo.getAttribute('stroke'), halo.getAttribute('stroke-width')]).toEqual(['#fff', '#fff', '3']);
-    expect([digit.getAttribute('fill'), digit.getAttribute('stroke')]).toEqual(['#15171C', 'none']);
-    expect(svg.querySelectorAll('text')[1].getAttribute('font-family')).toBe(FONT_NAME['latin-700i']);
+    expect(svg.querySelectorAll('g')).toHaveLength(1);
+    const g = svg.querySelector('g')!;
+    expect([g.getAttribute('fill'), g.getAttribute('stroke')]).toEqual(['#15171C', 'none']);
+    const [rect, digit] = [...g.children];
+    expect(rect.localName).toBe('rect');
+    expect(rect.getAttribute('fill')).toBe('#fff');
+    expect(rect.getAttribute('rx')).toBe('1.5');
+    expect(digit.localName).toBe('text');
+    expect(digit.textContent).toBe('3');
+    expect(digit.getAttribute('font-family')).toBe(FONT_NAME['latin-700i']);
+    // the rectangle stands 1.5 units (half the stroke) around the ink: about the size of a digit at 12 units
+    const [w, h] = [Number(rect.getAttribute('width')), Number(rect.getAttribute('height'))];
+    expect(w).toBeGreaterThan(3 + 5);
+    expect(w).toBeLessThan(3 + 9);
+    expect(h).toBeGreaterThan(3 + 7.5);
+    expect(h).toBeLessThan(3 + 10);
+    expect(Number(rect.getAttribute('y')) + h - 1.5).toBeGreaterThanOrEqual(-0.5);   // ink bottom near the baseline
     expect(svg.querySelector('[paint-order]')).toBeNull();
+  });
+
+  it('squeezes a text with a symbol as a whole: the outline sits inside the scaled group', () => {
+    const svg = svgOf(`<text x="100" y="15" text-anchor="middle" font-size="13" font-weight="700" ${FONT} textLength="20" lengthAdjust="spacingAndGlyphs">B♭m7</text>`);
+    prepareSvg(svg);
+    const g = svg.querySelector('g')!;
+    const k = 20 / textWidth('B♭m7', 13, 700);
+    expect(k).toBeLessThan(1);
+    expect(g.getAttribute('transform')).toBe(`translate(90 15) scale(${k} 1)`);
+    expect(g.querySelectorAll('path')).toHaveLength(1);
+    expect(g.querySelector('path')!.parentElement).toBe(g);
   });
 
   it('a text without a font size is an error', () => {

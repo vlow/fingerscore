@@ -1,5 +1,7 @@
 // Turns a system drawn by the app into an SVG that svg2pdf converts as it looks on screen (Task 1's feature record).
-import { FONT_NAME, layoutSpans, placeText, symbolPlacement, type Anchor, type Span, type Weight } from './drawText';
+import { layoutSpans, piecesInk, placeText, type Anchor, type Span } from './drawText';
+import { FONT_NAME, type Weight } from './fontMetrics';
+import { symbolPlacement } from './symbols';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -52,10 +54,18 @@ const svgEl = (name: string, attrs: Record<string, string | number>) => {
  * A group of start-anchored pieces, each in the font file that has its characters or a symbol outline,
  * placed and squeezed as the browser draws the text.
  */
-function piecesGroup(spans: Span[], x: number, y: number, anchor: Anchor, squeezeTo: number | undefined, paint: Record<string, string>): SVGGElement {
+function piecesGroup(spans: Span[], x: number, y: number, anchor: Anchor, squeezeTo: number | undefined, fill: string, halo: Halo | null): SVGGElement {
   const { pieces, width } = layoutSpans(spans);
   const { x0, k } = placeText(width, x, anchor, squeezeTo);
-  const g = svgEl('g', { transform: `translate(${x0} ${y})${k === 1 ? '' : ` scale(${k} 1)`}`, ...paint }) as SVGGElement;
+  const g = svgEl('g', { transform: `translate(${x0} ${y})${k === 1 ? '' : ` scale(${k} 1)`}`, fill, stroke: 'none' }) as SVGGElement;
+  const ink = halo && piecesInk(pieces);
+  if (halo && ink) {
+    // The halo: a rounded rectangle in the outline colour around the ink, under it.
+    const pad = halo.width / 2;
+    g.appendChild(svgEl('rect', {
+      x: ink.x1 - pad, y: ink.y1 - pad, width: ink.x2 - ink.x1 + 2 * pad, height: ink.y2 - ink.y1 + 2 * pad, rx: pad, fill: halo.color,
+    }));
+  }
   for (const p of pieces) {
     if (p.kind === 'text') {
       const t = svgEl('text', {
@@ -67,10 +77,9 @@ function piecesGroup(spans: Span[], x: number, y: number, anchor: Anchor, squeez
     } else {
       const s = symbolPlacement(p.symbol, p.weight, p.x, p.dy, p.px);
       const path = svgEl('path', { d: s.d, transform: `translate(${s.tx} ${s.ty}) scale(${s.scale} ${-s.scale})` });
-      // a halo's stroke width is given in the text's units; the outline is drawn scaled
-      if (paint['stroke-width'] !== undefined) path.setAttribute('stroke-width', String((Number(paint['stroke-width']) + s.stroke) / s.scale));
-      else if (s.stroke > 0) {
-        path.setAttribute('stroke', paint.fill);
+      // the stroke width is given in the text's units; the outline is drawn scaled
+      if (s.stroke > 0) {
+        path.setAttribute('stroke', fill);
         path.setAttribute('stroke-width', String(s.stroke / s.scale));
         path.setAttribute('stroke-linejoin', 'round');
       }
@@ -80,7 +89,9 @@ function piecesGroup(spans: Span[], x: number, y: number, anchor: Anchor, squeez
   return g;
 }
 
-/** Replaces one text by its pieces; a white halo (paint-order="stroke") becomes a stroked copy under the plain fill. */
+interface Halo { color: string; width: number }
+
+/** Replaces one text by its pieces; a halo (paint-order="stroke") becomes a rounded rectangle under the ink. */
 function replaceText(text: SVGTextElement): void {
   const spans = spansOf(text);
   const x = Number(text.getAttribute('x') ?? 0);
@@ -89,17 +100,12 @@ function replaceText(text: SVGTextElement): void {
   const length = text.getAttribute('textLength');
   const squeezeTo = length === null ? undefined : Number(length);
   const fill = inherited(text, 'fill') ?? '#000';
-  const out = document.createDocumentFragment();
   const stroke = text.getAttribute('stroke');
-  if (text.getAttribute('paint-order') === 'stroke' && stroke !== null) {
-    out.appendChild(piecesGroup(spans, x, y, anchor, squeezeTo, {
-      fill: stroke, stroke, 'stroke-width': text.getAttribute('stroke-width') ?? '1', 'stroke-linejoin': text.getAttribute('stroke-linejoin') ?? 'miter',
-    }));
-  }
-  const g = piecesGroup(spans, x, y, anchor, squeezeTo, { fill, stroke: 'none' });
+  const halo = text.getAttribute('paint-order') === 'stroke' && stroke !== null && stroke !== 'none'
+    ? { color: stroke, width: Number(text.getAttribute('stroke-width') ?? 1) } : null;
+  const g = piecesGroup(spans, x, y, anchor, squeezeTo, fill, halo);
   for (const a of Array.from(text.attributes)) if (a.name.startsWith('data-')) g.setAttribute(a.name, a.value);
-  out.appendChild(g);
-  text.replaceWith(out);
+  text.replaceWith(g);
 }
 
 /**

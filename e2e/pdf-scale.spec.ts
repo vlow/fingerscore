@@ -160,6 +160,24 @@ test('the legend and the site stay together on the last page', async ({ page }) 
   for (const p of pages.slice(0, -1)) expect(p.text.some(t => t.str === 'fingerscore.eu')).toBe(false);
 });
 
+test('a page is written in reading order: caption, lines, legend, site, footer', async ({ page }) => {
+  const { pages } = (await pdfOf(page, { inst: 'asax', range: 'all', direction: 'updown', showAlternates: true })).info;
+  expect(pages.length).toBeGreaterThan(1);
+  const byOrder = (p: PdfPage) => [...p.text].sort((a, b) => a.seq - b.seq);
+  const first = byOrder(pages[0]);
+  expect(first[0].str).toBe('Alto sax in E');
+  expect(first[first.length - 1].str).toBe(` major · page 1 of ${pages.length}`);
+  const last = pages[pages.length - 1];
+  const legend = last.text.find(t => t.str === ' pressed ')!;
+  const site = last.text.find(t => t.str === 'fingerscore.eu')!;
+  const music = last.text.filter(t => t.y < legend.y - 1);
+  expect(music.length).toBeGreaterThan(0);
+  expect(Math.max(...music.map(t => t.seq))).toBeLessThan(legend.seq);
+  expect(legend.seq).toBeLessThan(site.seq);
+  const ordered = byOrder(last);
+  expect(ordered[ordered.length - 1].str).toBe(` major · page ${pages.length} of ${pages.length}`);
+});
+
 test('the fingering the player picked is the one drawn under the note', async ({ page }) => {
   // The first note with several options: its auto choice and a picked other option, as the option names under it.
   const probe = await page.evaluate(async () => {

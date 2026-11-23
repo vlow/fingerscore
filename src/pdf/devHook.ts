@@ -10,14 +10,16 @@ import { inst } from '../domain/instruments';
 import { mod12 } from '../domain/keys';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
-import { layoutSheet } from '../render/layout';
+import { layoutSheet, SHEET } from '../render/layout';
+import { COLUMN_BOTTOM } from '../render/NoteView';
+import { drawText, fontsOf, textWidth } from './drawText';
 import { Paper } from '../render/Paper';
 import { buildScale, scaleFingerings } from '../domain/scales';
-import { drawSvgScaled, loadFonts, newPdf } from './engine';
-import { pageHeightUnits, pageSizeFor, paginate } from './pageModel';
+import { drawSvgScaled, loadFonts, newPdf, pageMm, registerFonts, renderOffscreen } from './engine';
+import { pageHeightUnits, pageSizeFor, paginate, unitMm } from './pageModel';
 import { prepareSvg } from './prepareSvg';
 import { makeScalePdf, type ScalePdfInput } from './scalePdf';
-import { makeSheetPdf, planSheet } from './sheetPdf';
+import { makeSheetPdf, META, planSheet, SUBTITLE, TITLE } from './sheetPdf';
 
 /** Helpers the tests use to build documents in the page. */
 export { buildScale, derive, inst, mod12, parseChord, sampleDoc, scaleFingerings };
@@ -31,6 +33,9 @@ export interface HookResult {
   /** onProgress calls after the signal fired. */
   progressAfterAbort: number;
   ms: number;
+  /** Children of document.body before and after: the PDF code leaves nothing behind. */
+  bodyBefore: number;
+  bodyAfter: number;
 }
 
 async function base64(blob: Blob): Promise<string> {
@@ -49,6 +54,8 @@ async function run(make: (o: { language: string; signal: AbortSignal; onProgress
   const progress: [number, number][] = [];
   let progressAfterAbort = 0;
   const t0 = performance.now();
+  const bodyBefore = document.body.childElementCount;
+  const body = () => ({ bodyBefore, bodyAfter: document.body.childElementCount });
   try {
     const blob = await make({
       language: o.language, signal: ctl.signal,
@@ -58,10 +65,10 @@ async function run(make: (o: { language: string; signal: AbortSignal; onProgress
         if (n === o.abortAtPage) ctl.abort();
       },
     });
-    return { pdf: await base64(blob), type: blob.type, progress, progressAfterAbort, ms: performance.now() - t0 };
+    return { pdf: await base64(blob), type: blob.type, progress, progressAfterAbort, ms: performance.now() - t0, ...body() };
   } catch (e) {
     const err = e as Error;
-    return { error: { name: err.name, message: err.message }, progress, progressAfterAbort, ms: performance.now() - t0 };
+    return { error: { name: err.name, message: err.message }, progress, progressAfterAbort, ms: performance.now() - t0, ...body() };
   }
 }
 
@@ -98,6 +105,44 @@ export async function scaledBlockPdf(height: number): Promise<{ pdf: string; sca
   }
 }
 
+/** Renders a component that throws through the engine's off-screen rendering; counts document.body's children around it. */
+export function renderFailure(): { before: number; after: number; error: string } {
+  const before = document.body.childElementCount;
+  const Fails = (): never => { throw new Error('render failed'); };
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    renderOffscreen(createElement(Fails));
+    return { before, after: document.body.childElementCount, error: '' };
+  } catch (e) {
+    return { before, after: document.body.childElementCount, error: (e as Error).message };
+  } finally {
+    console.error = quiet;
+  }
+}
+
+/** Texts drawn with drawText at 100 units, one line each, on one A4 page; with each text's natural width in units. */
+export async function drawTextPdf(items: { text: string; px: number; weight: 400 | 700; squeezeTo?: number }[]): Promise<{ pdf: string; natural: number[] }> {
+  const fonts = await loadFonts();
+  const size = pageSizeFor('de-DE');
+  const pdf = newPdf(size, fonts, { title: 'text', subject: '' });
+  const u = unitMm(size);
+  items.forEach((it, i) => {
+    registerFonts(pdf, fontsOf(it.text, it.weight));
+    const at = pageMm(size, 100, 60 + 60 * i);
+    drawText(pdf.doc, it.text, { x: at.x, y: at.y, px: it.px * u, weight: it.weight, anchor: 'start', color: '#15171c', squeezeTo: it.squeezeTo === undefined ? undefined : it.squeezeTo * u });
+  });
+  return { pdf: await base64(pdf.doc.output('blob')), natural: items.map(it => textWidth(it.text, it.px, it.weight)) };
+}
+
+/** Layout constants of the sheet and the height of a full title block, for the tests' geometry. */
+export function geometry(): { chordY: number; lyricY: number; chartY: number; chartBottom: number; systemHeight: number; titleBlock: number } {
+  return {
+    chordY: SHEET.chordY, lyricY: SHEET.lyricY, chartY: SHEET.chartY, chartBottom: COLUMN_BOTTOM, systemHeight: SHEET.systemHeight,
+    titleBlock: TITLE.height + SUBTITLE.height + META.height,
+  };
+}
+
 /** The number of pages the page model gives the document. */
 export async function expectedPages(doc: Doc, language: string): Promise<number> {
   await loadFonts();
@@ -108,7 +153,7 @@ export async function expectedPages(doc: Doc, language: string): Promise<number>
 let screen: { root: Root; host: HTMLElement } | null = null;
 
 /** Shows the document's paper over the app, as the sheet page draws it, for a screenshot; returns what the paper drew. */
-export async function showPaper(doc: Doc): Promise<{ squeezed: { text: string; textLength: number }[]; tupletSides: string[]; voltas: number; states: string[]; raised: number; systems: number[][] }> {
+export async function showPaper(doc: Doc): Promise<{ squeezed: { text: string; textLength: number }[]; tupletSides: string[]; voltas: number; states: string[]; raised: number; systems: number[][]; tuplets: { x: number; y: number; system: number }[] }> {
   if (!screen) {
     const host = document.createElement('div');
     host.id = 'pdf-screen';
@@ -131,5 +176,7 @@ export async function showPaper(doc: Doc): Promise<{ squeezed: { text: string; t
     states: Array.from(new Set(Array.from(host.querySelectorAll('[data-state]'), e => e.getAttribute('data-state') ?? ''))),
     raised: host.querySelectorAll('tspan[data-ext][dy]').length,
     systems: layout.systems.map(s => s.bars.map(b => b.bar)),
+    tuplets: Array.from(host.querySelectorAll('svg[data-testid="system"]')).flatMap((svg, system) =>
+      Array.from(svg.querySelectorAll('[data-tuplet] text'), t => ({ x: Number(t.getAttribute('x')), y: Number(t.getAttribute('y')), system }))),
   };
 }

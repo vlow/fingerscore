@@ -8,15 +8,15 @@ import { layoutSheet, SHEET, type SheetLayout } from '../render/layout';
 import { SystemView, tieSegments } from '../render/SystemView';
 import { unsupported } from './chars';
 import { textWidth } from './drawText';
-import { collapse, drawFooter, drawLegend, drawSvg, INK, LEGEND, loadFonts, MUTED, newPdf, nextTurn, renderOffscreen, SITE, text, TEXT, throwIfAborted, width, type Pdf } from './engine';
+import { collapse, drawFooter, drawLegend, drawSvgScaled, INK, LEGEND, loadFonts, MUTED, newPdf, nextTurn, placeBlocks, renderOffscreen, SITE, text, TEXT, throwIfAborted, width, type Pdf } from './engine';
 import { PdfError, unsupportedMessage } from './errors';
 import { prepareSvg } from './prepareSvg';
-import { fitText, pageHeightUnits, pageSizeFor, paginate, UNITS, wrapLegend, type Block, type PageSize } from './pageModel';
+import { fitText, pageHeightUnits, pageSizeFor, paginate, UNITS, wrapLegend, type Block, type PageGroup, type PageSize } from './pageModel';
 
 // Sizes of the title block in units (src/render/Paper.module.css).
-const TITLE = { px: 26, minPx: 14, height: 44, baseline: 28 };
-const SUBTITLE = { px: 14, minPx: 14, height: 28, baseline: 18 };
-const META = { px: 12, height: 24, baseline: 12 };
+export const TITLE = { px: 26, minPx: 14, height: 44, baseline: 28 };
+export const SUBTITLE = { px: 14, minPx: 14, height: 28, baseline: 18 };
+export const META = { px: 12, height: 24, baseline: 12 };
 
 const metaLeft = (doc: Doc) => `♩ = ${doc.tempo}`;
 const metaRight = (d: Derived) => `${d.inst.name} · ${d.headerKeys}`;
@@ -55,34 +55,52 @@ export function planSheet(doc: Doc, d: Derived, layout: SheetLayout): SheetPlan 
 
 interface Sheet { doc: Doc; derived: Derived; layout: SheetLayout; plan: SheetPlan; ties: ReturnType<typeof tieSegments> }
 
-async function drawSystems(pdf: Pdf, sheet: Sheet, placed: { index: number; y: number }[]): Promise<void> {
-  if (placed.length === 0) return;
+/** The page's systems rendered off screen and prepared, by system index; `dispose` removes them. */
+function renderSystems(sheet: Sheet, indices: number[]): { svgs: Map<number, SVGSVGElement>; dispose(): void } {
+  if (indices.length === 0) return { svgs: new Map(), dispose: () => {} };
   const { doc, derived, layout, ties } = sheet;
   const last = layout.systems.length - 1;
-  const views = placed.map(({ index }) => createElement(SystemView, {
+  const views = indices.map(index => createElement(SystemView, {
     key: index, doc, derived, system: layout.systems[index], beams: layout.beams, tuplets: layout.tuplets, ties: ties[index],
     playingId: null, selectedId: null, onSelect: () => {}, lastSystem: index === last,
   }));
   const off = renderOffscreen(createElement(Fragment, null, ...views));
   try {
-    const svgs = Array.from(off.host.querySelectorAll<SVGSVGElement>('svg[data-testid="system"]'));
-    for (let i = 0; i < placed.length; i++) {
-      prepareSvg(svgs[i]);
-      await drawSvg(pdf, svgs[i], 0, placed[i].y, SHEET.systemWidth, SHEET.systemHeight);
-    }
-  } finally {
+    const found = Array.from(off.host.querySelectorAll<SVGSVGElement>('svg[data-testid="system"]'));
+    found.forEach(prepareSvg);
+    return { svgs: new Map(indices.map((index, k) => [index, found[k]])), dispose: off.dispose };
+  } catch (e) {
     off.dispose();
+    throw e;
   }
 }
 
-function drawBlock(pdf: Pdf, sheet: Sheet, b: Block, y: number): void {
+/** Draws one block of the title block at y, in a frame shrunk by `scale` and centred (x0 is the frame's left edge). */
+function drawHeading(pdf: Pdf, sheet: Sheet, b: Block, y: number, x0: number, scale: number): void {
   const { doc, derived, plan } = sheet;
-  if (b.kind === 'title') text(pdf, plan.title.text, UNITS / 2, y + TITLE.baseline, plan.title.px, 700, 'middle', INK);
-  else if (b.kind === 'subtitle') text(pdf, plan.subtitle.text, UNITS / 2, y + SUBTITLE.baseline, plan.subtitle.px, 700, 'middle', TEXT);
+  const at = (x: number) => x0 + x * scale;
+  if (b.kind === 'title') text(pdf, plan.title.text, at(UNITS / 2), y + TITLE.baseline * scale, plan.title.px * scale, 700, 'middle', INK);
+  else if (b.kind === 'subtitle') text(pdf, plan.subtitle.text, at(UNITS / 2), y + SUBTITLE.baseline * scale, plan.subtitle.px * scale, 700, 'middle', TEXT);
   else if (b.kind === 'meta') {
-    text(pdf, metaLeft(doc), 0, y + META.baseline, META.px, 400, 'start', MUTED);
-    text(pdf, metaRight(derived), UNITS, y + META.baseline, META.px, 400, 'end', MUTED);
-  } else if (b.kind === 'legend') drawLegend(pdf, y, plan.legend);
+    text(pdf, metaLeft(doc), at(0), y + META.baseline * scale, META.px * scale, 400, 'start', MUTED);
+    text(pdf, metaRight(derived), at(UNITS), y + META.baseline * scale, META.px * scale, 400, 'end', MUTED);
+  }
+}
+
+/** One page, written in reading order: title block, systems top to bottom, legend and site, footer. */
+async function drawPage(pdf: Pdf, sheet: Sheet, groups: PageGroup[], page: number, pages: number): Promise<void> {
+  const placed = placeBlocks(groups);
+  const systems = renderSystems(sheet, placed.filter(p => p.block.kind === 'system').map(p => p.block.index!));
+  try {
+    for (const { block, y, scale, x0 } of placed) {
+      if (block.kind === 'system') await drawSvgScaled(pdf, systems.svgs.get(block.index!)!, y, SHEET.systemWidth, SHEET.systemHeight, scale);
+      else if (block.kind === 'legend') drawLegend(pdf, y, sheet.plan.legend);
+      else drawHeading(pdf, sheet, block, y, x0, scale);
+    }
+  } finally {
+    systems.dispose();
+  }
+  drawFooter(pdf, sheet.doc.title, page, pages);
 }
 
 export interface SheetPdfOptions { language: string; onProgress?(page: number, pages: number): void; signal?: AbortSignal }
@@ -105,17 +123,7 @@ export async function makeSheetPdf(doc: Doc, o: SheetPdfOptions): Promise<Blob> 
 
   for (let n = 0; n < pages.length; n++) {
     if (n > 0) pdf.doc.addPage([size.widthMm, size.heightMm], 'portrait');
-    let y = 0;
-    const systems: { index: number; y: number }[] = [];
-    for (const group of pages[n]) {
-      for (const b of group.blocks) {
-        if (b.kind === 'system') systems.push({ index: b.index!, y });
-        else drawBlock(pdf, sheet, b, y);
-        y += b.height;
-      }
-    }
-    await drawSystems(pdf, sheet, systems);
-    drawFooter(pdf, doc.title, n + 1, pages.length);
+    await drawPage(pdf, sheet, pages[n], n + 1, pages.length);
     o.onProgress?.(n + 1, pages.length);
     await nextTurn(o.signal);
   }

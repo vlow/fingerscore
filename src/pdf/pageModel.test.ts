@@ -16,7 +16,12 @@ const counts = (pages: ReturnType<typeof paginate>) =>
 
 describe('pageSizeFor', () => {
   it.each(['en-US', 'es-US', 'en-CA', 'fr-CA'])('%s is Letter', l => expect(pageSizeFor(l).name).toBe('Letter'));
-  it.each(['en-GB', 'de-DE', 'de', 'en', ''])('"%s" is A4', l => expect(pageSizeFor(l).name).toBe('A4'));
+  it.each(['en-GB', 'de-DE', 'de', 'en', '', 'zh-Hant-TW', 'es-419'])('"%s" is A4', l => expect(pageSizeFor(l).name).toBe('A4'));
+  it.each(['zh-Hant-US', 'en-us', 'sr-Latn-CA'])('the region is the first two-letter segment after the language: %s is Letter', l => expect(pageSizeFor(l).name).toBe('Letter'));
+  it('no language is A4', () => {
+    expect(pageSizeFor(undefined).name).toBe('A4');
+    expect(pageSizeFor(null).name).toBe('A4');
+  });
 });
 
 describe('units', () => {
@@ -59,11 +64,36 @@ describe('paginate', () => {
     const kinds = pages[0].flatMap(g => g.blocks).map(b => b.kind);
     expect(kinds[kinds.length - 1]).toBe('legend');
   });
-  it('a legend that does not fit moves to a page of its own', () => {
-    // 96 + 4 * 290 = 1256 of 1262.1: 6.1 left, legend needs 40.
-    const pages = paginate([...title(), ...systems(4), { kind: 'legend', height: 40 }], pageHeightUnits(A4));
+  it('a legend that would stand alone stays on the page before, whose other blocks shrink to make room', () => {
+    // 96 + 4 * 290 = 1256 of 1262.3: the legend of 41 does not fit; (1262.3 - 41) / 1256 = 0.97 >= 0.92.
+    const P = pageHeightUnits(A4);
+    const pages = paginate([...title(), ...systems(4), { kind: 'legend', height: 41 }], P);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]).toHaveLength(2);
+    expect(pages[0][0].blocks.map(b => b.kind)).toEqual(['title', 'subtitle', 'meta', 'system', 'system', 'system', 'system']);
+    expect(pages[0][0].scale).toBeCloseTo((P - 41) / 1256, 9);
+    expect(pages[0][1]).toEqual({ blocks: [{ kind: 'legend', height: 41 }], scale: 1 });
+  });
+  it('five systems: the legend shares the last page and nothing shrinks', () => {
+    const pages = paginate([...title(), ...systems(5), { kind: 'legend', height: 41 }], pageHeightUnits(A4));
+    expect(counts(pages)).toEqual([4, 1]);
+    expect(pages.flat().every(g => g.scale === 1)).toBe(true);
+  });
+  it('a legend that would need a shrink below 0.92 gets its own page', () => {
+    // (P - L) / 1256 just under 0.92
+    const P = pageHeightUnits(A4);
+    const L = Math.ceil(P - 0.92 * 1256) + 1;
+    const pages = paginate([...title(), ...systems(4), { kind: 'legend', height: L }], P);
     expect(pages).toHaveLength(2);
-    expect(pages[1].flatMap(g => g.blocks).map(b => b.kind)).toEqual(['legend']);
+    expect(pages[1]).toEqual([{ blocks: [{ kind: 'legend', height: L }], scale: 1 }]);
+    expect(pages[0][0].scale).toBe(1);
+  });
+  it('a block taller than a page keeps its own rule: the legend after it gets its own page', () => {
+    const P = pageHeightUnits(A4);
+    const pages = paginate([{ kind: 'line', height: P * 1.02, index: 0 }, { kind: 'legend', height: 41 }], P);
+    expect(pages).toHaveLength(2);
+    expect(pages[0][0].scale).toBeCloseTo(1 / 1.02, 9);
+    expect(pages[1]).toEqual([{ blocks: [{ kind: 'legend', height: 41 }], scale: 1 }]);
   });
   it('a block exactly as tall as the remaining space fits', () => {
     const pages = paginate([{ kind: 'system', height: 100 }, { kind: 'system', height: 200 }], 300);
@@ -139,6 +169,10 @@ describe('wrapLegend', () => {
     const r = wrapLegend('a'.repeat(100), 'fingerscore.eu', w, 620);
     expect(r.lines).toHaveLength(1);
     expect(r.footerOwnLine).toBe(true);
+  });
+  it('empty segments leave no separator and no space', () => {
+    expect(wrapLegend('● open ·  · top hole = thumb · ', 'f', w, 860).lines).toEqual(['● open · top hole = thumb']);
+    expect(wrapLegend('a ·  · b', 'f', w, 20).lines).toEqual(['a', 'b']);
   });
   it('the footer needs a gap of 24 units', () => {
     // legend 600 + footer 84 + gap 24 = 708

@@ -6,9 +6,9 @@ import type { InstId } from '../domain/types';
 import { scaleLines, type ScaleStaffProps } from '../render/ScaleStaff';
 import { SHEET } from '../render/layout';
 import { unsupported } from './chars';
-import { collapse, drawFooter, drawLegend, drawSvg, drawSvgScaled, INK, LEGEND, loadFonts, newPdf, nextTurn, renderOffscreen, SITE, text, throwIfAborted, width, type Pdf } from './engine';
+import { collapse, drawFooter, drawLegend, drawSvgScaled, INK, LEGEND, loadFonts, newPdf, nextTurn, placeBlocks, renderOffscreen, SITE, text, throwIfAborted, width, type Pdf } from './engine';
 import { PdfError, unsupportedMessage } from './errors';
-import { fitText, pageHeightUnits, pageSizeFor, paginate, UNITS, wrapLegend, type Block, type PageSize } from './pageModel';
+import { fitText, pageHeightUnits, pageSizeFor, paginate, UNITS, wrapLegend, type Block, type PageGroup, type PageSize } from './pageModel';
 import { prepareSvg } from './prepareSvg';
 import { textWidth } from './drawText';
 
@@ -77,23 +77,39 @@ function splitOptionNames(svg: SVGSVGElement): void {
   }
 }
 
-/** Draws the lines at their y (units of the content box); a group with scale < 1 holds one line alone on its page. */
-async function drawLines(pdf: Pdf, input: ScalePdfInput, placed: { index: number; y: number; scale: number }[]): Promise<void> {
-  if (placed.length === 0) return;
+/** The page's lines rendered off screen and prepared, by line index; `dispose` removes them. */
+function renderLines(input: ScalePdfInput, indices: number[]): { svgs: Map<number, SVGSVGElement>; dispose(): void } {
+  if (indices.length === 0) return { svgs: new Map(), dispose: () => {} };
   const lines = scaleLines(staffProps(input));      // no renderUnderChart: the page's pill slot is not drawn
-  const off = renderOffscreen(createElement(Fragment, null, ...placed.map(({ index }) => createElement(Fragment, { key: index }, lines[index].render()))));
+  const off = renderOffscreen(createElement(Fragment, null, ...indices.map(index => createElement(Fragment, { key: index }, lines[index].render()))));
   try {
-    const svgs = Array.from(off.host.querySelectorAll<SVGSVGElement>('svg[data-testid="scale-line"]'));
-    for (let k = 0; k < placed.length; k++) {
-      const { index, y, scale } = placed[k];
-      splitOptionNames(svgs[k]);
-      prepareSvg(svgs[k]);
-      if (scale === 1) await drawSvg(pdf, svgs[k], 0, y, SHEET.systemWidth, lines[index].height);
-      else await drawSvgScaled(pdf, svgs[k], y, SHEET.systemWidth, lines[index].height, scale);
+    const found = Array.from(off.host.querySelectorAll<SVGSVGElement>('svg[data-testid="scale-line"]'));
+    for (const svg of found) {
+      splitOptionNames(svg);
+      prepareSvg(svg);
+    }
+    return { svgs: new Map(indices.map((index, k) => [index, found[k]])), dispose: off.dispose };
+  } catch (e) {
+    off.dispose();
+    throw e;
+  }
+}
+
+/** One page, written in reading order: caption, lines top to bottom, legend and site, footer. */
+async function drawPage(pdf: Pdf, input: ScalePdfInput, plan: ScalePlan, groups: PageGroup[], page: number, pages: number): Promise<void> {
+  const placed = placeBlocks(groups);
+  const heights = scaleLines(staffProps(input)).map(l => l.height);
+  const lines = renderLines(input, placed.filter(p => p.block.kind === 'line').map(p => p.block.index!));
+  try {
+    for (const { block, y, scale, x0 } of placed) {
+      if (block.kind === 'line') await drawSvgScaled(pdf, lines.svgs.get(block.index!)!, y, SHEET.systemWidth, heights[block.index!], scale);
+      else if (block.kind === 'caption') text(pdf, plan.caption.text, x0 + (UNITS / 2) * scale, y + CAPTION.baseline * scale, plan.caption.px * scale, 700, 'middle', INK);
+      else if (block.kind === 'legend') drawLegend(pdf, y, plan.legend);
     }
   } finally {
-    off.dispose();
+    lines.dispose();
   }
+  drawFooter(pdf, input.caption, page, pages);
 }
 
 export interface ScalePdfOptions { language: string; onProgress?(page: number, pages: number): void; signal?: AbortSignal }
@@ -113,18 +129,7 @@ export async function makeScalePdf(input: ScalePdfInput, o: ScalePdfOptions): Pr
 
   for (let n = 0; n < pages.length; n++) {
     if (n > 0) pdf.doc.addPage([size.widthMm, size.heightMm], 'portrait');
-    let y = 0;
-    const placed: { index: number; y: number; scale: number }[] = [];
-    for (const group of pages[n]) {
-      for (const b of group.blocks) {
-        if (b.kind === 'line') placed.push({ index: b.index!, y, scale: group.scale });
-        else if (b.kind === 'caption') text(pdf, plan.caption.text, UNITS / 2, y + CAPTION.baseline, plan.caption.px, 700, 'middle', INK);
-        else if (b.kind === 'legend') drawLegend(pdf, y, plan.legend);
-        y += b.height;
-      }
-    }
-    await drawLines(pdf, input, placed);
-    drawFooter(pdf, input.caption, n + 1, pages.length);
+    await drawPage(pdf, input, plan, pages[n], n + 1, pages.length);
     o.onProgress?.(n + 1, pages.length);
     await nextTurn(o.signal);
   }
