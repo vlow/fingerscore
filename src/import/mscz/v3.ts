@@ -1,6 +1,6 @@
 import type { ParsedSong } from '../types';
 import { durationQuarters, kid, kids, num, text, type ScoreReader } from './common';
-import { fraction, isGrace, readScore, voiceSink, type Bar, type Dialect, type VoiceRead } from './shared';
+import { fraction, isGrace, ratioOf, readScore, voiceSink, type Bar, type Dialect, type VoiceRead } from './shared';
 
 /** Versions 3 and 4 wrap each voice of a measure in a `<voice>` element and write ties, tuplets and endings as spanners and markers inside it. */
 
@@ -21,8 +21,7 @@ function readVoice(bars: Bar[], staffMeasures: Element[], voiceIndex: number): V
     for (const el of Array.from(voice.children)) {
       const name = el.localName;
       if (name === 'Tuplet') {
-        const normal = num(text(el, 'normalNotes')), actual = num(text(el, 'actualNotes'));
-        ratios.push(normal && actual ? normal / actual : 1);
+        ratios.push(ratioOf(el));
       } else if (name === 'endTuplet') {
         ratios.pop();
       } else if (name === 'location') {

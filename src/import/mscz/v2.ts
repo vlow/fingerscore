@@ -1,6 +1,6 @@
 import type { ParsedSong } from '../types';
 import { durationQuarters, kid, kids, num, text, type ScoreReader } from './common';
-import { isGrace, readScore, voiceSink, type Bar, type Dialect, type VoiceRead } from './shared';
+import { EPS, isGrace, ratioOf, readScore, voiceSink, type Bar, type Dialect, type VoiceRead } from './shared';
 
 /**
  * Version 2 lists the chords, rests and chord symbols of every voice of a staff directly in the measure. A `<track>` child
@@ -28,8 +28,7 @@ const divisionOf = (score: Element): number => {
 function tupletRatio(declared: Map<string, Element>, id: string | undefined, depth = 0): number {
   const t = id === undefined ? undefined : declared.get(id);
   if (!t || depth > MAX_TUPLET_DEPTH) return 1;
-  const normal = num(text(t, 'normalNotes')), actual = num(text(t, 'actualNotes'));
-  return (normal && actual ? normal / actual : 1) * tupletRatio(declared, text(t, 'Tuplet'), depth + 1);
+  return ratioOf(t) * tupletRatio(declared, text(t, 'Tuplet'), depth + 1);
 }
 
 function makeReadVoice(division: number) {
@@ -57,7 +56,8 @@ function makeReadVoice(division: number) {
           const tick = pendingTick;
           pendingTick = null;
           if (!mine) continue;
-          if (tick !== null) pos = tick / division;
+          // A tick outside the measure is ignored: the voice keeps its position.
+          if (tick !== null && tick / division >= bar.start - EPS && tick / division <= bar.start + bar.length + EPS) pos = tick / division;
           const type = text(el, 'durationType') ?? '';
           const written = type === 'measure' ? bar.length : durationQuarters(type, num(text(el, 'dots')) ?? 0);
           if (written === null) throw new Error(`unknown note value ${type}`);
@@ -71,13 +71,20 @@ function makeReadVoice(division: number) {
   };
 }
 
-/** Repeat signs and endings 1 and 2 of the first staff. An ending covers the measures from its start up to, not including, the measure that holds its `<endSpanner>`; with no end found it covers its start measure. */
+/** Repeat signs and endings 1 and 2 of the first staff. An ending covers the measures from its start to its `<endSpanner>`: not including the measure when the mark comes before that measure's first chord or rest, including it when the mark comes after. With no end found it covers its start measure. */
 function readMarks(bars: Bar[]): ParsedSong['marks'] {
   const marks = new Map<number, ParsedSong['marks'][number]>();
   const at = (bar: number) => { let m = marks.get(bar); if (!m) { m = { bar }; marks.set(bar, m); } return m; };
+  /** Index of the first measure the ending does not cover. An end mark before the first chord or rest of a measure ends the ending before that measure; one after a chord or rest ends it with that measure. No end found: the start measure only. */
   const endsAt = (id: string | null, from: number): number => {
-    const found = bars.findIndex((b, j) => j > from && id !== null && kids(b.el, 'endSpanner').some(e => e.getAttribute('id') === id));
-    return found < 0 ? from + 1 : found;
+    for (let j = from; j < bars.length && id !== null; j++) {
+      let sounded = false;
+      for (const c of Array.from(bars[j].el.children)) {
+        if (c.localName === 'Chord' || c.localName === 'Rest') sounded = true;
+        else if (c.localName === 'endSpanner' && c.getAttribute('id') === id && (sounded || j > from)) return sounded ? j + 1 : j;
+      }
+    }
+    return from + 1;
   };
   bars.forEach(({ el }, i) => {
     if (kid(el, 'startRepeat')) at(i).rs = true;
@@ -85,7 +92,8 @@ function readMarks(bars: Bar[]): ParsedSong['marks'] {
     for (const volta of kids(el, 'Volta')) {
       const endings = text(volta, 'endings');
       if (endings !== '1' && endings !== '2') continue;
-      for (let b = i; b < endsAt(volta.getAttribute('id'), i); b++) at(b).volta = endings;
+      const end = endsAt(volta.getAttribute('id'), i);
+      for (let b = i; b < end; b++) at(b).volta = endings;
     }
   });
   return Array.from(marks.values()).sort((a, b) => a.bar - b.bar);

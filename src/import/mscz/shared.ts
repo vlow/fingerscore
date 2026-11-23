@@ -34,6 +34,12 @@ export function fraction(s: string | undefined): number | null {
   return d === 0 ? null : Number(m[1]) / d;
 }
 
+/** Ratio (normal / actual notes) of a tuplet element; 1 when either count is missing, zero or negative. */
+export function ratioOf(tuplet: Element): number {
+  const normal = num(text(tuplet, 'normalNotes')), actual = num(text(tuplet, 'actualNotes'));
+  return normal !== null && actual !== null && normal > 0 && actual > 0 ? normal / actual : 1;
+}
+
 // ---- parts ----
 
 /** The parts of the main score. A part's `<Staff>` carries its id in versions 2 and 3; version 4 may leave it out, then the staves count up in order. */
