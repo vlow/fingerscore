@@ -204,13 +204,16 @@ const LETTERS: Record<string, string> = {
   'ı': 'i', 'ð': 'd', 'Ð': 'D', 'þ': 'th', 'Þ': 'TH', 'ħ': 'h', 'Ħ': 'H', 'ŧ': 't', 'Ŧ': 'T', 'ŋ': 'n', 'Ŋ': 'N',
 };
 const MAX_SLUG = 80;
+const ACCIDENTAL_WORDS: Record<string, string> = { '♯': '-sharp', '#': '-sharp', '♭': '-flat', '𝄪': '-double-sharp', '𝄫': '-double-flat' };
 
 /**
- * Compatibility forms and accents dropped (ﬁ → fi, Ž → z, ł → l, ß → ss), lower case, runs outside a-z0-9 become one hyphen,
- * hyphens at both ends trimmed, cut to 80 characters. May be empty.
+ * A sharp or flat sign directly after a letter A-G is written as a word (F♯ → f-sharp, B♭ → b-flat), so that keys keep
+ * different names. Then compatibility forms and accents dropped (ﬁ → fi, Ž → z, ł → l, ß → ss), lower case, runs outside
+ * a-z0-9 become one hyphen, hyphens at both ends trimmed, cut to 80 characters. May be empty.
  */
 export function slug(text: string): string {
-  const plain = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[łŁøØßæÆœŒđĐıðÐþÞħĦŧŦŋŊ]/g, c => LETTERS[c]);
+  const named = text.replace(/([A-Ga-g])(♯|#|♭|𝄪|𝄫)/gu, (_, letter: string, sign: string) => `${letter}${ACCIDENTAL_WORDS[sign]}`);
+  const plain = named.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[łŁøØßæÆœŒđĐıðÐþÞħĦŧŦŋŊ]/g, c => LETTERS[c]);
   return plain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, MAX_SLUG).replace(/-+$/, '');
 }
 
