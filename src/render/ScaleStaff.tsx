@@ -1,8 +1,8 @@
-import { chooseFingerings } from '../domain/chooser';
-import { optionsFor, type FingeringOption, type RecorderSystem } from '../domain/fingerings';
+import { Fragment, type ReactNode } from 'react';
+import type { FingeringOption, RecorderSystem } from '../domain/fingerings';
 import { inst as instrument, type Instrument } from '../domain/instruments';
 import { staffPos } from '../domain/keys';
-import type { ScaleNote, ScaleResult } from '../domain/scales';
+import { scaleFingerings, type ScaleNote, type ScaleResult } from '../domain/scales';
 import { TPQ } from '../domain/time';
 import type { InstId } from '../domain/types';
 import { FingeringChart, MissingChart } from './FingeringChart';
@@ -29,8 +29,18 @@ const LABEL_LINE = 12;
 const BLOCK_GAP = 12;
 const BOTTOM_PAD = 16;
 const TEXT_COLOR = '#2A2D33';
+const PILL_SPACE = 24;                              // room under the chosen chart for the slot (the alternatives pill)
 
-interface Placed { note: ScaleNote; index: number; options: FingeringOption[]; chosen: number | undefined }
+interface Placed { note: ScaleNote; index: number; options: FingeringOption[]; chosen: number | undefined; auto: number | undefined; overridden: boolean }
+
+/** A note with two or more fingerings, as the chart slot sees it. */
+export interface ScaleChartNote { index: number; name: string; options: FingeringOption[]; chosen: number; auto: number; overridden: boolean }
+/**
+ * Where the slot sits, in the coordinates of its line's box: x of the note, y just under the chosen chart, chartTop
+ * the chart's top edge, height the line's height; line is the line index, lastLine whether it is the last.
+ */
+export interface ChartSlotPlace { x: number; y: number; chartTop: number; height: number; line: number; lastLine: boolean }
+export type ScaleChartSlot = (note: ScaleChartNote, at: ChartSlotPlace) => ReactNode;
 
 /** Greedy word wrap of an option name into lines of at most `max` characters. */
 function wrap(text: string, max: number): string[] {
@@ -53,7 +63,7 @@ function OptionName(p: { text: string; x: number; y: number; maxChars: number })
 
 interface LineProps {
   notes: Placed[]; sig: number; last: boolean; kind: Instrument['kind']; chartStyle: 'compact' | 'full';
-  showNames: boolean; showAlternates: boolean;
+  showNames: boolean; showAlternates: boolean; line: number; renderUnderChart?: ScaleChartSlot;
 }
 
 /** One scale line: clef, key signature, up to 15 whole notes, and under each its name and fingering stack. */
@@ -69,15 +79,17 @@ function ScaleLine(p: LineProps) {
   const chartY = (p.showNames ? nameY : below) + CHART_GAP;
   const maxChars = Math.max(4, Math.floor((step - 4) / (LABEL_PX * TEXT_EM_PER_CHAR)));
   const labelH = (text: string) => wrap(text, maxChars).length * LABEL_LINE;
+  const pillSpace = p.renderUnderChart ? PILL_SPACE : 0;
 
   // Stack under each note: the chosen chart first, then (when shown) every further option.
   const stacks = p.notes.map(n => {
     if (n.chosen === undefined) return { blocks: [], bottom: chartY + CHART_H };
     const order = p.showAlternates ? [n.chosen, ...n.options.map((_, j) => j).filter(j => j !== n.chosen)] : [n.chosen];
     let y = chartY;
-    const blocks = order.map(j => {
-      const block = { option: j, y, labelY: y + CHART_H + LABEL_LINE };
-      y += CHART_H + (p.showAlternates ? labelH(n.options[j].n) + 4 : 0) + BLOCK_GAP;
+    const blocks = order.map((j, i) => {
+      const room = i === 0 ? pillSpace : 0;
+      const block = { option: j, y, labelY: y + CHART_H + room + LABEL_LINE };
+      y += CHART_H + room + (p.showAlternates ? labelH(n.options[j].n) + 4 : 0) + BLOCK_GAP;
       return block;
     });
     return { blocks, bottom: y - BLOCK_GAP };
@@ -87,8 +99,9 @@ function ScaleLine(p: LineProps) {
   const nAcc = Math.abs(p.sig);
   const sigPos = p.sig > 0 ? SHARP_POS : FLAT_POS;
 
+  const slot = p.renderUnderChart;
   return (
-    <>
+    <div className={styles.lineBox} style={{ width: WIDTH, height }}>
       <p className={styles.srOnly}>{p.notes.map(n => n.note.spelled.name + (n.note.state === 'ext' ? ' (extended)' : '')).join(', ')}</p>
       <svg data-testid="scale-line" aria-hidden="true" className={styles.line}
         width={WIDTH} height={height} viewBox={`0 ${top} ${WIDTH} ${height}`}>
@@ -120,7 +133,8 @@ function ScaleLine(p: LineProps) {
               {n.chosen === undefined
                 ? <MissingChart type={missingType(n.note, p.kind)} x={x} y={chartY} />
                 : stacks[k].blocks.map((b, i) => (
-                  <g key={b.option} {...(i === 0 ? { 'data-chart': '' } : { 'data-alt': '' })} data-option={b.option}>
+                  <g key={b.option} {...(i === 0 ? { 'data-chart': '' } : { 'data-alt': '' })} data-option={b.option}
+                    {...(i === 0 && n.overridden ? { 'data-overridden': 'true' } : {})}>
                     <FingeringChart kind={p.kind} option={n.options[b.option]} style={p.chartStyle} x={x} y={b.y} />
                     {p.showAlternates && <OptionName text={n.options[b.option].n} x={x} y={b.labelY} maxChars={maxChars} />}
                   </g>
@@ -135,26 +149,37 @@ function ScaleLine(p: LineProps) {
           </g>
         )}
       </svg>
-    </>
+      {slot && p.notes.map((n, k) => n.options.length >= 2 && n.chosen !== undefined && n.auto !== undefined && (
+        <Fragment key={n.index}>
+          {slot(
+            { index: n.index, name: n.note.spelled.name, options: n.options, chosen: n.chosen, auto: n.auto, overridden: n.overridden },
+            { x: xOf(k), y: chartY + CHART_H + 4 - top, chartTop: chartY - top, height, line: p.line, lastLine: p.last },
+          )}
+        </Fragment>
+      ))}
+    </div>
   );
 }
 
 /** A scale as lines of whole notes, each with its name and fingering chart (design 4.3, 4.4 "Notation"). */
 export function ScaleStaff(p: {
   inst: InstId; scale: ScaleResult; chartStyle: 'compact' | 'full'; recorderSystem: RecorderSystem; showNames: boolean; showAlternates: boolean;
+  /** The player's picks: note index → option index; invalid entries are ignored. */
+  overrides?: Record<number, number>;
+  /** HTML under each chart whose note has two or more fingerings (the alternatives pill); positioned in line coordinates. */
+  renderUnderChart?: ScaleChartSlot;
 }): JSX.Element {
   const kind = instrument(p.inst).kind;
-  const options = p.scale.notes.map(n => optionsFor(p.inst, n.written, p.recorderSystem));
-  // The sheet's chooser over the whole sequence; a note without options breaks the run.
-  const chosen = chooseFingerings(p.scale.notes.map((n, i) => ({ id: String(i), written: n.written, options: options[i] })), {});
-  const placed: Placed[] = p.scale.notes.map((note, index) => ({ note, index, options: options[index], chosen: chosen[String(index)] }));
+  // The sheet's chooser over the whole sequence, the picks as fixed points; a note without options breaks the run.
+  const fingerings = scaleFingerings(p.inst, p.scale.notes, p.recorderSystem, p.overrides ?? {});
+  const placed: Placed[] = p.scale.notes.map((note, index) => ({ note, index, ...fingerings[index] }));
   const lines: Placed[][] = [];
   for (let i = 0; i < placed.length; i += NOTES_PER_LINE) lines.push(placed.slice(i, i + NOTES_PER_LINE));
   return (
     <div className={styles.staff}>
       {lines.map((notes, i) => (
         <ScaleLine key={i} notes={notes} sig={p.scale.sig} last={i === lines.length - 1} kind={kind} chartStyle={p.chartStyle}
-          showNames={p.showNames} showAlternates={p.showAlternates} />
+          showNames={p.showNames} showAlternates={p.showAlternates} line={i} renderUnderChart={p.renderUnderChart} />
       ))}
     </div>
   );

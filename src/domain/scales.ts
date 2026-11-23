@@ -1,4 +1,6 @@
 import data from '../data/scales.json';
+import { chooseFingerings } from './chooser';
+import { optionsFor, type FingeringOption, type RecorderSystem } from './fingerings';
 import { inst, isTransposing, noteNameFlat, rangeState } from './instruments';
 import { accidentalName, keySignature, mod12, signatureAlter, spell, spelledName, tonicName, type AccidentalName, type Alter, type Spelled } from './keys';
 import type { InstId, Mode } from './types';
@@ -132,4 +134,31 @@ export function keyChips(id: InstId, scale: ScaleId, by: 'read' | 'sound'): KeyC
 /** Whether written and concert keys differ; octave-transposing instruments count as non-transposing. */
 export function isKeyTransposing(id: InstId): boolean {
   return isTransposing(inst(id));
+}
+
+/** A note's fingerings: its options, the chosen one, the app's own pick (auto) and whether the player picked it. */
+export interface ScaleFingering { options: FingeringOption[]; chosen: number | undefined; auto: number | undefined; overridden: boolean }
+
+/** Whether an override is an option index of the note; anything else is ignored. */
+export function validPick(value: unknown, options: FingeringOption[]): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < options.length;
+}
+
+/**
+ * The sheet's chooser along the scale's note sequence (design 4.3), with the player's picks (note index → option index)
+ * as fixed points. auto is the pick without that note's own override, with the others' as fixed points where they hold,
+ * as on a sheet. A note without options breaks the run.
+ */
+export function scaleFingerings(id: InstId, notes: ScaleNote[], recorderSystem: RecorderSystem, overrides: Record<number, number>): ScaleFingering[] {
+  const options = notes.map(n => optionsFor(id, n.written, recorderSystem));
+  const items = notes.map((n, i) => ({ id: String(i), written: n.written, options: options[i] }));
+  const pins: Record<string, number> = {};
+  options.forEach((o, i) => { if (validPick(overrides[i], o)) pins[String(i)] = overrides[i]; });
+  const pinned = chooseFingerings(items, pins);
+  const free = Object.keys(pins).length ? chooseFingerings(items, {}) : pinned;
+  return options.map((o, i) => {
+    const overridden = String(i) in pins;
+    const auto = overridden ? free[String(i)] : pinned[String(i)];
+    return { options: o, auto, overridden, chosen: overridden ? overrides[i] : auto };
+  });
 }

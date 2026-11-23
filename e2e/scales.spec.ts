@@ -133,3 +133,27 @@ test('scales: a chunk that fails to load shows the notice, not a blank page', as
   );
   await expect(page.getByRole('link', { name: 'Songs' })).toBeVisible();
 });
+
+test('scales: an alternate fingering can be picked, survives a reload and resets', async ({ page }) => {
+  const errors = collectErrors(page);
+  await clean(page, '/scales');
+
+  await radio(page, 'Key', 'F · sounds A♭').click();
+  const pill = page.getByRole('button', { name: /^⇅ \d+ alternate fingerings for / }).first();
+  await pill.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('pick a fingering');
+  // The second option, or the first that is not the automatic choice when the second is.
+  await dialog.getByRole('button').filter({ hasNotText: 'auto' }).first().click();
+  const summary = page.getByText(/· 1 changed by you$/);
+  await expect(summary).toBeVisible();
+  await expect(pill).toHaveAttribute('data-overridden', 'true');
+
+  await page.reload();
+  await expect(summary).toBeVisible();
+  await page.getByRole('button', { name: 'Reset all to auto' }).click();
+  await expect(summary).toBeHidden();
+  await expect(page.getByText(/· 0 changed by you$/)).toBeVisible();
+
+  expect(errors).toEqual([]);
+});

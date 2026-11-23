@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { hasSatellites, legend, type RecorderSystem } from '../domain/fingerings';
 import { displayName, FAMILIES, familyMembers, inst, ORDER } from '../domain/instruments';
 import {
-  buildScale, isKeyTransposing, keyChips, SCALE_IDS, scaleName, type ScaleDirection, type ScaleId, type ScaleRange,
+  buildScale, isKeyTransposing, keyChips, SCALE_IDS, scaleFingerings, scaleName, validPick, type ScaleDirection, type ScaleId,
+  type ScaleRange,
 } from '../domain/scales';
 import type { InstId } from '../domain/types';
 import { ScaleStaff } from '../render/ScaleStaff';
 import { readJSON, writeJSON } from '../state/storage';
 import { useApp } from '../state/store';
 import { Segmented } from '../ui/Segmented';
+import { useScaleAlternatives } from './scales/useScaleAlternatives';
 import '../styles/print.css';
 import s from './Scales.module.css';
 
@@ -18,7 +20,12 @@ type KeysBy = 'read' | 'sound';
 interface Settings {
   inst: InstId; scale: ScaleId; tonicPc: number; range: ScaleRange; direction: ScaleDirection; by: KeysBy;
   chartStyle: 'compact' | 'full'; recorderSystem: RecorderSystem; showAlternates: boolean; showNames: boolean;
+  /** The player's fingering picks: note index in the scale's sequence → option index. */
+  overrides: Record<number, number>;
 }
+
+/** Settings that change the note sequence or its fingering tables: a change clears the picks. */
+const SEQUENCE: (keyof Settings)[] = ['inst', 'scale', 'tonicPc', 'range', 'direction', 'recorderSystem'];
 
 const RANGES: { value: ScaleRange; content: string }[] = [
   { value: 'one', content: '1 octave' }, { value: 'two', content: '2 octaves' }, { value: 'all', content: 'Whole range' },
@@ -42,7 +49,7 @@ function load(preferred: InstId): Settings {
   const raw = readJSON<Record<string, unknown>>('local', KEY);
   const r = raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback);
-  return {
+  const st: Settings = {
     inst: pick(r.inst, ORDER, preferred),
     scale: pick(r.scale, SCALE_IDS, 'maj'),
     tonicPc: pick(r.tonicPc, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 0),
@@ -53,22 +60,49 @@ function load(preferred: InstId): Settings {
     recorderSystem: pick(r.recorderSystem, SYSTEMS.map(o => o.value), 'baroque'),
     showAlternates: bool(r.showAlternates, false),
     showNames: bool(r.showNames, true),
+    overrides: {},
   };
+  // A pick is kept only when its note exists in the rebuilt scale and its option index is valid for that note.
+  const stored = r.overrides !== null && typeof r.overrides === 'object' && !Array.isArray(r.overrides) ? r.overrides as Record<string, unknown> : {};
+  const notes = buildScale(st).notes;
+  const fingerings = scaleFingerings(st.inst, notes, st.recorderSystem, {});
+  for (const [key, value] of Object.entries(stored)) {
+    const index = Number(key);
+    if (Number.isInteger(index) && index >= 0 && index < notes.length && validPick(value, fingerings[index].options)) st.overrides[index] = value;
+  }
+  return st;
 }
 
 /** The Scales page (design 4.4): one control card, the notice, and the scale on paper. */
 export default function Scales() {
   const [st, setSt] = useState<Settings>(() => load(useApp.getState().instId));
-  const set = (patch: Partial<Settings>) => setSt(prev => ({ ...prev, ...patch }));
+  const set = (patch: Partial<Settings>) => {
+    const reset = SEQUENCE.some(k => k in patch && patch[k] !== st[k]);
+    if (reset) closeAlt(false);
+    setSt(prev => ({ ...prev, ...patch, ...(reset ? { overrides: {} } : {}) }));
+  };
+  const pickFingering = (index: number, option: number | null) => setSt(prev => {
+    const overrides = { ...prev.overrides };
+    if (option === null) delete overrides[index];
+    else overrides[index] = option;
+    return { ...prev, overrides };
+  });
   useEffect(() => { writeJSON('local', KEY, st); }, [st]);
 
   const i = inst(st.inst);
+  const { closeAlt, renderUnderChart } = useScaleAlternatives(i.kind, st.chartStyle, pickFingering);
   const transposing = isKeyTransposing(st.inst);
   const name = scaleName(st.scale);
   const scale = useMemo(
     () => buildScale({ inst: st.inst, scale: st.scale, tonicPc: st.tonicPc, range: st.range, direction: st.direction }),
     [st.inst, st.scale, st.tonicPc, st.range, st.direction],
   );
+  const fingerings = useMemo(
+    () => scaleFingerings(st.inst, scale.notes, st.recorderSystem, st.overrides),
+    [st.inst, scale, st.recorderSystem, st.overrides],
+  );
+  const withAlternates = fingerings.filter(f => f.options.length >= 2).length;
+  const changed = fingerings.filter(f => f.overridden).length;
   // The chips change with the scale type (major or minor tonic table); the selection is the written pitch class.
   const by = transposing ? st.by : 'read';
   const chips = keyChips(st.inst, st.scale, by);
@@ -161,6 +195,17 @@ export default function Scales() {
             Note names
           </label>
         </div>
+
+        {withAlternates > 0 && (
+          <div className={s.alts}>
+            <span>
+              {withAlternates} {withAlternates === 1 ? 'note has' : 'notes have'} alternate fingerings · {changed} changed by you
+            </span>
+            {changed > 0 && (
+              <button type="button" className={s.reset} onClick={() => { closeAlt(false); set({ overrides: {} }); }}>Reset all to auto</button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* The live region stays mounted so screen readers announce a notice when it appears. */}
@@ -172,7 +217,7 @@ export default function Scales() {
         <section aria-label="Scale" className={s.paper} data-print-scale="">
           <h2 className={s.caption}>{caption}</h2>
           <ScaleStaff inst={st.inst} scale={scale} chartStyle={st.chartStyle} recorderSystem={st.recorderSystem}
-            showNames={st.showNames} showAlternates={st.showAlternates} />
+            showNames={st.showNames} showAlternates={st.showAlternates} overrides={st.overrides} renderUnderChart={renderUnderChart} />
           <footer className={s.legend}>
             <span>{legend(st.inst)}</span>
             <span>fingerscore.eu</span>

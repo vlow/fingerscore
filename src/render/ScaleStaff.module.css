@@ -5,6 +5,11 @@
   gap: 8px;
 }
 
+/* One line: its SVG and, positioned over it, the slot content (pills, popover). */
+.lineBox {
+  position: relative;
+}
+
 .line {
   display: block;
   overflow: visible;

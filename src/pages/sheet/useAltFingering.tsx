@@ -40,7 +40,7 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
           {ev.options.length}
         </button>
         {open && (
-          <AltFingeringPopover ev={ev} bar={ev.bar + firstBar} kind={kind} chartStyle={doc.chartStyle}
+          <AltFingeringPopover note={{ name: ev.spelled.name, options: ev.options, chosen: ev.chosen, auto: ev.auto }} bar={ev.bar + firstBar} kind={kind} chartStyle={doc.chartStyle}
             left={Math.round(Math.max(0, Math.min(SHEET.systemWidth - width, x - width / 2)))}
             top={lastSystem ? SHEET.chartY - 148 : SHEET.chartY + 112}
             anchor={anchorRef.current}

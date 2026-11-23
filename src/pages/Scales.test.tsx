@@ -160,3 +160,142 @@ it('radiogroups work with arrow keys', async () => {
   expect(screen.getByRole('radio', { name: '2 octaves' })).toHaveAttribute('tabindex', '0');
   expect(screen.getByRole('radio', { name: '1 octave' })).toHaveAttribute('tabindex', '-1');
 });
+
+describe('choosable alternate fingerings', () => {
+  const pills = () => screen.queryAllByRole('button', { name: /^⇅ \d+ alternate fingerings for / });
+  const fMajor = async () => user.click(screen.getByRole('radio', { name: /^F · sounds A♭$/ }));
+  /** Opens the first pill and picks an option that is not the automatic one. */
+  async function pickOne() {
+    await user.click(pills()[0]);
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getAllByRole('button').find(b => !/auto/.test(b.textContent!))!);
+  }
+  const changed = () => screen.queryByText(/· 1 changed by you$/);
+
+  it('pills only under notes with two or more fingerings; the summary counts them', async () => {
+    renderScales();   // alto sax C major: only C5 has two fingerings
+    expect(pills().map(p => p.getAttribute('aria-label'))).toEqual(['⇅ 2 alternate fingerings for C5']);
+    expect(pills()[0]).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(pills()[0]).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('1 note has alternate fingerings · 0 changed by you')).toBeInTheDocument();
+    await fMajor();   // B♭4 has 4, C5 has 2
+    expect(pills().map(p => p.getAttribute('aria-label'))).toEqual(['⇅ 4 alternate fingerings for B♭4', '⇅ 2 alternate fingerings for C5']);
+    expect(screen.getByText('2 notes have alternate fingerings · 0 changed by you')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reset all to auto' })).toBeNull();
+    await user.click(screen.getByLabelText('Show alternate fingerings'));
+    expect(pills()).toHaveLength(2);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Instrument' }), 'xc');
+    expect(pills()).toHaveLength(0);
+    expect(screen.queryByText(/alternate fingerings ·/)).toBeNull();
+  });
+
+  it('open, pick, summary, teal pill, reset', async () => {
+    renderScales();
+    await fMajor();
+    const pill = pills()[0];
+    await user.click(pill);
+    expect(pill).toHaveAttribute('aria-expanded', 'true');
+    const dialog = screen.getByRole('dialog', { name: 'Alternate fingerings for B♭4' });
+    expect(dialog).toHaveTextContent(/^B♭4 — pick a fingering/);
+    expect(within(dialog).getAllByRole('button')).toHaveLength(4);
+    expect(within(dialog).getByText('auto')).toBeInTheDocument();
+    const before = document.querySelectorAll('[data-note]')[3].querySelector('[data-chart]')!.getAttribute('data-option');
+    const other = within(dialog).getAllByRole('button').findIndex(b => !/auto/.test(b.textContent!));
+    await user.click(within(dialog).getAllByRole('button')[other]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(pill).toHaveFocus();
+    expect(screen.getByText('2 notes have alternate fingerings · 1 changed by you')).toBeInTheDocument();
+    expect(pill).toHaveAttribute('data-overridden', 'true');
+    const chart = document.querySelectorAll('[data-note]')[3].querySelector('[data-chart]')!;
+    expect(chart).toHaveAttribute('data-option', String(other));
+    expect(chart).toHaveAttribute('data-overridden', 'true');
+    expect(String(other)).not.toBe(before);
+    await user.click(screen.getByRole('button', { name: 'Reset all to auto' }));
+    expect(screen.getByText('2 notes have alternate fingerings · 0 changed by you')).toBeInTheDocument();
+    expect(pills()[0]).not.toHaveAttribute('data-overridden');
+    expect(document.querySelectorAll('[data-overridden]')).toHaveLength(0);
+  });
+
+  it('picking the auto option removes the override; Esc and outside click close and return the focus', async () => {
+    renderScales();
+    await fMajor();
+    await pickOne();
+    expect(changed()).toBeInTheDocument();
+    const pill = pills()[0];
+    await user.click(pill);
+    await user.click(within(screen.getByRole('dialog')).getByText('auto').closest('button')!);
+    expect(changed()).toBeNull();
+
+    await user.click(pill);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(pill).toHaveFocus();
+    expect(pill).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(pill);
+    await user.click(screen.getByRole('heading', { level: 1 }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(pill).toHaveFocus();
+  });
+
+  it('picks clear when the notes or their fingering tables change, and survive display changes', async () => {
+    renderScales();
+    await fMajor();
+    await pickOne();
+    await user.click(screen.getByRole('radio', { name: 'Full key map' }));
+    await user.click(screen.getByLabelText('Note names'));
+    await user.click(screen.getByLabelText('Show alternate fingerings'));
+    await user.click(screen.getByRole('radio', { name: 'Sounds in' }));
+    expect(changed()).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'You read' }));
+
+    const changes: (() => Promise<void>)[] = [
+      () => user.selectOptions(screen.getByRole('combobox', { name: 'Scale' }), 'mmin').then(() => user.selectOptions(screen.getByRole('combobox', { name: 'Scale' }), 'maj')),
+      () => user.click(screen.getByRole('radio', { name: 'C · sounds E♭' })).then(fMajor),
+      () => user.click(screen.getByRole('radio', { name: '2 octaves' })).then(() => user.click(screen.getByRole('radio', { name: '1 octave' }))),
+      () => user.click(screen.getByRole('radio', { name: 'Up & down' })).then(() => user.click(screen.getByRole('radio', { name: 'Up' }))),
+      () => user.selectOptions(screen.getByRole('combobox', { name: 'Instrument' }), 'tsax').then(() => user.selectOptions(screen.getByRole('combobox', { name: 'Instrument' }), 'asax')),
+    ];
+    for (const change of changes) {
+      if (!changed()) await pickOne();
+      expect(changed()).toBeInTheDocument();
+      await change();
+      expect(changed()).toBeNull();
+    }
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Instrument' }), 'rs');
+    await user.click(screen.getByRole('radio', { name: 'C' }));
+    await pickOne();   // soprano recorder C major: B4 has two fingerings
+    expect(changed()).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'German fingering' }));
+    expect(changed()).toBeNull();
+  });
+
+  it('picks are stored with the settings; a stale stored pick is dropped', async () => {
+    const first = renderScales();
+    await fMajor();
+    await pickOne();
+    first.unmount();
+    renderScales();
+    expect(changed()).toBeInTheDocument();
+    cleanup();
+
+    // F major on alto sax: index 3 is B♭4 (4 options), 4 is C5 (2 options), 0 is F4 (1 option).
+    localStorage.setItem('fingerscore.scales', JSON.stringify({
+      inst: 'asax', scale: 'maj', tonicPc: 5, range: 'one', direction: 'up', overrides: { 0: 1, 3: 9, 4: 1, 40: 0, x: 1 },
+    }));
+    renderScales();
+    expect(screen.getByText('2 notes have alternate fingerings · 1 changed by you')).toBeInTheDocument();
+    expect(pills()[1]).toHaveAttribute('data-overridden', 'true');
+    expect(JSON.parse(localStorage.getItem('fingerscore.scales')!).overrides).toEqual({ 4: 1 });
+  });
+
+  it('pills, popover and summary do not print', async () => {
+    renderScales();
+    await fMajor();
+    await user.click(pills()[0]);
+    for (const el of [pills()[0], screen.getByRole('dialog'), screen.getByText(/alternate fingerings ·/)]) {
+      expect(el.closest('[data-print-hide]')).not.toBeNull();
+    }
+  });
+});

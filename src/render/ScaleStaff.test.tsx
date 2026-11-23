@@ -157,3 +157,66 @@ it('line height grows with the tallest stack of alternates', () => {
   };
   expect(h(true)).toBeGreaterThan(h(false) + 3 * 90);
 });
+
+describe('chosen fingerings (overrides)', () => {
+  const scale = buildScale({ inst: 'asax', scale: 'maj', tonicPc: 5, range: 'two', direction: 'updown' });   // F major: B♭ has bis / 1+1 / side
+  const items: ChooserItem[] = scale.notes.map((n, i) => ({ id: String(i), written: n.written, options: optionsFor('asax', n.written, 'baroque') }));
+  const charts = (c: HTMLElement) => [...c.querySelectorAll('[data-note]')].map(g => Number(g.querySelector('[data-chart]')!.getAttribute('data-option')));
+  const free = chooseFingerings(items, {});
+
+  // A pick that moves a neighbour's automatic choice, found in the real data.
+  const found = (() => {
+    for (let i = 0; i < items.length; i++) for (let k = 0; k < items[i]!.options.length; k++) {
+      if (k === free[String(i)]) continue;
+      const pinned = chooseFingerings(items, { [String(i)]: k });
+      const moved = items.findIndex((_, j) => j !== i && pinned[String(j)] !== free[String(j)]);
+      if (moved >= 0) return { i, k, pinned };
+    }
+    return null;
+  })();
+
+  it('an override sets that note\'s chart and is a fixed point for its neighbours', () => {
+    expect(found).not.toBeNull();
+    const { i, k, pinned } = found!;
+    const { container } = draw({ inst: 'asax', scale, overrides: { [i]: k } });
+    expect(charts(container)).toEqual(scale.notes.map((_, j) => pinned[String(j)]));
+    expect(charts(container)[i]).toBe(k);
+    const marked = container.querySelectorAll('[data-chart][data-overridden="true"]');
+    expect(marked).toHaveLength(1);
+    expect(marked[0].closest('[data-note]')).toBe(container.querySelectorAll('[data-note]')[i]);
+  });
+
+  it('an invalid override is ignored', () => {
+    const { container } = draw({ inst: 'asax', scale, overrides: { 0: 99, 1: -1, 2: 0.5 } });
+    expect(charts(container)).toEqual(scale.notes.map((_, j) => free[String(j)]));
+    expect(container.querySelectorAll('[data-overridden]')).toHaveLength(0);
+  });
+
+  it('with alternates shown, the stack under a note holds every option except the chosen one', () => {
+    const { i, k } = found!;
+    const { container } = draw({ inst: 'asax', scale, overrides: { [i]: k }, showAlternates: true });
+    const note = container.querySelectorAll('[data-note]')[i];
+    expect(note.querySelector('[data-chart]')).toHaveAttribute('data-option', String(k));
+    const alts = [...note.querySelectorAll('[data-alt]')].map(e => Number(e.getAttribute('data-option')));
+    expect(alts).toEqual(items[i]!.options.map((_, j) => j).filter(j => j !== k));
+  });
+
+  it('the chart slot is called for notes with two or more options only, with their choice', () => {
+    const seen: { index: number; name: string; chosen: number; auto: number; overridden: boolean; n: number }[] = [];
+    draw({
+      inst: 'asax', scale, overrides: { [found!.i]: found!.k },
+      renderUnderChart: (note) => { seen.push({ index: note.index, name: note.name, chosen: note.chosen, auto: note.auto, overridden: note.overridden, n: note.options.length }); return null; },
+    });
+    const multi = items.flatMap((it, j) => (it!.options.length >= 2 ? [j] : []));
+    expect(seen.map(s => s.index)).toEqual(multi);
+    const picked = seen.find(s => s.index === found!.i)!;
+    expect(picked).toMatchObject({ chosen: found!.k, auto: free[String(found!.i)], overridden: true, name: scale.notes[found!.i].spelled.name });
+    expect(seen.filter(s => s.overridden)).toHaveLength(1);
+  });
+
+  it('slot content is rendered beside the line', () => {
+    const { container } = draw({ inst: 'asax', scale, renderUnderChart: note => <button type="button">pill {note.index}</button> });
+    expect(screen.getAllByRole('button', { name: /^pill / }).length).toBeGreaterThan(0);
+    expect(container.querySelector('[data-testid="scale-line"] button')).toBeNull();
+  });
+});
