@@ -10,6 +10,7 @@
     "test": "vitest run",
     "check:bundle": "node scripts/check-bundle.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:preview": "playwright test -c playwright.preview.config.ts",
     "demo": "tsx scripts/make-demo-midi.ts",
     "glyphs": "tsx scripts/extract-glyphs.ts",
     "fonts": "tsx scripts/make-pdf-fonts.ts"
