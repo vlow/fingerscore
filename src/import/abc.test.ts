@@ -366,4 +366,107 @@ describe('parseAbc', () => {
       expect(await message(parse('X:1\nT:Empty\nK:C\n'))).toBe('"t.abc" has no melody track.');
     });
   });
+
+  describe('transpose= and the song key', () => {
+    it('moves the key with the notes and chord symbols; the mode stays', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nV:1 transpose=-2\nK:D\n[V:1] "D"DEFG|\n');
+      expect(midis(s)).toEqual([60, 62, 64, 65]);
+      expect(s.tracks[0].chords.map(c => c.text)).toEqual(['C']);
+      expect(s.key).toEqual({ tonicPc: 0, mode: 'major' });
+    });
+
+    it('without transpose= the key is as written', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nV:1\nK:D\n[V:1] "D"DEFG|\n');
+      expect(s.key).toEqual({ tonicPc: 2, mode: 'major' });
+      const minor = await parse('X:1\nM:4/4\nL:1/4\nV:1 transpose=3\nK:Em\n[V:1] EFGA|\n');
+      expect(minor.key).toEqual({ tonicPc: 7, mode: 'minor' });
+    });
+
+    it('takes the key from the first voice with notes', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nV:1\nV:2 transpose=-2\nK:D\n[V:2] DEFG|\n');
+      expect(s.tracks.map(t => t.name)).toEqual(['2']);
+      expect(s.key).toEqual({ tonicPc: 0, mode: 'major' });
+    });
+  });
+
+  describe('chord spelling', () => {
+    it('keeps the written root and bass when the voice is not transposed', async () => {
+      const s = await parse(tune('"C#m"C "Db/Ab"D "A#7/F#"E "Bb"F'));
+      expect(s.tracks[0].chords.map(c => c.text)).toEqual(['C♯m', 'D♭/A♭', 'A♯7/F♯', 'B♭']);
+    });
+
+    it('names roots by pitch class when the voice is transposed', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nV:1 transpose=2\nK:C\n[V:1] "Bm"C "G#7/B#"D|\n');
+      expect(s.tracks[0].chords.map(c => c.text)).toEqual(['D♭m', 'B♭7/D']);
+    });
+  });
+
+  describe('bars of the wrong length', () => {
+    const notes = (s: ParsedSong, track = 0) => s.tracks[track].notes.map(n => [n.start, n.midi]);
+
+    it('a pickup inside the tune starts so that it ends on the next bar line', async () => {
+      // 6/8, eighth = 0.5 quarter, bar = 3 quarters, pickup bar 0.5: bar lines at 0.5, 3.5, 6.5, 9.5, 12.5, 15.5.
+      const s = await parse('X:1\nM:6/8\nL:1/8\nK:G\nD|:G2B dBG|G2B dBG:|\n|:"D"d|g2f e2d|g2f e2d:|\nw:a b\n');
+      expect(s.pickup).toBe(0.5);
+      const n = notes(s);
+      expect(n[11]).toEqual([9, 74]);       // the second part's pickup d: one eighth before the bar line at 9.5
+      expect(n[12]).toEqual([9.5, 79]);     // g on the bar line
+      expect(n[n.length - 1]).toEqual([15, 74]);
+      expect(s.tracks[0].chords).toEqual([{ at: 9, text: 'D' }]);
+      expect(s.tracks[0].lyrics).toEqual([{ at: 9, text: 'a' }, { at: 9.5, text: 'b' }]);
+      // |: before the pickup marks bar 3, the bar that holds it
+      expect(s.marks).toEqual([{ bar: 1, rs: true }, { bar: 2, re: true }, { bar: 3, rs: true }, { bar: 5, re: true }]);
+    });
+
+    it('two short bars that make a full bar stay where they are', async () => {
+      const s = await parse(tune('C4 | D3 :| E | F4 |'));
+      expect(notes(s)).toEqual([[0, 60], [4, 62], [7, 64], [8, 65]]);
+      expect(s.marks).toEqual([{ bar: 1, re: true }]);
+    });
+
+    it('a short last bar stays where it is', async () => {
+      const s = await parse(tune('C4 | D4 | E2 |'));
+      expect(notes(s)).toEqual([[0, 60], [4, 62], [8, 64]]);
+    });
+
+    it('a bar longer than the meter is taken as written', async () => {
+      const s = await parse(tune('C4 | D5 | E4 |'));
+      expect(notes(s)).toEqual([[0, 60], [4, 62], [9, 64]]);
+    });
+
+    it('pads two voices alike', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nV:1\nV:2\nK:C\n[V:1] C4 | D4 | E | F4 |\n[V:2] G4 | A4 | B | c4 |\n');
+      expect(notes(s, 0)).toEqual([[0, 60], [4, 62], [11, 64], [12, 65]]);
+      expect(notes(s, 1)).toEqual([[0, 67], [4, 69], [11, 71], [12, 72]]);
+    });
+  });
+
+  describe('names every object inherits', () => {
+    it('refuses a voice named __proto__ or constructor before parsing', async () => {
+      const before = Object.getOwnPropertyNames(Object.prototype);
+      expect(await message(parse('X:1\nM:4/4\nL:1/4\nV:__proto__ name="x"\nK:C\n[V:__proto__] C|\n')))
+        .toBe('"t.abc" could not be read as an ABC file.');
+      expect(Object.getOwnPropertyNames(Object.prototype)).toEqual(before);
+      expect(await message(parse('X:1\nM:4/4\nL:1/4\nV:constructor\nK:C\nC|\n'))).toBe('"t.abc" could not be read as an ABC file.');
+      expect(await message(parse('X:1\nM:4/4\nL:1/4\nK:C\n[V:prototype] C|\n'))).toBe('"t.abc" could not be read as an ABC file.');
+      expect(await message(parse('X:1\nM:4/4\nL:1/4\n%%score (toString)\nK:C\nC|\n'))).toBe('"t.abc" could not be read as an ABC file.');
+    });
+
+    it('reads ordinary voice ids', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nV:Proto name="x"\nV:Sop\nK:C\n[V:Proto] C|\n[V:Sop] D|\n');
+      expect(s.tracks.map(t => t.name)).toEqual(['x', 'Sop']);
+    });
+
+    it('a mode word or key word that names an inherited property gives no NaN', async () => {
+      for (const k of ['C constructor', 'C toString', 'Ctostring', 'D hasOwnProperty']) {
+        const s = await parse(`X:1\nM:4/4\nL:1/4\nK:${k}\nC|\n`).catch((e: ImportError) => e.userMessage);
+        if (typeof s === 'string') expect(s).toBe('"t.abc" could not be read as an ABC file.');
+        else {
+          expect(Number.isFinite(s.key!.tonicPc)).toBe(true);
+          expect(s.key!.mode).toBe('major');
+          expect(midis(s).every(Number.isFinite)).toBe(true);
+        }
+      }
+    });
+  });
 });

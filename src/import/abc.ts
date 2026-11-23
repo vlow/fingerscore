@@ -3,6 +3,7 @@ import { mod12 } from '../domain/keys';
 import type { Mode } from '../domain/types';
 import { ROOT_NAMES } from './chordNames';
 import { songTimeSig } from './meter';
+import { own } from './own';
 import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './types';
 
 const DEFAULT_TEMPO = 120;
@@ -72,6 +73,23 @@ function voiceIds(lines: string[]): string[] {
   return ids;
 }
 
+/** A voice id that names a property every object has. abcjs keeps voices in a plain object keyed by id, so such an id would reach the prototype. */
+const inheritedName = (id: string) => id in Object.prototype || id === 'prototype';
+
+/** True when a `V:` line, an inline `[V:]` or a `%%score` / `%%staves` directive names a voice `inheritedName` matches. */
+function namesInheritedVoice(lines: string[]): boolean {
+  const ids: string[] = [];
+  for (const line of lines) {
+    const directive = /^%%(?:score|staves)\b(.*)$/.exec(line);
+    if (directive) { ids.push(...(directive[1].match(/[^\s(){}[\]|*]+/g) ?? [])); continue; }
+    if (line.startsWith('%')) continue;
+    const field = /^V:\s*([^\s%]+)/.exec(line);
+    if (field) ids.push(field[1]);
+    for (const m of line.matchAll(/\[V:\s*([^\s\]]+)/g)) ids.push(m[1]);
+  }
+  return ids.some(inheritedName);
+}
+
 // ---- keys ----
 
 interface ReadKey { tonicPc: number; mode: Mode; alter: number[] }   // alter: semitones per letter index
@@ -86,8 +104,8 @@ function signatureAlter(fifths: number): number[] {
 /** Tonic and mode as written, and the signature they give. */
 function readKey(file: string, k: Pick<AbcKey, 'root' | 'acc' | 'mode'>): ReadKey {
   const root = k.root === 'none' ? 'C' : k.root;
-  const mode = ABC_MODES[k.mode];
-  if (!(root in LETTER_INDEX) || mode === undefined) throw unreadable(file);
+  const mode = own(ABC_MODES, k.mode);
+  if (own(LETTER_INDEX, root) === undefined || mode === undefined) throw unreadable(file);
   const tonicPc = mod12(LETTER_PC[LETTER_INDEX[root]] + (k.acc === '#' ? 1 : k.acc === 'b' ? -1 : 0));
   const fifths = MAJOR_FIFTHS[root] + 7 * (k.acc === '#' ? 1 : k.acc === 'b' ? -1 : 0) + MODE_FIFTHS[mode];
   if (Math.abs(fifths) > 7) throw unreadable(file);
@@ -156,12 +174,18 @@ function tempoOf(t: { duration?: number[]; bpm?: number } | undefined): number {
 
 // ---- chord symbols ----
 
-/** A chord symbol with roots named by pitch class, moved by `transpose` semitones. Annotations and words give null. */
+/**
+ * A chord symbol, or null for annotations and words. Untransposed, root and bass keep their written spelling (`#` and `b`
+ * written as `♯` and `♭`); moved by `transpose` semitones, they are named by pitch class.
+ */
 function chordText(name: string, transpose: number): string | null {
   const m = CHORD_SYMBOL.exec(name.trim());
   if (!m || /\s/.test(name.trim()) || !CHORD_START.test(m[3]) || !CHORD_KIND.test(m[3])) return null;
-  const root = (letter: string, acc: string) =>
-    ROOT_NAMES[mod12(LETTER_PC[LETTER_INDEX[letter]] + (acc === '#' || acc === '♯' ? 1 : acc === 'b' || acc === '♭' ? -1 : 0) + transpose)];
+  const sharp = (acc: string) => acc === '#' || acc === '♯';
+  const flat = (acc: string) => acc === 'b' || acc === '♭';
+  const root = (letter: string, acc: string) => transpose === 0
+    ? letter + (sharp(acc) ? '♯' : flat(acc) ? '♭' : '')
+    : ROOT_NAMES[mod12(LETTER_PC[LETTER_INDEX[letter]] + (sharp(acc) ? 1 : flat(acc) ? -1 : 0) + transpose)];
   return root(m[1], m[2]) + m[3] + (m[4] ? `/${root(m[4], m[5])}` : '');
 }
 
@@ -173,6 +197,7 @@ interface VoiceState {
   bars: { at: number; el: AbcElement }[];
   pos: number;                       // quarter notes
   key: ReadKey | null; keyName: string;
+  firstKey: { key: ReadKey; transpose: number } | null;   // the voice's first key and its transpose= at that point
   barAccidentals: Map<number, number>;    // diatonic pitch → semitones, until the bar line
   waiting: Map<number, RawNote>;          // diatonic pitch → note waiting for its tie
   shift: number;                     // semitones from clef octave and transpose=
@@ -191,8 +216,9 @@ function midiOf(state: VoiceState, p: AbcPitch): number {
   const letter = ((p.pitch % 7) + 7) % 7;
   let alter: number;
   if (p.accidental !== undefined) {
-    alter = ACCIDENTAL_SEMITONES[p.accidental] ?? state.barAccidentals.get(p.pitch) ?? state.key!.alter[letter];
-    if (p.accidental in ACCIDENTAL_SEMITONES) state.barAccidentals.set(p.pitch, alter);
+    const written = own(ACCIDENTAL_SEMITONES, p.accidental);
+    alter = written ?? state.barAccidentals.get(p.pitch) ?? state.key!.alter[letter];
+    if (written !== undefined) state.barAccidentals.set(p.pitch, alter);
   } else {
     alter = state.barAccidentals.get(p.pitch) ?? state.key!.alter[letter];
   }
@@ -262,6 +288,62 @@ function pickupOf(bars: VoiceState['bars'], barLength: number): number {
   return first && first.at < barLength - EPS ? first.at : 0;
 }
 
+const NEAR = 1e-6;
+
+/**
+ * Re-anchors one voice at its bar lines. A bar shorter than the meter that is not the voice's first bar, not its last,
+ * and not one half of a split pair (two short bars that add up to the meter) is a pickup inside the tune: its content
+ * moves right so that it ends on the next bar line, and everything after it moves as far. A bar line stays with the
+ * content before it, so a `|:` before such a pickup marks the bar that now holds the pickup. A bar longer than the
+ * meter is taken as written.
+ */
+function realign(state: VoiceState, full: number): void {
+  const cuts = [0];      // bar line positions; adjacent bar-line symbols count once
+  for (const { at } of state.bars) if (at > cuts[cuts.length - 1] + NEAR) cuts.push(at);
+  if (state.pos > cuts[cuts.length - 1] + NEAR) cuts.push(state.pos);
+  const lens = cuts.slice(1).map((c, i) => c - cuts[i]);
+  const shifts: number[] = [];      // per bar: how far its content moves
+  let shift = 0;
+  for (let i = 0; i < lens.length; i++) {
+    if (i > 0 && lens[i] < full - NEAR && i + 1 < lens.length) {
+      if (Math.abs(lens[i] + lens[i + 1] - full) < NEAR) {      // a split pair: both halves stay
+        shifts.push(shift, shift);
+        i += 1;
+        continue;
+      }
+      shift += full - lens[i];
+    }
+    shifts.push(shift);
+  }
+  if (shift === 0) return;
+
+  const last = lens.length - 1;
+  /** The bar that holds position t: the one starting there when `starting`, else the one ending there. */
+  const barOf = (t: number, starting: boolean): number => {
+    let lo = 0, hi = last;
+    while (lo < hi) {
+      if (starting) {      // last bar with cuts[i] <= t
+        const mid = Math.ceil((lo + hi) / 2);
+        if (cuts[mid] <= t + NEAR) lo = mid; else hi = mid - 1;
+      } else {             // first bar with cuts[i + 1] >= t
+        const mid = Math.floor((lo + hi) / 2);
+        if (cuts[mid + 1] >= t - NEAR) hi = mid; else lo = mid + 1;
+      }
+    }
+    return lo;
+  };
+  const moved = (t: number, starting: boolean) => t + shifts[barOf(t, starting)];
+  for (const n of state.notes) {
+    const end = n.dur > 0 ? moved(n.start + n.dur, false) : NaN;
+    n.start = moved(n.start, true);
+    if (n.dur > 0) n.dur = end - n.start;
+  }
+  for (const l of state.lyrics) l.at = moved(l.at, true);
+  for (const c of state.chords) c.at = moved(c.at, true);
+  for (const b of state.bars) b.at = moved(b.at, false);
+  state.pos += shift;
+}
+
 function readMarks(bars: VoiceState['bars'], grid: Grid, end: number): ParsedSong['marks'] {
   const marks = new Map<number, ParsedSong['marks'][number]>();
   const mark = (bar: number) => {
@@ -289,6 +371,7 @@ function readMarks(bars: VoiceState['bars'], grid: Grid, end: number): ParsedSon
 export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedSong> {
   const lines = withDefaultVoice(firstTune(decode(bytes)));
   const written = checkSourceKeys(file, lines);
+  if (namesInheritedVoice(lines)) throw unreadable(file);
   const parser = new Parse();
   parser.parse(lines.join('\n') + '\n', {});
   const tune = parser.getTune();
@@ -307,7 +390,7 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
       let state = states.get(id);
       if (!state) {
         state = {
-          staff: s, voice: v, notes: [], lyrics: [], chords: [], bars: [], pos: 0, key: null, keyName: '',
+          staff: s, voice: v, notes: [], lyrics: [], chords: [], bars: [], pos: 0, key: null, keyName: '', firstKey: null,
           barAccidentals: new Map(), waiting: new Map(), shift: 0, transpose: 0, tupletLeft: 0, tupletRatio: 1,
         };
         states.set(id, state);
@@ -318,6 +401,7 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
         state.key = readKey(file, staff.key);
         state.keyName = keyNameOf(staff.key);
         state.barAccidentals.clear();
+        state.firstKey ??= { key: state.key, transpose: state.transpose };
         if (!song.key) { song.key = state.key; song.root = staff.key.root; song.acc = staff.key.acc; }
       }
       if (!state.key) state.key = readKey(file, { root: 'none', acc: '', mode: '' });
@@ -335,6 +419,7 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
 
   const timeSig = songTimeSig(file, meters);
   const barLength = (timeSig[0] * 4) / timeSig[1];
+  for (const st of states.values()) realign(st, barLength);
 
   const ordered = Array.from(states.values()).sort((a, b) => a.staff - b.staff || a.voice - b.voice);
   const ids = voiceIds(lines);
@@ -357,10 +442,11 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
 
   const pickup = pickupOf(first.bars, barLength);
   const end = Math.max(...ordered.map(st => st.pos));
-  const key = song.key;
+  // concert key: the written key of the first voice with notes, moved by that voice's transpose=
+  const { key, transpose } = first.firstKey ?? { key: song.key, transpose: first.transpose };
   return {
     file, format: 'ABC', timeSig, tempo: tempoOf(tune.metaText.tempo), pickup,
-    key: { tonicPc: key.tonicPc, mode: key.mode },
+    key: { tonicPc: mod12(key.tonicPc + transpose), mode: key.mode },
     marks: readMarks(first.bars, { pickup, barLength }, end), tracks,
   };
 }
