@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 const marks = (page: Page) => page.locator('[data-tuplet]');
@@ -37,32 +38,45 @@ test('triplets: import, make, change, undo, save, reload, download and open', as
   const second = await pitchText(page);
   await page.keyboard.press('ArrowUp');
   await expect.poll(() => pitchText(page)).not.toBe(second);
+  await page.keyboard.press('ArrowLeft');
+  expect(await pitchText(page)).toBe(first);   // the first member keeps its pitch
+  await page.keyboard.press('ArrowRight');
 
   // P again removes the group; P once more makes it.
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('p');
   await expect(marks(page)).toHaveCount(1);
   await expect(panel(page).getByRole('button', { name: 'Triplet' })).toHaveAttribute('aria-pressed', 'false');
-  expect(await pitchText(page)).toBe(first);
   await page.keyboard.press('p');
   await expect(marks(page)).toHaveCount(2);
 
-  // Save and reload.
+  // Save. The app keeps the session's current sheet across a reload (sessionStorage), so a plain reload proves little:
+  // clear the session copy and open the saved sheet from the gallery on the start page.
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(status(page, 'Saved')).toBeVisible();
-  await page.reload();
+  await page.evaluate(() => sessionStorage.clear());
+  await page.goto('/');
+  await page.getByRole('region', { name: 'Your sheets' }).getByRole('link').first().click();
+  await expect(page).toHaveURL(/\/sheet$/);
   await expect(page.getByTestId('system').first()).toBeVisible();
   await expect(marks(page)).toHaveCount(2);
 
-  // Download the JSON and open it again.
+  // Download the JSON: exactly six events have a triplet length (two groups of three).
   await page.getByRole('button', { name: /^File/ }).click();
   const pending = page.waitForEvent('download');
   await page.getByRole('menuitem', { name: 'Download JSON' }).click();
   const download = await pending;
   const path = testInfo.outputPath(download.suggestedFilename());
   await download.saveAs(path);
+  const file = JSON.parse(readFileSync(path, 'utf8')) as { doc: { score: { ev: { d: number }[] }[] } };
+  expect(file.doc.score.flatMap(b => b.ev).filter(e => [2, 4, 8, 16].includes(e.d))).toHaveLength(6);
+
+  // Change the sheet on screen (undo the made triplet: 1 mark), then open the file: 2 marks must come from it.
+  await page.getByRole('radiogroup', { name: 'Mode' }).getByRole('radio', { name: 'Edit notes' }).click();
+  await page.locator('[data-hit]').first().click();
+  await page.keyboard.press('p');
+  await expect(marks(page)).toHaveCount(1);
   await page.getByLabel('Open JSON file').setInputFiles(path);
-  await expect(page.getByTestId('system').first()).toBeVisible();
   await expect(marks(page)).toHaveCount(2);
   expect(errors).toEqual([]);
 });

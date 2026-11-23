@@ -1475,6 +1475,8 @@ describe('Triplet button and key', () => {
     expect(button('Triplet')).toHaveAttribute('aria-pressed', 'true');
     await user.click(button('Triplet'));
     expect(events().filter(e => e.d === 4 || e.d === 2 || e.d === 8)).toEqual([]);
+    expect(events()).toHaveLength(6);
+    expect(sheet()).toHaveFocus();
     expect(selectedId()).toBe('t1');
     expect(button('Triplet')).toHaveAttribute('aria-pressed', 'false');
   });
@@ -1517,6 +1519,34 @@ describe('Triplet button and key', () => {
     expect(current()).not.toBe(before);
     expect(events()[0]).toMatchObject({ id: first.id, d: 8 });
     await waitFor(() => expect(live().textContent).toMatch(/, triplet quarter, /));
+  });
+
+  it('P with a modifier makes no triplet; P in the title field types a letter', async () => {
+    await start();
+    await pick('t1');
+    const before = current();
+    for (const init of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }, { shiftKey: true }]) {
+      fireEvent.keyDown(sheet(), { key: 'p', code: 'KeyP', ...init });
+    }
+    expect(useApp.getState().doc).toBe(before);
+    const title = screen.getByRole('textbox', { name: 'Sheet title' });
+    await user.click(title);
+    await user.type(title, 'p');
+    expect(title).toHaveValue('p');
+    expect(current().score.flatMap(b => b.ev).map(e => e.d)).toEqual(before.score.flatMap(b => b.ev).map(e => e.d));
+  });
+
+  it('make, undo the triplet, then store Undo twice: the selection stays on a valid event', async () => {
+    await start();
+    const before = current();
+    await pick('t1');
+    await user.keyboard('pp');
+    expect(events()).toHaveLength(6);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(events()).toHaveLength(8);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(useApp.getState().doc).toBe(before);
+    expect(selectedId()).toBe('t1');   // t1 exists in every state, so the selection stays on it
   });
 
   it('P in View mode does nothing, and P in the Lyric field types a letter', async () => {

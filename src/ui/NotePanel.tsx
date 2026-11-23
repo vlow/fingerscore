@@ -68,7 +68,10 @@ export default function NotePanel(p: Props): JSX.Element | null {
         </button>
         <button type="button" className={s.symb} aria-label="Triplet" aria-keyshortcuts="P" aria-pressed={member}
           disabled={!member && !canMakeTriplet(doc, id)} onClick={() => { const r = toggleTriplet(doc, id); if (r) onEdit(r.doc, r.selectId); }}>
-          <span aria-hidden="true">3</span>
+          <svg width="22" height="18" viewBox="0 0 22 18" aria-hidden="true">
+            <path d="M2 14V7h6M20 14V7h-6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+            <text x="11" y="12" textAnchor="middle" fontSize="11" fontWeight="700" fill="currentColor">3</text>
+          </svg>
         </button>
         <span className={s.spacer} />
         <button type="button" className={s.symb} aria-label="Tie" aria-keyshortcuts="T" aria-pressed={ev.tie}

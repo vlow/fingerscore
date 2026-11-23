@@ -80,7 +80,7 @@ A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chord
 | ↑ / ↓ | Edit notes, sheet focused | Semitone up or down |
 | Ctrl/⌘+↑ / ↓ | Edit notes | Octave up or down |
 | A–G | Edit notes | Jump to that note name, nearest to the current pitch |
-| 2 3 4 5 6 | Edit notes | Sixteenth, eighth, quarter, half, whole |
+| 2 3 4 5 6 | Edit notes | Sixteenth, eighth, quarter, half, whole; inside a triplet, the triplet values that fit |
 | . | Edit notes | Dot |
 | P | Edit notes | Triplet: make three equal notes, or undo the group |
 | R | Edit notes | Note or rest |
@@ -100,12 +100,13 @@ Import:
 - Eighth, quarter and sixteenth triplets are imported from MIDI, MusicXML, MuseScore and ABC. A group shows the number 3, with a bracket when one beam does not join its notes.
 - A sextuplet shows as two triplets of sixteenths.
 - A triplet position in a MIDI file must be exact (within 0.005 quarter). Loosely played MIDI stays rounded to the sixteenth grid.
+- A triplet is recognised only when every note of the figure starts and ends exactly. One loose note rounds the whole figure.
 - Groups of five or seven and half-note triplets are rounded, and the song shows the "Rhythm simplified" notice.
 - A MIDI file exported with swing playback has its eighths in a 2:1 ratio. The sheet shows a triplet quarter and a triplet eighth on every beat. MusicXML, MuseScore and ABC carry written values and are not affected.
 
 Editing:
 
-- In Edit notes, the Triplet button or the key P turns a sixteenth-aligned eighth, quarter or half note into three equal notes. The same button or key turns the group back into one note.
+- In Edit notes, the Triplet button or the key P works on an eighth, quarter or half note that starts where a group may start: an eighth on any sixteenth, a quarter on any eighth, a half on any quarter of the bar. It turns the note into three equal notes. The same button or key turns the group back into one note.
 - Inside a triplet the Length buttons offer the values that fit, and the dot is off.
 
 Width: a 4/4 bar with eighth triplets needs about a third more width than a plain bar, so a line holds two or three bars. A bar with triplet sixteenths usually fills a line.
@@ -130,7 +131,7 @@ The Tracks and Scales pages and the editing panels load when you first need them
 
 - Meters: 4/4, 3/4, 2/4, 2/2 (cut time) and 6/8. One meter per song. Any other meter, or a meter change inside the song, is refused with a message.
 - Note lengths: whole down to sixteenth, with dotted values. Longer lengths that fit no single value become tied notes.
-- Notes shorter than a sixteenth and tuplets other than triplets are rounded to the sixteenth grid. The "Detected in file" card says so.
+- Notes shorter than a sixteenth and tuplets other than triplets are rounded to the sixteenth grid. So are half-note triplets and loosely played MIDI triplets (see "Triplets"). The "Detected in file" card says so.
 - Keys: major, minor, Dorian, Phrygian, Lydian, Mixolydian and Locrian, named in full ("D Dorian"). ABC and MusicXML give the mode. MIDI and MuseScore do not, so the key finder picks major or minor.
 
 ## What it does not do
