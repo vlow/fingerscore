@@ -51,13 +51,14 @@ Songs with triplets are rounded to sixteenths today, and the sheet says "rhythm 
 
 The importers already deliver exact note positions. Recognition happens once, in the shared step that builds bars: after the melody is reduced to one note at a time, with the meter and the pickup known. The bar builder places group members itself; plain stretches are rounded and split as today.
 
-- Inside each bar, candidate windows are read from left to right, smallest S first, at the allowed starts of 4.1. A window is a triplet group when all of this holds:
-  1. every note onset and note end that falls inside the window lies on the window's grid of S/6 for S = 12 and 24, or S/3 for S = 6, within the existing tolerance of 0.02 quarter;
-  2. at least one of them is not on the sixteenth grid;
-  3. no note that starts inside the window ends outside it on a position that is off the sixteenth grid (that note belongs to a larger group, so the larger window is tried);
-  4. a note that starts before the window and ends inside it started on the sixteenth grid;
-  5. the resulting pieces tile the window with member values.
-- So three triplet quarters are one group of S = 24, not tied eighth-triplet groups; a single note of two thirds of a beat followed by silence is a triplet quarter and a triplet eighth rest under one 3.
+- **Which positions count.** A note start or end is taken as a triplet position only when it lies within 0.005 quarter of a whole tick. Written tuplets and MIDI files from notation software are exact; this keeps a quintuplet or a septuplet, whose notes come as near as 0.012 quarter to a tick, from being read in part as triplets. Every other position is rounded to the sixteenth grid as today.
+- **Which cut is chosen.** Inside each bar the importer looks at every way of placing triplet windows (4.1: span, allowed start, member lengths) so that all triplet positions of the bar are explained and every piece is a member or a plain length, and takes the best one by this order:
+  1. the fewest ties created by cutting notes;
+  2. then the fewest events (notes and rests);
+  3. then the smallest total span of the windows.
+  A quarter-triplet window is used on import only when its members are triplet quarters and triplet halves (8 and 16); it is not used to hold triplet eighths.
+- So: a long-short figure is one eighth-triplet group of two notes, not a sixteenth-triplet group with a tie; a triplet with a silent middle is one group with one rest; three triplet quarters are one quarter-triplet group; a plain quarter tied into a triplet stays a quarter tied to the first of three triplet eighths.
+- A triplet position that no placement explains is rounded to the sixteenth grid, and the song is marked simplified.
 - A note that reaches past its window is split at the window's end and tied, like a note across a bar line. A note that starts before a window and ends inside it is split at the window's start and tied.
 - Silence inside a group becomes triplet rests, the longest member values first.
 - Everything not recognised is rounded to the sixteenth grid as today, and `source.simplified` is set. A song whose only non-plain rhythm is recognised triplets is not marked simplified.
@@ -105,11 +106,11 @@ Playback, the fingering chooser, "Fill lyrics", chord entry, key and transpositi
 4. The shortcut is the letter P. The key 3 selects the eighth, and Ctrl/⌘+3 switches browser tabs.
 5. Inside a group only its member lengths are offered, so the long-short figure is two steps: make a triplet, then set the first note to the longer value.
 6. A plain edit may dissolve a group into rests but never leaves part of one.
-7. Recognition on import is exact within the existing tolerance; hand-played MIDI stays rounded.
+7. Recognition on import needs exact positions; hand-played MIDI stays rounded.
 8. Half-note triplets (three in the time of a whole) are out of scope.
 9. A member may be half a triplet note ("eighth, eighth, two sixteenths" under one 3), because that figure is common and would otherwise be rounded.
 10. A group may start on a beat or halfway between: at a multiple of half its span. In a pickup bar positions are counted from the bar line at its end.
-11. On import the smallest window that explains the notes wins, and a note that runs out of a window on a triplet position forces the larger window.
+11. On import the cut with the fewest ties wins, then the fewest notes and rests, then the least triplet territory. A triplet position must be exact within 0.005 quarter, tighter than the 0.02 used for rounding, so that groups of five or seven are not read in part as triplets.
 12. A MIDI file exported with swing playback shows triplets on every beat.
 13. The 3 goes above the group, or below it when the space above is taken by an ending bracket.
 
