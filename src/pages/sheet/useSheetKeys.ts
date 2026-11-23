@@ -80,9 +80,10 @@ export function useSheetKeys(p: SheetKeys) {
   function onSheetKey(e: KeyboardEvent<HTMLDivElement>) {
     if (e.target instanceof Element && e.target.closest(OWN_KEYS)) return;
     if (noteKey(e)) return;
-    // Tab from the sheet goes into the open Lyric or Chord field (the keyboard path after arrow keys).
+    // Tab from the sheet goes into the open Lyric or Chord field (the keyboard path after arrow keys). Only the current
+    // mode's panel counts: while its chunk loads, the previous mode's panel can stay in the DOM, hidden by Suspense.
     const field = e.key === 'Tab' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey
-      ? paperRef.current?.querySelector<HTMLInputElement>('[data-panel] input') : null;
+      ? paperRef.current?.querySelector<HTMLInputElement>(`[data-panel="${mode}"] input`) : null;
     if (field) { e.preventDefault(); field.focus(); return; }
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if (stops.length === 0) return;

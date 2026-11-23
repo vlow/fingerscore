@@ -13,6 +13,7 @@ import { canRedo, canUndo, useApp } from '../state/store';
 import Banners from '../ui/Banners';
 import FileMenu from '../ui/FileMenu';
 import KeyBridge from '../ui/KeyBridge';
+import { LoadBoundary } from '../ui/LoadBoundary';
 import { ModeSwitch } from '../ui/ModeSwitch';
 import PageBar from '../ui/PageBar';
 import RangeMeter from '../ui/RangeMeter';
@@ -33,7 +34,8 @@ import { useSheetKeys } from './sheet/useSheetKeys';
 import '../styles/print.css';
 import s from './SheetPage.module.css';
 
-// The bulk card loads on demand; the side column shows nothing in its place until it has arrived.
+// The bulk card loads on demand; the side column shows nothing in its place until it has arrived, and a reload
+// notice when it cannot arrive.
 const BulkCard = lazy(() => import('../ui/BulkCard'));
 
 const SIMPLIFIED = 'Rhythm simplified: triplets and notes shorter than a sixteenth were rounded.';
@@ -97,7 +99,7 @@ function Sheet({ doc }: { doc: Doc }) {
     // The same word twice in a row would leave the live region unchanged, and a screen reader
     // would stay silent on the second press: a zero-width space makes the repeat a new text.
     const word = step === 'undo' ? 'Undone' : 'Redone';
-    setAnnouncement(prev => (prev === word ? `${word}​` : word));
+    setAnnouncement(prev => (prev === word ? `${word}\u200B` : word));
     const now = useApp.getState().doc;
     if (selection !== null && (!now || locate(now, selection) === null)) setSelection(null);
   }
@@ -214,9 +216,11 @@ function Sheet({ doc }: { doc: Doc }) {
           </Card>
 
           <Card heading={<h2 id="text-h" className={s.cardTitle}>Lyrics &amp; chords</h2>} labelledBy="text-h">
-            <Suspense fallback={null}>
-              <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
-            </Suspense>
+            <LoadBoundary compact>
+              <Suspense fallback={null}>
+                <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
+              </Suspense>
+            </LoadBoundary>
           </Card>
 
           <Card heading={<h2 id="show-h" className={s.cardTitle}>Show on sheet</h2>} labelledBy="show-h">

@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, type KeyboardE
 import type { Derived } from '../../domain/derive';
 import type { Doc } from '../../domain/types';
 import { SHEET, type SheetLayout } from '../../render/layout';
+import { LoadBoundary } from '../../ui/LoadBoundary';
 import type { Mode } from '../../ui/ModeSwitch';
 import s from '../SheetPage.module.css';
 
@@ -17,7 +18,7 @@ const ChordPanel = lazy(loaders.chords);
 
 /** Starts loading a mode's panel, so the first click on a note does not wait on the network. */
 export function preloadPanel(mode: Mode): void {
-  if (mode !== 'view') void loaders[mode]();
+  if (mode !== 'view') loaders[mode]().catch(() => {});   // a failed load shows the reload notice when the panel renders
 }
 
 const PANEL: Record<Exclude<Mode, 'view'>, string> = { notes: 'Edit notes panel', lyrics: 'Lyrics panel', chords: 'Chords panel' };
@@ -89,27 +90,31 @@ export function useEditPanelSlot(p: PanelSlot) {
   });
 
   // The editing panel of the current mode, directly under the system that holds the selected event.
-  // Esc closes a panel by clearing the selection. Nothing shows while the panel's code is still loading; the Lyric
-  // and Chord fields take the focus when they mount, so a click before the code arrived still lands in the field.
+  // Esc closes a panel by clearing the selection. While the panel's code is loading an invisible box of the panel's
+  // min-height holds its place, so the systems below do not jump; the Lyric and Chord fields take the focus when they
+  // mount, so a click before the code arrived still lands in the field. A chunk that fails to load shows a reload
+  // notice in the panel's place (one boundary per mode); the sheet stays usable.
   const renderUnderSystem = (systemIndex: number) => {
     const at = selectedId === null ? undefined : place.get(selectedId);
     if (mode === 'view' || selectedId === null || !at || at.system !== systemIndex) return null;
     const left = Math.round(Math.max(0, Math.min(SHEET.systemWidth - PANEL_WIDTH, at.x - PANEL_WIDTH / 2)));
     return (
-      <Suspense fallback={null}>
-        <div role="group" aria-label={PANEL[mode]} data-panel="" className={s.panel} style={{ left }}
-          onMouseDown={keepFocusOffButtons} onKeyDown={onPanelKey} onFocus={() => { panelFocus.current = true; }}
-          onBlur={e => { if (!gone(e.target)) panelFocus.current = false; }}>
-          {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
-          {mode === 'chords' && (
-            <ChordPanel doc={doc} derived={derived} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null}
-              onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} onExit={focusSheet} />
-          )}
-          {mode === 'lyrics' && (
-            <LyricPanel doc={doc} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} onExit={focusSheet} />
-          )}
-        </div>
-      </Suspense>
+      <LoadBoundary compact key={mode}>
+        <Suspense fallback={<div className={s.panel} style={{ left, visibility: 'hidden' }} aria-hidden="true" />}>
+          <div role="group" aria-label={PANEL[mode]} data-panel={mode} className={s.panel} style={{ left }}
+            onMouseDown={keepFocusOffButtons} onKeyDown={onPanelKey} onFocus={() => { panelFocus.current = true; }}
+            onBlur={e => { if (!gone(e.target)) panelFocus.current = false; }}>
+            {mode === 'notes' && <NotePanel doc={doc} derived={derived} id={selectedId} onEdit={applyNoteEdit} />}
+            {mode === 'chords' && (
+              <ChordPanel doc={doc} derived={derived} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null}
+                onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} onExit={focusSheet} />
+            )}
+            {mode === 'lyrics' && (
+              <LyricPanel doc={doc} id={selectedId} focusKey={fieldFocus?.id === selectedId ? fieldFocus.n : null} onEdit={applyTextEdit} onMove={moveField} onClose={closePanel} onExit={focusSheet} />
+            )}
+          </div>
+        </Suspense>
+      </LoadBoundary>
     );
   };
 

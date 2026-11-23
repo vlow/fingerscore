@@ -2,11 +2,13 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Footer from './ui/Footer';
 import Header from './ui/Header';
+import { LoadBoundary } from './ui/LoadBoundary';
 import { ToastHost } from './ui/Toast';
 import SheetPage from './pages/SheetPage';
 import Start from './pages/Start';
 
-// Pages besides the start page and the sheet load on demand; the main area stays empty until their code has arrived.
+// Pages besides the start page and the sheet load on demand; the main area stays empty until their code has arrived,
+// and shows a reload notice when it cannot arrive (the header and footer stay).
 const Tracks = lazy(() => import('./pages/Tracks'));
 const Scales = lazy(() => import('./pages/Scales'));
 const pageFallback = <div aria-busy="true" />;
@@ -21,10 +23,10 @@ export default function App() {
       <main className="app-main">
         <Routes>
           <Route path="/" element={<Start />} />
-          <Route path="/tracks" element={<Suspense fallback={pageFallback}><Tracks /></Suspense>} />
+          <Route path="/tracks" element={<LoadBoundary><Suspense fallback={pageFallback}><Tracks /></Suspense></LoadBoundary>} />
           <Route path="/sheet" element={<SheetPage />} />
-          <Route path="/scales" element={<Suspense fallback={pageFallback}><Scales /></Suspense>} />
-          {DevSheet && <Route path="/dev/sheet" element={<Suspense fallback={null}><DevSheet /></Suspense>} />}
+          <Route path="/scales" element={<LoadBoundary><Suspense fallback={pageFallback}><Scales /></Suspense></LoadBoundary>} />
+          {DevSheet && <Route path="/dev/sheet" element={<LoadBoundary><Suspense fallback={null}><DevSheet /></Suspense></LoadBoundary>} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

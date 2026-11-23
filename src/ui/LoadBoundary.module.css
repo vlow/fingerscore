@@ -1,0 +1,34 @@
+/* Reload notice in place of a part that failed to load; colours of the red banner. */
+.box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid #f5c2c2;
+  border-radius: 12px;
+  background: var(--red-bg);
+  color: #7a1f1f;
+  font-size: 14px;
+}
+
+.compact {
+  position: relative;
+  max-width: 360px;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.reload {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--red);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
