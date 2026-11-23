@@ -1,6 +1,6 @@
 # fingerscore version 2, part 4b: triplets — design
 
-Date: 2026-11-24 · Status: draft, waiting for the owner's approval
+Date: 2026-11-24 · Status: approved by the owner on 2026-11-24; sections 4.2 and 4.3 revised during the build
 
 This document defines part 4b of version 2: triplets from imported files, on the sheet, and in the editor. It is written for the builder. It builds on the app as it is after part 4a (four importers, ticks, five meters, editing with undo). Section numbers (§) refer to `fingerscore-handoff/SPEC.md`.
 
@@ -42,7 +42,7 @@ Songs with triplets are rounded to sixteenths today, and the sheet says "rhythm 
   - S = 12 (eighth triplet): members of 2, 4 or 8. A member of 2 is half a triplet eighth, so "eighth, eighth, two sixteenths" under one 3 is a group.
   - S = 24 (quarter triplet): members of 4, 8 or 16.
 - **Where a group may start:** at a multiple of S/2, counted in metric ticks. Metric ticks are ticks from the start of the bar; in a pickup bar they are counted so that the bar ends on a bar line (metric tick = tick + full bar − pickup length). So an eighth triplet may start on a beat or on the "and", a quarter triplet on any beat, and beat 2 of a 6/8 bar (tick 18) can start one. A group never crosses a bar line.
-- **One function** `tripletGroups(bar) → { start, span, ids }[]` reads a bar from left to right. At the first event with a triplet value that is not yet in a group, a group must start at that event: try S = 6, then 12, then 24; take the first S for which the start is allowed and the following events tile the window with that S's member values. If none fits, the bar is invalid. Smallest first means six triplet sixteenths in a beat are two groups, and "quarter, eighth, eighth, quarter" in triplet values is two eighth-triplet groups.
+- **One function** `tripletGroups(bar, fullCap) → { start, span, ids }[]` reads a bar from left to right. At the first event with a triplet value that is not yet in a group, a group must start at that event: try S = 6, then 12, then 24; take the first S for which the start is allowed and the following events tile the window with that S's member values. If none fits, the bar is invalid. Smallest first means six triplet sixteenths in a beat are two groups, and "quarter, eighth, eighth, quarter" in triplet values is two eighth-triplet groups.
 - **Notated value** of a triplet note = its length × 3/2 (2 → sixteenth, 4 → eighth, 8 → quarter, 16 → half). Heads, stems, flags, beams, rests and the spoken length are taken from the notated value.
 - `validateDoc` accepts a bar when its lengths are plain or triplet values, they sum to `cap`, and `tripletGroups` places every triplet-valued event. `cap` rules are unchanged.
 - No migration: sheets saved before have no triplet values and stay valid.
@@ -58,7 +58,7 @@ The importers already deliver exact note positions. Recognition happens once, in
   3. then the smallest total span of the windows.
   A quarter-triplet window is used on import only when its members are triplet quarters and triplet halves (8 and 16); it is not used to hold triplet eighths.
 - So: a long-short figure is one eighth-triplet group of two notes, not a sixteenth-triplet group with a tie; a triplet with a silent middle is one group with one rest; three triplet quarters are one quarter-triplet group; a plain quarter tied into a triplet stays a quarter tied to the first of three triplet eighths.
-- **No triplet beside a rounded note.** A window is used only when every note that has a piece in it has both its start and its end exact, and every note edge that bounds a silence inside the window is exact too. One note slightly off next to an exact triplet position would otherwise give a stray small triplet with a tie; loosely played MIDI would show such strays in several bars of a hundred.
+- **No triplet beside a rounded note.** A window is used only when (1) every note that has a piece in it has both its start and its end exact, and (2) every note start or end that lies inside the window or on its boundary is exact. A rounded edge outside the window does not matter, however long the silence between. One note slightly off next to an exact triplet position would otherwise give a stray small triplet with a tie; loosely played MIDI would show such strays in several bars of a hundred.
 - A triplet position that no placement explains is rounded to the sixteenth grid, and the song is marked simplified.
 - A note that reaches past its window is split at the window's end and tied, like a note across a bar line. A note that starts before a window and ends inside it is split at the window's start and tied.
 - Silence inside a group becomes triplet rests, the longest member values first.
@@ -82,7 +82,7 @@ Panel: one new button **Triplet** in the Length row, after the dot, `aria-presse
 
 - **Make a triplet** (on a plain event): enabled when the event's length is 6, 12 or 24 and its start is an allowed group start for that span (4.1). The event becomes three events of a third each, filling the same time. The first keeps the id, pitch, lyric, chord and fingering choice. The two new ones get new ids and the same pitch; they are notes when the event was a note and rests when it was a rest. A tie on the original moves to the third member when the event after the group is a note of the same pitch; otherwise it is cleared. The selection stays on the first member.
 - **Undo a triplet** (on a group member): the group becomes one plain event of the group's span. It takes the id, pitch, lyric, chord and fingering choice of the first member that is a note, or of the first member when all are rests. It carries a tie when the group's last member had one and the event after it is still a note of the same pitch. The other members are removed with their lyrics, chords and fingering choices. The selection moves to the resulting event.
-- **Length inside a group:** the Length buttons show notated values, and only the group's member values are enabled (eighth triplet: Sixteenth, Eighth, Quarter). The existing bar-fill rules apply inside the window: shorter leaves triplet rests, longest member values first; longer consumes the following members; a partly covered member keeps its id and end when what remains is a member value, otherwise it becomes triplet rests. A length change never crosses the group's edge. The dot is disabled. No member length fills a whole window, so a group stays a group until it is undone or covered.
+- **Length inside a group:** the Length buttons show notated values, and only the group's member values are enabled (eighth triplet: Sixteenth, Eighth, Quarter). The existing bar-fill rules apply inside the window: shorter leaves triplet rests; longer consumes the following members; a partly covered member keeps its id and end when what remains is a member value, otherwise it becomes triplet rests. The filling rests are laid out so that the group stays one group of the same start and span: the orderings of member values that fill the gap are tried, fewest rests first, longest first among equals (an eighth triplet [8, 4] with the first set to 2 becomes [2, r2, r4, 4], not [2, r4, r2, 4], which would read as two sixteenth triplets). A value for which no layout keeps the group is not offered. A length change never crosses the group's edge. The dot is disabled. No member length fills a whole window, so a group stays a group until it is undone or covered.
 - **Number keys 2–6** inside a group choose the notated value when it is enabled; otherwise they do nothing.
 - **A plain edit that reaches into a group** (lengthening the event before it): plain events start and end on the sixteenth grid and group spans are multiples of 6, so the edit covers the group completely or leaves a remainder that is a multiple of 3. Covered members are removed; a remainder becomes plain rests. No edit leaves part of a group.
 - **Pitch, rest/note, tie, A–G, arrows, Delete, lyrics, chords, fingering choice:** as for any event. A tie from the last member of a group into a plain note, and from a plain note into the first member, is allowed when the pitches match.
@@ -111,9 +111,12 @@ Playback, the fingering chooser, "Fill lyrics", chord entry, key and transpositi
 8. Half-note triplets (three in the time of a whole) are out of scope.
 9. A member may be half a triplet note ("eighth, eighth, two sixteenths" under one 3), because that figure is common and would otherwise be rounded.
 10. A group may start on a beat or halfway between: at a multiple of half its span. In a pickup bar positions are counted from the bar line at its end.
-11. On import the cut with the fewest ties wins, then the fewest notes and rests, then the least triplet territory. A triplet position must be exact within 0.005 quarter, tighter than the 0.02 used for rounding, so that groups of five or seven are not read in part as triplets.
+11. A triplet position must be exact within 0.005 quarter, tighter than the 0.02 used for rounding, so that groups of five or seven are not read in part as triplets.
 12. A MIDI file exported with swing playback shows triplets on every beat.
-13. The 3 goes above the group, or below it when the space above is taken by an ending bracket.
+13. A beamed group's 3 stands at its beam on the stem side. A bracketed group's 3 and bracket go above, or below when the space above is taken. Neither ever enters the fingering chart row.
+14. A triplet on import needs every note in its window exact, and every note start or end inside the window or on its edges exact. A rounded edge outside the window does not matter.
+15. Among the cuts of a bar the importer takes the one with the fewest ties, then the fewest events (notes and rests), then the smallest total span of the windows.
+16. The Triplet button shows a bracket open in the middle around a 3, the sign it puts on the sheet; its accessible name is "Triplet".
 
 ## 6. Left to the builder
 

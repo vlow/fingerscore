@@ -62,7 +62,7 @@ ABC limits:
 
 A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chords. Click a note or rest to select it. The panel for the mode opens under that system. Esc clears the selection.
 
-- **Edit notes:** change the pitch by semitone or octave. Set the length from sixteenth to whole, with a dot. Tie a note to the next note of the same pitch. Turn a note into a rest and back. Turn an eighth, quarter or half note into a triplet and back. Add a bar after the selected one, or remove it. Every bar keeps its full length.
+- **Edit notes:** change the pitch by semitone or octave. Set the length from sixteenth to whole, with a dot. Tie a note to the next note of the same pitch. Turn a note into a rest and back. Turn an eighth, quarter or half note or rest into a triplet and back. Add a bar after the selected one, or remove it. Every bar keeps its full length.
 - **Lyrics:** type one syllable per note. Enter moves to the next note that can carry a syllable. The card "Lyrics & chords" fills a pasted verse from the selected note: `wat-er` puts "wat-" and "er" on two notes, and a lone `_` leaves a note empty. "Clear lyrics" and "Clear chords" empty them.
 - **Chords:** type a chord such as Am7 or F♯m7♭5 on any note or rest. The app stores it relative to the original key, so it follows every transposition and instrument. Text that is not a chord stays, in red, and is not transposed.
 - **Restore from file:** the card shows how many lyric and chord edits you made. "Restore from file" returns lyrics and chords to what the file had.
@@ -99,15 +99,16 @@ Import:
 
 - Eighth, quarter and sixteenth triplets are imported from MIDI, MusicXML, MuseScore and ABC. A group shows the number 3, with a bracket when one beam does not join its notes.
 - A sextuplet shows as two triplets of sixteenths.
-- A triplet position in a MIDI file must be exact (within 0.005 quarter). Loosely played MIDI stays rounded to the sixteenth grid.
-- A triplet is recognised only when every note of the figure starts and ends exactly. One loose note rounds the whole figure.
+- A triplet position must be exact: within 0.005 of a quarter. Written tuplets and MIDI files exported from notation software are exact. This matters for MIDI files played by hand: their triplets stay rounded to the sixteenth grid.
+- A MIDI file with a resolution that cannot hold an exact third, for example 100 ticks per quarter with the lengths added up, has that triplet rounded.
+- A triplet is recognised only when every note of the figure starts and ends exactly, and so does every note that starts or ends on the figure's edges. One loose note rounds the whole figure.
 - Groups of five or seven and half-note triplets are rounded, and the song shows the "Rhythm simplified" notice.
 - A MIDI file exported with swing playback has its eighths in a 2:1 ratio. The sheet shows a triplet quarter and a triplet eighth on every beat. MusicXML, MuseScore and ABC carry written values and are not affected.
 
 Editing:
 
-- In Edit notes, the Triplet button or the key P works on an eighth, quarter or half note that starts where a group may start: an eighth on any sixteenth, a quarter on any eighth, a half on any quarter of the bar. It turns the note into three equal notes. The same button or key turns the group back into one note.
-- Inside a triplet the Length buttons offer the values that fit, and the dot is off.
+- In Edit notes, the Triplet button or the key P works on a note or a rest of eighth, quarter or half length that starts where a group may start: an eighth on any sixteenth, a quarter on any eighth, a half on any quarter of the bar. It turns a note into three equal notes and a rest into three rests. The same button or key turns the group back into one note or rest.
+- Inside a triplet the Length buttons offer the values that fit and keep the group whole, and the dot is off.
 
 Width: a 4/4 bar with eighth triplets needs about a third more width than a plain bar, so a line holds two or three bars. A bar with triplet sixteenths usually fills a line.
 

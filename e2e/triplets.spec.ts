@@ -39,7 +39,7 @@ test('triplets: import, make, change, undo, save, reload, download and open', as
   await page.keyboard.press('ArrowUp');
   await expect.poll(() => pitchText(page)).not.toBe(second);
   await page.keyboard.press('ArrowLeft');
-  expect(await pitchText(page)).toBe(first);   // the first member keeps its pitch
+  await expect.poll(() => pitchText(page)).toBe(first);   // the first member keeps its pitch
   await page.keyboard.press('ArrowRight');
 
   // P again removes the group; P once more makes it.
