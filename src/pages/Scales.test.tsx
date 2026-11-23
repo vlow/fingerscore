@@ -346,3 +346,21 @@ describe('choosable alternate fingerings', () => {
     }
   });
 });
+
+it('six accidentals: F♯ and G♭ are separate keys, and the choice is remembered', async () => {
+  const { unmount } = renderScales();
+  const keys = within(screen.getByRole('radiogroup', { name: 'Key' }));
+  expect(keys.getAllByRole('radio')).toHaveLength(13);
+  await user.click(keys.getByRole('radio', { name: 'F♯ · sounds A' }));
+  const paper = within(screen.getByRole('region', { name: 'Scale' }));
+  expect(paper.getByText('Alto sax in E♭ · F♯ major · sounds A major')).toBeInTheDocument();
+  expect(noteNames().map(n => n!.replace(/\d+$/, ''))).toEqual(['F♯', 'G♯', 'A♯', 'B', 'C♯', 'D♯', 'E♯', 'F♯']);
+  expect(document.querySelectorAll('[data-keysig] [data-acc="sharp"]')).toHaveLength(6);
+  expect(keys.getByRole('radio', { name: 'G♭ · sounds A' })).not.toBeChecked();
+  unmount();
+  renderScales();
+  expect(within(screen.getByRole('radiogroup', { name: 'Key' })).getByRole('radio', { name: 'F♯ · sounds A' })).toBeChecked();
+  await user.click(within(screen.getByRole('radiogroup', { name: 'Key' })).getByRole('radio', { name: 'G♭ · sounds A' }));
+  expect(within(screen.getByRole('region', { name: 'Scale' })).getByText('Alto sax in E♭ · G♭ major · sounds A major')).toBeInTheDocument();
+  expect(document.querySelectorAll('[data-keysig] [data-acc="flat"]')).toHaveLength(6);
+});

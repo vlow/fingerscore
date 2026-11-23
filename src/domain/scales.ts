@@ -35,9 +35,20 @@ function spellDegree(written: number, letter: number): Spelled {
   let alter = mod12(written - LETTER_PC[letter]);
   if (alter > 6) alter -= 12;
   // The octave in which the letter's natural pitch is nearest to the written pitch (B♯3 = 60, C♭5 = 71).
+  // A double sharp or double flat is written on the neighbouring letter instead (B𝄫 → A, F𝄪 → G): easier to read at the instrument.
+  if (alter >= 2) return spellDegree(written, (letter + 1) % 7);
+  if (alter <= -2) return spellDegree(written, (letter + 6) % 7);
   const octave = (written - alter - LETTER_PC[letter]) / 12 - 1;
   return { letter, alter: alter as Alter, octave, name: spelledName(letter, alter as Alter, octave) };
 }
+
+/** Whether the scale's key has six accidentals and so two spellings: six flats (G♭ major, E♭ minor) or six sharps (F♯ major, D♯ minor). */
+export function hasSharpSpelling(scale: ScaleId, tonicPc: number): boolean {
+  return !DEFS[scale].chromatic && keySignature(mod12(tonicPc), modeOf(scale)) === -6;
+}
+
+/** The sharp name of a black-key tonic: F♯ for G♭, D♯ for E♭. */
+const sharpTonicName = (pc: number) => spell(pc, 1).name.replace(/-?\d+$/, '');
 
 const SEMITONES_ALL = Array.from({ length: 12 }, (_, i) => i);
 const semitones = (id: ScaleId): number[] => DEFS[id].deg?.map(([s]) => s) ?? SEMITONES_ALL;
@@ -50,14 +61,16 @@ function pitchesIn(id: ScaleId, tonicPc: number, from: number, to: number): numb
   return out;
 }
 
-export function buildScale(o: { inst: InstId; scale: ScaleId; tonicPc: number; range: ScaleRange; direction: ScaleDirection }): ScaleResult {
+/** sharp: write a six-accidental key with sharps (F♯ major, D♯ minor) instead of flats; ignored for every other key. */
+export function buildScale(o: { inst: InstId; scale: ScaleId; tonicPc: number; sharp?: boolean; range: ScaleRange; direction: ScaleDirection }): ScaleResult {
   const i = inst(o.inst);
   const def = DEFS[o.scale];
   const mode = modeOf(o.scale);
   const tonicPc = mod12(o.tonicPc);
-  const tonic = tonicName(tonicPc, mode);
+  const sharp = o.sharp === true && hasSharpSpelling(o.scale, tonicPc);
+  const tonic = sharp ? sharpTonicName(tonicPc) : tonicName(tonicPc, mode);
   const tonicLetter = LETTERS.indexOf(tonic[0]);
-  const sig = def.chromatic ? 0 : keySignature(tonicPc, mode);
+  const sig = def.chromatic ? 0 : sharp ? 6 : keySignature(tonicPc, mode);
 
   // Range and limits (design 4.1).
   let start = i.lo;
@@ -118,16 +131,20 @@ export function buildScale(o: { inst: InstId; scale: ScaleId; tonicPc: number; r
   return { notes, sig, tonic, notice };
 }
 
-export interface KeyChip { writtenPc: number; concertPc: number; written: string; concert: string }
+export interface KeyChip { writtenPc: number; sharp: boolean; concertPc: number; written: string; concert: string }
 
-/** 12 key chips, ordered from C by the leading name: the written key ('read') or the concert key ('sound'). */
+/**
+ * The key chips, ordered from C by the leading name: the written key ('read') or the concert key ('sound'). A written key
+ * with six accidentals gets two chips, sharps first (F♯ then G♭, D♯ then E♭), so there are 13; the chromatic scale has 12.
+ */
 export function keyChips(id: InstId, scale: ScaleId, by: 'read' | 'sound'): KeyChip[] {
   const { off } = inst(id);
   const mode = modeOf(scale);
-  return SEMITONES_ALL.map(pc => {
+  return SEMITONES_ALL.flatMap(pc => {
     const writtenPc = by === 'read' ? pc : mod12(pc + off);
     const concertPc = mod12(writtenPc - off);
-    return { writtenPc, concertPc, written: tonicName(writtenPc, mode), concert: tonicName(concertPc, mode) };
+    const flat: KeyChip = { writtenPc, sharp: false, concertPc, written: tonicName(writtenPc, mode), concert: tonicName(concertPc, mode) };
+    return hasSharpSpelling(scale, writtenPc) ? [{ ...flat, sharp: true, written: sharpTonicName(writtenPc) }, flat] : [flat];
   });
 }
 

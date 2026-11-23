@@ -46,13 +46,48 @@ it('melodic minor descends as natural minor', () => {
   expect(r.notes[9].accidental).toBe('natural');
 });
 
-it('double sharp: G♯ harmonic minor has F𝄪 (review focus 1)', () => {
+it('a double sharp is written as the natural above: G♯ harmonic minor has G♮, not F𝄪', () => {
   const r = build('fl', 'hmin', 8);
   expect(r.tonic).toBe('G♯');
-  expect(names(r)).toEqual(['G♯', 'A♯', 'B', 'C♯', 'D♯', 'E', 'F𝄪', 'G♯']);
+  expect(names(r)).toEqual(['G♯', 'A♯', 'B', 'C♯', 'D♯', 'E', 'G', 'G♯']);
   expect(r.sig).toBe(5);
-  expect(r.notes[6].accidental).toBe('doubleSharp');
-  expect(r.notes[6].spelled.alter).toBe(2);
+  expect(r.notes[6].accidental).toBe('natural');
+  expect(r.notes[7].accidental).toBe('sharp');
+  expect(r.notes[7].written - r.notes[6].written).toBe(1);
+});
+
+it('a double flat is written as the natural below: E♭ blues has A♮, not B𝄫', () => {
+  const r = build('fl', 'blues', 3);
+  expect(names(r)).toEqual(['E♭', 'G♭', 'A♭', 'A', 'B♭', 'D♭', 'E♭']);
+  expect(r.notes[3].accidental).toBe('natural');
+  expect(r.notes[3].written - r.notes[2].written).toBe(1);
+});
+
+it('no scale in any key needs a double sharp or a double flat', () => {
+  for (const scale of SCALE_IDS) {
+    for (let pc = 0; pc < 12; pc++) {
+      for (const sharp of [false, true]) {
+        const r = buildScale({ inst: 'fl', scale, tonicPc: pc, sharp, range: 'all', direction: 'updown' });
+        for (const n of r.notes) expect(Math.abs(n.spelled.alter)).toBeLessThan(2);
+      }
+    }
+  }
+});
+
+it('six accidentals: F♯ major and D♯ minor beside G♭ major and E♭ minor', () => {
+  const fs = buildScale({ inst: 'fl', scale: 'maj', tonicPc: 6, sharp: true, range: 'one', direction: 'up' });
+  expect(fs.tonic).toBe('F♯');
+  expect(fs.sig).toBe(6);
+  expect(names(fs)).toEqual(['F♯', 'G♯', 'A♯', 'B', 'C♯', 'D♯', 'E♯', 'F♯']);
+  expect(fs.notes.every(n => n.accidental === null)).toBe(true);
+  expect(fs.notes.map(n => n.written)).toEqual(build('fl', 'maj', 6).notes.map(n => n.written));
+  const ds = buildScale({ inst: 'fl', scale: 'nmin', tonicPc: 3, sharp: true, range: 'one', direction: 'up' });
+  expect(ds.tonic).toBe('D♯');
+  expect(ds.sig).toBe(6);
+  expect(names(ds)).toEqual(['D♯', 'E♯', 'F♯', 'G♯', 'A♯', 'B', 'C♯', 'D♯']);
+  // The flag does nothing in any other key, nor for the chromatic scale.
+  expect(buildScale({ inst: 'fl', scale: 'maj', tonicPc: 7, sharp: true, range: 'one', direction: 'up' })).toEqual(build('fl', 'maj', 7));
+  expect(buildScale({ inst: 'fl', scale: 'chrom', tonicPc: 6, sharp: true, range: 'one', direction: 'up' })).toEqual(build('fl', 'chrom', 6));
 });
 
 it('flat keys keep their letters: G♭ major has C♭, E♭ minor has C♭', () => {
@@ -181,11 +216,15 @@ it('octave of a spelled note follows its letter: B♯4 = MIDI 72, C♭5 = MIDI 7
 
 it('key chips', () => {
   const read = keyChips('asax', 'maj', 'read');
-  expect(read).toHaveLength(12);
+  expect(read).toHaveLength(13);
+  expect(read.map(c => c.written)).toEqual(['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B']);
+  expect(read.filter(c => c.sharp).map(c => [c.written, c.writtenPc, c.concert])).toEqual([['F♯', 6, 'A']]);
+  expect(keyChips('asax', 'nmin', 'read').map(c => c.written).slice(3, 5)).toEqual(['D♯', 'E♭']);
+  expect(keyChips('asax', 'chrom', 'read')).toHaveLength(12);
   expect(read[0]).toMatchObject({ written: 'C', concert: 'E♭', writtenPc: 0, concertPc: 3 });
   const sound = keyChips('asax', 'maj', 'sound');
   expect(sound[0]).toMatchObject({ concert: 'C', written: 'A', concertPc: 0, writtenPc: 9 });
-  expect(keyChips('asax', 'hmin', 'read')[8].written).toBe('G♯');
+  expect(keyChips('asax', 'hmin', 'read')[9].written).toBe('G♯');
   expect(isKeyTransposing('asax')).toBe(true);
   expect(isKeyTransposing('picc')).toBe(false);
   expect(isKeyTransposing('fl')).toBe(false);

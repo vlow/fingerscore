@@ -18,14 +18,14 @@ const KEY = 'fingerscore.scales';
 
 type KeysBy = 'read' | 'sound';
 interface Settings {
-  inst: InstId; scale: ScaleId; tonicPc: number; range: ScaleRange; direction: ScaleDirection; by: KeysBy;
+  inst: InstId; scale: ScaleId; tonicPc: number; sharp: boolean; range: ScaleRange; direction: ScaleDirection; by: KeysBy;
   chartStyle: 'compact' | 'full'; recorderSystem: RecorderSystem; showAlternates: boolean; showNames: boolean;
   /** The player's fingering picks: note index in the scale's sequence → option index. */
   overrides: Record<number, number>;
 }
 
 /** Settings that change the note sequence or its fingering tables: a change clears the picks. */
-const SEQUENCE: (keyof Settings)[] = ['inst', 'scale', 'tonicPc', 'range', 'direction', 'recorderSystem'];
+const SEQUENCE: (keyof Settings)[] = ['inst', 'scale', 'tonicPc', 'sharp', 'range', 'direction', 'recorderSystem'];
 
 const RANGES: { value: ScaleRange; content: string }[] = [
   { value: 'one', content: '1 octave' }, { value: 'two', content: '2 octaves' }, { value: 'all', content: 'Whole range' },
@@ -53,6 +53,7 @@ function load(preferred: InstId): Settings {
     inst: pick(r.inst, ORDER, preferred),
     scale: pick(r.scale, SCALE_IDS, 'maj'),
     tonicPc: pick(r.tonicPc, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 0),
+    sharp: bool(r.sharp, false),
     range: pick(r.range, RANGES.map(o => o.value), 'one'),
     direction: pick(r.direction, DIRECTIONS.map(o => o.value), 'up'),
     by: pick(r.by, BY.map(o => o.value), 'read'),
@@ -98,8 +99,8 @@ export default function Scales() {
   const transposing = isKeyTransposing(st.inst);
   const name = scaleName(st.scale);
   const scale = useMemo(
-    () => buildScale({ inst: st.inst, scale: st.scale, tonicPc: st.tonicPc, range: st.range, direction: st.direction }),
-    [st.inst, st.scale, st.tonicPc, st.range, st.direction],
+    () => buildScale({ inst: st.inst, scale: st.scale, tonicPc: st.tonicPc, sharp: st.sharp, range: st.range, direction: st.direction }),
+    [st.inst, st.scale, st.tonicPc, st.sharp, st.range, st.direction],
   );
   const fingerings = useMemo(
     () => scaleFingerings(st.inst, scale.notes, st.recorderSystem, st.overrides),
@@ -110,14 +111,16 @@ export default function Scales() {
   // The chips change with the scale type (major or minor tonic table); the selection is the written pitch class.
   const by = transposing ? st.by : 'read';
   const chips = keyChips(st.inst, st.scale, by);
-  const current = chips.find(c => c.writtenPc === st.tonicPc)!;
+  // A chip is a written pitch class plus its spelling; only a six-accidental key has two chips.
+  const chipId = (c: { writtenPc: number; sharp: boolean }) => `${c.writtenPc}${c.sharp ? '♯' : ''}`;
+  const current = chips.find(c => c.writtenPc === st.tonicPc && c.sharp === st.sharp) ?? chips.find(c => c.writtenPc === st.tonicPc)!;
   const caption = `${displayName(i)} · ${scale.tonic} ${name}` + (transposing ? ` · sounds ${current.concert} ${name}` : '');
 
   const chipOptions = chips.map(c => {
-    if (!transposing) return { value: c.writtenPc, content: <span className={s.chipMain}>{c.written}</span>, name: c.written };
+    if (!transposing) return { value: chipId(c), content: <span className={s.chipMain}>{c.written}</span>, name: c.written };
     const [lead, sub] = by === 'read' ? [c.written, `sounds ${c.concert}`] : [c.concert, `you read ${c.written}`];
     return {
-      value: c.writtenPc,
+      value: chipId(c),
       name: `${lead} · ${sub}`,
       content: <><span className={s.chipMain}>{lead}</span><span className={s.chipSub}>{sub}</span></>,
     };
@@ -173,7 +176,7 @@ export default function Scales() {
               </div>
             )}
           </div>
-          <Segmented label="Key" size="chip" value={st.tonicPc} options={chipOptions} onChange={tonicPc => set({ tonicPc })} />
+          <Segmented label="Key" size="chip" value={chipId(current)} options={chipOptions} onChange={id => { const c = chips.find(k => chipId(k) === id)!; set({ tonicPc: c.writtenPc, sharp: c.sharp }); }} />
         </div>
 
         <div className={s.row}>

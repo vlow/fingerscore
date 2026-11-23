@@ -32,12 +32,13 @@ it('breaks lines at 15 notes', () => {
   expect(lines[1].querySelectorAll('[data-end]')).toHaveLength(1);
 });
 
-it('accidentals and double sharp glyph (review focus 1)', () => {
+it('accidentals: a natural replaces the double sharp (review focus 1)', () => {
   const scale = buildScale({ inst: 'fl', scale: 'hmin', tonicPc: 8, range: 'one', direction: 'up' });
   const { container } = draw({ inst: 'fl', scale });
-  expect(container.querySelectorAll('[data-acc="doubleSharp"]')).toHaveLength(1);
+  expect(container.querySelectorAll('[data-acc="doubleSharp"]')).toHaveLength(0);
+  expect(container.querySelectorAll('[data-acc="natural"]')).toHaveLength(1);
   expect(container.querySelectorAll('[data-keysig] [data-acc]').length).toBe(5);
-  expect([...container.querySelectorAll('[data-name]')].map(e => e.textContent)[6]).toBe('F𝄪5');
+  expect([...container.querySelectorAll('[data-name]')].map(e => e.textContent)[6]).toBe('G5');
 });
 
 it('extended notes are amber', () => {
