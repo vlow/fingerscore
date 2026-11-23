@@ -1,10 +1,12 @@
 import { songTimeSig } from '../meter';
 import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from '../types';
-import { durationQuarters, kid, kids, majorTonicOfFifths, mod12, num, text, type ScoreReader } from './common';
+import { durationQuarters, harmonyOf, kid, kids, lyricText, majorTonicOfFifths, mod12, num, text, type ScoreReader } from './common';
 
 const DEFAULT_TEMPO = 120;
 const EPS = 1e-9;
 const MAX_VOICES = 4;
+
+type Timed = { at: number; text: string };
 
 interface PartInfo { name: string; instrument: string; percussion: boolean; transpose: number; staffIds: number[] }
 
@@ -68,9 +70,22 @@ const isGrace = (chord: Element): boolean =>
 const hasTieStart = (note: Element): boolean =>
   kids(note, 'Spanner').some(s => s.getAttribute('type') === 'Tie' && kid(s, 'next') !== undefined);
 
-/** Notes of one voice over all measures. A note with a tie start continues into the next note of its pitch. */
-function readVoice(bars: Bar[], staffMeasures: Element[], voiceIndex: number): RawNote[] {
+/** Verse 1 text of a chord: a `<Lyrics>` without `<no>` or with `<no>0</no>`. */
+function verseOne(chord: Element): string | null {
+  const ly = kids(chord, 'Lyrics').find(l => (num(text(l, 'no')) ?? 0) === 0);
+  const body = ly && text(ly, 'text');
+  return ly && body ? lyricText(body, text(ly, 'syllabic') ?? null) : null;
+}
+
+/**
+ * Notes, verse 1 lyrics and chord symbols of one voice over all measures. A note with a tie start continues into the next
+ * note of its pitch. A chord symbol sits at the next chord or rest of its voice.
+ */
+function readVoice(bars: Bar[], staffMeasures: Element[], voiceIndex: number): { notes: RawNote[]; lyrics: Timed[]; harmonies: Timed[] } {
   const notes: RawNote[] = [];
+  const lyrics: Timed[] = [];
+  const harmonies: Timed[] = [];
+  let waitingHarmonies: string[] = [];
   const open = new Map<number, RawNote>();     // tied notes waiting for their continuation, by pitch
   staffMeasures.forEach((m, i) => {
     const voice = kids(m, 'voice')[voiceIndex];
@@ -87,13 +102,20 @@ function readVoice(bars: Bar[], staffMeasures: Element[], voiceIndex: number): R
         ratios.pop();
       } else if (name === 'location') {
         pos += (fraction(text(el, 'fractions')) ?? 0) * 4;
+      } else if (name === 'Harmony') {
+        const h = harmonyOf(el);
+        if (h !== null) waitingHarmonies.push(h);
       } else if (name === 'Chord' || name === 'Rest') {
         if (name === 'Chord' && isGrace(el)) continue;
+        for (const h of waitingHarmonies) harmonies.push({ at: pos, text: h });
+        waitingHarmonies = [];
         const type = text(el, 'durationType') ?? '';
         const written = type === 'measure' ? bar.length : durationQuarters(type, num(text(el, 'dots')) ?? 0);
         if (written === null) throw new Error(`unknown note value ${type}`);
         const dur = type === 'measure' ? written : written * ratios.reduce((a, r) => a * r, 1);
         if (name === 'Chord') {
+          const ly = verseOne(el);
+          if (ly !== null) lyrics.push({ at: pos, text: ly });
           for (const note of kids(el, 'Note')) {
             const midi = num(text(note, 'pitch'));
             if (midi === null) continue;
@@ -112,7 +134,30 @@ function readVoice(bars: Bar[], staffMeasures: Element[], voiceIndex: number): R
       }
     }
   });
-  return notes.sort((a, b) => a.start - b.start);
+  return { notes: notes.sort((a, b) => a.start - b.start), lyrics, harmonies };
+}
+
+// ---- repeats and endings ----
+
+/** Repeat signs and endings 1 and 2 of the first staff, as `ParsedSong.marks` (bar index = measure index). */
+function readMarks(bars: Bar[]): ParsedSong['marks'] {
+  const marks = new Map<number, ParsedSong['marks'][number]>();
+  const at = (bar: number) => { let m = marks.get(bar); if (!m) { m = { bar }; marks.set(bar, m); } return m; };
+  bars.forEach(({ el }, i) => {
+    if (kid(el, 'startRepeat')) at(i).rs = true;
+    if (kid(el, 'endRepeat')) at(i).re = true;
+    for (const spanner of kids(el, 'voice').flatMap(v => kids(v, 'Spanner'))) {
+      if (spanner.getAttribute('type') !== 'Volta') continue;
+      const endings = text(kid(spanner, 'Volta'), 'endings');
+      const next = kid(spanner, 'next');
+      if ((endings !== '1' && endings !== '2') || !next) continue;
+      // The end sits `measures` bars on, plus a part of a bar when `fractions` is there: an ending inside one bar has no `measures`.
+      const location = kid(next, 'location');
+      const length = (num(text(location, 'measures')) ?? 0) + ((fraction(text(location, 'fractions')) ?? 0) > 0 ? 1 : 0);
+      for (let b = i; b < Math.min(i + Math.max(length, 1), bars.length); b++) at(b).volta = endings;
+    }
+  });
+  return Array.from(marks.values()).sort((a, b) => a.bar - b.bar);
 }
 
 // ---- song-level facts ----
@@ -160,23 +205,28 @@ export const readV3: ScoreReader = (file, score, version) => {
 
   const tracks: ParsedTrack[] = [];
   for (const part of parts) {
+    const firstOfPart = tracks.length;
+    const chords: Timed[] = [];
     for (const staffId of part.staffIds) {
       const measures = byId.get(staffId) ?? [];
-      const voices = Array.from({ length: MAX_VOICES }, (_, v) => ({ voice: v + 1, notes: readVoice(bars, measures, v) }))
-        .filter(v => v.notes.length > 0);
-      for (const { voice, notes } of voices) {
+      const read = Array.from({ length: MAX_VOICES }, (_, v) => ({ voice: v + 1, ...readVoice(bars, measures, v) }));
+      for (const r of read) chords.push(...r.harmonies);
+      const voices = read.filter(v => v.notes.length > 0);
+      for (const { voice, notes, lyrics } of voices) {
         const staffNo = part.staffIds.indexOf(staffId) + 1;
         const name = part.name + (part.staffIds.length > 1 ? ` · staff ${staffNo}` : '') + (voices.length > 1 ? ` · voice ${voice}` : '');
         tracks.push({
           id: `${staffId}:${voice}`, name, instrument: part.instrument, channel: part.percussion ? 10 : null,
-          percussion: part.percussion, notes, lyrics: [], chords: [],
+          percussion: part.percussion, notes, lyrics, chords: [],
         });
       }
     }
+    chords.sort((a, b) => a.at - b.at);     // stable: symbols at one position keep their order
+    for (const t of tracks.slice(firstOfPart)) t.chords = chords;
   }
   if (!tracks.some(t => !t.percussion)) throw new ImportError(`"${file}" has no melody track.`);
 
   const keyPart = parts.find(p => !p.percussion && p.staffIds.length > 0);
   const key = readKey(score, version, keyPart && byId.get(keyPart.staffIds[0]), keyPart?.transpose ?? 0);
-  return { file, format: 'MuseScore', timeSig, tempo: readTempo(staves.map(s => s.measures)), key, pickup, marks: [], tracks };
+  return { file, format: 'MuseScore', timeSig, tempo: readTempo(staves.map(s => s.measures)), key, pickup, marks: readMarks(bars), tracks };
 };

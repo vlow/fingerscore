@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import { parseFile } from './index';
 import { parseMuseScore } from './mscz';
 import { ImportError } from './types';
+import { harmonyText, lyricText } from './mscz/common';
 
 // ---- fixture helpers: a few bars of hand-written MuseScore XML ----
 
@@ -247,5 +248,133 @@ describe('key', () => {
       staff(1, bar('', '<KeySig><accidental>1</accidental></KeySig>' + TS() + chord('whole', [36]))) +
       staff(2, bar('', '<KeySig><accidental>-1</accidental></KeySig>' + TS() + chord('whole', [72]))));
     expect((await parse(xml)).key).toEqual({ tonicPc: 5, mode: null });
+  });
+});
+
+// ---- lyrics, chord symbols, repeats, endings ----
+
+const lyric = (t: string, syllabic = '', no = '') =>
+  `<Lyrics>${no}${syllabic ? `<syllabic>${syllabic}</syllabic>` : ''}<text>${t}</text></Lyrics>`;
+const harmony3 = (root: number, extra = '') => `<Harmony><root>${root}</root>${extra}</Harmony>`;
+const harmony4 = (root: number, info = '') => `<Harmony><harmonyInfo>${info}<root>${root}</root></harmonyInfo></Harmony>`;
+const volta = (endings: string, measures: number) =>
+  `<Spanner type="Volta"><Volta><endings>${endings}</endings></Volta><next><location><measures>${measures}</measures></location></next></Spanner>`;
+const voltaEnd = '<Spanner type="Volta"><prev><location><measures>-1</measures></location></prev></Spanner>';
+
+describe('harmonyText and lyricText', () => {
+  it('writes root, kind and bass', () => {
+    expect(harmonyText(15, 'mi', null)).toBe('Gm');
+    expect(harmonyText(14, null, 16)).toBe('C/D');
+    expect(harmonyText(14, 'o7', null)).toBe('C°7');
+    expect(harmonyText(13, '7', 17)).toBe('F7/A');
+  });
+
+  it('maps only the short leading tokens of the kind', () => {
+    expect(harmonyText(14, 'min7', null)).toBe('Cmin7');
+    expect(harmonyText(14, 'maj7', null)).toBe('Cmaj7');
+    expect(harmonyText(14, 'mi7', null)).toBe('Cm7');
+    expect(harmonyText(14, 'ma7', null)).toBe('Cmaj7');
+    expect(harmonyText(14, 'm', null)).toBe('Cm');
+    expect(harmonyText(14, '07', null)).toBe('Cø7');
+    expect(harmonyText(14, 'o', null)).toBe('C°');
+  });
+
+  it('spells roots with flats by pitch class', () => {
+    expect(harmonyText(12, null, 11)).toBe('B♭/E♭');
+  });
+
+  it('hyphenates begin and middle syllables', () => {
+    expect([lyricText('won', 'begin'), lyricText('der', 'end'), lyricText('x', 'middle'), lyricText('a', null)]).toEqual(['won-', 'der', 'x-', 'a']);
+  });
+});
+
+describe('lyrics', () => {
+  it('reads verse 1 at the chord start, with hyphens', async () => {
+    const song = await parse(simple(bar('', TS() +
+      chord('quarter', [60], lyric('won', 'begin')) + rest('quarter') + chord('half', [62], lyric('der', 'end')))));
+    expect(song.tracks[0].lyrics).toEqual([{ at: 0, text: 'won-' }, { at: 2, text: 'der' }]);
+  });
+
+  it('skips verse 2, takes <no>0</no> as verse 1 and keeps a verse number in the text', async () => {
+    const song = await parse(simple(bar('', TS() +
+      chord('half', [60], lyric('1 The', '') + lyric('2 When', '', '<no>1</no>')) +
+      chord('half', [62], lyric('only 2', '', '<no>1</no>') + lyric('go', '', '<no>0</no>')))));
+    expect(song.tracks[0].lyrics).toEqual([{ at: 0, text: '1 The' }, { at: 2, text: 'go' }]);
+  });
+
+  it('puts lyrics on the track of their voice', async () => {
+    const song = await parse(simple(bar('', TS() + chord('whole', [72]), chord('whole', [60], lyric('la')))));
+    expect(song.tracks.map(t => t.lyrics)).toEqual([[], [{ at: 0, text: 'la' }]]);
+  });
+});
+
+describe('chord symbols', () => {
+  it('version 4: root and name inside harmonyInfo, at the next chord', async () => {
+    const song = await parse(mscx('4.70', part() + staff(1, bar('', TS() + chord('half', [60]) + harmony4(15, '<name>m</name>') + chord('half', [62])))));
+    expect(song.tracks[0].chords).toEqual([{ at: 2, text: 'Gm' }]);
+  });
+
+  it('version 3: root and base directly inside Harmony; extension is ignored', async () => {
+    const song = await parse(simple(bar('', TS() + harmony3(14, '<extension>1</extension><base>16</base>') + chord('whole', [60]))));
+    expect(song.tracks[0].chords).toEqual([{ at: 0, text: 'C/D' }]);
+  });
+
+  it('version 4: bass inside harmonyInfo', async () => {
+    const song = await parse(mscx('4.70', part() + staff(1, bar('', TS() + harmony4(14, '<bass>18</bass>') + chord('whole', [60])))));
+    expect(song.tracks[0].chords).toEqual([{ at: 0, text: 'C/E' }]);
+  });
+
+  it('a symbol before a rest applies at the rest; a Harmony without root is skipped', async () => {
+    const song = await parse(simple(bar('', TS() + chord('quarter', [60]) + '<Harmony><name>x</name></Harmony>' + harmony3(15) + rest('quarter') + chord('half', [62]))));
+    expect(song.tracks[0].chords).toEqual([{ at: 1, text: 'G' }]);
+  });
+
+  it('every track of a part gets the symbols of all its staves and voices, in order', async () => {
+    const xml = mscx('3.02', part({ name: 'Piano', staves: [1, 2] }) +
+      staff(1, bar('', TS() + harmony3(14) + chord('half', [72]) + chord('half', [74]), chord('whole', [60]))) +
+      staff(2, bar('', TS() + chord('half', [48]) + harmony3(15) + chord('half', [50]))));
+    const song = await parse(xml);
+    expect(song.tracks).toHaveLength(3);
+    for (const t of song.tracks) expect(t.chords).toEqual([{ at: 0, text: 'C' }, { at: 2, text: 'G' }]);
+  });
+});
+
+describe('repeats and endings', () => {
+  const withRepeat = (rep: string, voice: string) => `<Measure>${rep}<voice>${voice}</voice></Measure>`;
+  const body = (...bars: string[]) => simple(...bars);
+
+  it('reads repeats and endings by bar', async () => {
+    const song = await parse(body(
+      withRepeat('<startRepeat/>', TS() + chord('whole', [60])),
+      bar('', chord('whole', [60])),
+      withRepeat('<endRepeat>2</endRepeat>', volta('1', 1) + chord('whole', [60])),
+      bar('', voltaEnd + volta('2', 1) + chord('whole', [60])),
+      bar('', voltaEnd + chord('whole', [60]))));
+    expect(song.marks).toEqual([{ bar: 0, rs: true }, { bar: 2, re: true, volta: '1' }, { bar: 3, volta: '2' }]);
+  });
+
+  it('a longer ending covers the following measures', async () => {
+    const song = await parse(body(
+      bar('', TS() + volta('2', 2) + chord('whole', [60])), bar('', chord('whole', [60])), bar('', voltaEnd + chord('whole', [60]))));
+    expect(song.marks).toEqual([{ bar: 0, volta: '2' }, { bar: 1, volta: '2' }]);
+  });
+
+  it('an ending that stops inside its bar covers that bar', async () => {
+    const half = '<Spanner type="Volta"><Volta><endings>2</endings></Volta><next><location><fractions>1/2</fractions></location></next></Spanner>';
+    const song = await parse(body(bar('', TS() + chord('whole', [60])), bar('', half + chord('whole', [60]))));
+    expect(song.marks).toEqual([{ bar: 1, volta: '2' }]);
+  });
+
+  it('ignores other endings and lists', async () => {
+    const song = await parse(body(bar('', TS() + volta('3', 1) + chord('whole', [60])), bar('', volta('1, 2', 1) + chord('whole', [60]))));
+    expect(song.marks).toEqual([]);
+  });
+
+  it('counts a pickup measure as bar 0', async () => {
+    const xml = body(
+      bar(' len="1/4"', TS() + chord('quarter', [60])),
+      withRepeat('<startRepeat/>', chord('whole', [60])),
+      withRepeat('<endRepeat>2</endRepeat>', chord('whole', [60])));
+    expect((await parse(xml)).marks).toEqual([{ bar: 1, rs: true }, { bar: 2, re: true }]);
   });
 });

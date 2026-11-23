@@ -1,3 +1,4 @@
+import { ROOT_NAMES } from '../chordNames';
 import type { ParsedSong } from '../types';
 
 /** Reads one version's main score. `score` is the root's `<Score>` child; `version` is the root's `version` attribute. */
@@ -37,3 +38,34 @@ export const pcOfTpc = (tpc: number): number => mod12((tpc - 14) * 7);
 
 /** Pitch class of the major key with this many sharps (negative: flats). */
 export const majorTonicOfFifths = (fifths: number): number => mod12(fifths * 7);
+
+// ---- lyrics and chord symbols ----
+
+/** A lyric as the song model wants it: `begin` and `middle` syllables end in a hyphen. */
+export const lyricText = (text: string, syllabic: string | null): string =>
+  syllabic === 'begin' || syllabic === 'middle' ? `${text}-` : text;
+
+/** The kind text as MuseScore stores it, with its short leading token written out: `mi` → `m`, `ma` → `maj`, `o` → `°`, `0` → `ø`. */
+function kindText(name: string): string {
+  if (/^mi(?!n)/.test(name)) return 'm' + name.slice(2);
+  if (/^ma(?!j)/.test(name)) return 'maj' + name.slice(2);
+  if (name.startsWith('o')) return '°' + name.slice(1);
+  if (name.startsWith('0')) return 'ø' + name.slice(1);
+  return name;
+}
+
+/** Chord symbol text from tonal pitch classes (root, bass) and MuseScore's kind text. */
+export const harmonyText = (rootTpc: number, name: string | null, bassTpc: number | null): string =>
+  ROOT_NAMES[pcOfTpc(rootTpc)] + kindText(name ?? '') + (bassTpc === null ? '' : `/${ROOT_NAMES[pcOfTpc(bassTpc)]}`);
+
+/**
+ * The text of a `<Harmony>`, or null when it has no root. Version 3 puts `<root>`, `<name>` and `<base>` in the element,
+ * version 4 puts them in `<harmonyInfo>` and calls the bass `<bass>`; version 2 is like version 3.
+ */
+export function harmonyOf(h: Element): string | null {
+  const info = kid(h, 'harmonyInfo');
+  const field = (name: string): string | undefined => text(h, name) ?? text(info, name);
+  const root = num(field('root'));
+  if (root === null) return null;
+  return harmonyText(root, field('name') ?? null, num(field('base') ?? field('bass')));
+}

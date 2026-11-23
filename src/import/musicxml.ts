@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { ROOT_NAMES } from './chordNames';
 import { songTimeSig } from './meter';
 import { MODE_BELOW_MAJOR } from '../domain/keys';
 import type { Mode, TimeSig } from '../domain/types';
@@ -6,7 +7,6 @@ import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './
 
 const DEFAULT_TEMPO = 120;
 const EPS = 1e-9;
-const ROOT_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const STEP_PC: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const KIND_SUFFIX: Record<string, string> = {
   major: '', minor: 'm', dominant: '7', 'major-seventh': 'maj7', 'minor-seventh': 'm7', diminished: 'dim',
