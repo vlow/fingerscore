@@ -6,7 +6,7 @@ import type { InstId } from '../domain/types';
 import { scaleLines, type ScaleStaffProps } from '../render/ScaleStaff';
 import { SHEET } from '../render/layout';
 import { unsupported } from './chars';
-import { collapse, drawFooter, drawLegend, drawSvgScaled, INK, LEGEND, loadFonts, newPdf, nextTurn, placeBlocks, renderOffscreen, SITE, text, throwIfAborted, width, type Pdf } from './engine';
+import { collapse, drawFooter, fitFooterTitle, headingText, drawLegend, drawSvgScaled, INK, LEGEND, loadFonts, newPdf, nextTurn, placeBlocks, renderOffscreen, SITE, text, throwIfAborted, width, type Pdf } from './engine';
 import { PdfError, unsupportedMessage } from './errors';
 import { fitText, pageHeightUnits, pageSizeFor, paginate, UNITS, wrapLegend, type Block, type PageGroup, type PageSize } from './pageModel';
 import { prepareSvg } from './prepareSvg';
@@ -37,7 +37,7 @@ const staffProps = (i: ScalePdfInput): ScaleStaffProps => ({
 
 /** Every text the PDF draws from the scale's content, for the character check. */
 function drawnTexts(i: ScalePdfInput): string[] {
-  const out = [i.caption, chartLegend(i.inst)];
+  const out = [headingText(i.caption), chartLegend(i.inst)];
   const fingerings = scaleFingerings(i.inst, i.scale.notes, i.recorderSystem, i.overrides);
   i.scale.notes.forEach((n, k) => {
     if (i.showNames) out.push(n.spelled.name);
@@ -48,7 +48,7 @@ function drawnTexts(i: ScalePdfInput): string[] {
 
 /** The blocks of the scale in page order. A line's block includes the gap to the next line. Needs the font metrics (`loadFonts`). */
 export function planScale(i: ScalePdfInput): ScalePlan {
-  const caption = fitText(i.caption, width(700), UNITS, CAPTION.px, CAPTION.minPx);
+  const caption = fitText(headingText(i.caption), width(700), UNITS, CAPTION.px, CAPTION.minPx);
   const legend = wrapLegend(collapse(chartLegend(i.inst)), SITE, t => textWidth(t, LEGEND.px, 400), UNITS);
   const lines = scaleLines(staffProps(i));
   const blocks: Block[] = [{ kind: 'caption', height: CAPTION.height }];
@@ -96,7 +96,7 @@ function renderLines(input: ScalePdfInput, indices: number[]): { svgs: Map<numbe
 }
 
 /** One page, written in reading order: caption, lines top to bottom, legend and site, footer. */
-async function drawPage(pdf: Pdf, input: ScalePdfInput, plan: ScalePlan, groups: PageGroup[], page: number, pages: number): Promise<void> {
+async function drawPage(pdf: Pdf, input: ScalePdfInput, plan: ScalePlan, groups: PageGroup[], page: number, pages: number, footerTitle: string): Promise<void> {
   const placed = placeBlocks(groups);
   const heights = scaleLines(staffProps(input)).map(l => l.height);
   const lines = renderLines(input, placed.filter(p => p.block.kind === 'line').map(p => p.block.index!));
@@ -109,7 +109,7 @@ async function drawPage(pdf: Pdf, input: ScalePdfInput, plan: ScalePlan, groups:
   } finally {
     lines.dispose();
   }
-  drawFooter(pdf, input.caption, page, pages);
+  drawFooter(pdf, footerTitle, page, pages);
 }
 
 export interface ScalePdfOptions { language: string; onProgress?(page: number, pages: number): void; signal?: AbortSignal }
@@ -125,11 +125,13 @@ export async function makeScalePdf(input: ScalePdfInput, o: ScalePdfOptions): Pr
   const size: PageSize = pageSizeFor(o.language);
   const plan = planScale(input);
   const pages = paginate(plan.blocks, pageHeightUnits(size));
-  const pdf = newPdf(size, fonts, { title: input.caption, subject: input.scaleName });
+  const caption = headingText(input.caption);
+  const footerTitle = fitFooterTitle(caption, pages.length);
+  const pdf = newPdf(size, fonts, { title: caption, subject: input.scaleName });
 
   for (let n = 0; n < pages.length; n++) {
     if (n > 0) pdf.doc.addPage([size.widthMm, size.heightMm], 'portrait');
-    await drawPage(pdf, input, plan, pages[n], n + 1, pages.length);
+    await drawPage(pdf, input, plan, pages[n], n + 1, pages.length, footerTitle);
     o.onProgress?.(n + 1, pages.length);
     await nextTurn(o.signal);
   }

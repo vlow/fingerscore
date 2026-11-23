@@ -8,7 +8,7 @@ import { LOAD_FAILED } from '../loadFailed';
 import { drawText, fontsOf, textWidth, type Anchor } from './drawText';
 import { FONT_KEYS, FONT_NAME, setFontMetrics, type FontKey, type Weight } from './fontMetrics';
 import { PdfError } from './errors';
-import { fitText, footerText, MARGIN_MM, UNITS, unitMm, type Block, type PageGroup, type PageSize } from './pageModel';
+import { fitText, footerText, MARGIN_MM, MAX_HEADING, UNITS, unitMm, type Block, type PageGroup, type PageSize } from './pageModel';
 import latin400 from './fonts/atkinson-hyperlegible-latin-400-normal.ttf?url';
 import latin700 from './fonts/atkinson-hyperlegible-latin-700-normal.ttf?url';
 import latin700i from './fonts/atkinson-hyperlegible-latin-700-italic.ttf?url';
@@ -147,6 +147,13 @@ export const SITE = 'fingerscore.eu';
 /** HTML collapses runs of white space; the PDF writes the legend as the paper shows it. */
 export const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 
+/** A title, subtitle or caption as the PDF draws it: white space collapsed (jsPDF would break a line at CR or LF), cut to 300 characters. */
+export function headingText(s: string): string {
+  const one = collapse(s);
+  const chars = [...one];
+  return chars.length <= MAX_HEADING ? one : chars.slice(0, MAX_HEADING).join('').trimEnd();
+}
+
 export const width = (weight: Weight) => (text: string, px: number) => textWidth(text, px, weight);
 
 /** Draws a text at x, baseline y in units of the content box; px in units. */
@@ -169,15 +176,17 @@ export function drawLegend(pdf: Pdf, y: number, legend: { lines: string[]; foote
   text(pdf, SITE, UNITS, baseline(footerOwnLine ? lines.length : lines.length - 1), LEGEND.px, 400, 'end', MUTED);
 }
 
-/** The page footer "{title} · page n of N" in the bottom margin; nothing for a one-page PDF. */
+/** The title as the footer shows it: cut, once for the document, to fit the widest footer line "{title} · page N of N". */
+export function fitFooterTitle(title: string, pages: number): string {
+  if (pages <= 1 || title === '') return title;
+  const room = UNITS - textWidth(` · ${footerText('', pages, pages)!}`, FOOTER_PX, 400);
+  return fitText(title, width(400), room, FOOTER_PX, FOOTER_PX).text;
+}
+
+/** The page footer "{title} · page n of N" in the bottom margin (`title` from `fitFooterTitle`); nothing for a one-page PDF. */
 export function drawFooter(pdf: Pdf, title: string, page: number, pages: number): void {
-  const full = footerText(title, page, pages);
-  if (full === null) return;
-  // A title too long for the line is cut so that the page number stays.
-  const tail = footerText('', page, pages)!;
-  const room = UNITS - textWidth(` · ${tail}`, FOOTER_PX, 400);
-  const cut = title === '' ? '' : fitText(title, width(400), room, FOOTER_PX, FOOTER_PX).text;
-  const s = footerText(cut, page, pages)!;
+  const s = footerText(title, page, pages);
+  if (s === null) return;
   const yUnits = (pdf.size.heightMm - FOOTER_BOTTOM_MM - MARGIN_MM) / unitMm(pdf.size);
   text(pdf, s, UNITS / 2, yUnits, FOOTER_PX, 400, 'middle', MUTED);
 }

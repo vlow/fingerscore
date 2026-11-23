@@ -143,6 +143,28 @@ describe('fitText', () => {
   it('an empty string stays empty', () => {
     expect(fitText('', w, 860, 26, 14)).toEqual({ text: '', px: 26 });
   });
+  it('cuts a 20,000-character text in under 50 ms and 40 measurements', () => {
+    let calls = 0;
+    const counted = (t: string, px: number) => { calls++; return w(t, px); };
+    const t0 = performance.now();
+    const r = fitText('x'.repeat(20000), counted, 860, 26, 14);
+    expect(performance.now() - t0).toBeLessThan(50);
+    expect(calls).toBeLessThanOrEqual(40);
+    expect(r.px).toBe(14);
+    expect(r.text).toBe(`${'x'.repeat(121)}…`);   // 7 units a character: 122 characters fit, the last is the ellipsis
+  });
+  it('finds the longest cut that fits, with the same result as removing one character at a time', () => {
+    const wide = (t: string, px: number) => [...t].reduce((s, c) => s + (c === 'W' ? 3 : 1) * px * 0.5, 0);
+    const text = 'WxWxWxxxWWWW '.repeat(30);
+    const r = fitText(text, wide, 400, 26, 14);
+    const chars = [...text];
+    let expected = '…';
+    for (let n = chars.length - 1; n >= 0; n--) {
+      const cut = `${chars.slice(0, n).join('').trimEnd()}…`;
+      if (wide(cut, 14) <= 400) { expected = cut; break; }
+    }
+    expect(r).toEqual({ text: expected, px: 14 });
+  });
 });
 
 describe('wrapLegend', () => {

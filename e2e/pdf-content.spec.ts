@@ -7,8 +7,8 @@ import { readPdf, renderPdfPage, renderPdfPixels, type PdfPage, type PdfText } f
 const MM = 72 / 25.4;
 const MARGIN = 12 * MM;
 const unitOf = (p: PdfPage) => (p.width - 2 * MARGIN) / 860;
-/** Where the images for looking at go; PDF_OUT overrides it. */
-const OUT = process.env.PDF_OUT ?? 'test-results/pdf';
+/** Where the images for looking at go; the images test runs only when PDF_OUT is set. */
+const OUT = process.env.PDF_OUT;
 
 const SYMBOL = /[♭♯♮𝄫𝄪♩Δ‿●○◐]/u;
 
@@ -458,9 +458,11 @@ test('four systems: one page, the legend kept on it by shrinking the systems, ce
     expect(q.x2 - q.x1).toBeLessThan(860 * u - 5);
     expect((q.x1 + q.x2) / 2).toBeCloseTo(p.width / 2, 0);
   }
-  mkdirSync(OUT, { recursive: true });
-  writeFileSync(join(OUT, 'sheet-four-systems.pdf'), bytes);
-  writeFileSync(join(OUT, 'sheet-four-systems-p1.png'), await renderPdfPage(bytes, 1, 150));
+  if (OUT) {
+    mkdirSync(OUT, { recursive: true });
+    writeFileSync(join(OUT, 'sheet-four-systems.pdf'), bytes);
+    writeFileSync(join(OUT, 'sheet-four-systems-p1.png'), await renderPdfPage(bytes, 1, 150));
+  }
 });
 
 test('ink above a system\'s box is drawn where the paper draws it: a high triplet mark', async ({ page }) => {
@@ -505,6 +507,29 @@ test.describe('degenerate documents', () => {
     expectInside(p, title[0].x, title[0].y, title[0].x + title[0].width, title[0].y, 'title');
   });
 
+  test('a 16,000-character title gives a PDF in under 3 s, the title cut and ending in "…"', async ({ page }) => {
+    const huge = `h => { const d = h.sampleDoc(); d.title = 'Long title '.repeat(1455).slice(0, 16000); return d; }`;
+    const { result, bytes } = await makePdf(page, huge);
+    expect(result.ms).toBeLessThan(3000);
+    const { pages } = await readPdf(bytes);
+    const title = pages[0].text.filter(t => t.str.startsWith('Long title') && t.font === 'AtkinsonHyperlegible-Bold');
+    expect(title).toHaveLength(1);
+    expect(title[0].str.endsWith('…')).toBe(true);
+    expect(title[0].str.length).toBeLessThan(300);
+    const footer = [...pages[1].text].sort((a, b) => b.seq - a.seq)[0].str;
+    expect(footer).toMatch(/^Long title.*… · page 2 of 2$/);
+  });
+
+  test('line breaks and tabs in title and subtitle become single spaces on one line', async ({ page }) => {
+    const crafted = `h => { const d = h.sampleDoc(); d.title = 'A\\nB\\r\\nC\\tD'; d.subtitle = '  S\\r\\n\\tT  '; return d; }`;
+    const { pages } = await readPdf((await makePdf(page, crafted)).bytes);
+    for (const str of ['A B C D', 'S T']) {
+      const item = pages[0].text.find(t => t.str === str && t.font === 'AtkinsonHyperlegible-Bold');
+      expect(item, `"${str}" as one bold item`).toBeDefined();
+      expect(pages[0].text.filter(t => Math.abs(t.y - item!.y) < 0.3).map(t => t.str), `items on the line of "${str}"`).toEqual([str]);
+    }
+  });
+
   test('a sheet of rests only', async ({ page }) => {
     const rests = `h => { const d = h.sampleDoc(); d.score = d.score.slice(1, 5).map((b, i) => ({ ...b, rs: false, re: false, volta: '', ev: [{ id: 'z' + i, m: 0, d: b.cap, r: true, tie: false, l: '' }] })); d.chords = {}; return d; }`;
     const { pages } = await readPdf((await makePdf(page, rests)).bytes);
@@ -521,17 +546,18 @@ test.describe('degenerate documents', () => {
   });
 });
 
-test.describe('images for review', () => {
+test.describe('images for review (set PDF_OUT to run)', () => {
+  test.skip(!OUT, 'PDF_OUT is not set');
   test.use({ deviceScaleFactor: 2 });
 
   test('page 1 of the sample song and of the "everything" sheet, and both sheets on screen', async ({ page }) => {
-    mkdirSync(OUT, { recursive: true });
+    mkdirSync(OUT!, { recursive: true });
     for (const [name, build] of [['sample', sample], ['everything', everything], ['symbols', symbols]] as const) {
       const { bytes } = await makePdf(page, build);
-      writeFileSync(join(OUT, `sheet-${name}.pdf`), bytes);
-      writeFileSync(join(OUT, `sheet-${name}-p1.png`), await renderPdfPage(bytes, 1, 150));
+      writeFileSync(join(OUT!, `sheet-${name}.pdf`), bytes);
+      writeFileSync(join(OUT!, `sheet-${name}-p1.png`), await renderPdfPage(bytes, 1, 150));
       await hook(page, 'showPaper', build);
-      await page.locator('#pdf-screen [data-testid="paper"]').screenshot({ path: join(OUT, `sheet-${name}-screen.png`) });
+      await page.locator('#pdf-screen [data-testid="paper"]').screenshot({ path: join(OUT!, `sheet-${name}-screen.png`) });
     }
     const nine = await makePdf(page, repeated(36));
     console.log(`one page (12 bars): ${(await makePdf(page, repeated(12))).bytes.length} bytes; nine systems: ${nine.bytes.length} bytes`);

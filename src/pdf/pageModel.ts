@@ -82,23 +82,33 @@ export function paginate(blocks: Block[], pageHeight: number): PageGroup[][] {
   return pages;
 }
 
-/** The largest size from `px` down to `minPx` (0.5 steps) at which the text fits; at `minPx` the text is cut with "…". */
+/**
+ * The largest size from `px` down to `minPx` (0.5 steps) at which the text fits; at `minPx` the text is cut with "…".
+ * A text too wide at `minPx` is not measured at the larger sizes, and the cut is found by binary search.
+ */
 export function fitText(
   text: string, widthAt: (text: string, px: number) => number, maxWidth: number, px: number, minPx: number,
 ): { text: string; px: number } {
   if (text === '') return { text, px };
-  for (let size = px; size > minPx; size -= 0.5) {
-    if (widthAt(text, size) <= maxWidth) return { text, px: size };
+  if (widthAt(text, minPx) <= maxWidth) {
+    for (let size = px; size > minPx; size -= 0.5) {
+      if (widthAt(text, size) <= maxWidth) return { text, px: size };
+    }
+    return { text, px: minPx };
   }
-  if (widthAt(text, minPx) <= maxWidth) return { text, px: minPx };
   const chars = [...text];
-  while (chars.length > 0) {
-    chars.pop();
-    const cut = `${chars.join('').trimEnd()}…`;
-    if (widthAt(cut, minPx) <= maxWidth) return { text: cut, px: minPx };
+  const cutAt = (n: number) => `${chars.slice(0, n).join('').trimEnd()}…`;
+  let lo = 0;                      // cutAt(lo) fits, or lo is 0 and only "…" is left
+  let hi = chars.length;           // cutAt(hi) is not shorter than the text: known not to fit
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (widthAt(cutAt(mid), minPx) <= maxWidth) lo = mid; else hi = mid;
   }
-  return { text: '…', px: minPx };
+  return { text: cutAt(lo), px: minPx };
 }
+
+/** The most code points a title, subtitle or caption keeps in the PDF, before it is fitted to the line. */
+export const MAX_HEADING = 300;
 
 const FOOTER_GAP = 24;
 

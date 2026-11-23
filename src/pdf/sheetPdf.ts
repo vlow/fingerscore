@@ -8,7 +8,7 @@ import { layoutSheet, SHEET, type SheetLayout } from '../render/layout';
 import { SystemView, tieSegments } from '../render/SystemView';
 import { unsupported } from './chars';
 import { textWidth } from './drawText';
-import { collapse, drawFooter, drawLegend, drawSvgScaled, INK, LEGEND, loadFonts, MUTED, newPdf, nextTurn, placeBlocks, renderOffscreen, SITE, text, TEXT, throwIfAborted, width, type Pdf } from './engine';
+import { collapse, drawFooter, fitFooterTitle, headingText, drawLegend, drawSvgScaled, INK, LEGEND, loadFonts, MUTED, newPdf, nextTurn, placeBlocks, renderOffscreen, SITE, text, TEXT, throwIfAborted, width, type Pdf } from './engine';
 import { PdfError, unsupportedMessage } from './errors';
 import { prepareSvg } from './prepareSvg';
 import { fitText, pageHeightUnits, pageSizeFor, paginate, UNITS, wrapLegend, type Block, type PageGroup, type PageSize } from './pageModel';
@@ -23,7 +23,7 @@ const metaRight = (d: Derived) => `${d.inst.name} · ${d.headerKeys}`;
 
 /** Every text the PDF draws from the sheet's content, for the character check. */
 function drawnTexts(doc: Doc, d: Derived): string[] {
-  const out = [doc.title, doc.subtitle, metaLeft(doc), metaRight(d), d.legend];
+  const out = [headingText(doc.title), headingText(doc.subtitle), metaLeft(doc), metaRight(d), d.legend];
   for (const ev of d.events) {
     if (doc.show.lyrics && !ev.rest && ev.lyric !== '') out.push(ev.lyric);
     if (doc.show.chords && ev.chord !== null) out.push(ev.chordOk ? prettyChord(ev.chord) : ev.chord);
@@ -40,8 +40,8 @@ export interface SheetPlan {
 
 /** The blocks of the sheet in page order, with the fitted title and the wrapped legend. Needs the font metrics (`loadFonts`). */
 export function planSheet(doc: Doc, d: Derived, layout: SheetLayout): SheetPlan {
-  const title = fitText(doc.title, width(700), UNITS, TITLE.px, TITLE.minPx);
-  const subtitle = fitText(doc.subtitle, width(700), UNITS, SUBTITLE.px, SUBTITLE.minPx);
+  const title = fitText(headingText(doc.title), width(700), UNITS, TITLE.px, TITLE.minPx);
+  const subtitle = fitText(headingText(doc.subtitle), width(700), UNITS, SUBTITLE.px, SUBTITLE.minPx);
   const legend = wrapLegend(collapse(d.legend), SITE, t => textWidth(t, LEGEND.px, 400), UNITS);
   const blocks: Block[] = [];
   if (title.text !== '') blocks.push({ kind: 'title', height: TITLE.height });
@@ -88,7 +88,7 @@ function drawHeading(pdf: Pdf, sheet: Sheet, b: Block, y: number, x0: number, sc
 }
 
 /** One page, written in reading order: title block, systems top to bottom, legend and site, footer. */
-async function drawPage(pdf: Pdf, sheet: Sheet, groups: PageGroup[], page: number, pages: number): Promise<void> {
+async function drawPage(pdf: Pdf, sheet: Sheet, groups: PageGroup[], page: number, pages: number, footerTitle: string): Promise<void> {
   const placed = placeBlocks(groups);
   const systems = renderSystems(sheet, placed.filter(p => p.block.kind === 'system').map(p => p.block.index!));
   try {
@@ -100,7 +100,7 @@ async function drawPage(pdf: Pdf, sheet: Sheet, groups: PageGroup[], page: numbe
   } finally {
     systems.dispose();
   }
-  drawFooter(pdf, sheet.doc.title, page, pages);
+  drawFooter(pdf, footerTitle, page, pages);
 }
 
 export interface SheetPdfOptions { language: string; onProgress?(page: number, pages: number): void; signal?: AbortSignal }
@@ -119,11 +119,13 @@ export async function makeSheetPdf(doc: Doc, o: SheetPdfOptions): Promise<Blob> 
   const plan = planSheet(doc, derived, layout);
   const sheet: Sheet = { doc, derived, layout, plan, ties: tieSegments(derived, layout) };
   const pages = paginate(plan.blocks, pageHeightUnits(size));
-  const pdf = newPdf(size, fonts, { title: doc.title, subject: doc.subtitle });
+  const title = headingText(doc.title);
+  const footerTitle = fitFooterTitle(title, pages.length);
+  const pdf = newPdf(size, fonts, { title, subject: headingText(doc.subtitle) });
 
   for (let n = 0; n < pages.length; n++) {
     if (n > 0) pdf.doc.addPage([size.widthMm, size.heightMm], 'portrait');
-    await drawPage(pdf, sheet, pages[n], n + 1, pages.length);
+    await drawPage(pdf, sheet, pages[n], n + 1, pages.length, footerTitle);
     o.onProgress?.(n + 1, pages.length);
     await nextTurn(o.signal);
   }
