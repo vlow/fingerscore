@@ -77,6 +77,23 @@ describe('parseAbc', () => {
       expect(await key('D ionian')).toEqual({ tonicPc: 2, mode: 'major' });
     });
 
+    it('the signature follows the key as written, not its pitch class', async () => {
+      const fb = async (k: string) => midis(await parse(`X:1\nM:4/4\nL:1/4\nK:${k}\nF B|`));
+      expect(await fb('F#')).toEqual([66, 71]);
+      expect(await fb('C#')).toEqual([66, 72]);
+      expect(await fb('D#m')).toEqual([66, 71]);
+      expect(await fb('G# mix')).toEqual([66, 72]);
+      expect(await fb('Abm')).toEqual([64, 70]);
+      expect(await fb('Cb')).toEqual([64, 70]);
+      expect(await fb('Gb')).toEqual([65, 70]);
+      expect(await fb('A#m')).toEqual([66, 72]);
+    });
+
+    it('refuses a signature beyond seven sharps or flats', async () => {
+      expect(await message(parse('X:1\nK:G#\nCDEF|'))).toBe('"t.abc" could not be read as an ABC file.');
+      expect(await message(parse('X:1\nK:D#\nCDEF|'))).toBe('"t.abc" could not be read as an ABC file.');
+    });
+
     it('refuses keys it cannot read', async () => {
       expect(await message(parse('X:1\nK:HP\nCDEF|'))).toBe('"t.abc" could not be read as an ABC file.');
       expect(await message(parse('X:1\nK:D exp ^f\nCDEF|'))).toBe('"t.abc" could not be read as an ABC file.');
@@ -213,6 +230,19 @@ describe('parseAbc', () => {
       expect(s.tracks[0].chords).toEqual([{ at: 0, text: 'C' }, { at: 3, text: 'Dm/F' }]);
     });
 
+    it('transpose= moves chord roots and basses, not the kind', async () => {
+      const t = (body: string) => parse('X:1\nM:4/4\nL:1/4\nV:1 transpose=-2\nK:C\n[V:1] ' + body + '|\n');
+      const a = await t('"C"C "G"G');
+      expect(midis(a)).toEqual([58, 65]);
+      expect(a.tracks[0].chords.map(c => c.text)).toEqual(['B♭', 'F']);
+      expect((await t('"Dm/F"D')).tracks[0].chords.map(c => c.text)).toEqual(['Cm/E♭']);
+    });
+
+    it('accepts C6/9 and A7alt, drops words', async () => {
+      const s = await parse(tune('"C6/9"C "A7alt"D "Coda"E "Fine"F | "Dsus4"C "Gadd9"D "Co"E "Cdim"F'));
+      expect(s.tracks[0].chords.map(c => c.text)).toEqual(['C6/9', 'A7alt', 'Dsus4', 'Gadd9', 'C°', 'Cdim']);
+    });
+
     it('writes roots by pitch class and keeps the suffix', async () => {
       const s = await parse(tune('"Bb"C "F#m7"D "G7/B"E "Allegro"F'));
       expect(s.tracks[0].chords.map(c => c.text)).toEqual(['B♭', 'F♯m7', 'G7/B']);
@@ -234,6 +264,63 @@ describe('parseAbc', () => {
       const s = await parse('X:1\nM:4/4\nL:1/4\nK:C\nG|: C4 :|');
       expect(s.pickup).toBe(1);
       expect(s.marks).toEqual([{ bar: 1, rs: true, re: true }]);
+    });
+  });
+
+  describe('further cases', () => {
+    it('[1 and :|[2 endings', async () => {
+      const s = await parse(tune('|: C4 [1 D4 :|[2 E4 |]'));
+      expect(s.marks).toEqual([{ bar: 0, rs: true }, { bar: 1, re: true, volta: '1' }, { bar: 2, volta: '2' }]);
+    });
+
+    it('lyric | advances to the next bar, \\- keeps a hyphen, _ holds', async () => {
+      const bar = await parse(tune('C D | E F |') + 'w:a | b c\n');
+      expect(bar.tracks[0].lyrics).toEqual([{ at: 0, text: 'a' }, { at: 2, text: 'b' }, { at: 3, text: 'c' }]);
+      const hyphen = await parse(tune('C D |') + 'w:a\\-b c\n');
+      expect(hyphen.tracks[0].lyrics.map(l => l.text)).toEqual(['a-b', 'c']);
+      const hold = await parse(tune('C D E |') + 'w:a_ b\n');
+      expect(hold.tracks[0].lyrics).toEqual([{ at: 0, text: 'a' }, { at: 2, text: 'b' }]);
+    });
+
+    it('a tied continuation consumes a syllable', async () => {
+      const s = await parse(tune('c2- c2 d |') + 'w:a b c\n');
+      expect(s.tracks[0].notes.map(n => n.dur)).toEqual([4, 1]);
+      expect(s.tracks[0].lyrics).toEqual([{ at: 0, text: 'a' }, { at: 4, text: 'c' }]);
+    });
+
+    it('>> and broken rhythm with a chord or a tuplet', async () => {
+      const dbl = await parse(tune('C>>D', 'M:4/4\nL:1/4\nK:C'));
+      expect(dbl.tracks[0].notes.map(n => [n.start, n.dur])).toEqual([[0, 1.75], [1.75, 0.25]]);
+      const chord = await parse(tune('[CE]>G', 'M:4/4\nL:1/4\nK:C'));
+      expect(chord.tracks[0].notes.map(n => [n.start, n.dur, n.midi])).toEqual([[0, 1.5, 60], [0, 1.5, 64], [1.5, 0.5, 67]]);
+      const tup = await parse(tune('(3C>DE F', 'M:4/4\nL:1/4\nK:C'));
+      const t = tup.tracks[0].notes;
+      expect(t[0].dur + t[1].dur + t[2].dur).toBeCloseTo(2);
+      expect(t[3].start).toBeCloseTo(2);
+    });
+
+    it('K: with clef=bass reads the key and keeps the pitch', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nK:G clef=bass\nF|');
+      expect(s.key).toEqual({ tonicPc: 7, mode: 'major' });
+      expect(midis(s)).toEqual([66]);
+    });
+
+    it('inline [V:] on the first music line adds no default voice', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nK:C\n[V:1] CDEF|\n[V:2] GGGG|\n');
+      expect(s.tracks.map(t => t.name)).toEqual(['1', '2']);
+    });
+
+    it('a pickup after |:', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nK:C\n|: G | C4 :|');
+      expect(s.pickup).toBe(1);
+      expect(s.marks).toEqual([{ bar: 0, rs: true }, { bar: 1, re: true }]);
+    });
+
+    it('music before the first V: line and a later V:2 give two tracks', async () => {
+      const s = await parse('X:1\nM:4/4\nL:1/4\nK:C\nCDEF|\nV:2\nGGGG|\n');
+      expect(s.tracks.map(t => t.name)).toEqual(['Melody', '2']);
+      expect(midis(s, 0)).toEqual([60, 62, 64, 65]);
+      expect(midis(s, 1)).toEqual([67, 67, 67, 67]);
     });
   });
 
