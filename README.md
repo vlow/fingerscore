@@ -2,11 +2,11 @@
 
 Turns a song file into sheet music with a fingering chart under every note, for woodwinds. It runs in the browser only. Nothing leaves your machine.
 
-Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files, then editing with undo and redo, then a Scales page: any scale in any key with a fingering chart under every note.
+Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files, then editing with undo and redo, then a Scales page: any scale in any key with a fingering chart under every note, then MuseScore and ABC import.
 
 ## What it does
 
-- Reads MIDI and MusicXML files.
+- Reads MIDI, MusicXML, MuseScore and ABC files. See "Formats" below.
 - Finds the melody track and lets you pick another one.
 - Suggests a key where every note fits your instrument's range. You can shift by semitones or octaves.
 - Flags notes outside the range.
@@ -17,6 +17,34 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Shows scales with fingerings on a Scales page, linked from the header. Pick an instrument and one of eight scales (major, natural, harmonic and melodic minor, major and minor pentatonic, blues, chromatic) in any of twelve keys; the key with six accidentals comes in both spellings (F♯ and G♭ major, D♯ and E♭ minor). Choose one octave, two octaves or the whole range, up or up and down. Letters follow the scale degrees, except that a double sharp or double flat is written as the plain neighbouring note (A♮ instead of B𝄫). On transposing instruments you name keys by what you read or by what sounds. Notes with more than one fingering get the same "⇅" pill as on a sheet: pick another fingering and the neighbouring notes adapt; "Reset all to auto" undoes your picks, and a change of instrument, scale, key, range, direction or recorder system clears them. Optional: alternate fingerings under each note, note names, and print (A4, the scale only, with your picks). The page remembers your settings and picks in this browser.
 - Covers 12 instruments: Xaphoon, saxophones, clarinet, flutes, recorders.
 - Ships a sample song, Auld Lang Syne. Regenerate it with `npm run demo`.
+
+### Formats
+
+| Format | Extensions | Notes |
+|---|---|---|
+| MIDI | `.mid`, `.midi` | |
+| MusicXML | `.musicxml`, `.xml`, `.mxl` | |
+| MuseScore | `.mscz`, `.mscx` | Versions 2, 3 and 4. Reads lyrics, chord symbols, repeats and endings. |
+| ABC | `.abc` | First tune, first verse. Reads lyrics, chord symbols, repeats and endings. |
+
+Every part of a song becomes a track. Percussion tracks are listed and cannot be played.
+
+MuseScore limits:
+
+- Version 1 files (MuseScore 1.x) are refused. The message says to open the file in a current MuseScore and save it again, or to export MusicXML.
+- The voice of a note comes from the order of the voice elements in a bar. A file that uses voice 3 without voice 2 is not checked.
+- Only the first verse of lyrics is read.
+- Only endings 1 and 2 are read.
+- A repeat or ending marked only on a lower staff is not read.
+- A change of meter is refused.
+
+ABC limits:
+
+- A key line with its own accidentals (`K:D exp ^f`) is refused.
+- Voice names come from the `V:` lines in order.
+- A syllable on the second note of a tie is not shown.
+- Only the first tune of a file and the first verse of lyrics are read.
+- A change of meter is refused.
 
 ### Editing
 
@@ -57,25 +85,27 @@ The Edit notes keys follow the key's position on layouts without Latin letters, 
 - Save keeps the sheet in your browser's local storage. Press the Save button or Ctrl/⌘+S. The sheet page shows "Not saved yet", "Unsaved changes" or "Saved".
 - Sheets live only in this browser on this device. Clearing site data deletes them.
 - The start page lists your saved sheets under "Your sheets". Open one with a click. Delete one and Undo brings it back for a few seconds.
-- To back up a sheet or move it to another computer, choose File, then Download JSON. Open it there with File, then Open JSON file…, or drop it on the start page. The start page drop zone takes songs (MIDI, MusicXML) and saved-sheet files (.json).
+- To back up a sheet or move it to another computer, choose File, then Download JSON. Open it there with File, then Open JSON file…, or drop it on the start page. The start page drop zone takes songs (MIDI, MusicXML, MuseScore, ABC) and saved-sheet files (.json).
 - The File menu also lists your saved sheets.
 
 The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The app validates every file on import and refuses anything else. No compatibility promise holds before the public release: a later version may change the format and reject older files.
 
 ### Loading
 
+The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The entry chunk stays at 400 kB or less; `npm run check:bundle` checks it after a build.
+
 The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
 
 ### Rhythm rules
 
-- Meters: 4/4, 3/4, 2/4 and 6/8. One meter per song. Any other meter, or a meter change inside the song, is refused with a message.
+- Meters: 4/4, 3/4, 2/4, 2/2 (cut time) and 6/8. One meter per song. Any other meter, or a meter change inside the song, is refused with a message.
 - Note lengths: whole down to sixteenth, with dotted values. Longer lengths that fit no single value become tied notes.
-- Triplets and notes shorter than a sixteenth are rounded to the sixteenth grid. The "Detected in file" card says so.
+- Triplets and notes shorter than a sixteenth are rounded to the sixteenth grid. The "Detected in file" card says so. Tuplets stay rounded until part 4b.
+- Keys: major, minor, Dorian, Phrygian, Lydian, Mixolydian and Locrian, named in full ("D Dorian"). ABC and MusicXML give the mode. MIDI and MuseScore do not, so the key finder picks major or minor.
 
 ## What it does not do
 
 - Editing repeats and endings, or changing the time signature, or the key signature other than by transposing.
-- MuseScore (`.mscz`) and ABC import.
 - Triplets.
 - A generated PDF. Use the print dialog.
 - About, Imprint and Privacy pages.
@@ -95,6 +125,7 @@ npm run dev        # dev server on http://localhost:5173
 npm test           # unit tests (Vitest)
 npm run test:e2e   # end-to-end test (Playwright)
 npm run build      # type-check and build to dist/
+npm run check:bundle  # after a build: entry chunk at most 400 kB
 npm run demo       # regenerate the sample MIDI file
 ```
 

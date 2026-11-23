@@ -116,6 +116,8 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
             <div className={s.chips}>
               <span className={s.chip}>MIDI .mid</span>
               <span className={s.chip}>MusicXML .musicxml .mxl</span>
+              <span className={s.chip}>MuseScore .mscz</span>
+              <span className={s.chip}>ABC .abc</span>
               <span className={`${s.chip} ${s.chipSheet}`}>Saved sheet .json</span>
             </div>
           </div>

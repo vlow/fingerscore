@@ -79,7 +79,7 @@ export default function Start() {
       <div className={s.intro}>
         <h1 ref={heading} tabIndex={-1} className={s.h1}>Sheet music with fingering charts for woodwinds</h1>
         <p className={s.lead}>
-          Upload a MIDI or MusicXML file. We transpose it to a key that suits your instrument and add a fingering chart
+          Upload a MIDI, MusicXML, MuseScore or ABC file. We transpose it to a key that suits your instrument and add a fingering chart
           under every note.
         </p>
       </div>

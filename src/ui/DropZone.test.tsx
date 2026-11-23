@@ -15,3 +15,11 @@ it('shows the load message and offers another try when a parser chunk fails to l
   expect(await screen.findByRole('alert')).toHaveTextContent(LOAD_FAILED);
   expect(screen.getByRole('button', { name: 'Try another file' })).toBeInTheDocument();
 });
+
+it('lists the five formats as chips and accepts MuseScore and ABC files', () => {
+  render(<MemoryRouter><DropZone instrumentName="alto sax" onSong={() => {}} onContinue={() => {}} /></MemoryRouter>);
+  const chips = [...screen.getByTestId('drop-zone').querySelectorAll('span[class*=chip]')].map(c => c.textContent);
+  expect(chips).toEqual(['MIDI .mid', 'MusicXML .musicxml .mxl', 'MuseScore .mscz', 'ABC .abc', 'Saved sheet .json']);
+  const accept = screen.getByLabelText(/drop a song/i).getAttribute('accept') ?? '';
+  for (const ext of ['.mscz', '.mscx', '.abc']) expect(accept).toContain(ext);
+});

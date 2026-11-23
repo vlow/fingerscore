@@ -192,9 +192,9 @@ it('a file dropped on the error state is read', async () => {
   expect(within(screen.getByTestId('drop-zone')).getByRole('status')).toHaveTextContent('Ready');
 });
 
-it('subline names the formats version 1 reads', () => {
+it('subline names the four song formats', () => {
   renderStart();
-  expect(screen.getByText(/^Upload a MIDI or MusicXML file\./)).toBeInTheDocument();
+  expect(screen.getByText('Upload a MIDI, MusicXML, MuseScore or ABC file. We transpose it to a key that suits your instrument and add a fingering chart under every note.')).toBeInTheDocument();
 });
 
 it('says when a linked sheet is no longer saved', () => {
