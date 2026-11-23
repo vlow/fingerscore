@@ -1,23 +1,37 @@
 import { expect, test, type Page } from '@playwright/test';
 
-/** First notes of each fixture as MIDI numbers in the file's own key. */
-const FIRST_NOTES = {
-  'e2e/fixtures/tune.mscx': { format: 'MuseScore', track: 'Flute', notes: 12, first: [64, 67, 69, 67] },
-  'e2e/fixtures/tune.abc': { format: 'ABC', track: 'Melody', notes: 13, first: [67, 71, 74, 79] },
+/** Durations in the document are ticks: 48 is a whole note, 12 a quarter. */
+const QUARTER = 12;
+const HALF = 24;
+const WHOLE = 48;
+
+const FIXTURES = {
+  'e2e/fixtures/tune.mscx': {
+    format: 'MuseScore', track: 'Flute',
+    pitches: [64, 67, 69, 67, 64, 62, 60, 62, 64, 67, 69, 67],
+    ticks: [QUARTER, QUARTER, QUARTER, QUARTER, QUARTER, QUARTER, HALF, QUARTER, QUARTER, QUARTER, QUARTER, WHOLE],
+  },
+  'e2e/fixtures/tune.abc': {
+    format: 'ABC', track: 'Melody',
+    pitches: [67, 71, 74, 79, 78, 74, 71, 69, 72, 76, 72, 71, 67],
+    ticks: [QUARTER, QUARTER, QUARTER, QUARTER, QUARTER, QUARTER, HALF, QUARTER, QUARTER, QUARTER, QUARTER, HALF, HALF],
+  },
 } as const;
 
-/** The pitches of the sheet's first events, from the session copy of the sheet. */
-async function firstPitches(page: Page, count: number): Promise<number[]> {
-  return page.evaluate(n => {
-    const raw = sessionStorage.getItem('fingerscore.doc');
-    const doc = JSON.parse(raw ?? 'null');
-    const stored = doc.doc ?? doc;
-    return (stored.score as { ev: { m: number; r: boolean }[] }[])
-      .flatMap(b => b.ev).filter(e => !e.r).slice(0, n).map(e => e.m);
-  }, count);
+/**
+ * The notes of the sheet, read from the session copy of the document (`fingerscore.doc`, as written by the store):
+ * pitch in the file's own key and duration in ticks. This is the only place that knows the storage shape.
+ */
+async function sheetNotes(page: Page): Promise<{ pitch: number; ticks: number }[]> {
+  return page.evaluate(() => {
+    const stored = JSON.parse(sessionStorage.getItem('fingerscore.doc') ?? 'null');
+    const doc = stored.doc ?? stored;
+    return (doc.score as { ev: { m: number; d: number; r: boolean }[] }[])
+      .flatMap(b => b.ev).filter(e => !e.r).map(e => ({ pitch: e.m, ticks: e.d }));
+  });
 }
 
-for (const [path, want] of Object.entries(FIRST_NOTES)) {
+for (const [path, want] of Object.entries(FIXTURES)) {
   test(`${want.format} file: one track goes to a sheet with the format in the page bar`, async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -30,11 +44,9 @@ for (const [path, want] of Object.entries(FIRST_NOTES)) {
     await page.getByRole('button', { name: /Continue/ }).click();
     await expect(page).toHaveURL(/\/sheet$/);
     await expect(page.getByTestId('system').first()).toBeVisible();
-    const file = path.split('/').pop()!;
-    await expect(page.getByText(`${want.format} · track ${want.track} of 1 · ${want.notes} notes`)).toBeVisible();
-    await expect(page.getByText(file, { exact: true })).toBeVisible();
-    // The chip names the track by its name; the spec's example reads "track 1 of 3" (reported).
-    expect(await firstPitches(page, want.first.length)).toEqual(want.first);
+    await expect(page.getByText(`${want.format} · track ${want.track} of 1 · ${want.pitches.length} notes`)).toBeVisible();
+    await expect(page.getByText(path.split('/').pop()!, { exact: true })).toBeVisible();
+    expect(await sheetNotes(page)).toEqual(want.pitches.map((pitch, i) => ({ pitch, ticks: want.ticks[i] })));
     expect(errors).toEqual([]);
   });
 }

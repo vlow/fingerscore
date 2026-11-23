@@ -124,6 +124,7 @@ describe.skipIf(!existsSync(DIR))('real files in samples/', () => {
   it.each(sampleFiles.filter(n => n !== V1))('%s parses with a pitched track and a supported meter', name => {
     const s = song(name);
     expect(pitched(s).length).toBeGreaterThan(0);
+    for (const t of pitched(s)) expect(t.notes.length).toBeGreaterThan(0);
     expect(SUPPORTED_METERS).toContain(meter(s));
   });
 
@@ -184,14 +185,12 @@ describe.skipIf(!existsSync(DIR))('real files in samples/', () => {
     it.each(Object.values(PICKUP))('%s has a pickup of 1', name => {
       expect(song(name).pickup).toBe(1);
     });
-    it.each(Object.values(DRUMS))('%s: the drum part is percussion and no pitched track is', name => {
-      const tracks = song(name).tracks;
-      const drumPart = tracks.filter(t => /^Drum/.test(t.name));
-      expect(percussion(song(name)).length).toBeGreaterThan(0);
-      expect(drumPart.length).toBeGreaterThan(0);
-      expect(drumPart.every(t => t.percussion)).toBe(true);
-      expect(pitched(song(name)).some(t => /^Drum/.test(t.name))).toBe(false);
-      expect(percussion(song(name))).toHaveLength(drumPart.length);
+    it.each(Object.values(DRUMS))('%s: one drum part, all percussion, and no pitched track shares its name', name => {
+      const partOf = (t: ParsedTrack) => t.name.replace(/ · voice \d+$/, '');
+      const parts = new Set(percussion(song(name)).map(partOf));
+      expect(parts.size).toBe(1);
+      const sameName = song(name).tracks.filter(t => parts.has(partOf(t)));
+      expect(sameName.every(t => t.percussion)).toBe(true);
     });
   });
 

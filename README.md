@@ -27,12 +27,18 @@ Version 1 answered one question: does the path from a song file to a playable, p
 | MuseScore | `.mscz`, `.mscx` | Versions 2, 3 and 4. Reads lyrics, chord symbols, repeats and endings. |
 | ABC | `.abc` | First tune, first verse. Reads lyrics, chord symbols, repeats and endings. |
 
-Every part of a song becomes a track. Percussion tracks are listed and cannot be played.
+Every voice of every part becomes a track:
+
+- MIDI: one row per track.
+- MusicXML and MuseScore: one row per part, staff and voice that has notes.
+- ABC: one row per voice.
+
+Percussion rows are listed and cannot be played.
 
 MuseScore limits:
 
 - Version 1 files (MuseScore 1.x) are refused. The message says to open the file in a current MuseScore and save it again, or to export MusicXML.
-- The voice of a note comes from the order of the voice elements in a bar. A file that uses voice 3 without voice 2 is not checked.
+- The voice of a note comes from the order of the voice elements in a bar. If a bar uses voice 3 while voice 2 is empty and MuseScore leaves the empty voice out, the notes of voice 3 are read as voice 2. No sample file has this case.
 - Only the first verse of lyrics is read.
 - Only endings 1 and 2 are read.
 - A repeat or ending marked only on a lower staff is not read.
