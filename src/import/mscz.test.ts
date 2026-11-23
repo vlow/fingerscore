@@ -845,3 +845,51 @@ describe('version 2: tick and a pickup bar', () => {
     expect(song.tracks[1].notes).toEqual([{ start: 3, dur: 1, midi: 62 }]);
   });
 });
+
+describe('marks sit on the bar their position falls in (both readers)', () => {
+  // Measures: a full bar [0, 4]; len 3/4 with an end repeat [4, 7]; len 1/4 with a start repeat [7, 8]; a full bar with an
+  // end repeat [8, 12]; a full bar [12, 16]. The bars lie on a 4/4 grid: bar 1 is [4, 8], bar 2 [8, 12], bar 3 [12, 16].
+  // As in MusicXML, an end repeat marks the bar that ends at the measure's end (or contains it), a start repeat the bar
+  // that starts at the measure's start (or the next one when the start falls inside a bar): re on bar 1 (ends inside
+  // [4, 8]), rs on bar 2 (starts at 7, inside bar 1, so the next bar), re on bar 2 (ends at 12).
+  const expected = [{ bar: 1, re: true }, { bar: 2, rs: true, re: true }];
+
+  it('version 3', async () => {
+    const song = await parse(simple(
+      bar('', TS() + chord('whole', [60])),
+      `<Measure len="3/4"><endRepeat>2</endRepeat><voice>${chord('half', [62], '<dots>1</dots>')}</voice></Measure>`,
+      `<Measure len="1/4"><startRepeat/><voice>${chord('quarter', [64])}</voice></Measure>`,
+      `<Measure><endRepeat>2</endRepeat><voice>${chord('whole', [65])}</voice></Measure>`,
+      bar('', chord('whole', [67]))));
+    expect(song.marks).toEqual(expected);
+  });
+
+  it('version 2', async () => {
+    const song = await parse(mscx('2.06', '<Division>480</Division>' + part() + staff(1,
+      m2(TS() + c2('whole', 60)),
+      m2('<endRepeat>2</endRepeat>' + c2('half', 62, '<dots>1</dots>'), ' len="3/4"'),
+      m2('<startRepeat/>' + c2('quarter', 64), ' len="1/4"'),
+      m2('<endRepeat>2</endRepeat>' + c2('whole', 65)),
+      m2(c2('whole', 67)))));
+    expect(song.marks).toEqual(expected);
+  });
+
+  it('an ending after a split bar covers the bars its measures fall in', async () => {
+    const v3 = await parse(simple(
+      bar('', TS() + chord('whole', [60])),
+      `<Measure len="3/4"><voice>${chord('half', [62], '<dots>1</dots>')}</voice></Measure>`,
+      `<Measure len="1/4"><voice>${chord('quarter', [64])}</voice></Measure>`,
+      bar('', volta('1', 1) + chord('whole', [65])),
+      bar('', voltaEnd + volta('2', 1) + chord('whole', [67])),
+      bar('', voltaEnd + chord('whole', [69]))));
+    const volta2 = (id: number, endings: string) => `<Volta id="${id}"><endings>${endings}</endings></Volta>`;
+    const v2 = await parse(mscx('2.06', '<Division>480</Division>' + part() + staff(1,
+      m2(TS() + c2('whole', 60)),
+      m2(c2('half', 62, '<dots>1</dots>'), ' len="3/4"'),
+      m2(c2('quarter', 64), ' len="1/4"'),
+      m2(volta2(1, '1') + c2('whole', 65)),
+      m2('<endSpanner id="1"/>' + volta2(2, '2') + c2('whole', 67)),
+      m2('<endSpanner id="2"/>' + c2('whole', 69)))));
+    for (const song of [v3, v2]) expect(song.marks).toEqual([{ bar: 2, volta: '1' }, { bar: 3, volta: '2' }]);
+  });
+});

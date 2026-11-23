@@ -1,3 +1,4 @@
+import { barAt, barEndingAt, barStartingAt, type Grid } from '../grid';
 import { songTimeSig } from '../meter';
 import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from '../types';
 import { harmonyOf, kid, kids, lyricText, majorTonicOfFifths, mod12, num, text } from './common';
@@ -22,8 +23,8 @@ export interface Dialect {
   items(measure: Element): Element[];
   /** Notes, lyrics and chord symbols of voice `voiceIndex` (0 to 3) over all measures of one staff. */
   readVoice(bars: Bar[], staffMeasures: Element[], voiceIndex: number): VoiceRead;
-  /** Repeat signs and endings 1 and 2 of the first staff, as `ParsedSong.marks` (bar index = measure index). */
-  readMarks(bars: Bar[]): ParsedSong['marks'];
+  /** Repeat signs and endings 1 and 2 of the first staff, as `ParsedSong.marks` on the bars of `grid` (see `markSink`). */
+  readMarks(bars: Bar[], grid: Grid): ParsedSong['marks'];
 }
 
 /** `a/b` as a number (a fraction of a whole note when it comes from MuseScore). */
@@ -38,6 +39,26 @@ export function fraction(s: string | undefined): number | null {
 export function ratioOf(tuplet: Element): number {
   const normal = num(text(tuplet, 'normalNotes')), actual = num(text(tuplet, 'actualNotes'));
   return normal !== null && actual !== null && normal > 0 && actual > 0 ? normal / actual : 1;
+}
+
+/**
+ * Collects repeat signs and endings on the bars of the grid, by position, as MusicXML places them: a measure's start
+ * repeat marks the bar that starts at the measure's start (the next bar when that start falls inside a bar), its end
+ * repeat the bar that ends at the measure's end (or contains it), and an ending marks the bar each covered measure's
+ * middle falls in. A bar split in two measures at a repeat sign thus keeps its marks on one bar.
+ */
+export function markSink(grid: Grid) {
+  const marks = new Map<number, ParsedSong['marks'][number]>();
+  const at = (bar: number) => { let m = marks.get(bar); if (!m) { m = { bar }; marks.set(bar, m); } return m; };
+  return {
+    startRepeat(measure: Bar): void { at(barStartingAt(grid, measure.start)).rs = true; },
+    endRepeat(measure: Bar): void {
+      const bar = barEndingAt(grid, measure.start + measure.length);
+      if (bar >= 0) at(bar).re = true;
+    },
+    volta(measure: Bar, endings: '1' | '2'): void { at(barAt(grid, measure.start + measure.length / 2)).volta = endings; },
+    result(): ParsedSong['marks'] { return Array.from(marks.values()).sort((a, b) => a.bar - b.bar); },
+  };
 }
 
 // ---- parts ----
@@ -200,5 +221,5 @@ export function readScore(file: string, score: Element, version: number, dialect
 
   const keyPart = parts.find(p => !p.percussion && p.staffIds.length > 0);
   const key = readKey(score, version, keyPart && byId.get(keyPart.staffIds[0]), keyPart?.transpose ?? 0, items);
-  return { file, format: 'MuseScore', timeSig, tempo: readTempo(staves.map(s => s.measures), items), key, pickup, marks: dialect.readMarks(bars), tracks };
+  return { file, format: 'MuseScore', timeSig, tempo: readTempo(staves.map(s => s.measures), items), key, pickup, marks: dialect.readMarks(bars, { pickup, barLength: meter }), tracks };
 }

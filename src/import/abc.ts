@@ -2,6 +2,7 @@ import Parse, { type AbcElement, type AbcKey, type AbcMeter, type AbcPitch, type
 import { mod12 } from '../domain/keys';
 import type { Mode } from '../domain/types';
 import { ROOT_NAMES } from './chordNames';
+import { barAt, onBarLine, type Grid } from './grid';
 import { songTimeSig } from './meter';
 import { own } from './own';
 import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './types';
@@ -267,18 +268,6 @@ function readNote(state: VoiceState, el: AbcElement): void {
 }
 
 // ---- bars and endings ----
-
-interface Grid { pickup: number; barLength: number }
-
-function barAt(g: Grid, t: number): number {
-  if (g.pickup > 0 && t < g.pickup - EPS) return 0;
-  return Math.floor((t - g.pickup) / g.barLength + EPS) + (g.pickup > 0 ? 1 : 0);
-}
-
-const onBarLine = (g: Grid, t: number): boolean => {
-  const k = (t - g.pickup) / g.barLength;
-  return t < EPS || Math.abs(k - Math.round(k)) < EPS;
-};
 
 const voltaOf = (n: string): '1' | '2' | null => (/^\s*[12]\s*$/.test(n) ? (n.trim() as '1' | '2') : null);
 

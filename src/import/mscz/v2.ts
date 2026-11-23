@@ -1,6 +1,7 @@
 import type { ParsedSong } from '../types';
 import { durationQuarters, kid, kids, num, text, type ScoreReader } from './common';
-import { EPS, isGrace, ratioOf, readScore, voiceSink, type Bar, type Dialect, type VoiceRead } from './shared';
+import type { Grid } from '../grid';
+import { EPS, isGrace, markSink, ratioOf, readScore, voiceSink, type Bar, type Dialect, type VoiceRead } from './shared';
 
 /**
  * Version 2 lists the chords, rests and chord symbols of every voice of a staff directly in the measure. A `<track>` child
@@ -71,32 +72,41 @@ function makeReadVoice(division: number) {
   };
 }
 
-/** Repeat signs and endings 1 and 2 of the first staff. An ending covers the measures from its start to its `<endSpanner>`: not including the measure when the mark comes before that measure's first chord or rest, including it when the mark comes after. With no end found it covers its start measure. */
-function readMarks(bars: Bar[]): ParsedSong['marks'] {
-  const marks = new Map<number, ParsedSong['marks'][number]>();
-  const at = (bar: number) => { let m = marks.get(bar); if (!m) { m = { bar }; marks.set(bar, m); } return m; };
-  /** Index of the first measure the ending does not cover. An end mark before the first chord or rest of a measure ends the ending before that measure; one after a chord or rest ends it with that measure. No end found: the start measure only. */
-  const endsAt = (id: string | null, from: number): number => {
-    for (let j = from; j < bars.length && id !== null; j++) {
-      let sounded = false;
-      for (const c of Array.from(bars[j].el.children)) {
-        if (c.localName === 'Chord' || c.localName === 'Rest') sounded = true;
-        else if (c.localName === 'endSpanner' && c.getAttribute('id') === id && (sounded || j > from)) return sounded ? j + 1 : j;
+/** Repeat signs and endings 1 and 2 of the first staff, placed on the grid's bars by position. An ending covers the measures from its start to its `<endSpanner>`: not including the measure when the mark comes before that measure's first chord or rest, including it when the mark comes after. With no end found it covers its start measure. */
+function readMarks(bars: Bar[], grid: Grid): ParsedSong['marks'] {
+  const marks = markSink(grid);
+  /** Per end-mark id, in score order: the measure that holds the mark and whether a chord or rest comes before it there. */
+  const endMarks = new Map<string, { measure: number; sounded: boolean }[]>();
+  bars.forEach(({ el }, j) => {
+    let sounded = false;
+    for (const c of Array.from(el.children)) {
+      if (c.localName === 'Chord' || c.localName === 'Rest') sounded = true;
+      else if (c.localName === 'endSpanner') {
+        const id = c.getAttribute('id');
+        if (id === null) continue;
+        const list = endMarks.get(id) ?? [];
+        list.push({ measure: j, sounded });
+        endMarks.set(id, list);
       }
     }
-    return from + 1;
+  });
+  /** Index of the first measure the ending does not cover. An end mark before the first chord or rest of a measure ends the ending before that measure; one after a chord or rest ends it with that measure. No end found: the start measure only. */
+  const endsAt = (id: string | null, from: number): number => {
+    const found = (id === null ? undefined : endMarks.get(id))?.find(e => e.measure >= from && (e.sounded || e.measure > from));
+    return found ? (found.sounded ? found.measure + 1 : found.measure) : from + 1;
   };
-  bars.forEach(({ el }, i) => {
-    if (kid(el, 'startRepeat')) at(i).rs = true;
-    if (kid(el, 'endRepeat')) at(i).re = true;
+  bars.forEach((measure, i) => {
+    const { el } = measure;
+    if (kid(el, 'startRepeat')) marks.startRepeat(measure);
+    if (kid(el, 'endRepeat')) marks.endRepeat(measure);
     for (const volta of kids(el, 'Volta')) {
       const endings = text(volta, 'endings');
       if (endings !== '1' && endings !== '2') continue;
       const end = endsAt(volta.getAttribute('id'), i);
-      for (let b = i; b < end; b++) at(b).volta = endings;
+      for (let b = i; b < end; b++) marks.volta(bars[b], endings);
     }
   });
-  return Array.from(marks.values()).sort((a, b) => a.bar - b.bar);
+  return marks.result();
 }
 
 export const readV2: ScoreReader = (file, score, version) =>

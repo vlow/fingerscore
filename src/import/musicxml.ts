@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { ROOT_NAMES } from './chordNames';
+import { barAt, barEndingAt, barStartingAt } from './grid';
 import { songTimeSig } from './meter';
 import { MODE_BELOW_MAJOR } from '../domain/keys';
 import type { Mode, TimeSig } from '../domain/types';
@@ -191,17 +192,6 @@ function measureStartAt(g: Grid, i: number): number {
   return last + (i - g.starts.length) * g.barLength;
 }
 
-/** Index of the bar (incl. pickup bar) that contains time t. */
-function barAt(g: Grid, t: number): number {
-  if (g.pickup > 0 && t < g.pickup - EPS) return 0;
-  return Math.floor((t - g.pickup) / g.barLength + EPS) + (g.pickup > 0 ? 1 : 0);
-}
-
-const onBarLine = (g: Grid, t: number): boolean => {
-  const k = (t - g.pickup) / g.barLength;
-  return t < EPS || Math.abs(k - Math.round(k)) < EPS;
-};
-
 /** Ending numbers are a list ("1", "1,2", "1-2"). Only a plain 1 or 2 maps to a volta. */
 function voltaOf(list: string): '1' | '2' | null {
   const numbers = new Set<number>();
@@ -260,8 +250,8 @@ function readPart(part: Element, info: Map<string, Element>, grid: Grid, marks: 
         if (!marks) continue;
         const rep = kid(el, 'repeat')?.getAttribute('direction');
         // a forward repeat mid-bar starts the next bar; a backward repeat mid-bar ends the bar containing it
-        if (rep === 'forward') mark(barAt(grid, measureStart) + (onBarLine(grid, measureStart) ? 0 : 1)).rs = true;
-        if (rep === 'backward') mark(barAt(grid, measureEnd) - (onBarLine(grid, measureEnd) ? 1 : 0)).re = true;
+        if (rep === 'forward') mark(barStartingAt(grid, measureStart)).rs = true;
+        if (rep === 'backward') mark(barEndingAt(grid, measureEnd)).re = true;
         const ending = kid(el, 'ending');
         const type = ending?.getAttribute('type');
         if (ending && type === 'start') {

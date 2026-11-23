@@ -1,6 +1,7 @@
 import type { ParsedSong } from '../types';
 import { durationQuarters, kid, kids, num, text, type ScoreReader } from './common';
-import { fraction, isGrace, ratioOf, readScore, voiceSink, type Bar, type Dialect, type VoiceRead } from './shared';
+import type { Grid } from '../grid';
+import { fraction, isGrace, markSink, ratioOf, readScore, voiceSink, type Bar, type Dialect, type VoiceRead } from './shared';
 
 /** Versions 3 and 4 wrap each voice of a measure in a `<voice>` element and write ties, tuplets and endings as spanners and markers inside it. */
 
@@ -42,13 +43,13 @@ function readVoice(bars: Bar[], staffMeasures: Element[], voiceIndex: number): V
   return sink.result();
 }
 
-/** Repeat signs and endings 1 and 2 of the first staff, as `ParsedSong.marks` (bar index = measure index). */
-function readMarks(bars: Bar[]): ParsedSong['marks'] {
-  const marks = new Map<number, ParsedSong['marks'][number]>();
-  const at = (bar: number) => { let m = marks.get(bar); if (!m) { m = { bar }; marks.set(bar, m); } return m; };
-  bars.forEach(({ el }, i) => {
-    if (kid(el, 'startRepeat')) at(i).rs = true;
-    if (kid(el, 'endRepeat')) at(i).re = true;
+/** Repeat signs and endings 1 and 2 of the first staff, placed on the grid's bars by position. */
+function readMarks(bars: Bar[], grid: Grid): ParsedSong['marks'] {
+  const marks = markSink(grid);
+  bars.forEach((measure, i) => {
+    const { el } = measure;
+    if (kid(el, 'startRepeat')) marks.startRepeat(measure);
+    if (kid(el, 'endRepeat')) marks.endRepeat(measure);
     for (const spanner of kids(el, 'voice').flatMap(v => kids(v, 'Spanner'))) {
       if (spanner.getAttribute('type') !== 'Volta') continue;
       const endings = text(kid(spanner, 'Volta'), 'endings');
@@ -57,10 +58,11 @@ function readMarks(bars: Bar[]): ParsedSong['marks'] {
       // Rule from the Entertainer sample: the end sits `measures` bars on, plus a part of a bar when `fractions` is there: an ending inside one bar has no `measures`.
       const location = kid(next, 'location');
       const length = (num(text(location, 'measures')) ?? 0) + ((fraction(text(location, 'fractions')) ?? 0) > 0 ? 1 : 0);
-      for (let b = i; b < Math.min(i + Math.max(length, 1), bars.length); b++) at(b).volta = endings;
+      const covered = Math.min(Math.max(length, 1), bars.length - i);     // clamped to the score before the loop
+      for (let b = i; b < i + covered; b++) marks.volta(bars[b], endings);
     }
   });
-  return Array.from(marks.values()).sort((a, b) => a.bar - b.bar);
+  return marks.result();
 }
 
 const dialect: Dialect = { items: voiceItems, readVoice, readMarks };
