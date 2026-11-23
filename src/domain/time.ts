@@ -1,7 +1,14 @@
 import type { TimeSig } from './types';
 
 export const TPQ = 12;
-export const DURATIONS = [48, 36, 24, 18, 12, 9, 6, 3] as const;
+export const PLAIN_LENGTHS = [48, 36, 24, 18, 12, 9, 6, 3] as const;
+/** Kept under this name for existing callers; it means the plain lengths only. */
+export const DURATIONS = PLAIN_LENGTHS;
+/** Triplet lengths: the notated value (sixteenth, eighth, quarter, half) times 2/3. */
+export const TRIPLET_LENGTHS = [16, 8, 4, 2] as const;
+
+export const isPlainLength = (d: number): boolean => (PLAIN_LENGTHS as readonly number[]).includes(d);
+export const isTripletLength = (d: number): boolean => (TRIPLET_LENGTHS as readonly number[]).includes(d);
 
 export function barCap(ts: TimeSig): number {
   return ts[0] * (48 / ts[1]);

@@ -1,7 +1,8 @@
 import { inst, rangeState } from './instruments';
 import { MAX_BARS } from './persistence';
 import { keySignature, mod12, signatureLetters } from './keys';
-import { barCap, DURATIONS, newId, splitDuration } from './time';
+import { barCap, DURATIONS, isTripletLength, newId, splitDuration } from './time';
+import { notatedLength } from './triplets';
 import type { Bar, Doc, Ev } from './types';
 
 /** Pure edit operations on a document. Each returns a new document, or null when the edit is not allowed. */
@@ -56,6 +57,7 @@ export const LENGTH_NAMES: Record<number, string> = { 3: 'sixteenth', 6: 'eighth
 
 /** The spoken length of an event: "eighth", "dotted quarter". */
 export function lengthName(d: number): string {
+  if (isTripletLength(d)) return `triplet ${LENGTH_NAMES[notatedLength(d)]}`;
   const { base, dotted } = splitLength(d);
   const name = LENGTH_NAMES[base] ?? '';
   return dotted ? `dotted ${name}` : name;

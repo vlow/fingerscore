@@ -1,7 +1,8 @@
 import { inst, ORDER } from './instruments';
 import { optionsFor } from './fingerings';
 import { MODES } from './keys';
-import { barCap, DURATIONS, isSupportedTimeSig } from './time';
+import { barCap, isPlainLength, isSupportedTimeSig, isTripletLength } from './time';
+import { tripletGroups } from './triplets';
 import type { Bar, ChordSym, Doc, Ev, InstId, Mode, TimeSig } from './types';
 
 export interface SheetFile { app: 'fingerscore'; format: 1; savedAt: string; title: string; doc: Doc }
@@ -67,12 +68,12 @@ const isReservedId = (id: string): boolean => id === 'prototype' || id in Object
 function validEvent(v: unknown): Ev | null {
   if (!isObject(v)) return null;
   const { id, m, d, r, tie, l } = v;
-  if (!isStr(id) || id === '' || isReservedId(id) || !isInt(m, 0, 127) || !isNum(d) || !(DURATIONS as readonly number[]).includes(d)) return null;
+  if (!isStr(id) || id === '' || isReservedId(id) || !isInt(m, 0, 127) || !isNum(d) || !(isPlainLength(d) || isTripletLength(d))) return null;
   if (!isBool(r) || !isBool(tie) || !isStr(l)) return null;
   return { id, m, d, r, tie, l };
 }
 
-function validBar(v: unknown, maxCap: number, ids: Set<string>): Bar | null {
+function validBar(v: unknown, maxCap: number, fullCap: number, ids: Set<string>): Bar | null {
   if (!isObject(v)) return null;
   const { cap, rs, re, volta, ev } = v;
   if (!isNum(cap) || !Number.isInteger(cap) || cap <= 0 || cap > maxCap || cap % 3 !== 0) return null;
@@ -86,7 +87,9 @@ function validBar(v: unknown, maxCap: number, ids: Set<string>): Bar | null {
     sum += e.d;
     events.push(e);
   }
-  return sum === cap ? { cap, rs, re, volta, ev: events } : null;
+  if (sum !== cap) return null;
+  const bar: Bar = { cap, rs, re, volta, ev: events };
+  return tripletGroups(bar, fullCap) ? bar : null;
 }
 
 function validChord(v: unknown): ChordSym | null {
@@ -125,7 +128,7 @@ export function validateDoc(value: unknown): Doc | null {
   const ids = new Set<string>();
   const bars: Bar[] = [];
   for (const raw of score) {
-    const b = validBar(raw, barCap(sig), ids);
+    const b = validBar(raw, barCap(sig), barCap(sig), ids);
     if (!b) return null;
     bars.push(b);
   }

@@ -61,6 +61,36 @@ describe('sheet file', () => {
     expect(broken(m)).toEqual({ ok: false, reason: 'damaged' });
   });
 
+  describe('triplets', () => {
+    // Replaces bar 1 (a full 4/4 bar) with the given lengths.
+    const withBar = (lengths: number[]) => (d: any) => {
+      d.score[1].ev = lengths.map((len, k) => ({ id: `tr${k}`, m: 60, d: len, r: false, tie: false, l: '' }));
+      d.chords = {};
+      d.fingering = {};
+      d.imported = { lyrics: {}, chords: {} };
+    };
+
+    it('accepts a bar with a triplet group and round-trips it', () => {
+      const f: any = JSON.parse(serializeFile(doc()));
+      withBar([4, 4, 4, 12, 24])(f.doc);
+      const r = parseFile(f);
+      expect(r.ok).toBe(true);
+      const back = parseFileText(serializeFile((r as any).doc));
+      expect(back.ok && canonical(back.doc)).toBe(canonical((r as any).doc));
+      expect(back.ok && back.doc.score[1].ev.map(e => e.d)).toEqual([4, 4, 4, 12, 24]);
+    });
+
+    it.each([
+      ['a lone 4 and a lone 8', [4, 12, 8, 24]],
+      ['a group starting at tick 3', [3, 4, 4, 4, 12, 24]],
+      ['a length of 5', [5, 7, 12, 24]],
+    ])('refuses %s as damaged', (_n, lengths) => {
+      const f: any = JSON.parse(serializeFile(doc()));
+      withBar(lengths)(f.doc);
+      expect(parseFile(f)).toEqual({ ok: false, reason: 'damaged' });
+    });
+  });
+
   it('accepts a modal originalMode', () => {
     expect(broken(d => { d.originalMode = 'dorian'; }).ok).toBe(true);
   });
