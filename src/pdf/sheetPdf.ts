@@ -7,28 +7,16 @@ import type { Doc } from '../domain/types';
 import { layoutSheet, SHEET, type SheetLayout } from '../render/layout';
 import { SystemView, tieSegments } from '../render/SystemView';
 import { unsupported } from './chars';
-import { drawText, fontsOf, textWidth, type Anchor, type Weight } from './drawText';
-import { drawSvg, loadFonts, newPdf, nextTurn, pageMm, registerFonts, renderOffscreen, throwIfAborted, type Pdf } from './engine';
+import { textWidth } from './drawText';
+import { collapse, drawFooter, drawLegend, drawSvg, INK, LEGEND, loadFonts, MUTED, newPdf, nextTurn, renderOffscreen, SITE, text, TEXT, throwIfAborted, width, type Pdf } from './engine';
 import { PdfError, unsupportedMessage } from './errors';
 import { prepareSvg } from './prepareSvg';
-import { fitText, footerText, MARGIN_MM, pageHeightUnits, pageSizeFor, paginate, UNITS, unitMm, wrapLegend, type Block, type PageSize } from './pageModel';
+import { fitText, pageHeightUnits, pageSizeFor, paginate, UNITS, wrapLegend, type Block, type PageSize } from './pageModel';
 
-// Paper colours (src/styles/tokens.css) and sizes in units (src/render/Paper.module.css).
-const INK = '#15171c';
-const TEXT = '#2a2d33';
-const MUTED = '#5b616e';
-const BORDER = '#e2e4e8';
+// Sizes of the title block in units (src/render/Paper.module.css).
 const TITLE = { px: 26, minPx: 14, height: 44, baseline: 28 };
 const SUBTITLE = { px: 14, minPx: 14, height: 28, baseline: 18 };
 const META = { px: 12, height: 24, baseline: 12 };
-/** Legend: a rule 12 units below the last system, the first line 12 units below the rule. */
-const LEGEND = { px: 11, line: 16, baseline: 12, rule: 12, top: 25 };
-const FOOTER_PX = 10;
-const FOOTER_BOTTOM_MM = 5;
-const SITE = 'fingerscore.eu';
-
-/** HTML collapses runs of white space; the PDF writes the legend as the paper shows it. */
-const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 const metaLeft = (doc: Doc) => `♩ = ${doc.tempo}`;
 const metaRight = (d: Derived) => `${d.inst.name} · ${d.headerKeys}`;
@@ -50,8 +38,6 @@ export interface SheetPlan {
   legend: { lines: string[]; footerOwnLine: boolean };
 }
 
-const width = (weight: Weight) => (text: string, px: number) => textWidth(text, px, weight);
-
 /** The blocks of the sheet in page order, with the fitted title and the wrapped legend. Needs the font metrics (`loadFonts`). */
 export function planSheet(doc: Doc, d: Derived, layout: SheetLayout): SheetPlan {
   const title = fitText(doc.title, width(700), UNITS, TITLE.px, TITLE.minPx);
@@ -65,14 +51,6 @@ export function planSheet(doc: Doc, d: Derived, layout: SheetLayout): SheetPlan 
   const lines = legend.lines.length + (legend.footerOwnLine ? 1 : 0);
   blocks.push({ kind: 'legend', height: LEGEND.top + LEGEND.line * lines });
   return { blocks, title, subtitle, legend };
-}
-
-/** Draws a text at x, baseline y in units of the content box; px in units. */
-function text(pdf: Pdf, s: string, x: number, y: number, px: number, weight: Weight, anchor: Anchor, color: string): void {
-  registerFonts(pdf, fontsOf(s, weight));
-  const u = unitMm(pdf.size);
-  const at = pageMm(pdf.size, x, y);
-  drawText(pdf.doc, s, { x: at.x, y: at.y, px: px * u, weight, anchor, color });
 }
 
 interface Sheet { doc: Doc; derived: Derived; layout: SheetLayout; plan: SheetPlan; ties: ReturnType<typeof tieSegments> }
@@ -104,28 +82,7 @@ function drawBlock(pdf: Pdf, sheet: Sheet, b: Block, y: number): void {
   else if (b.kind === 'meta') {
     text(pdf, metaLeft(doc), 0, y + META.baseline, META.px, 400, 'start', MUTED);
     text(pdf, metaRight(derived), UNITS, y + META.baseline, META.px, 400, 'end', MUTED);
-  } else if (b.kind === 'legend') {
-    const u = unitMm(pdf.size);
-    const rule = pageMm(pdf.size, 0, y + LEGEND.rule);
-    pdf.doc.setFillColor(BORDER);
-    pdf.doc.rect(rule.x, rule.y, UNITS * u, u, 'F');
-    const { lines, footerOwnLine } = plan.legend;
-    const baseline = (i: number) => y + LEGEND.top + LEGEND.line * i + LEGEND.baseline;
-    lines.forEach((line, i) => text(pdf, line, 0, baseline(i), LEGEND.px, 400, 'start', MUTED));
-    text(pdf, SITE, UNITS, baseline(footerOwnLine ? lines.length : lines.length - 1), LEGEND.px, 400, 'end', MUTED);
-  }
-}
-
-function drawFooter(pdf: Pdf, title: string, page: number, pages: number): void {
-  const full = footerText(title, page, pages);
-  if (full === null) return;
-  // A title too long for the line is cut so that the page number stays.
-  const tail = footerText('', page, pages)!;
-  const room = UNITS - textWidth(` · ${tail}`, FOOTER_PX, 400);
-  const cut = title === '' ? '' : fitText(title, width(400), room, FOOTER_PX, FOOTER_PX).text;
-  const s = footerText(cut, page, pages)!;
-  const yUnits = (pdf.size.heightMm - FOOTER_BOTTOM_MM - MARGIN_MM) / unitMm(pdf.size);
-  text(pdf, s, UNITS / 2, yUnits, FOOTER_PX, 400, 'middle', MUTED);
+  } else if (b.kind === 'legend') drawLegend(pdf, y, plan.legend);
 }
 
 export interface SheetPdfOptions { language: string; onProgress?(page: number, pages: number): void; signal?: AbortSignal }

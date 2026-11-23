@@ -66,8 +66,8 @@ interface LineProps {
   showNames: boolean; showAlternates: boolean; line: number; renderUnderChart?: ScaleChartSlot;
 }
 
-/** One scale line: clef, key signature, up to 15 whole notes, and under each its name and fingering stack. */
-function ScaleLine(p: LineProps) {
+/** Where everything of one scale line sits, in the line's own coordinates; `height` is the line's drawn height in units. */
+function layoutLine(p: LineProps) {
   const header = headerWidth(p.sig, false);
   const step = (WIDTH - header) / NOTES_PER_LINE;
   const end = p.last ? header + step * p.notes.length : WIDTH;
@@ -95,7 +95,12 @@ function ScaleLine(p: LineProps) {
     return { blocks, bottom: y - BLOCK_GAP };
   });
   const bottom = Math.max(...stacks.map(s => s.bottom)) + BOTTOM_PAD;
-  const height = bottom - top;
+  return { header, step, end, xOf, ys, top, nameY, chartY, maxChars, stacks, height: bottom - top };
+}
+
+/** One scale line: clef, key signature, up to 15 whole notes, and under each its name and fingering stack. */
+function ScaleLine(p: LineProps) {
+  const { end, xOf, ys, top, nameY, chartY, maxChars, stacks, height } = layoutLine(p);
   const nAcc = Math.abs(p.sig);
   const sigPos = p.sig > 0 ? SHARP_POS : FLAT_POS;
 
@@ -161,26 +166,37 @@ function ScaleLine(p: LineProps) {
   );
 }
 
-/** A scale as lines of whole notes, each with its name and fingering chart (design 4.3, 4.4 "Notation"). */
-export function ScaleStaff(p: {
+export interface ScaleStaffProps {
   inst: InstId; scale: ScaleResult; chartStyle: 'compact' | 'full'; recorderSystem: RecorderSystem; showNames: boolean; showAlternates: boolean;
   /** The player's picks: note index → option index; invalid entries are ignored. */
   overrides?: Record<number, number>;
   /** HTML under each chart whose note has two or more fingerings (the alternatives pill); positioned in line coordinates. */
   renderUnderChart?: ScaleChartSlot;
-}): JSX.Element {
+}
+
+/** The lines of a scale in order, each with its drawn height in units and a function that renders it; the page and the PDF both use these. */
+export function scaleLines(p: ScaleStaffProps): { height: number; render(): JSX.Element }[] {
   const kind = instrument(p.inst).kind;
   // The sheet's chooser over the whole sequence, the picks as fixed points; a note without options breaks the run.
   const fingerings = scaleFingerings(p.inst, p.scale.notes, p.recorderSystem, p.overrides ?? {});
   const placed: Placed[] = p.scale.notes.map((note, index) => ({ note, index, ...fingerings[index] }));
-  const lines: Placed[][] = [];
-  for (let i = 0; i < placed.length; i += NOTES_PER_LINE) lines.push(placed.slice(i, i + NOTES_PER_LINE));
+  const lines: { height: number; render(): JSX.Element }[] = [];
+  for (let i = 0; i < placed.length; i += NOTES_PER_LINE) {
+    const line = lines.length;
+    const props: LineProps = {
+      notes: placed.slice(i, i + NOTES_PER_LINE), sig: p.scale.sig, last: i + NOTES_PER_LINE >= placed.length, kind, chartStyle: p.chartStyle,
+      showNames: p.showNames, showAlternates: p.showAlternates, line, renderUnderChart: p.renderUnderChart,
+    };
+    lines.push({ height: layoutLine(props).height, render: () => <ScaleLine {...props} /> });
+  }
+  return lines;
+}
+
+/** A scale as lines of whole notes, each with its name and fingering chart (design 4.3, 4.4 "Notation"). */
+export function ScaleStaff(p: ScaleStaffProps): JSX.Element {
   return (
     <div className={styles.staff}>
-      {lines.map((notes, i) => (
-        <ScaleLine key={i} notes={notes} sig={p.scale.sig} last={i === lines.length - 1} kind={kind} chartStyle={p.chartStyle}
-          showNames={p.showNames} showAlternates={p.showAlternates} line={i} renderUnderChart={p.renderUnderChart} />
-      ))}
+      {scaleLines(p).map((line, i) => <Fragment key={i}>{line.render()}</Fragment>)}
     </div>
   );
 }

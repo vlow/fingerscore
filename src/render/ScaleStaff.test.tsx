@@ -3,7 +3,7 @@ import { chooseFingerings, type ChooserItem } from '../domain/chooser';
 import { optionsFor } from '../domain/fingerings';
 import { buildScale, type ScaleResult } from '../domain/scales';
 import type { InstId } from '../domain/types';
-import { ScaleStaff } from './ScaleStaff';
+import { ScaleStaff, scaleLines } from './ScaleStaff';
 
 const draw = (o: Partial<Parameters<typeof ScaleStaff>[0]> & { scale: ScaleResult; inst: InstId }) =>
   render(<ScaleStaff chartStyle="compact" recorderSystem="baroque" showNames showAlternates={false} {...o} />);
@@ -219,5 +219,35 @@ describe('chosen fingerings (overrides)', () => {
     const { container } = draw({ inst: 'asax', scale, renderUnderChart: note => <button type="button">pill {note.index}</button> });
     expect(screen.getAllByRole('button', { name: /^pill / }).length).toBeGreaterThan(0);
     expect(container.querySelector('[data-testid="scale-line"] button')).toBeNull();
+  });
+});
+
+describe('scaleLines', () => {
+  const heights = (container: HTMLElement) => [...container.querySelectorAll('[data-testid="scale-line"]')].map(e => Number(e.getAttribute('height')));
+
+  it.each([false, true])('gives the lines and heights the page draws (alternates %s)', showAlternates => {
+    const scale = buildScale({ inst: 'asax', scale: 'chrom', tonicPc: 0, range: 'one', direction: 'updown' });
+    const props = { inst: 'asax' as const, scale, chartStyle: 'compact' as const, recorderSystem: 'baroque' as const, showNames: true, showAlternates };
+    const lines = scaleLines(props);
+    const { container } = draw(props);
+    expect(lines).toHaveLength(2);
+    expect(lines.map(l => l.height)).toEqual(heights(container));
+    expect(lines.reduce((sum, l) => sum + l.height, 0)).toBe(heights(container).reduce((sum, h) => sum + h, 0));
+  });
+
+  it('renders one line at a time, without the pill slot when none is given', () => {
+    const scale = buildScale({ inst: 'asax', scale: 'maj', tonicPc: 0, range: 'all', direction: 'updown' });
+    const lines = scaleLines({ inst: 'asax', scale, chartStyle: 'compact', recorderSystem: 'baroque', showNames: true, showAlternates: true });
+    expect(lines.length).toBeGreaterThan(1);
+    const { container } = render(lines[1].render());
+    expect(container.querySelectorAll('[data-testid="scale-line"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-clef]')).toHaveLength(1);
+    expect(Number(container.querySelector('[data-testid="scale-line"]')!.getAttribute('height'))).toBe(lines[1].height);
+  });
+
+  it('a slot adds room under the first chart, so the line is taller', () => {
+    const scale = buildScale({ inst: 'asax', scale: 'maj', tonicPc: 0, range: 'one', direction: 'up' });
+    const base = { inst: 'asax' as const, scale, chartStyle: 'compact' as const, recorderSystem: 'baroque' as const, showNames: true, showAlternates: true };
+    expect(scaleLines({ ...base, renderUnderChart: () => null })[0].height).toBeGreaterThan(scaleLines(base)[0].height);
   });
 });

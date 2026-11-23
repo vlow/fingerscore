@@ -1,4 +1,4 @@
-// Development only: lets the Playwright tests (e2e/pdf-content.spec.ts) build sheet PDFs and show the same sheet on screen.
+// Development only: lets the Playwright tests (e2e/pdf-content.spec.ts, e2e/pdf-scale.spec.ts) build sheet and scale PDFs and show the same sheet on screen.
 // Loaded through a dynamic import behind import.meta.env.DEV (src/main.tsx); not part of a production build.
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
@@ -12,12 +12,15 @@ import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
 import { layoutSheet } from '../render/layout';
 import { Paper } from '../render/Paper';
-import { loadFonts } from './engine';
+import { buildScale, scaleFingerings } from '../domain/scales';
+import { drawSvgScaled, loadFonts, newPdf } from './engine';
 import { pageHeightUnits, pageSizeFor, paginate } from './pageModel';
+import { prepareSvg } from './prepareSvg';
+import { makeScalePdf, type ScalePdfInput } from './scalePdf';
 import { makeSheetPdf, planSheet } from './sheetPdf';
 
 /** Helpers the tests use to build documents in the page. */
-export { derive, inst, mod12, parseChord, sampleDoc };
+export { buildScale, derive, inst, mod12, parseChord, sampleDoc, scaleFingerings };
 
 export interface HookResult {
   /** The PDF, base64. */
@@ -37,15 +40,17 @@ async function base64(blob: Blob): Promise<string> {
   return btoa(s);
 }
 
-/** makeSheetPdf for a document; `abortAtPage` fires the signal from the progress report of that page, `abortBefore` before the start. */
-export async function sheetPdf(doc: Doc, o: { language: string; abortAtPage?: number; abortBefore?: boolean }): Promise<HookResult> {
+interface RunOptions { language: string; abortAtPage?: number; abortBefore?: boolean }
+
+/** Runs a PDF maker; `abortAtPage` fires the signal from the progress report of that page, `abortBefore` before the start. */
+async function run(make: (o: { language: string; signal: AbortSignal; onProgress(n: number, total: number): void }) => Promise<Blob>, o: RunOptions): Promise<HookResult> {
   const ctl = new AbortController();
   if (o.abortBefore) ctl.abort();
   const progress: [number, number][] = [];
   let progressAfterAbort = 0;
   const t0 = performance.now();
   try {
-    const blob = await makeSheetPdf(doc, {
+    const blob = await make({
       language: o.language, signal: ctl.signal,
       onProgress: (n, total) => {
         if (ctl.signal.aborted) progressAfterAbort++;
@@ -57,6 +62,39 @@ export async function sheetPdf(doc: Doc, o: { language: string; abortAtPage?: nu
   } catch (e) {
     const err = e as Error;
     return { error: { name: err.name, message: err.message }, progress, progressAfterAbort, ms: performance.now() - t0 };
+  }
+}
+
+/** makeSheetPdf for a document. */
+export const sheetPdf = (doc: Doc, o: RunOptions): Promise<HookResult> => run(m => makeSheetPdf(doc, m), o);
+
+/** makeScalePdf for a scale page's input. */
+export const scalePdf = (input: ScalePdfInput, o: RunOptions): Promise<HookResult> => run(m => makeScalePdf(input, m), o);
+
+/**
+ * A synthetic block `height` units tall (a rectangle over the whole box, a line of text at its top) drawn alone on its page
+ * with the scale the page model gives it: the engine's drawing of a block taller than a page.
+ */
+export async function scaledBlockPdf(height: number): Promise<{ pdf: string; scale: number; pageUnits: number }> {
+  const fonts = await loadFonts();
+  const size = pageSizeFor('de-DE');
+  const pageUnits = pageHeightUnits(size);
+  const [[group]] = paginate([{ kind: 'line', height }], pageUnits);
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '860');
+  svg.setAttribute('height', String(height));
+  svg.setAttribute('viewBox', `0 0 860 ${height}`);
+  svg.innerHTML = `<rect x="0" y="0" width="860" height="${height}" fill="#ffe0e0"/>`
+    + `<text x="430" y="40" text-anchor="middle" font-size="20" font-family="Atkinson Hyperlegible" fill="#2a2d33">tall block</text>`;
+  document.body.appendChild(svg);
+  try {
+    prepareSvg(svg);
+    const pdf = newPdf(size, fonts, { title: 'tall', subject: '' });
+    await drawSvgScaled(pdf, svg, 0, 860, height, group.scale);
+    return { pdf: await base64(pdf.doc.output('blob')), scale: group.scale, pageUnits };
+  } finally {
+    svg.remove();
   }
 }
 
