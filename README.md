@@ -14,6 +14,7 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Offers alternate fingerings where published charts list them. You pick one per note.
 - Plays the sheet: Play and Stop, tempo slider, repeats, first and second endings, highlight on the current note.
 - Prints the sheet (A4, paper only) through the browser's print dialog.
+- Shows scales with fingerings on a Scales page, linked from the header. Pick an instrument and one of eight scales (major, natural, harmonic and melodic minor, major and minor pentatonic, blues, chromatic) in any of twelve keys. Choose one octave, two octaves or the whole range, up or up and down. Letters follow the scale degrees, so double sharps and double flats appear where theory needs them. On transposing instruments you name keys by what you read or by what sounds. Optional: alternate fingerings under each note, note names, and print (A4, the scale only). The page remembers your settings in this browser.
 - Covers 12 instruments: Xaphoon, saxophones, clarinet, flutes, recorders.
 - Ships a sample song, Auld Lang Syne. Regenerate it with `npm run demo`.
 
@@ -61,6 +62,10 @@ The Edit notes keys follow the key's position on layouts without Latin letters, 
 
 The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The app validates every file on import and refuses anything else. No compatibility promise holds before the public release: a later version may change the format and reject older files.
 
+### Loading
+
+Pages and editing panels load when you first need them. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
+
 ### Rhythm rules
 
 - Meters: 4/4, 3/4, 2/4 and 6/8. One meter per song. Any other meter, or a meter change inside the song, is refused with a message.
@@ -70,7 +75,6 @@ The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The 
 ## What it does not do
 
 - Editing repeats and endings, or changing the time signature, or the key signature other than by transposing.
-- Scales page.
 - MuseScore (`.mscz`) and ABC import.
 - Triplets.
 - A generated PDF. Use the print dialog.
