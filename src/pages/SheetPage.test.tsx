@@ -1486,7 +1486,7 @@ describe('Triplet button and key', () => {
     const member = events()[1];
     await pick(member.id);
     const state = (name: string) => [button(name).hasAttribute('disabled'), button(name).getAttribute('aria-pressed')];
-    expect(state('Sixteenth')).toEqual([false, 'false']);
+    expect(state('Sixteenth')).toEqual([true, 'false']);   // [4, 2, r2, 4] would read as two sixteenth triplets
     expect(state('Eighth')).toEqual([false, 'true']);
     expect(state('Quarter')).toEqual([false, 'false']);
     expect(state('Half')[0]).toBe(true);

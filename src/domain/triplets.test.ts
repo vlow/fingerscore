@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Bar } from './types';
-import { groupOf, notatedLength, tripletGroups, tripletRests } from './triplets';
+import { groupOf, notatedLength, tripletGroups, tripletRestLayouts } from './triplets';
 import { isPlainLength, isTripletLength } from './time';
 import { lengthName } from './edit';
 
@@ -95,13 +95,13 @@ describe('triplet helpers', () => {
     expect([3, 6, 9, 12, 18, 24, 36, 48].some(isTripletLength)).toBe(false);
   });
 
-  it('triplet rests', () => {
-    expect(tripletRests(8, 12)).toEqual([8]);
-    expect(tripletRests(6, 12)).toEqual([4, 2]);
-    expect(tripletRests(4, 6)).toEqual([4]);
-    expect(tripletRests(16, 24)).toEqual([16]);
-    expect(tripletRests(20, 24)).toEqual([16, 4]);
-    expect(() => tripletRests(3, 12)).toThrow();
+  it('triplet rest layouts: fewest rests first, longest first among equals', () => {
+    expect(tripletRestLayouts(8, 12)).toEqual([[8], [4, 4], [4, 2, 2], [2, 4, 2], [2, 2, 4], [2, 2, 2, 2]]);
+    expect(tripletRestLayouts(6, 12)).toEqual([[4, 2], [2, 4], [2, 2, 2]]);
+    expect(tripletRestLayouts(4, 6)).toEqual([[4], [2, 2]]);
+    expect(tripletRestLayouts(12, 24)).toEqual([[8, 4], [4, 8], [4, 4, 4]]);
+    expect(tripletRestLayouts(20, 24)[0]).toEqual([16, 4]);
+    expect(tripletRestLayouts(3, 12)).toEqual([]);
   });
 
   it('spoken lengths', () => {

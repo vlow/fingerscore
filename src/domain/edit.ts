@@ -2,7 +2,7 @@ import { inst, rangeState } from './instruments';
 import { MAX_BARS } from './persistence';
 import { keySignature, mod12, signatureLetters } from './keys';
 import { barCap, isPlainLength, isTripletLength, newId, splitDuration } from './time';
-import { canStartGroup, groupOf, MEMBER_LENGTHS, notatedLength, tripletGroups, tripletRests } from './triplets';
+import { canStartGroup, groupOf, MEMBER_LENGTHS, notatedLength, tripletGroups, tripletRestLayouts } from './triplets';
 import type { Span, TripletGroup } from './triplets';
 import type { Bar, Doc, Ev } from './types';
 
@@ -140,7 +140,11 @@ function groupAt(doc: Doc, at: Located): TripletGroup | null {
   return groups ? groupOf(groups, at.ev.id) : null;
 }
 
-/** Length change of a group member: a member length of its group that ends inside the group's window; null otherwise. */
+/**
+ * Length change of a group member: a member length of its group that ends inside the group's window; null otherwise.
+ * The filling rests are laid out so that the window still reads as one group of the same start and span (design 4.4):
+ * the layouts of the gap are tried fewest rests first. Null when no layout keeps the group.
+ */
 function setMemberLength(doc: Doc, at: Located, group: TripletGroup, d: number): Doc | null {
   const bar = doc.score[at.bar];
   const end = group.start + group.span;
@@ -149,25 +153,36 @@ function setMemberLength(doc: Doc, at: Located, group: TripletGroup, d: number):
   const pitch = rememberedPitch(doc, at.ev.id);
   const edited: Ev = { ...at.ev, d };
   const removed = new Set<string>();
-  let after: Ev[];
+  let kept: Ev[];      // what follows the filling rests in the bar
+  let gap: number;     // ticks the filling rests take, right after the edited member or the consumed ones
+  let keepsLeft: Ev | null = null;
   if (d < at.ev.d) {
-    after = [...tripletRests(at.ev.d - d, group.span).map(len => rest(len, pitch)), ...bar.ev.slice(at.index + 1)];
+    gap = at.ev.d - d;
+    kept = bar.ev.slice(at.index + 1);
   } else {
     let need = d - at.ev.d;
     let k = at.index + 1;
-    after = [];
+    gap = 0;
     for (; k < bar.ev.length && need > 0; k++) {
       const e = bar.ev[k];
       if (e.d <= need) { removed.add(e.id); need -= e.d; continue; }
       const left = e.d - need;
       need = 0;
-      if (MEMBER_LENGTHS[group.span].includes(left)) after.push({ ...e, d: left });
-      else { removed.add(e.id); after.push(...tripletRests(left, group.span).map(len => rest(len, pitch))); }
+      if (MEMBER_LENGTHS[group.span].includes(left)) keepsLeft = { ...e, d: left };
+      else { removed.add(e.id); gap = left; }
     }
-    after.push(...bar.ev.slice(k));
+    kept = [...(keepsLeft ? [keepsLeft] : []), ...bar.ev.slice(k)];
   }
-  const next = forget(replaceBar(doc, at.bar, { ...bar, ev: [...bar.ev.slice(0, at.index), edited, ...after] }), removed);
-  return fixTies(next, [at.ev.id]);
+  const full = barCap(doc.timeSig);
+  for (const layout of gap > 0 ? tripletRestLayouts(gap, group.span) : [[]]) {
+    const ev = [...bar.ev.slice(0, at.index), edited, ...layout.map(len => rest(len, pitch)), ...kept];
+    const candidate: Bar = { ...bar, ev };
+    const groups = tripletGroups(candidate, full);
+    if (!groups || !groups.some(g => g.start === group.start && g.span === group.span)) continue;
+    const next = forget(replaceBar(doc, at.bar, candidate), removed);
+    return fixTies(next, [at.ev.id]);
+  }
+  return null;
 }
 
 /**

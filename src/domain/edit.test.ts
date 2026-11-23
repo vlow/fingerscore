@@ -9,6 +9,7 @@ import {
 import { sampleDoc } from './fixture';
 import { MAX_BARS, validateDoc } from './persistence';
 import { DURATIONS, isTripletLength } from './time';
+import { tripletGroups } from './triplets';
 import type { Doc } from './types';
 
 const sum = (d: Doc) => d.score.every(b => b.ev.reduce((s, e) => s + e.d, 0) === b.cap);
@@ -370,6 +371,31 @@ describe('length inside a group', () => {
   it('in [4,4,2,2] the third to 4', () => {
     const d = bar(4, 4, 2, 2, 36);
     expect(lens(valid(setLength(d, idAt(d, 2), 4)))).toEqual([4, 4, 4, 36]);
+  });
+  const groupsOf = (d: Doc) => (tripletGroups(d.score[0], 48) ?? []).map(g => ({ start: g.start, span: g.span }));
+  it('[8,4] first to 2: the rests are laid out so the window stays one group of 12; 8 restores [8,4]', () => {
+    const q = bar(12, 36);
+    const made = valid(setLength(valid(makeTriplet(q, idAt(q, 0))), idAt(q, 0), 8));
+    expect(lens(made)).toEqual([8, 4, 36]);
+    const short = valid(setLength(made, idAt(q, 0), 2));
+    expect(lens(short)).toEqual([2, -2, -4, 4, 36]);   // [2, -4, -2, 4] would read as two groups of 6
+    expect(groupsOf(short)).toEqual([{ start: 0, span: 12 }]);
+    expect(lengthChoices(short, idAt(q, 0)).map(c => c.enabled)).toEqual([true, true, true, false, false]);
+    const back = valid(setLength(short, idAt(q, 0), 8));
+    expect(lens(back)).toEqual([8, 4, 36]);
+    expect(idAt(back, 1)).toBe(idAt(made, 1));
+  });
+  it('[16,8] first to 4: one group of 24', () => {
+    const d = bar(16, 8, 24);
+    const r = valid(setLength(d, idAt(d, 0), 4));
+    expect(lens(r)).toEqual([4, -4, -8, 8, 24]);   // [4, -8, -4, 8] would read as a group of 12 and leave 4 + 8
+    expect(groupsOf(r)).toEqual([{ start: 0, span: 24 }]);
+  });
+  it('a member length for which no layout keeps the group is not offered', () => {
+    // the middle of [4,4,4] to 2 can only give [4,2,-2,4]: two groups of 6
+    const d = bar(4, 4, 4, 36);
+    expect(setLength(d, idAt(d, 1), 2)).toBeNull();
+    expect(lengthChoices(d, idAt(d, 1)).map(c => c.enabled)).toEqual([false, true, true, false, false]);
   });
   it('a member cannot leave its window or take a plain length', () => {
     const d = bar(4, 4, 4, 36);

@@ -29,15 +29,18 @@ export function notatedLength(d: number): number {
   return isTripletLength(d) ? (d * 3) / 2 : d;
 }
 
-/** Member lengths, longest first, that sum to `ticks`. Throws when no such list exists. */
-export function tripletRests(ticks: number, span: Span): number[] {
-  const out: number[] = [];
-  let rest = ticks;
-  for (const m of MEMBER_LENGTHS[span]) {
-    while (rest >= m) { out.push(m); rest -= m; }
-  }
-  if (rest !== 0) throw new Error(`${ticks} ticks cannot be filled with triplet members of span ${span}`);
-  return out;
+/**
+ * Every ordering of member lengths of `span` that sums to `ticks`: fewest members first, longest-first order among
+ * lists of equal count. Empty when no such list exists.
+ */
+export function tripletRestLayouts(ticks: number, span: Span): number[][] {
+  const out: number[][] = [];
+  const walk = (left: number, acc: number[]) => {
+    if (left === 0) { out.push(acc); return; }
+    for (const m of MEMBER_LENGTHS[span]) if (m <= left) walk(left - m, [...acc, m]);
+  };
+  walk(ticks, []);
+  return out.sort((x, y) => x.length - y.length);   // stable: equal counts keep the longest-first order
 }
 
 /**

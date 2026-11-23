@@ -7,7 +7,7 @@ import {
 } from './edit';
 import { validateDoc } from './persistence';
 import { barCap, isTripletLength } from './time';
-import { groupOf, tripletGroups } from './triplets';
+import { groupOf, tripletGroups, type TripletGroup } from './triplets';
 import type { Doc, TimeSig } from './types';
 
 function mulberry32(seed: number): () => number {
@@ -97,6 +97,12 @@ function problem(prev: Doc, next: Doc, kind: string): string | null {
   return null;
 }
 
+/** The event's group in the given bar has the start and span of `group`. */
+function sameGroup(doc: Doc, bar: number, id: string, group: TripletGroup): boolean {
+  const now = groupOf(tripletGroups(doc.score[bar], barCap(doc.timeSig)) ?? [], id);
+  return now !== null && now.start === group.start && now.span === group.span;
+}
+
 let withTriplets = 0;
 let steps = 0;
 
@@ -127,6 +133,19 @@ describe('random edit sequences', () => {
           let t = 0;
           const inside = nb.ev.filter(e => { const here = t >= group!.start && t < group!.start + group!.span; t += e.d; return here; });
           if (!inside.every(e => isTripletLength(e.d)) || inside.reduce((s, e) => s + e.d, 0) !== group.span) fail(step, `the window changed shape: ${label}`);
+          if (!sameGroup(next, at.bar, id, group)) fail(step, `the group changed its start or span: ${label}`);
+          // In a copy: the original length back. After a shortening it is offered and restores the bar's lengths.
+          const back = lengthChoices(next, id).find(c => c.d === at.ev.d);
+          if (d < at.ev.d && !back?.enabled) fail(step, `the original length is not offered after ${label}`);
+          if (back?.enabled) {
+            const undone = setLength(next, id, at.ev.d);
+            if (undone === null) fail(step, `setting the original length back returned null after ${label}`);
+            const why = problem(next, undone!, kind);
+            if (why) fail(step, `setting the original length back: ${why}`);
+            if (!sameGroup(undone!, at.bar, id, group)) fail(step, `setting the original length back moved the group after ${label}`);
+            const lengths = (x: Doc) => x.score[at.bar].ev.map(e => e.d).join(',');
+            if (d < at.ev.d && lengths(undone!) !== lengths(doc)) fail(step, `setting the original length back gives [${lengths(undone!)}], not [${lengths(doc)}] after ${label}`);
+          }
         }
       } else if (kind === 'triplet') {
         if (!inTriplet(doc, id) && canMakeTriplet(doc, id) !== (makeTriplet(doc, id) !== null)) fail(step, `canMakeTriplet and makeTriplet disagree: ${label}`);
