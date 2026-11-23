@@ -281,16 +281,21 @@ const NEAR = 1e-6;
 
 /**
  * Re-anchors one voice at its bar lines. A bar shorter than the meter that is not the voice's first bar, not its last,
- * and not one half of a split pair (two short bars that add up to the meter) is a pickup inside the tune: its content
- * moves right so that it ends on the next bar line, and everything after it moves as far. A bar line stays with the
- * content before it, so a `|:` before such a pickup marks the bar that now holds the pickup. A bar longer than the
- * meter is taken as written.
+ * and not one half of a split pair (two short bars that add up to the meter) is placed by how it ends:
+ * - closed by an end repeat, or followed by a numbered ending: a shortened bar. Its notes stay at the start of its
+ *   bar and what follows starts at the next bar line; the missing time is a gap after the notes.
+ * - otherwise a pickup inside the tune: its content moves right so that it ends on the next bar line.
+ * Either way everything after the bar moves as far. A bar line stays with the content before it, so a `|:` before a
+ * pickup marks the bar that now holds the pickup. A bar longer than the meter is taken as written.
  */
 function realign(state: VoiceState, full: number): void {
   const cuts = [0];      // bar line positions; adjacent bar-line symbols count once
   for (const { at } of state.bars) if (at > cuts[cuts.length - 1] + NEAR) cuts.push(at);
   if (state.pos > cuts[cuts.length - 1] + NEAR) cuts.push(state.pos);
   const lens = cuts.slice(1).map((c, i) => c - cuts[i]);
+  /** True when the bar line at t ends a repeat or starts a numbered ending. */
+  const endsSection = (t: number) => state.bars.some(({ at, el }) =>
+    Math.abs(at - t) < NEAR && (/right_repeat|dbl_repeat/.test(el.type ?? '') || el.startEnding !== undefined));
   const shifts: number[] = [];      // per bar: how far its content moves
   let shift = 0;
   for (let i = 0; i < lens.length; i++) {
@@ -298,6 +303,11 @@ function realign(state: VoiceState, full: number): void {
       if (Math.abs(lens[i] + lens[i + 1] - full) < NEAR) {      // a split pair: both halves stay
         shifts.push(shift, shift);
         i += 1;
+        continue;
+      }
+      if (endsSection(cuts[i + 1])) {      // a shortened bar: its notes stay, the gap comes after them
+        shifts.push(shift);
+        shift += full - lens[i];
         continue;
       }
       shift += full - lens[i];

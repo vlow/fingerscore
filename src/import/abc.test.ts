@@ -418,6 +418,20 @@ describe('parseAbc', () => {
       expect(s.marks).toEqual([{ bar: 1, rs: true }, { bar: 2, re: true }, { bar: 3, rs: true }, { bar: 5, re: true }]);
     });
 
+    it('a short bar that closes a first ending keeps its notes at the start; the rest of its bar follows them', async () => {
+      // 6/8, pickup 0.5, bar lines at 0.5, 3.5, 6.5, 9.5. The first-ending bar (2.5 quarters) starts at 3.5 and leaves an
+      // eighth of rest before 6.5; the second-ending bar and the d are a split pair that fills [6.5, 9.5]; g is on 9.5.
+      const s = await parse('X:1\nM:6/8\nL:1/8\nK:G\nD|:G2B dBG|1 G2B A2:|2 G2B G2|:d|g2f e2d|\n');
+      expect(notes(s).slice(6)).toEqual([[3.5, 67], [4.5, 71], [5, 69], [6.5, 67], [7.5, 71], [8, 67], [9, 74], [9.5, 79], [10.5, 78], [11, 76], [12, 74]]);
+      expect(s.marks).toEqual([{ bar: 1, rs: true }, { bar: 2, re: true, volta: '1' }, { bar: 3, volta: '2' }, { bar: 4, rs: true }]);
+    });
+
+    it('a short bar before :: keeps its notes at the start', async () => {
+      const s = await parse(tune('C4 | D3 :: E4 | F4 |'));
+      expect(notes(s)).toEqual([[0, 60], [4, 62], [8, 64], [12, 65]]);
+      expect(s.marks).toEqual([{ bar: 1, re: true }, { bar: 2, rs: true }]);
+    });
+
     it('two short bars that make a full bar stay where they are', async () => {
       const s = await parse(tune('C4 | D3 :| E | F4 |'));
       expect(notes(s)).toEqual([[0, 60], [4, 62], [7, 64], [8, 65]]);
