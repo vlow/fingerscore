@@ -7,6 +7,11 @@ import { hydrate } from './state/store';
 
 hydrate();
 
+// Development only: the PDF proof of src/pdf/spike.ts, loaded on first call (e2e/pdf-spike.spec.ts).
+if (import.meta.env.DEV) {
+  Object.assign(window, { fingerscorePdfSpike: () => import('./pdf/spike') });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

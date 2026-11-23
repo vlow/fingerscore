@@ -27,6 +27,7 @@ const GLYPHS: Record<string, [string, number]> = {
   restQuarter: ['restQuarter', 0xe4e5],
   restEighth: ['rest8th', 0xe4e6],
   restSixteenth: ['rest16th', 0xe4e7],
+  noteQuarterUp: ['noteQuarterUp', 0xe1d5],
 };
 for (let d = 0; d <= 9; d++) GLYPHS[`digit${d}`] = [`timeSig${d}`, 0xe080 + d];
 
@@ -45,6 +46,7 @@ const PLACEMENT: Record<string, string> = {
   restEighth: 'origin on the middle line: y = B - 20',
   restSixteenth: 'origin on the middle line: y = B - 20',
   rests: 'all rests: ink box centred horizontally on the event x (x = eventX - (inkLeft + inkRight) / 2)',
+  noteQuarterUp: 'the ♩ of the tempo line in the PDF: SMuFL origin at the left edge of the notehead, the head centred vertically on it; stem up (ink y -141..875 units). The PDF places it on the text line itself',
   digits: 'time-signature digits are vertically centred on their origin and two staff spaces tall: numerator origin on the 4th line (y = B - 30), denominator origin on the 2nd line (y = B - 10); each number centred on x by its advance width',
 };
 
