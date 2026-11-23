@@ -28,6 +28,10 @@ export const FORMATS: Format[] = [
     name: 'MuseScore', extensions: ['.mscz', '.mscx'], article: 'a',
     load: async () => (await import('./mscz')).parseMuseScore,
   },
+  {
+    name: 'ABC', extensions: ['.abc'], article: 'an',
+    load: async () => (await import('./abc')).parseAbc,
+  },
 ];
 
 export const ACCEPT = [...FORMATS.flatMap(f => f.extensions), '.json'].join(',');
