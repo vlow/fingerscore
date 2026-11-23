@@ -18,6 +18,7 @@ const MODE_FIFTHS: Record<Mode, number> = { major: 0, lydian: 1, mixolydian: -1,
 const ACCIDENTAL_SEMITONES: Record<string, number> = { sharp: 1, flat: -1, natural: 0, dblsharp: 2, dblflat: -2 };
 const CHORD_SYMBOL = /^([A-G])([#b♯♭]?)(.*?)(?:\/([A-G])([#b♯♭]?))?$/;
 /** What may follow the root: a kind word that ends there, or anything that does not start with a letter. */
+const CHORD_START = /^(?:[0-9mMdasoø°+\-(Δ]|$)/;
 const CHORD_KIND = /^(?:m(?:aj|in)?|dim|aug|sus|add|alt|o)?(?![a-z])/;
 
 const unreadable = (file: string) => new ImportError(`"${file}" could not be read as an ABC file.`);
@@ -93,14 +94,46 @@ function readKey(file: string, k: Pick<AbcKey, 'root' | 'acc' | 'mode'>): ReadKe
   return { tonicPc, mode, alter: signatureAlter(fifths) };
 }
 
-/** True when a `K:` line (field or inline) adds written accidentals (`exp ^f`, `_b`) to the key. */
-function hasWrittenAccidentals(lines: string[]): boolean {
+const CLEF_WORDS = /^(?:treble|bass|alto|tenor|perc|clef)/i;
+/** Fifths a written mode word adds to the major key on the same tonic. */
+function wordFifths(word: string): number {
+  const w = word.toLowerCase();
+  if (w === 'm' || w.startsWith('min') || w.startsWith('aeo')) return -3;
+  if (w.startsWith('mix')) return -1;
+  if (w.startsWith('dor')) return -2;
+  if (w.startsWith('phr')) return -4;
+  if (w.startsWith('lyd')) return 1;
+  if (w.startsWith('loc')) return -5;
+  return 0;
+}
+
+interface WrittenTonic { letter: string; acc: string }
+
+/**
+ * Reads the `K:` lines (field and inline) from the source text, apart from abcjs.
+ * Refuses written accidentals (`exp ^f`, `_b`), a tonic that is not a note name, and a signature beyond seven
+ * sharps or flats. Returns the tonic of the first line that names one.
+ */
+function checkSourceKeys(file: string, lines: string[]): WrittenTonic | null {
   const bodies = lines.flatMap(line => {
     if (line.startsWith('%')) return [];
     const field = /^K:([^%]*)/.exec(line);
     return field ? [field[1]] : Array.from(line.matchAll(/\[K:([^\]]*)\]/g), m => m[1]);
   });
-  return bodies.some(b => b.split(/\s+/).some(t => t === 'exp' || /^(?:\^\^?|__?|=)[a-gA-G]$/.test(t)));
+  let first: WrittenTonic | null = null;
+  for (const body of bodies) {
+    const tokens = body.trim().split(/\s+/).filter(t => t !== '');
+    if (tokens.some(t => t === 'exp' || /^(?:\^\^?|__?|=)[a-gA-G]$/.test(t))) throw unreadable(file);
+    const head = tokens[0];
+    if (head === undefined || head === 'none' || head.includes('=') || CLEF_WORDS.test(head)) continue;   // no tonic: the key stays
+    const m = /^([A-G])([#b]?)(.*)$/.exec(head);
+    if (!m) throw unreadable(file);
+    const word = m[3] !== '' ? m[3] : tokens[1] && !tokens[1].includes('=') && !CLEF_WORDS.test(tokens[1]) ? tokens[1] : '';
+    const fifths = MAJOR_FIFTHS[m[1]] + 7 * (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + wordFifths(word);
+    if (Math.abs(fifths) > 7) throw unreadable(file);
+    first ??= { letter: m[1], acc: m[2] };
+  }
+  return first;
 }
 
 // ---- meter and tempo ----
@@ -126,7 +159,7 @@ function tempoOf(t: { duration?: number[]; bpm?: number } | undefined): number {
 /** A chord symbol with roots named by pitch class, moved by `transpose` semitones. Annotations and words give null. */
 function chordText(name: string, transpose: number): string | null {
   const m = CHORD_SYMBOL.exec(name.trim());
-  if (!m || !CHORD_KIND.test(m[3])) return null;
+  if (!m || /\s/.test(name.trim()) || !CHORD_START.test(m[3]) || !CHORD_KIND.test(m[3])) return null;
   const root = (letter: string, acc: string) =>
     ROOT_NAMES[mod12(LETTER_PC[LETTER_INDEX[letter]] + (acc === '#' || acc === '♯' ? 1 : acc === 'b' || acc === '♭' ? -1 : 0) + transpose)];
   return root(m[1], m[2]) + m[3] + (m[4] ? `/${root(m[4], m[5])}` : '');
@@ -255,7 +288,7 @@ function readMarks(bars: VoiceState['bars'], grid: Grid, end: number): ParsedSon
 
 export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedSong> {
   const lines = withDefaultVoice(firstTune(decode(bytes)));
-  if (hasWrittenAccidentals(lines)) throw unreadable(file);
+  const written = checkSourceKeys(file, lines);
   const parser = new Parse();
   parser.parse(lines.join('\n') + '\n', {});
   const tune = parser.getTune();
@@ -263,7 +296,7 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
   const meters: (readonly [number, number])[] = [];
   const states = new Map<string, VoiceState>();
   const titles = new Map<number, string>();
-  const song: { key: ReadKey | null } = { key: null };
+  const song: { key: ReadKey | null; root: string; acc: string } = { key: null, root: '', acc: '' };
 
   tune.lines.forEach(line => (line.staff ?? []).forEach((staff, s) => {
     if (staff.meter) meters.push(meterOf(staff.meter));
@@ -285,7 +318,7 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
         state.key = readKey(file, staff.key);
         state.keyName = keyNameOf(staff.key);
         state.barAccidentals.clear();
-        song.key ??= state.key;
+        if (!song.key) { song.key = state.key; song.root = staff.key.root; song.acc = staff.key.acc; }
       }
       if (!state.key) state.key = readKey(file, { root: 'none', acc: '', mode: '' });
       for (const el of elements) {
@@ -319,6 +352,7 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
     });
   });
   const first = ordered.find(st => st.notes.length > 0);
+  if (written && song.key && (song.root !== written.letter || song.acc !== written.acc)) throw unreadable(file);   // abcjs fell back to a default key
   if (!first || !song.key) throw new ImportError(`"${file}" has no melody track.`);
 
   const pickup = pickupOf(first.bars, barLength);

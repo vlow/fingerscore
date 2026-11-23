@@ -94,6 +94,18 @@ describe('parseAbc', () => {
       expect(await message(parse('X:1\nK:D#\nCDEF|'))).toBe('"t.abc" could not be read as an ABC file.');
     });
 
+    it('refuses a key abcjs did not read, accepts a line without a tonic', async () => {
+      const bad = '"t.abc" could not be read as an ABC file.';
+      expect(await message(parse('X:1\nK:Fb\nCDEF|'))).toBe(bad);
+      expect(await message(parse('X:1\nK:E#\nCDEF|'))).toBe(bad);
+      expect(await message(parse('X:1\nK:H\nCDEF|'))).toBe(bad);
+      expect(await message(parse('X:1\nL:1/4\nK:C\nCD|[K:Fb]EF|'))).toBe(bad);
+      const bass = await parse('X:1\nL:1/4\nK:clef=bass\nC|');
+      expect(bass.key).toEqual({ tonicPc: 0, mode: 'major' });
+      expect(await key('none')).toEqual({ tonicPc: 0, mode: 'major' });
+      expect(await key('A#m')).toEqual({ tonicPc: 10, mode: 'minor' });
+    });
+
     it('refuses keys it cannot read', async () => {
       expect(await message(parse('X:1\nK:HP\nCDEF|'))).toBe('"t.abc" could not be read as an ABC file.');
       expect(await message(parse('X:1\nK:D exp ^f\nCDEF|'))).toBe('"t.abc" could not be read as an ABC file.');
@@ -236,6 +248,11 @@ describe('parseAbc', () => {
       expect(midis(a)).toEqual([58, 65]);
       expect(a.tracks[0].chords.map(c => c.text)).toEqual(['B♭', 'F']);
       expect((await t('"Dm/F"D')).tracks[0].chords.map(c => c.text)).toEqual(['Cm/E♭']);
+    });
+
+    it('drops D.C., D.S., "A tempo" and other text that only starts with a note name', async () => {
+      const s = await parse(tune('"D.C."C "D.S."D "D.C. al Fine"E "A tempo"F | "A."C "A"D "D"E "C/E"F | "G(add9)"C "C+"D "C-7"E "C\u03947"F'));
+      expect(s.tracks[0].chords.map(c => c.text)).toEqual(['A', 'D', 'C/E', 'G(add9)', 'C+', 'C-7', 'C\u03947']);
     });
 
     it('accepts C6/9 and A7alt, drops words', async () => {
