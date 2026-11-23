@@ -7,7 +7,8 @@ import { toBars } from './bars';
 import { detectChords } from './harmony';
 import { estimateKey, majorOrRelativeMinor } from './keyfind';
 import { monophonic, quantise } from './quantise';
-import { ImportError, type ParsedSong } from './types';
+import { ImportError, tooLong, type ParsedSong } from './types';
+import { MAX_BARS } from '../domain/persistence';
 
 export interface BuildOptions {
   trackId: string; keep: 'top' | 'bottom'; lyricsFrom: string | null; chordsFrom: string | 'file' | null; instId: InstId; prefs: Prefs;
@@ -32,6 +33,15 @@ function place(score: Doc['score']): Placed[] {
   return out;
 }
 
+/** How many bars the notes fill: the pickup bar, then bars of the meter up to the end of the last note. */
+function barCount(song: ParsedSong, notes: ParsedSong['tracks'][number]['notes']): number {
+  const barLength = (song.timeSig[0] * 4) / song.timeSig[1];
+  const end = notes.reduce((m, n) => Math.max(m, n.start + n.dur), 0);
+  const pickup = Number.isFinite(song.pickup) && song.pickup > 0 && song.pickup < barLength ? song.pickup : 0;
+  if (end <= pickup) return 1;
+  return (pickup > 0 ? 1 : 0) + Math.ceil((end - pickup) / barLength - 1e-6);
+}
+
 function titleFrom(file: string): string {
   const dot = file.lastIndexOf('.');
   return (dot > 0 ? file.slice(0, dot) : file).replace(/_/g, ' ');
@@ -41,6 +51,7 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
   const track = song.tracks.find(t => t.id === o.trackId);
   if (!track) throw new ImportError('That track is not in the file.');
   if (track.notes.length === 0) throw new ImportError(`"${track.name}" has no notes.`);
+  if (barCount(song, track.notes) > MAX_BARS) throw tooLong(song.file);
 
   const q = quantise(track.notes);
   const melody = monophonic(q.notes, o.keep);

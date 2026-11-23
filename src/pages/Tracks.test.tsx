@@ -109,6 +109,17 @@ it('CTA uses the chosen track and extras', async () => {
   expect(d.score.flatMap(b => b.ev).some(e => e.l)).toBe(false);
 });
 
+it('a track longer than 2000 bars shows the length message and stays on the page', async () => {
+  const s = demo();
+  const tracks = s.tracks.map(t => (t.name === 'Melody' ? { ...t, notes: [...t.notes, { start: 9000, dur: 1, midi: 60 }] } : t));
+  useApp.setState({ song: { ...s, tracks } });
+  renderTracks();
+  await user.click(screen.getByRole('button', { name: /Make the sheet from .*Melody/ }));
+  expect(screen.getByRole('alert')).toHaveTextContent('"Auld_Lang_Syne.mid" is longer than 2000 bars and can\'t be opened.');
+  expect(useApp.getState().doc).toBeNull();
+  expect(currentPath()).toBe('/tracks');
+});
+
 it('redirects without a song', () => {
   useApp.setState({ song: null });
   renderTracks();

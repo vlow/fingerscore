@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 import { ROOT_NAMES } from './chordNames';
 import { barAt, barEndingAt, barStartingAt } from './grid';
 import { songTimeSig } from './meter';
+import { own } from './own';
 import { MODE_BELOW_MAJOR } from '../domain/keys';
 import type { Mode, TimeSig } from '../domain/types';
 import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './types';
@@ -86,7 +87,7 @@ function writtenKey(k: Element, transpose: number): WrittenKey | null {
   const fifths = num(text(k, 'fifths'));
   if (fifths === null) return null;
   const given = text(k, 'mode');
-  const mode = (given !== undefined ? MUSICXML_MODES[given] : undefined) ?? null;    // unknown or no mode: estimated later
+  const mode = (given !== undefined ? own(MUSICXML_MODES, given) : undefined) ?? null;    // unknown or no mode: estimated later
   return { tonicPc: mod12(fifths * 7 + (mode ? MODE_BELOW_MAJOR[mode] : 0)), mode, transpose };
 }
 
@@ -105,7 +106,7 @@ function readTempo(root: Element): number {
   const m = root.getElementsByTagName('metronome')[0];
   const perMinute = num(text(m, 'per-minute'));
   if (m && perMinute !== null && perMinute > 0) {
-    const unit = BEAT_UNITS[text(m, 'beat-unit') ?? 'quarter'] ?? 1;
+    const unit = own(BEAT_UNITS, text(m, 'beat-unit') ?? 'quarter') ?? 1;
     return perMinute * unit * (kid(m, 'beat-unit-dot') ? 1.5 : 1);
   }
   return DEFAULT_TEMPO;
@@ -115,13 +116,14 @@ function chordText(h: Element, transpose: number): string {
   const name = (parent: Element | undefined, step: string, alter: string): string => {
     const letter = text(parent, step) ?? '';
     const a = Math.round(num(text(parent, alter)) ?? 0);
-    if (transpose !== 0 && letter in STEP_PC) return ROOT_NAMES[mod12(STEP_PC[letter] + a + transpose)];
+    const pc = own(STEP_PC, letter);
+    if (transpose !== 0 && pc !== undefined) return ROOT_NAMES[mod12(pc + a + transpose)];
     return letter + (a > 0 ? '♯'.repeat(a) : '♭'.repeat(-a));
   };
   const kind = kid(h, 'kind');
   const kindName = kind?.textContent?.trim() ?? '';
   if (kindName === 'none' || NO_CHORD.test(kind?.getAttribute('text')?.trim() ?? '')) return '';
-  const suffix = kindName in KIND_SUFFIX ? KIND_SUFFIX[kindName] : (kind?.getAttribute('text') ?? '');
+  const suffix = own(KIND_SUFFIX, kindName) ?? (kind?.getAttribute('text') ?? '');
   const bassEl = kid(h, 'bass');
   const bass = bassEl ? `/${name(bassEl, 'bass-step', 'bass-alter')}` : '';
   const root = name(kid(h, 'root'), 'root-step', 'root-alter');
@@ -268,7 +270,7 @@ function readPart(part: Element, info: Map<string, Element>, grid: Grid, marks: 
         }
         const pitch = kid(el, 'pitch');
         if (!pitch || kid(el, 'rest') || kid(el, 'cue')) continue;     // cue notes take time but are not played
-        const step = STEP_PC[text(pitch, 'step') ?? ''];
+        const step = own(STEP_PC, text(pitch, 'step') ?? '');
         const octave = num(text(pitch, 'octave'));
         if (step === undefined || octave === null) continue;
         const midi = (octave + 1) * 12 + step + Math.round(num(text(pitch, 'alter')) ?? 0) + transpose;

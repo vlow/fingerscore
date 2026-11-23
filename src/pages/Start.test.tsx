@@ -192,6 +192,14 @@ it('a file dropped on the error state is read', async () => {
   expect(within(screen.getByTestId('drop-zone')).getByRole('status')).toHaveTextContent('Ready');
 });
 
+it('a song longer than 2000 bars shows the length message after Continue', async () => {
+  renderStart();
+  await user.upload(screen.getByLabelText(/drop a song/i), new File(['X:1\nM:4/4\nL:1/4\nK:C\nZ100000|C|\n'], 'long.abc'));
+  await user.click(await screen.findByRole('button', { name: 'Continue →' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('"long.abc" is longer than 2000 bars and can\'t be opened.');
+  expect(currentPath()).toBe('/');
+});
+
 it('subline names the four song formats', () => {
   renderStart();
   expect(screen.getByText('Upload a MIDI, MusicXML, MuseScore or ABC file. We transpose it to a key that suits your instrument and add a fingering chart under every note.')).toBeInTheDocument();

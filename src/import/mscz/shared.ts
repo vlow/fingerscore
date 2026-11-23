@@ -1,6 +1,6 @@
 import { barAt, barEndingAt, barStartingAt, type Grid } from '../grid';
 import { songTimeSig } from '../meter';
-import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from '../types';
+import { ImportError, tooLong, type ParsedSong, type ParsedTrack, type RawNote } from '../types';
 import { harmonyOf, kid, kids, lyricText, majorTonicOfFifths, mod12, num, text } from './common';
 
 /** What the readers of versions 2 and 3/4 have in common: parts, the measure grid, tracks, key, tempo, chord symbols. The readers differ in where a measure keeps its elements and how voices, tuplets, ties and endings are written. */
@@ -8,6 +8,8 @@ import { harmonyOf, kid, kids, lyricText, majorTonicOfFifths, mod12, num, text }
 export const EPS = 1e-9;
 const DEFAULT_TEMPO = 120;
 const MAX_VOICES = 4;
+/** More measures than this cannot fit in a sheet, even if every measure were a split half. */
+const MAX_MEASURES = 4000;
 
 export type Timed = { at: number; text: string };
 
@@ -66,13 +68,13 @@ export function markSink(grid: Grid) {
 /** The parts of the main score. A part's `<Staff>` carries its id in versions 2 and 3; version 4 may leave it out, then the staves count up in order. */
 function readParts(score: Element, staffIds: number[]): PartInfo[] {
   let next = 1;
-  return kids(score, 'Part').map(p => {
+  return kids(score, 'Part').map((p, i) => {
     const staves = kids(p, 'Staff');
     const ids = staves.map(s => { const id = num(s.getAttribute('id') ?? undefined) ?? next; next = id + 1; return id; });
     const ins = kid(p, 'Instrument');
     const trackName = text(p, 'trackName') || text(ins, 'trackName') || text(ins, 'longName') || '';
     return {
-      name: trackName,
+      name: trackName || `Part ${i + 1}`,
       instrument: text(ins, 'longName') || text(ins, 'trackName') || trackName,
       percussion: text(ins, 'useDrumset') === '1' || staves.some(s => kid(s, 'StaffType')?.getAttribute('group') === 'percussion'),
       transpose: num(text(ins, 'transposeChromatic')) ?? 0,
@@ -177,6 +179,7 @@ export function readScore(file: string, score: Element, version: number, dialect
   const staves = kids(score, 'Staff')
     .map(s => ({ id: num(s.getAttribute('id') ?? undefined) ?? 0, measures: kids(s, 'Measure') }))
     .filter(s => s.measures.length > 0);
+  if (staves.some(s => s.measures.length > MAX_MEASURES)) throw tooLong(file);
   const byId = new Map(staves.map(s => [s.id, s.measures]));
   const parts = readParts(score, staves.map(s => s.id));
   const listed = new Set(parts.flatMap(p => p.staffIds));

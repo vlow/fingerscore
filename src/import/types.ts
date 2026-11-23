@@ -1,3 +1,4 @@
+import { MAX_BARS } from '../domain/persistence';
 import type { Mode, TimeSig } from '../domain/types';
 
 /** Positions and durations in quarter notes (float), measured from the start of the first bar. */
@@ -22,3 +23,6 @@ export class ImportError extends Error {
     this.name = 'ImportError';
   }
 }
+
+/** The refusal for a song longer than a sheet can hold (`MAX_BARS`). */
+export const tooLong = (file: string): ImportError => new ImportError(`"${file}" is longer than ${MAX_BARS} bars and can't be opened.`);

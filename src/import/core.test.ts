@@ -192,4 +192,11 @@ describe('buildDoc', () => {
     expect(() => buildDoc(mkSong([]), opts())).toThrow(ImportError);
     try { buildDoc(mkSong([]), opts()); } catch (e) { expect((e as ImportError).userMessage).toBe('"Melody" has no notes.'); }
   });
+  it('refuses a song whose last note ends past 2000 bars, before building', () => {
+    const message = (song: ParsedSong) => { try { buildDoc(song, opts()); return null; } catch (e) { return (e as ImportError).userMessage; } };
+    expect(message(mkSong([n(0, 1), n(7999, 1)], { file: 'long.abc' }))).toBeNull();                        // ends with bar 2000
+    expect(message(mkSong([n(0, 1), n(8000, 1)], { file: 'long.abc' }))).toBe('"long.abc" is longer than 2000 bars and can\'t be opened.');
+    const pickup = { ...mkSong([n(0, 1), n(7999, 1)], { file: 'long.abc' }), pickup: 1 };                     // pickup + 2000 bars
+    expect(message(pickup)).toBe('"long.abc" is longer than 2000 bars and can\'t be opened.');
+  });
 });

@@ -32,6 +32,19 @@ describe('parseMusicXml', () => {
     expect((await parseMusicXml('d.xml', xml(key('mystery')))).key).toEqual({ tonicPc: 0, mode: null });
   });
 
+  it('a mode, kind, step or beat unit that names an inherited property is unknown, never NaN', async () => {
+    const attrs = (mode: string) => `<attributes><divisions>1</divisions><key><fifths>2</fifths><mode>${mode}</mode></key><time><beats>4</beats><beat-type>4</beat-type></time></attributes>`;
+    const s = await parseMusicXml('c.xml', xml(attrs('constructor') +
+      '<direction><direction-type><metronome><beat-unit>constructor</beat-unit><per-minute>100</per-minute></metronome></direction-type></direction>' +
+      '<harmony><root><root-step>D</root-step></root><kind text="7">constructor</kind></harmony>' +
+      '<note><pitch><step>toString</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note>' + n('D', 4, 2)));
+    expect(s.key).toEqual({ tonicPc: 2, mode: null });
+    expect(s.tempo).toBe(100);
+    expect(s.tracks[0].chords).toEqual([{ at: 0, text: 'D7' }]);
+    expect(s.tracks[0].notes).toEqual([{ start: 2, dur: 2, midi: 62 }]);
+    expect(() => buildDoc(s, opts(s))).not.toThrow();
+  });
+
   it('simple: tracks, pickup, key, lyrics, chords, repeats', async () => {
     const s = await load('simple.musicxml');
     expect(s).toMatchObject({ format: 'MusicXML', timeSig: [4, 4], key: { tonicPc: 0, mode: 'major' }, pickup: 1, tempo: 90 });
