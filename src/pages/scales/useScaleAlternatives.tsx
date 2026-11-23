@@ -1,12 +1,29 @@
 import { useCallback, useRef, useState } from 'react';
 import type { Instrument } from '../../domain/instruments';
-import { SHEET } from '../../render/layout';
 import type { ScaleChartSlot } from '../../render/ScaleStaff';
-import AltFingeringPopover, { popoverWidth } from '../../ui/AltFingeringPopover';
-import s from '../Scales.module.css';
+import AltFingeringPopover, { type PlacePopover } from '../../ui/AltFingeringPopover';
+import AltPill, { PILL_HALF } from '../../ui/AltPill';
 
-/** Height the popover needs above a chart when it opens upwards (a row of mini charts with names). */
-const POPOVER_H = 148;
+const GAP = 6;          // between the pill (or the line) and the popover
+const MARGIN = 8;       // kept free at the viewport's edges
+
+/**
+ * Where a scale's popover goes, in document coordinates: below the pill, over whatever lies below (it is an overlay and
+ * may run past the paper). Above the pill's line, clear of the staff and the note, only when the room below the pill in
+ * the viewport is smaller than the popover and the room above the line is larger. Horizontally inside the viewport.
+ */
+export function placeBelowPill(pill: HTMLElement): PlacePopover {
+  return ({ width, height }) => {
+    const p = pill.getBoundingClientRect();
+    const line = (pill.closest('[data-line-box]') ?? pill).getBoundingClientRect();
+    const below = window.innerHeight - p.bottom - GAP;
+    const above = line.top - GAP;
+    const top = below < height && above > below ? line.top - GAP - height : p.bottom + GAP;
+    const centred = p.left + p.width / 2 - width / 2;
+    const left = Math.max(MARGIN, Math.min(window.innerWidth - MARGIN - width, centred));
+    return { left: Math.round(left + window.scrollX), top: Math.round(top + window.scrollY) };
+  };
+}
 
 /**
  * The pill under each chart with alternate fingerings and its popover, as on a sheet (design 4.3). onPick receives the
@@ -22,29 +39,16 @@ export function useScaleAlternatives(kind: Instrument['kind'], chartStyle: 'comp
 
   const renderUnderChart: ScaleChartSlot = (note, at) => {
     const open = openAlt === note.index;
-    const width = popoverWidth(note.options.length);
-    const tone = open ? s.pillOpen : note.overridden ? s.pillChanged : '';
-    // Below the pill; on the last line, above the chart when below would leave the paper.
-    const below = at.y + 22;
-    const top = at.lastLine && below + POPOVER_H > at.height ? at.chartTop - POPOVER_H : below;
     return (
       <>
-        <button type="button" className={`${s.pill} ${tone}`} data-print-hide="" style={{ left: at.x - 13, top: at.y }}
-          {...(note.overridden ? { 'data-overridden': 'true' } : {})}
-          aria-haspopup="dialog" aria-expanded={open} aria-label={`⇅ ${note.options.length} alternate fingerings for ${note.name}`}
+        <AltPill note={note.name} count={note.options.length} overridden={note.overridden} open={open} left={at.x - PILL_HALF} top={at.y}
           onClick={e => {
             if (open) { closeAlt(false); return; }
             anchorRef.current = e.currentTarget;
             setOpenAlt(note.index);
-          }}>
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" />
-          </svg>
-          {note.options.length}
-        </button>
-        {open && (
-          <AltFingeringPopover note={note} kind={kind} chartStyle={chartStyle}
-            left={Math.round(Math.max(0, Math.min(SHEET.systemWidth - width, at.x - width / 2)))} top={top}
+          }} />
+        {open && anchorRef.current && (
+          <AltFingeringPopover note={note} kind={kind} chartStyle={chartStyle} place={placeBelowPill(anchorRef.current)}
             anchor={anchorRef.current}
             onPick={k => { onPick(note.index, k === note.auto ? null : k); closeAlt(true); }}
             onClose={closeAlt} />

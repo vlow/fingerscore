@@ -5,7 +5,7 @@ import type { Doc } from '../../domain/types';
 import { SHEET } from '../../render/layout';
 import { useApp } from '../../state/store';
 import AltFingeringPopover, { popoverWidth } from '../../ui/AltFingeringPopover';
-import s from '../SheetPage.module.css';
+import AltPill, { PILL_HALF } from '../../ui/AltPill';
 
 /** The pill under a chart with alternate fingerings, and its popover. */
 export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['kind']) {
@@ -24,21 +24,14 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
     if (ev.options.length < 2) return null;
     const open = openAlt === ev.id;
     const width = popoverWidth(ev.options.length);
-    const tone = open ? s.pillOpen : ev.overridden ? s.pillChanged : '';
     return (
       <>
-        <button type="button" className={`${s.pill} ${tone}`} data-print-hide="" style={{ left: x - 13, top: y }}
-          aria-haspopup="dialog" aria-expanded={open} aria-label={`⇅ ${ev.options.length} alternate fingerings for ${ev.spelled.name}`}
+        <AltPill note={ev.spelled.name} count={ev.options.length} overridden={ev.overridden} open={open} left={x - PILL_HALF} top={y}
           onClick={e => {
             if (open) { closeAlt(false); return; }
             anchorRef.current = e.currentTarget;
             setOpenAlt(ev.id);
-          }}>
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" />
-          </svg>
-          {ev.options.length}
-        </button>
+          }} />
         {open && (
           <AltFingeringPopover note={{ name: ev.spelled.name, options: ev.options, chosen: ev.chosen, auto: ev.auto }} bar={ev.bar + firstBar} kind={kind} chartStyle={doc.chartStyle}
             left={Math.round(Math.max(0, Math.min(SHEET.systemWidth - width, x - width / 2)))}

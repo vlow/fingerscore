@@ -140,9 +140,32 @@ test('scales: an alternate fingering can be picked, survives a reload and resets
 
   await radio(page, 'Key', 'F · sounds A♭').click();
   const pill = page.getByRole('button', { name: /^⇅ \d+ alternate fingerings for / }).first();
+  await expect(pill).toHaveAccessibleName('⇅ 4 alternate fingerings for B♭4');
+  await pill.evaluate(e => e.scrollIntoView({ block: 'center' }));
   await pill.click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('pick a fingering');
+
+  // The popover lies inside the viewport, below its note: the B♭4 notehead and name stay uncovered.
+  const box = (await dialog.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  const bflat = page.locator('[data-note]').nth(3);
+  for (const part of [bflat.locator('[data-head]'), page.locator('[data-name]').nth(3)]) {
+    const r = (await part.boundingBox())!;
+    const overlaps = r.x < box.x + box.width && box.x < r.x + r.width && r.y < box.y + box.height && box.y < r.y + r.height;
+    expect(overlaps).toBe(false);
+  }
+  await expect(page.locator('[data-name]').nth(3)).toHaveText('B♭4');
+  // Nothing clips or covers it: the centre of the first option hits the dialog.
+  const option = (await dialog.getByRole('button').first().boundingBox())!;
+  const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('[role="dialog"]') !== null,
+    [option.x + option.width / 2, option.y + option.height / 2]);
+  expect(hit).toBe(true);
+
   // The second option, or the first that is not the automatic choice when the second is.
   await dialog.getByRole('button').filter({ hasNotText: 'auto' }).first().click();
   const summary = page.getByText(/· 1 changed by you$/);

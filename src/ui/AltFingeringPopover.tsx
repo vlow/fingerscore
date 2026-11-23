@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { FingeringOption } from '../domain/fingerings';
 import type { Instrument } from '../domain/instruments';
 import { FingeringChart } from '../render/FingeringChart';
@@ -8,6 +9,11 @@ import s from './AltFingeringPopover.module.css';
 export const OPTION_PITCH = 84;
 export const POPOVER_PAD = 24;
 export const popoverWidth = (options: number) => options * OPTION_PITCH + POPOVER_PAD;
+/** Height of a popover with one row of options, used until the real height is measured. */
+export const POPOVER_HEIGHT = 148;
+
+/** Places a popover of the given size in document coordinates (left and top of its box). */
+export type PlacePopover = (size: { width: number; height: number }) => { left: number; top: number };
 
 /** The note whose fingerings are offered: its name, options, current choice and the app's own pick. */
 export interface PopoverNote { name: string; options: FingeringOption[]; chosen: number | null | undefined; auto: number | null | undefined }
@@ -15,7 +21,11 @@ export interface PopoverNote { name: string; options: FingeringOption[]; chosen:
 interface Props {
   /** bar: shown in the title on a sheet; a scale has none. */
   note: PopoverNote; bar?: number; kind: Instrument['kind']; chartStyle: 'compact' | 'full';
-  left: number; top: number;
+  /**
+   * Either left/top in the coordinates of the positioned system or line it sits in (the sheet), or place: the popover
+   * is rendered into the document body, outside any clipping scroll box, where place puts it (the Scales page).
+   */
+  left?: number; top?: number; place?: PlacePopover;
   anchor: HTMLElement | null;
   onPick(index: number): void;
   /** focusAnchor: move focus back to the pill that opened the popover. */
@@ -24,10 +34,19 @@ interface Props {
 
 const INTERACTIVE = 'a, button, input, select, textarea, [tabindex]';
 
-/** Alternate fingerings for one note (SPEC §8.5), positioned in the coordinates of the system or scale line. */
+/** Alternate fingerings for one note (SPEC §8.5). */
 export default function AltFingeringPopover(p: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const { onClose, anchor } = p;
+  const { onClose, anchor, place } = p;
+  const width = popoverWidth(p.note.options.length);
+
+  // Placed popovers start from the estimated height and move once their real height is known, before the first paint.
+  const [placed, setPlaced] = useState(() => place?.({ width, height: POPOVER_HEIGHT }) ?? null);
+  useLayoutEffect(() => {
+    const height = ref.current?.offsetHeight ?? 0;
+    if (!place || height === 0 || height === POPOVER_HEIGHT) return;
+    setPlaced(place({ width, height }));
+  }, []);   // measured once, when the popover opens
 
   useEffect(() => {
     ref.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
@@ -55,9 +74,9 @@ export default function AltFingeringPopover(p: Props) {
 
   const { note } = p;
   const where = p.bar === undefined ? '' : `, bar ${p.bar}`;
-  return (
+  const box = (
     <div ref={ref} role="dialog" aria-label={`Alternate fingerings for ${note.name}${where}`} className={s.pop}
-      data-print-hide="" style={{ left: p.left, top: p.top, width: popoverWidth(note.options.length) }}>
+      data-print-hide="" style={{ left: placed?.left ?? p.left, top: placed?.top ?? p.top, width }}>
       <div className={s.title}>
         <span>{note.name}{p.bar === undefined ? '' : ` · bar ${p.bar}`}</span> <span className={s.hint}>— pick a fingering</span>
       </div>
@@ -74,4 +93,5 @@ export default function AltFingeringPopover(p: Props) {
       </div>
     </div>
   );
+  return placed ? createPortal(box, document.body) : box;
 }

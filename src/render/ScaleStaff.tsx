@@ -36,10 +36,10 @@ interface Placed { note: ScaleNote; index: number; options: FingeringOption[]; c
 /** A note with two or more fingerings, as the chart slot sees it. */
 export interface ScaleChartNote { index: number; name: string; options: FingeringOption[]; chosen: number; auto: number; overridden: boolean }
 /**
- * Where the slot sits, in the coordinates of its line's box: x of the note, y just under the chosen chart, chartTop
- * the chart's top edge, height the line's height; line is the line index, lastLine whether it is the last.
+ * Where the slot sits, in the coordinates of its line's box ([data-line-box]): x of the note, y just under the chosen
+ * chart; line is the line index, lastLine whether it is the last.
  */
-export interface ChartSlotPlace { x: number; y: number; chartTop: number; height: number; line: number; lastLine: boolean }
+export interface ChartSlotPlace { x: number; y: number; line: number; lastLine: boolean }
 export type ScaleChartSlot = (note: ScaleChartNote, at: ChartSlotPlace) => ReactNode;
 
 /** Greedy word wrap of an option name into lines of at most `max` characters. */
@@ -101,7 +101,7 @@ function ScaleLine(p: LineProps) {
 
   const slot = p.renderUnderChart;
   return (
-    <div className={styles.lineBox} style={{ width: WIDTH, height }}>
+    <div className={styles.lineBox} data-line-box="" style={{ width: WIDTH, height }}>
       <p className={styles.srOnly}>{p.notes.map(n => n.note.spelled.name + (n.note.state === 'ext' ? ' (extended)' : '')).join(', ')}</p>
       <svg data-testid="scale-line" aria-hidden="true" className={styles.line}
         width={WIDTH} height={height} viewBox={`0 ${top} ${WIDTH} ${height}`}>
@@ -153,7 +153,7 @@ function ScaleLine(p: LineProps) {
         <Fragment key={n.index}>
           {slot(
             { index: n.index, name: n.note.spelled.name, options: n.options, chosen: n.chosen, auto: n.auto, overridden: n.overridden },
-            { x: xOf(k), y: chartY + CHART_H + 4 - top, chartTop: chartY - top, height, line: p.line, lastLine: p.last },
+            { x: xOf(k), y: chartY + CHART_H + 4 - top, line: p.line, lastLine: p.last },
           )}
         </Fragment>
       ))}

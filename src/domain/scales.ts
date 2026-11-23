@@ -146,8 +146,8 @@ export function validPick(value: unknown, options: FingeringOption[]): value is 
 
 /**
  * The sheet's chooser along the scale's note sequence (design 4.3), with the player's picks (note index → option index)
- * as fixed points. auto is the pick without that note's own override, with the others' as fixed points where they hold,
- * as on a sheet. A note without options breaks the run.
+ * as fixed points. A picked note's auto comes from a chooser pass without any picks, as on a sheet (derive); an unpicked
+ * note's auto is its choice with the picks in place. A note without options breaks the run.
  */
 export function scaleFingerings(id: InstId, notes: ScaleNote[], recorderSystem: RecorderSystem, overrides: Record<number, number>): ScaleFingering[] {
   const options = notes.map(n => optionsFor(id, n.written, recorderSystem));

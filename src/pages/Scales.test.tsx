@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 import { sampleDoc } from '../domain/fixture';
+import { buildScale, scaleFingerings } from '../domain/scales';
 import { useApp } from '../state/store';
 import Scales from './Scales';
 
@@ -288,6 +289,52 @@ describe('choosable alternate fingerings', () => {
     expect(screen.getByText('2 notes have alternate fingerings · 1 changed by you')).toBeInTheDocument();
     expect(pills()[1]).toHaveAttribute('data-overridden', 'true');
     expect(JSON.parse(localStorage.getItem('fingerscore.scales')!).overrides).toEqual({ 4: 1 });
+  });
+
+  it('stored picks: only plain index keys, and never the automatic option', () => {
+    const notes = buildScale({ inst: 'asax', scale: 'maj', tonicPc: 5, range: 'one', direction: 'up' }).notes;
+    const auto = scaleFingerings('asax', notes, 'baroque', {})[3].auto!;   // B♭4
+    const other = auto === 0 ? 1 : 0;
+    localStorage.setItem('fingerscore.scales', JSON.stringify({
+      inst: 'asax', scale: 'maj', tonicPc: 5, range: 'one', direction: 'up', overrides: { '04': other, '3.0': other, ' 3': other, '+3': other, 4: 1 },
+    }));
+    renderScales();
+    expect(JSON.parse(localStorage.getItem('fingerscore.scales')!).overrides).toEqual({ 4: 1 });
+    cleanup();
+    localStorage.setItem('fingerscore.scales', JSON.stringify({
+      inst: 'asax', scale: 'maj', tonicPc: 5, range: 'one', direction: 'up', overrides: { 3: auto, 4: 1 },
+    }));
+    renderScales();
+    expect(screen.getByText('2 notes have alternate fingerings · 1 changed by you')).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('fingerscore.scales')!).overrides).toEqual({ 4: 1 });
+  });
+
+  it('keyboard: Tab reaches the pill after the controls, Enter opens it on the current option, Esc returns', async () => {
+    renderScales();
+    await fMajor();
+    screen.getByLabelText('Note names').focus();
+    await user.tab();
+    const pill = pills()[0];
+    expect(pill).toHaveFocus();
+    await user.keyboard('{Enter}');
+    const dialog = screen.getByRole('dialog', { name: 'Alternate fingerings for B♭4' });
+    const current = within(dialog).getAllByRole('button').find(b => b.getAttribute('aria-pressed') === 'true')!;
+    expect(current).toHaveFocus();
+    expect(current).toHaveTextContent('auto');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(pill).toHaveFocus();
+    await user.tab();
+    expect(pills()[1]).toHaveFocus();
+  });
+
+  it('the popover is an overlay outside the paper, so the paper cannot clip it', async () => {
+    renderScales();
+    await fMajor();
+    await user.click(pills()[0]);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.parentElement).toBe(document.body);
+    expect(screen.getByRole('region', { name: 'Scale' })).not.toContainElement(dialog);
   });
 
   it('pills, popover and summary do not print', async () => {

@@ -62,13 +62,15 @@ function load(preferred: InstId): Settings {
     showNames: bool(r.showNames, true),
     overrides: {},
   };
-  // A pick is kept only when its note exists in the rebuilt scale and its option index is valid for that note.
+  // A pick is kept only when its key is a note index of the rebuilt scale, its option index is valid for that note and
+  // it differs from the automatic choice (which would count as changed without changing anything).
   const stored = r.overrides !== null && typeof r.overrides === 'object' && !Array.isArray(r.overrides) ? r.overrides as Record<string, unknown> : {};
   const notes = buildScale(st).notes;
   const fingerings = scaleFingerings(st.inst, notes, st.recorderSystem, {});
   for (const [key, value] of Object.entries(stored)) {
+    if (!/^\d+$/.test(key)) continue;
     const index = Number(key);
-    if (Number.isInteger(index) && index >= 0 && index < notes.length && validPick(value, fingerings[index].options)) st.overrides[index] = value;
+    if (index < notes.length && validPick(value, fingerings[index].options) && value !== fingerings[index].auto) st.overrides[index] = value;
   }
   return st;
 }
@@ -77,9 +79,11 @@ function load(preferred: InstId): Settings {
 export default function Scales() {
   const [st, setSt] = useState<Settings>(() => load(useApp.getState().instId));
   const set = (patch: Partial<Settings>) => {
-    const reset = SEQUENCE.some(k => k in patch && patch[k] !== st[k]);
-    if (reset) closeAlt(false);
-    setSt(prev => ({ ...prev, ...patch, ...(reset ? { overrides: {} } : {}) }));
+    if (SEQUENCE.some(k => k in patch)) closeAlt(false);
+    setSt(prev => {
+      const reset = SEQUENCE.some(k => k in patch && patch[k] !== prev[k]);
+      return { ...prev, ...patch, ...(reset ? { overrides: {} } : {}) };
+    });
   };
   const pickFingering = (index: number, option: number | null) => setSt(prev => {
     const overrides = { ...prev.overrides };

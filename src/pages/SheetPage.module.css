@@ -302,51 +302,6 @@
   border: 0;
 }
 
-/* Alternate-fingering pill under a chart (prototype .altb), in system coordinates. */
-.pill {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 26px;
-  height: 16px;
-  padding: 0;
-  border: 1px solid var(--ghost);
-  border-radius: 8px;
-  background: var(--card);
-  color: var(--text);
-  font: 700 10px/1 'Atkinson Hyperlegible', system-ui, sans-serif;
-  cursor: pointer;
-}
-
-/* Invisible 36 × 36 touch target around the small pill. */
-.pill::before {
-  content: '';
-  position: absolute;
-  inset: -10px -5px;
-}
-
-.pill:hover {
-  border-color: var(--muted);
-}
-
-.pillChanged {
-  border-color: var(--teal);
-  background: var(--teal);
-  color: #ffffff;
-}
-
-.pillChanged:hover {
-  background: var(--teal-hover);
-}
-
-.pillOpen {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: #ffffff;
-}
-
 /* Once the sidebar wraps above the main column, let it use the full width. */
 @media (max-width: 960px) {
   .side {
