@@ -66,6 +66,7 @@ describe('defaultBuildOptions', () => {
 });
 
 const message = (p: Promise<unknown>) => p.then(() => null, (e: ImportError) => e.userMessage);
+const formatNamed = (name: string) => FORMATS.find(f => f.name === name)!;
 const bareMidi = () => new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid'));
 
 describe('parseFile', () => {
@@ -77,8 +78,17 @@ describe('parseFile', () => {
   });
 
   it('refuses a file over 20 MB before reading it', async () => {
+    const read = vi.spyOn(FileReader.prototype, 'readAsArrayBuffer');
     const big = new File([new Uint8Array(21 * 1024 * 1024)], 'big.mid');
     expect(await message(parseFile(big))).toBe('"big.mid" is larger than 20 MB and can\'t be opened.');
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it('draws the size limit at exactly 20 MB', async () => {
+    const limit = 20 * 1024 * 1024;
+    const tooBig = '"a.mid" is larger than 20 MB and can\'t be opened.';
+    expect(await message(parseFile(new File([new Uint8Array(limit + 1)], 'a.mid')))).toBe(tooBig);
+    expect(await message(parseFile(new File([new Uint8Array(limit)], 'a.mid')))).toBe('"a.mid" could not be read as a MIDI file.');
   });
 
   it('reports an unreadable file', async () => {
@@ -89,8 +99,18 @@ describe('parseFile', () => {
   });
 
   it('reports a parser chunk that fails to load', async () => {
-    vi.spyOn(FORMATS[0], 'load').mockRejectedValue(new Error('Failed to fetch dynamically imported module'));
+    vi.spyOn(formatNamed('MIDI'), 'load').mockRejectedValue(new Error('Failed to fetch dynamically imported module'));
     expect(await message(parseFile(new File([bareMidi()], 'a.mid')))).toBe(LOAD_FAILED);
+  });
+
+  it('a later call loads the parser again after a failed load', async () => {
+    const real = formatNamed('MIDI').load;
+    vi.spyOn(formatNamed('MIDI'), 'load')
+      .mockRejectedValueOnce(new Error('Failed to fetch dynamically imported module'))
+      .mockImplementation(real);
+    const file = () => new File([bareMidi()], 'a.mid');
+    expect(await message(parseFile(file()))).toBe(LOAD_FAILED);
+    expect((await parseFile(file())).format).toBe('MIDI');
   });
 
   it('rethrows an ImportError from the parser', async () => {

@@ -51,12 +51,12 @@ export async function parseFile(file: File): Promise<ParsedSong> {
     throw new ImportError(`"${file.name}" is not a format fingerscore reads. Use MIDI, MusicXML, MuseScore or ABC.`);
   }
   if (file.size > MAX_BYTES) throw new ImportError(`"${file.name}" is larger than 20 MB and can't be opened.`);
-  const unreadable = new ImportError(`"${file.name}" could not be read as ${format.article} ${format.name} file.`);
+  const unreadable = () => new ImportError(`"${file.name}" could not be read as ${format.article} ${format.name} file.`);
   let bytes: Uint8Array;
   try {
     bytes = await readBytes(file);
   } catch {
-    throw unreadable;
+    throw unreadable();
   }
   let parse: Parser;
   try {
@@ -67,7 +67,7 @@ export async function parseFile(file: File): Promise<ParsedSong> {
   try {
     return await parse(file.name, bytes);
   } catch (e) {
-    throw e instanceof ImportError ? e : unreadable;
+    throw e instanceof ImportError ? e : unreadable();
   }
 }
 
