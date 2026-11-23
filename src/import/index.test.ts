@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { DEFAULT_PREFS } from '../domain/transpose';
-import { defaultBuildOptions } from './index';
+import { ACCEPT, defaultBuildOptions, FORMATS, parseFile } from './index';
 import { parseMidi } from './midi';
+import * as midiModule from './midi';
+import { LOAD_FAILED } from '../loadFailed';
 import { ImportError, type ParsedSong, type ParsedTrack } from './types';
 
 const demo = () => parseMidi('Auld_Lang_Syne.mid', new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid')));
@@ -60,5 +62,53 @@ describe('defaultBuildOptions', () => {
       tr('drums', { percussion: true, notes: chord(0, 36, 38, 42) }),
     ]);
     expect(defaultBuildOptions(s, 'asax', DEFAULT_PREFS).chordsFrom).toBeNull();
+  });
+});
+
+const message = (p: Promise<unknown>) => p.then(() => null, (e: ImportError) => e.userMessage);
+const bareMidi = () => new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid'));
+
+describe('parseFile', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('refuses an extension outside the table', async () => {
+    expect(await message(parseFile(new File(['x'], 'song.wav'))))
+      .toBe('"song.wav" is not a format fingerscore reads. Use MIDI, MusicXML, MuseScore or ABC.');
+  });
+
+  it('refuses a file over 20 MB before reading it', async () => {
+    const big = new File([new Uint8Array(21 * 1024 * 1024)], 'big.mid');
+    expect(await message(parseFile(big))).toBe('"big.mid" is larger than 20 MB and can\'t be opened.');
+  });
+
+  it('reports an unreadable file', async () => {
+    vi.spyOn(FileReader.prototype, 'readAsArrayBuffer').mockImplementation(function (this: FileReader) {
+      queueMicrotask(() => this.onerror?.(new ProgressEvent('error') as ProgressEvent<FileReader>));
+    });
+    expect(await message(parseFile(new File(['x'], 'a.mid')))).toBe('"a.mid" could not be read as a MIDI file.');
+  });
+
+  it('reports a parser chunk that fails to load', async () => {
+    vi.spyOn(FORMATS[0], 'load').mockRejectedValue(new Error('Failed to fetch dynamically imported module'));
+    expect(await message(parseFile(new File([bareMidi()], 'a.mid')))).toBe(LOAD_FAILED);
+  });
+
+  it('rethrows an ImportError from the parser', async () => {
+    vi.spyOn(midiModule, 'parseMidi').mockImplementation(() => { throw new ImportError('own words'); });
+    expect(await message(parseFile(new File([bareMidi()], 'a.mid')))).toBe('own words');
+  });
+
+  it('words any other parser failure as a read failure, with the right article', async () => {
+    expect(await message(parseFile(new File(['not midi'], 'a.mid')))).toBe('"a.mid" could not be read as a MIDI file.');
+    expect(await message(parseFile(new File(['<nope'], 'a.musicxml')))).toBe('"a.musicxml" could not be read as a MusicXML file.');
+  });
+
+  it('parses a .mid file', async () => {
+    const s = await parseFile(new File([bareMidi()], 'Auld.MID'));
+    expect(s.format).toBe('MIDI');
+  });
+
+  it('accepts the table extensions and .json', () => {
+    expect(ACCEPT).toBe('.mid,.midi,.musicxml,.xml,.mxl,.json');
   });
 });

@@ -234,10 +234,6 @@ describe('timing', () => {
 });
 
 describe('parseFile', () => {
-  it('refuses other extensions', async () => {
-    await expect(parseFile(new File(['x'], 'song.abc'))).rejects.toMatchObject({ userMessage: '"song.abc" is not a format fingerscore reads yet. Use MIDI or MusicXML.' });
-  });
-
   it('routes .mid to the MIDI reader', async () => {
     const s = await parseFile(new File([bareMidi()], 'bare.MID'));
     expect(s.format).toBe('MIDI');

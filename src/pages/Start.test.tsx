@@ -148,7 +148,7 @@ it('a wrong file shows the error by name', async () => {
   renderStart();
   const u = userEvent.setup({ applyAccept: false });
   await u.upload(screen.getByLabelText(/drop a song/i), new File(['x'], 'tune.abc'));
-  expect(await screen.findByRole('alert')).toHaveTextContent('"tune.abc" is not a format fingerscore reads yet.');
+  expect(await screen.findByRole('alert')).toHaveTextContent('"tune.abc" is not a format fingerscore reads.');
   await u.click(screen.getByRole('button', { name: 'Try another file' }));
   expect(screen.getByText('Drop a song or a saved sheet here')).toBeInTheDocument();
 });
@@ -180,7 +180,7 @@ it('a file dropped on the ready state is read, not opened by the browser', async
   await screen.findByText(/Auld_Lang_Syne.mid — Ready/);
   expect(fireEvent.dragOver(screen.getByTestId('drop-zone'))).toBe(false);   // false = default prevented
   expect(drop(new File(['x'], 'tune.abc'))).toBe(false);
-  expect(await screen.findByRole('alert')).toHaveTextContent('"tune.abc" is not a format fingerscore reads yet.');
+  expect(await screen.findByRole('alert')).toHaveTextContent('"tune.abc" is not a format fingerscore reads.');
 });
 
 it('a file dropped on the error state is read', async () => {

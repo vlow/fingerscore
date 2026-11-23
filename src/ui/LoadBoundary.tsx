@@ -1,7 +1,8 @@
 import { Component, type ReactNode } from 'react';
+import { LOAD_FAILED } from '../loadFailed';
 import s from './LoadBoundary.module.css';
 
-export const LOAD_FAILED = 'This part of fingerscore could not be loaded. Check your connection and reload the page.';
+export { LOAD_FAILED };
 
 /**
  * Catches a render error of its subtree, chiefly a lazy chunk whose import failed (a stale hash after a redeploy,

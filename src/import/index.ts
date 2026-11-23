@@ -1,12 +1,34 @@
+import { LOAD_FAILED } from '../loadFailed';
 import type { Prefs } from '../domain/transpose';
 import type { InstId } from '../domain/types';
 import type { BuildOptions } from './buildDoc';
 import { analyseTracks, usableTracks } from './melody';
-import { parseMidi } from './midi';
-import { parseMusicXml } from './musicxml';
 import { ImportError, type ParsedSong } from './types';
 
-export const ACCEPT = '.mid,.midi,.musicxml,.xml,.mxl,.json';
+export type Parser = (file: string, bytes: Uint8Array) => Promise<ParsedSong>;
+
+export interface Format {
+  name: 'MIDI' | 'MusicXML' | 'MuseScore' | 'ABC';
+  extensions: string[];
+  article: 'a' | 'an';
+  /** Loads the parser's chunk on first use, so its libraries stay out of the entry chunk. */
+  load: () => Promise<Parser>;
+}
+
+export const FORMATS: Format[] = [
+  {
+    name: 'MIDI', extensions: ['.mid', '.midi'], article: 'a',
+    load: async () => { const { parseMidi } = await import('./midi'); return async (file, bytes) => parseMidi(file, bytes); },
+  },
+  {
+    name: 'MusicXML', extensions: ['.musicxml', '.xml', '.mxl'], article: 'a',
+    load: async () => (await import('./musicxml')).parseMusicXml,
+  },
+];
+
+export const ACCEPT = [...FORMATS.flatMap(f => f.extensions), '.json'].join(',');
+
+const MAX_BYTES = 20 * 1024 * 1024;
 
 function readBytes(file: File): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
@@ -20,18 +42,29 @@ function readBytes(file: File): Promise<Uint8Array> {
 export async function parseFile(file: File): Promise<ParsedSong> {
   const dot = file.name.lastIndexOf('.');
   const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : '';
-  const isMidi = ext === '.mid' || ext === '.midi';
-  const isXml = ext === '.musicxml' || ext === '.xml' || ext === '.mxl';
-  if (!isMidi && !isXml) {
-    throw new ImportError(`"${file.name}" is not a format fingerscore reads yet. Use MIDI or MusicXML.`);
+  const format = FORMATS.find(f => f.extensions.includes(ext));
+  if (!format) {
+    throw new ImportError(`"${file.name}" is not a format fingerscore reads. Use MIDI, MusicXML, MuseScore or ABC.`);
   }
+  if (file.size > MAX_BYTES) throw new ImportError(`"${file.name}" is larger than 20 MB and can't be opened.`);
+  const unreadable = new ImportError(`"${file.name}" could not be read as ${format.article} ${format.name} file.`);
   let bytes: Uint8Array;
   try {
     bytes = await readBytes(file);
   } catch {
-    throw new ImportError(`"${file.name}" could not be read as a ${isMidi ? 'MIDI' : 'MusicXML'} file.`);
+    throw unreadable;
   }
-  return isMidi ? parseMidi(file.name, bytes) : parseMusicXml(file.name, bytes);
+  let parse: Parser;
+  try {
+    parse = await format.load();
+  } catch {
+    throw new ImportError(LOAD_FAILED);
+  }
+  try {
+    return await parse(file.name, bytes);
+  } catch (e) {
+    throw e instanceof ImportError ? e : unreadable;
+  }
 }
 
 /** Options for building the sheet from one track: top note, lyrics and chord symbols from the most likely source. */

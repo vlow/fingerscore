@@ -14,5 +14,5 @@ export interface Doc {
   title: string; subtitle: string;
   chartStyle: 'compact' | 'full'; recorderSystem: 'baroque' | 'german';
   show: { fingerings: boolean; chords: boolean; lyrics: boolean; raiseExtensions: boolean };
-  source: { file: string; format: 'MIDI' | 'MusicXML' | 'sample' | 'file' | 'library'; track: string; trackCount: number; simplified: boolean };
+  source: { file: string; format: 'MIDI' | 'MusicXML' | 'MuseScore' | 'ABC' | 'sample' | 'file' | 'library'; track: string; trackCount: number; simplified: boolean };
 }

@@ -41,7 +41,7 @@ const BulkCard = lazy(() => import('../ui/BulkCard'));
 const SIMPLIFIED = 'Rhythm simplified: triplets and notes shorter than a sixteenth were rounded.';
 const SHEET_LABEL = 'Sheet music. Arrow keys select a note, Enter plays from it.';
 /** Sources that went through the import steps; a sheet opened from a file or the library did not. */
-const IMPORTED: Doc['source']['format'][] = ['MIDI', 'MusicXML', 'sample'];
+const IMPORTED: Doc['source']['format'][] = ['MIDI', 'MusicXML', 'MuseScore', 'ABC', 'sample'];
 
 export default function SheetPage() {
   const doc = useApp(st => st.doc);

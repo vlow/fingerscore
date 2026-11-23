@@ -111,6 +111,12 @@ describe('sheet file', () => {
     expect(r.ok).toBe(true);
   });
 
+  it.each(['MuseScore', 'ABC'])('keeps the import format %s', format => {
+    const r = broken(d => { d.source = { file: 'x', format, track: '1', trackCount: 2, simplified: false }; });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.doc.source.format).toBe(format);
+  });
+
   it('repairs what can be repaired', () => {
     const r = broken(d => {
       delete d.title; delete d.show; d.chartStyle = 'fancy'; d.extra = 1; d.tempo = 999;

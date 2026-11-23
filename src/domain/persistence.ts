@@ -99,7 +99,7 @@ function validChord(v: unknown): ChordSym | null {
 function validSource(v: unknown): Doc['source'] {
   const fallback: Doc['source'] = { file: '', format: 'file', track: '', trackCount: 0, simplified: false };
   if (!isObject(v)) return fallback;
-  const formats = ['MIDI', 'MusicXML', 'sample', 'file', 'library'];
+  const formats = ['MIDI', 'MusicXML', 'MuseScore', 'ABC', 'sample', 'file', 'library'];
   const { file, format, track, trackCount, simplified } = v;
   if (!isStr(file) || !isStr(format) || !formats.includes(format) || !isStr(track) || !isNum(trackCount) || !isBool(simplified)) return fallback;
   return { file, format: format as Doc['source']['format'], track, trackCount, simplified };
