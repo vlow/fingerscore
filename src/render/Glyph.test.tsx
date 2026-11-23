@@ -110,7 +110,7 @@ describe('glyph geometry in sheet pixels', () => {
   });
 
   it('time signature digits are 20px tall, numerator in the upper half, denominator in the lower half', () => {
-    for (const ts of [[4, 4], [3, 4], [2, 4], [6, 8]] as TimeSig[]) {
+    for (const ts of [[4, 4], [3, 4], [2, 4], [6, 8], [2, 2]] as TimeSig[]) {
       const { container } = render(<svg><TimeSigDigits ts={ts} x={50} y={B} /></svg>);
       const [num, den] = [...container.querySelectorAll('path')].map(el => boxOf(el));
       for (const [b, top] of [[num, TOP], [den, TOP + 20]] as const) {

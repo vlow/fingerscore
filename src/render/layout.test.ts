@@ -41,6 +41,10 @@ describe('layoutSheet', () => {
     const doc44 = mkDoc([bar44of(6,6,3,3,6,12,12)]);
     expect(layoutSheet(doc44, derive(doc44, DEFAULT_PREFS)).beams.map(g => [g.ids.length, g.beams])).toEqual([[2,1],[3,'mixed']]);
   });
+  it('beams in 2/2 group four eighths per half-note beat', () => {
+    const doc = mkDoc([{ ev: Array.from({ length: 8 }, () => [64, 6] as [number, number]) }], [2,2]);
+    expect(layoutSheet(doc, derive(doc, DEFAULT_PREFS)).beams.map(g => g.ids.length)).toEqual([4,4]);
+  });
   it('first system has no number; without a pickup bars count from 1', () => {
     const doc = mkDoc([bar44of(12,12,12,12), bar44of(12,12,12,12), bar44of(12,12,12,12), bar44of(12,12,12,12), bar44of(48)]);
     const L = layoutSheet(doc, derive(doc, DEFAULT_PREFS));

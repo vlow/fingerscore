@@ -95,6 +95,9 @@ describe('sheet file', () => {
     expect(r).toEqual({ ok: false, reason: 'damaged' });
   });
 
+  it('accepts cut time', () => {
+    expect(broken(d => { d.timeSig = [2, 2]; }).ok).toBe(true);   // the sample's bars already hold 48 ticks
+  });
   it('accepts a pickup bar shorter than the meter', () => {
     const r = broken(d => {
       const bar = d.score[0];

@@ -70,7 +70,7 @@ describe('parseMidi', () => {
     const bytes = midiBytes([track([meta('timeSignature', { numerator: 5, denominator: 4, metronome: 24, thirtyseconds: 8 })], note(0, 60))]);
     expect(() => parseMidi('five.mid', bytes)).toThrowError(ImportError);
     try { parseMidi('five.mid', bytes); } catch (e) {
-      expect((e as ImportError).userMessage).toBe('five.mid is in 5/4. fingerscore reads 4/4, 3/4, 2/4 and 6/8 for now.');
+      expect((e as ImportError).userMessage).toBe('five.mid is in 5/4. fingerscore reads 4/4, 3/4, 2/4, 6/8 and 2/2 for now.');
     }
   });
 

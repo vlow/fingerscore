@@ -132,6 +132,12 @@ describe('Paper', () => {
     expect(screen.getByPlaceholderText('Add a subtitle (composer, arranger…)')).toBeInTheDocument();
   });
 
+  it('a 2/2 document draws the digits 2 over 2', () => {
+    const { container } = renderDoc(mkDoc([{ ev: [[60, 48]] }], [2, 2]));
+    const digits = [...container.querySelectorAll('[data-timesig="2/2"] path')];
+    expect(digits.map(e => e.getAttribute('data-digit'))).toEqual(['digit2', 'digit2']);
+  });
+
   it('first system shows the time signature, later systems a bar number', () => {
     const { container } = setup('xc');
     const systems = container.querySelectorAll('[data-testid="system"]');

@@ -1,7 +1,6 @@
 import { Midi } from '@tonejs/midi';
 import { parseMidi as parseMidiEvents } from 'midi-file';
-import { isSupportedTimeSig } from '../domain/time';
-import type { TimeSig } from '../domain/types';
+import { songTimeSig } from './meter';
 import { ImportError, type ParsedSong, type ParsedTrack } from './types';
 
 const PERCUSSION_CHANNEL = 9;
@@ -89,15 +88,7 @@ export function parseMidi(file: string, bytes: Uint8Array): ParsedSong {
   }
   const ppq = midi.header.ppq;
 
-  const sigs = midi.header.timeSignatures;
-  const first = sigs[0]?.timeSignature ?? [4, 4];
-  if (!isSupportedTimeSig(first[0], first[1])) {
-    throw new ImportError(`${file} is in ${first[0]}/${first[1]}. fingerscore reads 4/4, 3/4, 2/4 and 6/8 for now.`);
-  }
-  if (sigs.some(s => s.timeSignature[0] !== first[0] || s.timeSignature[1] !== first[1])) {
-    throw new ImportError(`${file} changes its time signature. fingerscore reads one time signature per song for now.`);
-  }
-  const timeSig = [first[0], first[1]] as TimeSig;
+  const timeSig = songTimeSig(file, midi.header.timeSignatures.map(s => s.timeSignature as [number, number]));
   const barLength = (timeSig[0] * 4) / timeSig[1];
 
   const ks = midi.header.keySignatures[0];

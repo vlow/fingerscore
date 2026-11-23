@@ -8,11 +8,12 @@ export function barCap(ts: TimeSig): number {
 }
 
 export function beatTicks(ts: TimeSig): number {
-  return ts[1] === 8 ? 18 : 12;
+  if (ts[1] === 8) return 18;
+  return ts[1] === 2 ? 24 : 12;
 }
 
 export function isSupportedTimeSig(n: number, d: number): boolean {
-  return (n === 4 && d === 4) || (n === 3 && d === 4) || (n === 2 && d === 4) || (n === 6 && d === 8);
+  return (n === 4 && d === 4) || (n === 3 && d === 4) || (n === 2 && d === 4) || (n === 6 && d === 8) || (n === 2 && d === 2);
 }
 
 export function splitDuration(ticks: number): number[] {

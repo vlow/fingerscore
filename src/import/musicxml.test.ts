@@ -16,6 +16,13 @@ const n = (step: string, octave: number, duration: number) =>
   `<note><pitch><step>${step}</step><octave>${octave}</octave></pitch><duration>${duration}</duration><voice>1</voice></note>`;
 
 describe('parseMusicXml', () => {
+  it('cut time is 2/2', async () => {
+    const q = (step: string) => n(step, 4, 1);
+    const s = await parseMusicXml('cut.musicxml', xml(`<attributes><divisions>1</divisions><time symbol="cut"><beats>2</beats><beat-type>2</beat-type></time></attributes>${q('C')}${q('D')}${q('E')}${q('F')}`));
+    expect(s.timeSig).toEqual([2, 2]);
+    expect(buildDoc(s, opts(s)).score).toHaveLength(1);
+  });
+
   it('simple: tracks, pickup, key, lyrics, chords, repeats', async () => {
     const s = await load('simple.musicxml');
     expect(s).toMatchObject({ format: 'MusicXML', timeSig: [4, 4], key: { tonicPc: 0, mode: 'major' }, pickup: 1, tempo: 90 });
@@ -57,7 +64,7 @@ describe('parseMusicXml', () => {
   });
 
   it('7/8 is refused', async () => {
-    await expect(load('seven-eight.musicxml')).rejects.toMatchObject({ userMessage: 'seven-eight.musicxml is in 7/8. fingerscore reads 4/4, 3/4, 2/4 and 6/8 for now.' });
+    await expect(load('seven-eight.musicxml')).rejects.toMatchObject({ userMessage: 'seven-eight.musicxml is in 7/8. fingerscore reads 4/4, 3/4, 2/4, 6/8 and 2/2 for now.' });
   });
 
   it('.mxl container', async () => {

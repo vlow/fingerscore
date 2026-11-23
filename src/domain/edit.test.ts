@@ -94,6 +94,11 @@ describe('lengths', () => {
     expect(fits(d, d.score[1].ev[0].id, 48)).toBe(false); const a = addBarAfter(d, 1)!; expect(a.doc.score[2]).toMatchObject({ cap: 36, rs: false, re: false, volta: '' });
     expect(a.doc.score[2].ev).toHaveLength(1); expect(a.doc.score[2].ev[0]).toMatchObject({ r: true, d: 36, m: 62 }); expect(a.selectId).toBe(a.doc.score[2].ev[0].id);
   });
+  it('2/2: a whole note fits at the bar start and a new bar holds 48 ticks', () => {
+    const d = mkDoc([{ ev: [[60, 24], [62, 24]] }], [2, 2]);
+    expect(shape(ok(setLength(d, d.score[0].ev[0].id, 48)))).toEqual(['n48']);
+    expect(addBarAfter(d, 0)!.doc.score[1].cap).toBe(48);
+  });
   it('6/8 bar capacity', () => { const d = mkDoc([{ ev: [[60, 36]] }], [6, 8]); expect(addBarAfter(d, 0)!.doc.score[1].cap).toBe(36); });
   it('shortening a tied note clears its tie', () => {
     const d = mkDoc([{ ev: [[60, 24, { tie: true }], [60, 24]] }]);

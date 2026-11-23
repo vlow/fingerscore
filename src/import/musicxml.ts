@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { isSupportedTimeSig } from '../domain/time';
+import { songTimeSig } from './meter';
 import type { TimeSig } from '../domain/types';
 import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './types';
 
@@ -69,14 +69,7 @@ function parseDoc(file: string, source: string): Element {
 function readTimeSig(file: string, root: Element): TimeSig {
   const sigs = Array.from(root.getElementsByTagName('time')).map(t => [num(text(t, 'beats')), num(text(t, 'beat-type'))] as const)
     .filter((s): s is readonly [number, number] => s[0] !== null && s[1] !== null);
-  const first = sigs[0] ?? [4, 4];
-  if (!isSupportedTimeSig(first[0], first[1])) {
-    throw new ImportError(`${file} is in ${first[0]}/${first[1]}. fingerscore reads 4/4, 3/4, 2/4 and 6/8 for now.`);
-  }
-  if (sigs.some(s => s[0] !== first[0] || s[1] !== first[1])) {
-    throw new ImportError(`${file} changes its time signature. fingerscore reads one time signature per song for now.`);
-  }
-  return [first[0], first[1]] as TimeSig;
+  return songTimeSig(file, sigs);
 }
 
 const mod12 = (x: number): number => ((x % 12) + 12) % 12;
