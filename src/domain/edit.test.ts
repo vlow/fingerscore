@@ -452,3 +452,51 @@ describe('bars next to a group', () => {
     const gone = removeBar(d, 0)!; expectValidBars(gone.doc.score, gone.doc.timeSig); expect(gone.doc.score.length).toBe(1);
   });
 });
+
+describe('canMakeTriplet in a pickup bar (metric ticks)', () => {
+  const pick = (...lengths: number[]) => mkDoc([{ ev: lengths.map((d, i): [number, number] => [60 + i, d]) }, { ev: [[60, 48]] }]);
+  const can = (d: Doc, k: number) => canMakeTriplet(d, idAt(d, k));
+  it('pickup of 12: a quarter at tick 0', () => { expect(can(pick(12), 0)).toBe(true); });
+  it('pickup of 18 (metric offset 30)', () => {
+    expect(can(pick(12, 6), 0)).toBe(true);     // metric 30
+    expect(can(pick(6, 12), 1)).toBe(true);     // metric 36
+    expect(can(pick(18), 0)).toBe(false);       // dotted quarter
+  });
+  it('pickup of 15 (metric offset 33)', () => {
+    expect(can(pick(3, 12), 1)).toBe(true);     // quarter, metric 36
+    expect(can(pick(6, 9), 0)).toBe(true);      // eighth, metric 33: a span of 6 starts on a multiple of 3
+    expect(can(pick(12, 3), 0)).toBe(false);    // quarter, metric 33
+  });
+});
+
+describe('an invalid bar is refused, never thrown on', () => {
+  // [12,4,4,28]: two stray triplet-valued events outside any group
+  const bad = (): Doc => mkDoc([{ ev: [[60, 12], [62, 4], [64, 4], [65, 28]] }]);
+  it('setLength, toggleRest, toggleTie, pitch, dot, triplet and lengthChoices return null, false or nothing enabled', () => {
+    const d = bad();
+    for (const e of d.score[0].ev) {
+      for (const len of [3, 6, 12, 24, 4, 2, 0, 5]) expect(() => setLength(d, e.id, len)).not.toThrow();
+      for (const len of [3, 6, 12, 24, 4, 2, 0, 5]) expect(setLength(d, e.id, len)).toBeNull();
+      expect(toggleRest(d, e.id)).toBeNull();
+      expect(toggleTie(d, e.id)).toBeNull();
+      expect(shiftPitch(d, e.id, 1)).toBeNull();
+      expect(setLetter(d, e.id, 2, 'nearest')).toBeNull();
+      expect(toggleDotted(d, e.id)).toBeNull();
+      expect(toggleTriplet(d, e.id)).toBeNull();
+      expect(canMakeTriplet(d, e.id)).toBe(false);
+      expect(inTriplet(d, e.id)).toBe(false);
+      expect(canTie(d, e.id)).toBe(false);
+      expect(lengthChoices(d, e.id).some(c => c.enabled)).toBe(false);
+    }
+  });
+});
+
+describe('lengthChoices d values', () => {
+  it('every entry of every group member names a plain or a triplet length', () => {
+    for (const d of [bar(4, 4, 4, 36), bar(2, 2, 2, 6, 36), bar(8, 8, 8, 24), bar(4, 2, 2, 4, 36)]) {
+      for (const e of d.score[0].ev) {
+        for (const c of lengthChoices(d, e.id)) expect(isTripletLength(c.d) || DURATIONS.includes(c.d as never), `${c.notated} → ${c.d}`).toBe(true);
+      }
+    }
+  });
+});

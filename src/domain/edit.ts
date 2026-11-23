@@ -129,6 +129,11 @@ function previousId(doc: Doc, id: string): string | undefined {
 
 // ---- lengths ----------------------------------------------------------------------------------
 
+/** False when the event's bar holds a triplet length outside any group; edits refuse such a bar. */
+function barIsValid(doc: Doc, at: Located): boolean {
+  return tripletGroups(doc.score[at.bar], barCap(doc.timeSig)) !== null;
+}
+
 /** The triplet group an event belongs to, with its bar's groups; null for a plain event. */
 function groupAt(doc: Doc, at: Located): TripletGroup | null {
   const groups = tripletGroups(doc.score[at.bar], barCap(doc.timeSig));
@@ -173,7 +178,7 @@ function setMemberLength(doc: Doc, at: Located, group: TripletGroup, d: number):
  */
 export function setLength(doc: Doc, id: string, d: number): Doc | null {
   const at = locate(doc, id);
-  if (!at) return null;
+  if (!at || !barIsValid(doc, at)) return null;
   if (isTripletLength(at.ev.d)) {
     const group = groupAt(doc, at);
     return group ? setMemberLength(doc, at, group, d) : null;
@@ -222,10 +227,12 @@ export function setLength(doc: Doc, id: string, d: number): Doc | null {
 export function lengthChoices(doc: Doc, id: string): { notated: number; d: number; enabled: boolean; pressed: boolean }[] {
   const at = locate(doc, id);
   const group = at && isTripletLength(at.ev.d) ? groupAt(doc, at) : null;
+  const usable = !!at && barIsValid(doc, at);
+  // A disabled entry's d may not be a length of the group's kind (the whole note has no triplet length): do not pass it on.
   return BASE_LENGTHS.map(notated => {
-    if (!at) return { notated, d: notated, enabled: false, pressed: false };
+    if (!at || !usable) return { notated, d: notated, enabled: false, pressed: false };
     if (!group) return { notated, d: notated, enabled: fits(doc, id, notated), pressed: splitLength(at.ev.d).base === notated };
-    const d = (notated * 2) / 3;
+    const d = notated === 48 ? 48 : (notated * 2) / 3;
     return { notated, d, enabled: setMemberLength(doc, at, group, d) !== null, pressed: at.ev.d === d };
   });
 }
@@ -239,7 +246,7 @@ function rest(d: number, m: number): Ev {
 /** The span of the group a plain event of this length would become, or null when no group can start there. */
 function spanOfMake(doc: Doc, at: Located): Span | null {
   const d = at.ev.d;
-  if (d !== 6 && d !== 12 && d !== 24) return null;
+  if ((d !== 6 && d !== 12 && d !== 24) || !barIsValid(doc, at)) return null;
   const metric = at.tick + barCap(doc.timeSig) - doc.score[at.bar].cap;
   return canStartGroup(metric, d) ? d : null;
 }
@@ -277,7 +284,7 @@ export function makeTriplet(doc: Doc, id: string): Doc | null {
 export function undoTriplet(doc: Doc, id: string): { doc: Doc; selectId: string } | null {
   const at = locate(doc, id);
   if (!at || !isTripletLength(at.ev.d)) return null;
-  const group = groupAt(doc, at);
+  const group = groupAt(doc, at);   // null for an invalid bar
   if (!group) return null;
   const bar = doc.score[at.bar];
   const members = bar.ev.filter(e => group.ids.includes(e.id));
@@ -301,7 +308,7 @@ export function toggleTriplet(doc: Doc, id: string): { doc: Doc; selectId: strin
 
 function setPitch(doc: Doc, id: string, m: number): Doc | null {
   const at = locate(doc, id);
-  if (!at || m < 0 || m > 127) return null;
+  if (!at || m < 0 || m > 127 || !barIsValid(doc, at)) return null;
   if (!at.ev.r && at.ev.m === m) return doc;
   const next = dropFingering(replaceEvent(doc, at, { ...at.ev, m, r: false }), id);
   return fixTies(next, [previousId(doc, id), id]);
@@ -346,7 +353,7 @@ export function setLetter(doc: Doc, id: string, letter: number, prefer: 'nearest
 /** Note → rest keeps the pitch (remembered) and the lyric; rest → note sounds that pitch again. */
 export function toggleRest(doc: Doc, id: string): Doc | null {
   const at = locate(doc, id);
-  if (!at) return null;
+  if (!at || !barIsValid(doc, at)) return null;
   const ev: Ev = at.ev.r ? { ...at.ev, r: false } : { ...at.ev, r: true, tie: false };
   const next = dropFingering(replaceEvent(doc, at, ev), id);
   return fixTies(next, [previousId(doc, id)]);
@@ -355,14 +362,14 @@ export function toggleRest(doc: Doc, id: string): Doc | null {
 /** True when the event is a note and the next event, across the bar line, is a note of the same pitch. */
 export function canTie(doc: Doc, id: string): boolean {
   const at = locate(doc, id);
-  if (!at || at.ev.r) return false;
+  if (!at || at.ev.r || !barIsValid(doc, at)) return false;
   const next = nextEvent(doc, id);
   return !!next && !next.r && next.m === at.ev.m;
 }
 
 export function toggleTie(doc: Doc, id: string): Doc | null {
   const at = locate(doc, id);
-  if (!at) return null;
+  if (!at || !barIsValid(doc, at)) return null;
   if (!at.ev.tie && !canTie(doc, id)) return null;
   return replaceEvent(doc, at, { ...at.ev, tie: !at.ev.tie });
 }
