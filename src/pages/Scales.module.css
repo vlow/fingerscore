@@ -1,0 +1,194 @@
+/* The Scales page, after the prototype (Scales.dc.html): title row, one control card, notice, scale on paper. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.print {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--teal);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.print:hover {
+  background: var(--teal-hover);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.range {
+  flex-basis: 260px;
+}
+
+.direction {
+  flex-basis: 200px;
+}
+
+.label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.select {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.keys {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.keysHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chipMain {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.chipSub {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+[aria-checked='true'] > .chipSub {
+  color: var(--teal-hover);
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.inlineLabel {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+.notice {
+  padding: 12px 16px;
+  border: 1px solid #f6d3a8;
+  border-radius: 12px;
+  background: var(--amber-bg);
+  color: #7c3a06;
+  font-size: 13px;
+}
+
+.scroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+/* The paper card, as Paper.module.css. */
+.paper {
+  width: 940px;
+  margin: 0 auto;
+  padding: 40px 40px 28px;
+  border-radius: 4px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(20, 22, 28, 0.06), 0 8px 28px rgba(20, 22, 28, 0.08);
+  color: var(--ink);
+}
+
+.caption {
+  margin: 0 0 18px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}

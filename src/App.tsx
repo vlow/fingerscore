@@ -8,6 +8,7 @@ import Start from './pages/Start';
 
 // Pages besides the start page and the sheet load on demand; the main area stays empty until their code has arrived.
 const Tracks = lazy(() => import('./pages/Tracks'));
+const Scales = lazy(() => import('./pages/Scales'));
 const pageFallback = <div aria-busy="true" />;
 
 // Dev-only renderer preview; the import is dropped from production builds.
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/" element={<Start />} />
           <Route path="/tracks" element={<Suspense fallback={pageFallback}><Tracks /></Suspense>} />
           <Route path="/sheet" element={<SheetPage />} />
+          <Route path="/scales" element={<Suspense fallback={pageFallback}><Scales /></Suspense>} />
           {DevSheet && <Route path="/dev/sheet" element={<Suspense fallback={null}><DevSheet /></Suspense>} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

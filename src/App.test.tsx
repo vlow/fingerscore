@@ -10,7 +10,8 @@ it('renders the shell on every route', () => {
   );
   expect(screen.getByRole('link', { name: /fingerscore/i })).toHaveAttribute('href', '/');
   expect(screen.getByRole('link', { name: 'Songs' })).toHaveAttribute('aria-current', 'page');
-  expect(screen.queryByRole('link', { name: 'Scales' })).toBeNull(); // version 2
+  expect(screen.getByRole('link', { name: 'Scales' })).toHaveAttribute('href', '/scales');
+  expect(screen.getByRole('link', { name: 'Scales' })).not.toHaveAttribute('aria-current');
   expect(
     screen.getByText('Your sheets are stored in your browser. Nothing is stored on the server.'),
   ).toBeInTheDocument();
@@ -24,6 +25,7 @@ it.each(['/', '/tracks', '/sheet'])('header: Songs is current on %s, the brand l
     </MemoryRouter>,
   );
   expect(screen.getByRole('link', { name: 'Songs' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('link', { name: 'Scales' })).not.toHaveAttribute('aria-current');
   expect(screen.getByRole('link', { name: /fingerscore/i })).not.toHaveAttribute('aria-current');
 });
 

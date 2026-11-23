@@ -18,6 +18,9 @@ export default function Header() {
         <Link to="/" className="nav-link" aria-current={inSongs ? 'page' : undefined}>
           Songs
         </Link>
+        <Link to="/scales" className="nav-link" aria-current={pathname === '/scales' ? 'page' : undefined}>
+          Scales
+        </Link>
       </nav>
     </header>
   );

@@ -72,3 +72,49 @@
     outline: none !important;
   }
 }
+
+/*
+ * Print for the Scales page (design 4.4): only the scale section ([data-print-scale]) is printed, on A4,
+ * its 860px of lines scaled to the page width like the sheet's paper.
+ */
+@media print {
+  body:has([data-print-scale]) {
+    background: #ffffff;
+  }
+
+  body:has([data-print-scale]) .app {
+    min-height: 0;
+  }
+
+  body:has([data-print-scale]) .site-header,
+  body:has([data-print-scale]) .site-footer {
+    display: none !important;
+  }
+
+  .app-main:has([data-print-scale]) {
+    max-width: none;
+    padding: 0;
+  }
+
+  /* The scroll wrapper around the section. */
+  :has(> [data-print-scale]) {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  [data-print-scale] {
+    width: 860px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    zoom: 0.817;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* A scale line never splits across pages. */
+  [data-print-scale] [data-testid='scale-line'] {
+    break-inside: avoid;
+  }
+}
