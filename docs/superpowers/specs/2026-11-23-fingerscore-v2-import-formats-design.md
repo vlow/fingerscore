@@ -127,8 +127,8 @@ No change in behaviour: melody detection, tags, preview, lyrics and chord source
 ### 4.8 Tests and fixtures
 
 - Unit tests per importer with hand-written fixtures in the test files: a two-voice part, a transposing part, a pickup, repeats with endings, lyrics with a melisma, chord symbols with a bass note, a triplet (rounded, `simplified` true), each refusal.
-- **Real files:** the owner's samples are in `samples/`: three MuseScore files (two of version 2.06, one of 3.01) and two ABC tunes. Their licences are unknown, so `samples/` is git-ignored. One test file reads every file in `samples/` and checks track names, meter, key and the first notes of each; it skips itself when the folder is missing. Committed fixtures are hand-written and modelled on these files.
-- **No MuseScore 4 file exists yet.** Version 4 is built from the format's documentation and the version 3 reader, and stays marked "not checked with a real file" in the README until the owner supplies one.
+- **Real files:** the owner's samples are in `samples/`: four MuseScore files (two of version 2.06, one of 3.01, one of 4.70) and two ABC tunes. Their licences are unknown, so `samples/` is git-ignored. One test file reads every file in `samples/` and checks track names, meter, key and the first notes of each; it skips itself when the folder is missing. Committed fixtures are hand-written and modelled on these files.
+- **MuseScore 4:** `fur-elise-easy-ver4.mscz` (format 4.70, written by MuseScore 4.7.7) covers notes, rests, voices, two staves and the meter. It has no transposing part, key signature, lyrics, chord symbols, endings or tuplets; for version 4 those are built from the version 3 reader and hand-written fixtures, and the README says so until a real file covers them.
 - One end-to-end test per format: drop the file, pick the track, see the sheet with the expected first notes.
 - A build check for the entry chunk limit of 4.1.
 
