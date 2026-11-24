@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { legend } from '../domain/fingerings';
+import { instrumented } from '../test/timing';
 import {
   type Block, MARGIN_MM, UNITS, fitText, footerText, pageHeightUnits, pageSizeFor, paginate, unitMm, wrapLegend,
 } from './pageModel';
@@ -148,7 +149,8 @@ describe('fitText', () => {
     const counted = (t: string, px: number) => { calls++; return w(t, px); };
     const t0 = performance.now();
     const r = fitText('x'.repeat(20000), counted, 860, 26, 14);
-    expect(performance.now() - t0).toBeLessThan(50);
+    const ms = performance.now() - t0;
+    if (!instrumented) expect(ms).toBeLessThan(50);
     expect(calls).toBeLessThanOrEqual(40);
     expect(r.px).toBe(14);
     expect(r.text).toBe(`${'x'.repeat(121)}…`);   // 7 units a character: 122 characters fit, the last is the ellipsis

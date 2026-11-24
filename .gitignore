@@ -5,6 +5,7 @@ dist/
 # internal reference only, not for publication (see handoff README)
 fingerscore-handoff/reference/
 test-results/
+coverage/
 playwright-report/
 *.tsbuildinfo
 

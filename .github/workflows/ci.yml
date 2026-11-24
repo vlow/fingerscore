@@ -1,0 +1,109 @@
+name: CI
+
+# Every push runs three jobs in order: build and tests, Trivy, SonarCloud. Each waits for the one before it.
+# A push of a version tag (v*) also runs the release check.
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+
+# A newer push to the same branch cancels the run of the older one. Tag runs are never cancelled.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type == 'branch' }}
+
+permissions:
+  contents: read
+
+# Actions are pinned to a commit; the comment names the release that commit belongs to.
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      # No install scripts: no package the build or the tests use needs one, and a compromised package cannot run code here.
+      - run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+      - name: Bundle budget
+        run: npm run check:bundle
+      - name: Package list matches the build
+        run: npm run notices -- --check
+
+      # Two runs: the plain one enforces the wall-clock budgets in the tests; the instrumented one is about three
+      # times slower, skips those budgets and writes coverage/lcov.info.
+      - name: Unit tests
+        run: npm test
+      - name: Unit tests with coverage
+        run: npm test -- --coverage
+
+      - name: Install the Playwright browser
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: End-to-end tests (dev server)
+        run: npm run test:e2e
+      - name: End-to-end tests (production build)
+        run: npm run test:e2e:preview
+
+      # Fails until the owner's details in src/content/operator.ts are filled in, so it runs for a release only.
+      - name: Release check
+        if: github.ref_type == 'tag'
+        run: npm run check:release
+
+      - name: Keep the coverage report for SonarCloud
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 1
+      - name: Keep the Playwright traces of a failed run
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  trivy:
+    name: Trivy
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Scans the repository: the packages in package-lock.json, committed secrets, and configuration files.
+      # A HIGH or CRITICAL finding fails the job. Findings without a fixed version are listed in no report.
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  sonar:
+    name: SonarCloud
+    needs: trivy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # Sonar needs the history to tell new code from old and to attribute lines.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage
+          path: coverage
+      # sonar-project.properties sets sonar.qualitygate.wait, so a failed quality gate fails this job.
+      - uses: SonarSource/sonarqube-scan-action@70bad232163b09d998ea0707ee80c0ec80798c16 # v8.5.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
