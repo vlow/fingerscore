@@ -39,9 +39,10 @@ export default function NotePanel(p: Props): JSX.Element | null {
   const member = inTriplet(doc, id);
   const { base, dotted } = splitLength(ev.d);
   const longer = dottedOf(base);
+  // The visible glyph is drawn by CSS from data-glyph: it is not text, so the button's name ("Octave down") needs not contain it (WCAG 2.5.3).
   const pitch = (step: number, name: string, label: string, keys: string) => (
     <button type="button" className={s.symb} aria-label={name} aria-keyshortcuts={keys} disabled={shiftPitch(doc, id, step) === null}
-      onClick={() => onEdit(shiftPitch(doc, id, step))}>{label}</button>
+      onClick={() => onEdit(shiftPitch(doc, id, step))}><span className={s.glyph} data-glyph={label} aria-hidden="true" /></button>
   );
 
   return (
@@ -70,7 +71,7 @@ export default function NotePanel(p: Props): JSX.Element | null {
           disabled={!member && !canMakeTriplet(doc, id)} onClick={() => { const r = toggleTriplet(doc, id); if (r) onEdit(r.doc, r.selectId); }}>
           <svg width="22" height="18" viewBox="0 0 22 18" aria-hidden="true">
             <path d="M2 14V7h6M20 14V7h-6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-            <text x="11" y="12" textAnchor="middle" fontSize="11" fontWeight="700" fill="currentColor">3</text>
+            <path d="M8.6 6.2h4.4l-2.3 2.7c1.6 0 2.6.9 2.6 2.2 0 1.4-1.2 2.3-2.8 2.3-.9 0-1.6-.3-2.2-.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         <span className={s.spacer} />

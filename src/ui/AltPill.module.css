@@ -1,44 +1,64 @@
 /* The alternate-fingering pill under a chart, after the prototype (Editor.dc.html). */
 .pill {
   position: absolute;
+  z-index: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 2px;
+  box-sizing: border-box;
   width: 26px;
-  height: 16px;
+  /* The button is 24 px high (WCAG 2.5.8); the pill drawn by ::after is 16 px high, centred in it. */
+  height: 24px;
+  margin-top: -4px;
   padding: 0;
-  border: 1px solid var(--ghost);
-  border-radius: 8px;
-  background: var(--card);
+  border: 0;
+  background: none;
   color: var(--text);
   font: 700 10px/1 'Atkinson Hyperlegible', system-ui, sans-serif;
   cursor: pointer;
+}
+
+/* The drawn pill, 26 × 16 px. */
+.pill::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 4px 0;
+  border: 1px solid var(--ghost);
+  border-radius: 8px;
+  background: var(--card);
 }
 
 /* Invisible 36 × 36 touch target around the small pill. */
 .pill::before {
   content: '';
   position: absolute;
-  inset: -10px -5px;
+  inset: -6px -5px;
 }
 
-.pill:hover {
+.pill:hover::after {
   border-color: var(--muted);
 }
 
 .changed {
-  border-color: var(--teal);
-  background: var(--teal);
   color: #ffffff;
 }
 
-.changed:hover {
+.changed::after {
+  border-color: var(--teal);
+  background: var(--teal);
+}
+
+.changed:hover::after {
   background: var(--teal-hover);
 }
 
 .open {
+  color: #ffffff;
+}
+
+.open::after {
   border-color: var(--ink);
   background: var(--ink);
-  color: #ffffff;
 }

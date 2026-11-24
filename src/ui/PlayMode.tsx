@@ -245,8 +245,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
 
   return createPortal(
     <div ref={regionRef} role="region" aria-label="Play mode" tabIndex={-1} className={s.overlay} data-print-hide="" onKeyDown={onKey}>
-      {/* A tap is a pointer shortcut; the keys on the region above do the same. The scroller is not a control. */}
-      <div ref={scrollerRef} role="presentation" data-testid="play-scroller" className={s.scroller} onScroll={onScroll}
+      {/* A tap is a pointer shortcut; the keys on the region above do the same. The scroller takes focus so a keyboard user can scroll it. */}
+      <div ref={scrollerRef} data-testid="play-scroller" role="region" aria-label="Sheet music" tabIndex={0} className={s.scroller} onScroll={onScroll}
         onWheel={() => { goingTo.current = null; }} onTouchMove={() => { goingTo.current = null; }} onClick={onTap}>
         <div className={s.pad}>
           <div data-testid="play-zoom" className={s.zoomed} style={{ zoom: zoom / 100 }}>
@@ -281,9 +281,9 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
         </label>
         <span aria-hidden="true" className={s.rule} />
         <button type="button" className={s.btn} aria-label="Smaller" title="Smaller (−)" aria-disabled={!canShrink}
-          onClick={smaller}>A−</button>
+          onClick={smaller}><span className={s.glyph} data-glyph="A−" aria-hidden="true" /></button>
         <button type="button" className={s.btn} aria-label="Larger" title="Larger (+)" aria-disabled={!canGrow}
-          onClick={larger}>A+</button>
+          onClick={larger}><span className={s.glyph} data-glyph="A+" aria-hidden="true" /></button>
       </div>
     </div>,
     document.body,

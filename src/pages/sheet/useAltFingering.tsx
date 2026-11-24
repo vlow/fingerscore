@@ -20,13 +20,13 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
   }, []);
   useEffect(() => setOpenAlt(null), [doc.shift, doc.inst]);
 
-  const renderUnderChart = (ev: DerivedEvent, x: number, y: number, _system: number, lastSystem: boolean) => {
+  const renderUnderChart = (ev: DerivedEvent, x: number, y: number, _system: number, lastSystem: boolean, pillX: number) => {
     if (ev.options.length < 2) return null;
     const open = openAlt === ev.id;
     const width = popoverWidth(ev.options.length);
     return (
       <>
-        <AltPill note={ev.spelled.name} count={ev.options.length} overridden={ev.overridden} open={open} left={x - PILL_HALF} top={y}
+        <AltPill note={ev.spelled.name} count={ev.options.length} overridden={ev.overridden} open={open} left={pillX - PILL_HALF} top={y}
           onClick={e => {
             if (open) { closeAlt(false); return; }
             anchorRef.current = e.currentTarget;

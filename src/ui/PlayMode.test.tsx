@@ -68,6 +68,30 @@ describe('PlayMode', () => {
     expect(region).toHaveFocus();
   });
 
+  it('has a named scroll region that the keyboard reaches, and its keys work from there', async () => {
+    const { region, scroller, scrollTo, onExit } = open();
+    size(scroller, 2760, 1000);
+    const sheet = screen.getByRole('region', { name: 'Sheet music' });
+    expect(sheet).toBe(scroller);
+    expect(sheet).toHaveAttribute('tabindex', '0');
+    await userEvent.tab();
+    expect(sheet).toHaveFocus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(scrollTo).toHaveBeenCalledWith({ top: 880, behavior: 'smooth' });
+    await userEvent.keyboard('{Escape}');
+    expect(onExit).toHaveBeenCalledTimes(1);
+    expect(region).toContainElement(sheet);
+  });
+
+  it('draws A− and A+ as generated content: the buttons keep their names and hold no text', () => {
+    open();
+    for (const [name, glyph] of [['Smaller', 'A−'], ['Larger', 'A+']]) {
+      const button = screen.getByRole('button', { name });
+      expect(button).toHaveTextContent('');
+      expect(button.querySelector('[aria-hidden="true"]')).toHaveAttribute('data-glyph', glyph);
+    }
+  });
+
   it('turns a page of 88 % with → and shows the page it is on', () => {
     const { region, scroller, scrollTo } = open();
     size(scroller, 2760, 1000);

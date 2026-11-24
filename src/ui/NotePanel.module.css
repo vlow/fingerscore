@@ -55,6 +55,11 @@
   cursor: pointer;
 }
 
+/* The glyph of the pitch buttons: generated content, so the button's name is the only text it has. */
+.glyph::before {
+  content: attr(data-glyph);
+}
+
 .symb:hover:not(:disabled) {
   border-color: var(--teal-border);
   background: var(--teal-tint);

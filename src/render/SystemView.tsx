@@ -8,6 +8,7 @@ import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type S
 import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, INK, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
+import { spreadPills } from './pillSpread';
 import { beamGeometry, Tuplet, type Placed } from './TupletMark';
 
 export const STAFF = '#2A2D33';
@@ -18,7 +19,8 @@ const DOT_YS = [90, 100];                       // repeat dots sit in the two mi
 export const SHARP_POS = [8, 5, 9, 6, 3, 7, 4];        // key-signature staff positions, prototype order
 export const FLAT_POS = [4, 7, 3, 6, 2, 5, 1];
 
-export type UnderChart = (ev: DerivedEvent, x: number, y: number, systemIndex: number, lastSystem: boolean) => ReactNode;
+/** The slot under a chart: x is the chart's centre, pillX the centre of its pill (moved apart from the pills beside it). */
+export type UnderChart = (ev: DerivedEvent, x: number, y: number, systemIndex: number, lastSystem: boolean, pillX: number) => ReactNode;
 
 export interface TieSegment { x1: number; x2: number; y: number; below: boolean }
 
@@ -218,9 +220,13 @@ export function SystemView(p: SystemViewProps): JSX.Element {
             fill="transparent" onClick={() => p.onSelect?.(p.selectedId === c.id ? null : c.id)} />
         ))}
       </svg>
-      {under && placed.filter(n => charted(n.ev)).map(n => (
-        <Fragment key={n.ev.id}>{under(n.ev, n.x, SHEET.chartY + SHEET.altButtonDy, system.index, p.lastSystem)}</Fragment>
-      ))}
+      {under && (() => {
+        const charts = placed.filter(n => charted(n.ev));
+        const pillXs = spreadPills(charts.map(n => n.x));
+        return charts.map((n, i) => (
+          <Fragment key={n.ev.id}>{under(n.ev, n.x, SHEET.chartY + SHEET.altButtonDy, system.index, p.lastSystem, pillXs[i]!)}</Fragment>
+        ));
+      })()}
     </div>
   );
 }

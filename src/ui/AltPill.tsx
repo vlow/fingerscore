@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { PILL_WIDTH } from '../render/pillSpread';
 import s from './AltPill.module.css';
 
 /**
@@ -24,4 +25,4 @@ export default function AltPill(p: {
 }
 
 /** Half the pill's width: callers centre it under a chart with left = x - PILL_HALF. */
-export const PILL_HALF = 13;
+export const PILL_HALF = PILL_WIDTH / 2;

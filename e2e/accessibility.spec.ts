@@ -15,8 +15,19 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const WRITE = process.env.A11Y_WRITE_BASELINE === '1';
 const SHOTS = process.env.A11Y_SHOTS;
 
-/** An exclusion covers one rule on one element and carries its reason. None is in use. */
-const EXCLUSIONS: { state: string; rule: string; target: string; reason: string }[] = [];
+/**
+ * An exclusion covers one rule on one element of one state and carries its reason. src/a11yExclusions.test.ts pins the count.
+ * ARIA lets a menu own only menu items, groups and separators. A role that fits a link (group, none, presentation) does
+ * not take it out of the menu's children: axe walks through groups, and a focusable element keeps its role.
+ */
+export const EXCLUSIONS: { state: string; rule: string; target: string; reason: string }[] = [
+  {
+    state: 'sheet-file-menu',
+    rule: 'aria-required-children',
+    target: 'menu "File"',
+    reason: 'The import notice with its "Terms of Use" link sits between two menu items by design (part 6a). It is not a menu item, the arrow keys skip it, and Tab reaches the link. No ARIA role makes a link a valid child of a menu.',
+  },
+];
 
 const written: Record<Kind, Record<string, Found[]>> = { axe: {}, targets: {}, focus: {} };
 

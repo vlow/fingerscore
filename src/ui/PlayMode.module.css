@@ -77,6 +77,16 @@
   cursor: default;
 }
 
+/* The glyph of A− and A+: generated content, so the button's name is the only text it has. */
+.glyph::before {
+  content: attr(data-glyph);
+}
+
+.scroller:focus-visible {
+  outline: 3px solid #5fd3c6;
+  outline-offset: -3px;
+}
+
 .btn:focus-visible,
 .slider:focus-visible {
   outline: 2px solid #5fd3c6;
