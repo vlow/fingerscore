@@ -27,13 +27,16 @@ const STROKES = new Set<number>([OPS.stroke, OPS.closeStroke, OPS.fillStroke, OP
  * Names of the fonts whose file is embedded (a FontDescriptor with /FontFile2), read from the raw bytes.
  * jsPDF writes its objects uncompressed, so the descriptors are plain text.
  */
+/** The order of a plain sort(): by UTF-16 code unit, the same in every locale. */
+const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
 function embeddedFontNames(bytes: Uint8Array): string[] {
   const raw = Buffer.from(bytes).toString('latin1');
   const names = new Set<string>();
   for (const m of raw.matchAll(/\/FontName\s*\/([^\s/<>[\]()]+)[^>]*?\/FontFile2/g)) {
     names.add(m[1].replace(/#([0-9a-fA-F]{2})/g, (_, h: string) => String.fromCharCode(parseInt(h, 16))));
   }
-  return [...names].sort();
+  return [...names].sort(byCodeUnit);
 }
 
 /**
@@ -122,7 +125,7 @@ export async function readPdf(bytes: Uint8Array): Promise<PdfInfo> {
   } finally {
     await task.destroy();
   }
-  return { pages, fonts: [...fonts].sort(), embeddedFonts: embeddedFontNames(bytes) };
+  return { pages, fonts: [...fonts].sort(byCodeUnit), embeddedFonts: embeddedFontNames(bytes) };
 }
 
 interface NodeCanvas { toBuffer(type: string): Buffer; getContext(type: '2d'): { getImageData(x: number, y: number, w: number, h: number): { data: Uint8ClampedArray } } }
