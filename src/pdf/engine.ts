@@ -1,10 +1,11 @@
 // The only module that touches the PDF libraries: fonts, pages, SVG conversion, off-screen rendering, yielding.
 import { jsPDF } from 'jspdf';
-import type { ReactElement } from 'react';
+import { createElement, type ReactElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { svg2pdf } from 'svg2pdf.js';
 import { LOAD_FAILED } from '../loadFailed';
+import { LIGHT, LIGHT_BORDER, PaletteProvider } from '../render/palette';
 import { drawText, fontsOf, textWidth, type Anchor } from './drawText';
 import { FONT_KEYS, FONT_NAME, setFontMetrics, type FontKey, type Weight } from './fontMetrics';
 import { PdfError } from './errors';
@@ -102,7 +103,8 @@ export function renderOffscreen(content: ReactElement): { host: HTMLElement; dis
   const root = createRoot(host);
   const dispose = () => { root.unmount(); host.remove(); };
   try {
-    flushSync(() => root.render(content));
+    // The light palette: the drawing must hold colours, not variables, and the PDF never follows the theme.
+    flushSync(() => root.render(createElement(PaletteProvider, { value: LIGHT, children: content })));
   } catch (e) {
     dispose();
     throw e;
@@ -133,11 +135,12 @@ export async function nextTurn(signal: AbortSignal | undefined): Promise<void> {
   throwIfAborted(signal);
 }
 
-// Paper colours (src/styles/tokens.css) and sizes in units (src/render/Paper.module.css), shared by the sheet and the scale page.
-export const INK = '#15171c';
-export const TEXT = '#2a2d33';
-export const MUTED = '#5b616e';
-const BORDER = '#e2e4e8';
+// Paper colours, always the light ones whatever the theme of the page (src/render/palette.tsx), and sizes in units
+// (src/render/Paper.module.css), shared by the sheet and the scale page.
+export const INK = LIGHT.ink;
+export const TEXT = LIGHT.text;
+export const MUTED = LIGHT.muted;
+const BORDER = LIGHT_BORDER;
 /** Legend: a rule 12 units below the last block, the first line 12 units below the rule. */
 export const LEGEND = { px: 11, line: 16, baseline: 12, rule: 12, top: 25 };
 const FOOTER_PX = 10;

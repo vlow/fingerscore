@@ -2,7 +2,8 @@ import type { DerivedEvent } from '../domain/derive';
 import { notatedLength } from '../domain/triplets';
 import { glyphInk } from './Glyph';
 import { SHEET, type BeamGroup, type TupletMark } from './layout';
-import { ACCIDENTAL_GAP, FONT, INK, STEM, stemUp, yOfPos } from './NoteView';
+import { ACCIDENTAL_GAP, FONT, STEM, stemUp, yOfPos } from './NoteView';
+import { usePalette } from './palette';
 
 export interface Placed { ev: DerivedEvent; x: number; y: number }
 
@@ -92,6 +93,7 @@ interface Candidate { side: 'above' | 'below'; x1: number; x2: number; line: num
  * group (its bracket ends shorten to the heads first).
  */
 export function Tuplet(p: TupletProps): JSX.Element {
+  const pal = usePalette();
   const { mark, byId } = p;
   const members = mark.ids.map(id => byId.get(id)!);
   const notesOf = (g: BeamGroup) => g.ids.map(i => byId.get(i)!);
@@ -173,9 +175,9 @@ export function Tuplet(p: TupletProps): JSX.Element {
   const d = `M${chosen.x1} ${chosen.line + hook}V${chosen.line}H${cx - half}M${cx + half} ${chosen.line}H${chosen.x2}V${chosen.line + hook}`;
   return (
     <g data-tuplet="" data-tuplet-side={chosen.side}>
-      {!mark.beamed && <path data-tuplet-bracket="" d={d} fill="none" stroke={INK} strokeWidth={1} />}
-      <text x={cx} y={chosen.baseline} textAnchor="middle" fontSize={FONT_PX} fontWeight={700} fontStyle="italic" fontFamily={FONT} fill={INK}
-        stroke="#fff" strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">3</text>
+      {!mark.beamed && <path data-tuplet-bracket="" d={d} fill="none" stroke={pal.ink} strokeWidth={1} />}
+      <text x={cx} y={chosen.baseline} textAnchor="middle" fontSize={FONT_PX} fontWeight={700} fontStyle="italic" fontFamily={FONT} fill={pal.ink}
+        stroke={pal.paper} strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">3</text>
     </g>
   );
 }

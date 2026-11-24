@@ -1,5 +1,6 @@
 import glyphs from '../data/glyphs.json';
 import type { TimeSig } from '../domain/types';
+import { usePalette } from './palette';
 
 export type GlyphName =
   | 'trebleClef' | 'flat' | 'sharp' | 'natural' | 'doubleSharp' | 'doubleFlat'
@@ -10,7 +11,6 @@ type AnyGlyph = GlyphName | DigitName;
 const PATHS = glyphs.paths as Record<AnyGlyph, string>;
 const BBOX = glyphs.bbox as unknown as Record<AnyGlyph, [number, number, number, number]>;
 const ADVANCE = glyphs.advance as Record<AnyGlyph, number>;
-const INK = '#15171C';
 
 /** Bravura: one staff space = 250 font units = 10px. */
 export const GLYPH_SCALE = 10 / 250;
@@ -36,11 +36,13 @@ export function glyphInk(name: AnyGlyph): { left: number; right: number } {
 
 /** x = glyph origin (left side); y = bottom staff line for clef and rests, note y for accidentals. */
 export function Glyph(p: { name: GlyphName; x: number; y: number; fill?: string }): JSX.Element {
-  return <path d={PATHS[p.name]} transform={transform(p.x, p.y + ORIGIN_DY[p.name])} fill={p.fill ?? INK} />;
+  const pal = usePalette();
+  return <path d={PATHS[p.name]} transform={transform(p.x, p.y + ORIGIN_DY[p.name])} fill={p.fill ?? pal.ink} />;
 }
 
 /** One number from time-signature digits, ink centred on cx, digit origins on y. */
 function TimeSigNumber(p: { n: number; cx: number; y: number }): JSX.Element {
+  const pal = usePalette();
   const digits = String(p.n).split('').map(c => `digit${c}` as DigitName);
   const offsets: number[] = [];
   let pen = 0;
@@ -48,7 +50,7 @@ function TimeSigNumber(p: { n: number; cx: number; y: number }): JSX.Element {
   const last = digits.length - 1;
   const inkMid = (BBOX[digits[0]][0] + offsets[last] + BBOX[digits[last]][2]) / 2;
   const x0 = p.cx - inkMid * GLYPH_SCALE;
-  return <>{digits.map((d, i) => <path key={i} data-digit={d} d={PATHS[d]} transform={transform(x0 + offsets[i] * GLYPH_SCALE, p.y)} fill={INK} />)}</>;
+  return <>{digits.map((d, i) => <path key={i} data-digit={d} d={PATHS[d]} transform={transform(x0 + offsets[i] * GLYPH_SCALE, p.y)} fill={pal.ink} />)}</>;
 }
 
 /**

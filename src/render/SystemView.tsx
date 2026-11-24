@@ -6,13 +6,12 @@ import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
 import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
 import { placeLyrics, type LyricItem } from './lyrics';
-import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, INK, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
+import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
 import { pillCentres } from './pillSpread';
 import { beamGeometry, Tuplet, type Placed } from './TupletMark';
+import { usePalette } from './palette';
 
-export const STAFF = '#2A2D33';
-const MUTED = '#5B616E';
 const { staffTop, staffBottom } = SHEET;
 const STAFF_H = staffBottom - staffTop + 1;
 const DOT_YS = [90, 100];                       // repeat dots sit in the two middle spaces
@@ -55,17 +54,21 @@ export function tieSegments(d: Derived, layout: SheetLayout): TieSegment[][] {
 }
 
 function Tie(p: TieSegment) {
+  const pal = usePalette();
   const rx = (p.x2 - p.x1) / 2;
   const d = p.below
     ? `M${p.x1} ${p.y + 2}A${rx} 5 0 0 0 ${p.x2} ${p.y + 2}`
     : `M${p.x1} ${p.y + 5}A${rx} 5 0 0 1 ${p.x2} ${p.y + 5}`;
-  return <path data-tie="" d={d} fill="none" stroke={INK} strokeWidth={1.5} />;
+  return <path data-tie="" d={d} fill="none" stroke={pal.ink} strokeWidth={1.5} />;
 }
 
-const line = (x: number, w: number) => <rect x={x} y={staffTop} width={w} height={STAFF_H} fill={INK} />;
-const dots = (x: number) => DOT_YS.map(y => <circle key={y} cx={x} cy={y} r={2} fill={INK} />);
+const barline = (ink: string) => (x: number, w: number) => <rect x={x} y={staffTop} width={w} height={STAFF_H} fill={ink} />;
+const repeatDots = (ink: string) => (x: number) => DOT_YS.map(y => <circle key={y} cx={x} cy={y} r={2} fill={ink} />);
 
 function Barlines(p: { bar: BarLayout; doc: Doc }) {
+  const pal = usePalette();
+  const line = barline(pal.ink);
+  const dots = repeatDots(pal.ink);
   const b = p.doc.score[p.bar.bar];
   const x0 = p.bar.x;
   const x1 = x0 + p.bar.width;
@@ -82,8 +85,8 @@ function Barlines(p: { bar: BarLayout; doc: Doc }) {
       {b.volta !== '' && (
         <g data-volta="">
           <path d={voltaStarts ? `M${x0 + 2.5} ${SHEET.voltaY + 14}V${SHEET.voltaY + 0.5}H${voltaEnd}` : `M${x0} ${SHEET.voltaY + 0.5}H${voltaEnd}`}
-            fill="none" stroke={INK} strokeWidth={1} />
-          {voltaStarts && <text x={x0 + 7} y={SHEET.voltaY + 11} fontSize={11} fontWeight={700} fontFamily={FONT} fill={INK}>{b.volta}.</text>}
+            fill="none" stroke={pal.ink} strokeWidth={1} />
+          {voltaStarts && <text x={x0 + 7} y={SHEET.voltaY + 11} fontSize={11} fontWeight={700} fontFamily={FONT} fill={pal.ink}>{b.volta}.</text>}
         </g>
       )}
     </>
@@ -111,12 +114,13 @@ const BEAM_ATTR = { 'data-beam': '' };
 
 /** Horizontal beams over a group's stems; direction by the group's average staff position. */
 function Beams(p: { group: BeamGroup; notes: Placed[] }) {
+  const pal = usePalette();
   const { notes } = p;
   const { up, tip } = beamGeometry(notes);
   const sx = (n: Placed) => n.x + (up ? STEM.upDx : STEM.downDx);
   const level = (k: number) => (up ? tip + 6 * k : tip - 4 - 6 * k);
   const beam = (from: number, to: number, k: number, key: string, attr: object = BEAM_ATTR) => (
-    <rect key={key} {...attr} x={from} y={level(k)} width={to - from} height={4} fill={INK} />
+    <rect key={key} {...attr} x={from} y={level(k)} width={to - from} height={4} fill={pal.ink} />
   );
   const span = (i: number, j: number, k: number) => beam(sx(notes[i]), sx(notes[j]) + STEM.width, k, `${k}-${i}`);
 
@@ -141,7 +145,7 @@ function Beams(p: { group: BeamGroup; notes: Placed[] }) {
   return (
     <g data-beam-group={p.group.ids.join(' ')}>
       {notes.map(n => (
-        <rect key={n.ev.id} data-stem="" x={sx(n)} y={up ? tip : n.y} width={STEM.width} height={Math.abs(n.y - tip)} fill={INK} />
+        <rect key={n.ev.id} data-stem="" x={sx(n)} y={up ? tip : n.y} width={STEM.width} height={Math.abs(n.y - tip)} fill={pal.ink} />
       ))}
       {span(0, notes.length - 1, 0)}
       {second}
@@ -161,6 +165,7 @@ export interface SystemViewProps {
 
 /** One system: staff, header, bars, notes, beams, ties, and the slot under each chart. */
 export function SystemView(p: SystemViewProps): JSX.Element {
+  const pal = usePalette();
   const { doc, derived, system } = p;
   const show = p.show ?? doc.show;
   const end = systemEnd(system);
@@ -190,16 +195,16 @@ export function SystemView(p: SystemViewProps): JSX.Element {
       <svg data-testid="system" width={SHEET.systemWidth} height={SHEET.systemHeight}
         viewBox={`0 0 ${SHEET.systemWidth} ${SHEET.systemHeight}`} aria-hidden="true">
         {selectedColumn && selectedPlaced && <SelectedMarker x={selectedPlaced.x} columnWidth={selectedColumn.width} />}
-        {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={STAFF} />)}
+        {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={pal.staff} />)}
         <Glyph name="trebleClef" x={HEADER.clefInset} y={staffBottom} />
         {Array.from({ length: nAcc }, (_, k) => (
           <Glyph key={k} name={derived.sig > 0 ? 'sharp' : 'flat'} x={HEADER.clef + k * HEADER.accidental} y={yOfPos(accPos[k])} />
         ))}
         {system.showTimeSig && <TimeSigDigits ts={doc.timeSig} x={HEADER.clef + nAcc * HEADER.accidental + HEADER.timeSig / 2} y={staffBottom} />}
         {system.barNumber !== null && (
-          <text data-bar-number="" x={0} y={65} fontSize={11} fontFamily={FONT} fill={MUTED}>{system.barNumber}</text>
+          <text data-bar-number="" x={0} y={65} fontSize={11} fontFamily={FONT} fill={pal.muted}>{system.barNumber}</text>
         )}
-        {line(0, 1)}
+        {barline(pal.ink)(0, 1)}
         {system.bars.map(bar => <g key={bar.bar} data-bar={bar.bar}><Barlines bar={bar} doc={doc} /></g>)}
         {system.bars.map(bar => bar.events.map(e => (
           <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}

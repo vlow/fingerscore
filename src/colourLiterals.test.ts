@@ -8,7 +8,7 @@ import { join, relative } from 'node:path';
 const SRC = __dirname;
 const ALLOWED: Record<string, string> = {
   'styles/tokens.css': 'the tokens themselves',
-  'render/palette.ts': 'the light palette of the PDF, which must not follow the theme',
+  'render/palette.tsx': 'the light palette of the PDF, which must not follow the theme',
   'pdf/devHook.ts': 'a development page for PDF experiments; it is not part of the app',
 };
 const LITERAL = /#[0-9a-fA-F]{3,8}\b|\brgba?\(/;
@@ -42,8 +42,7 @@ describe('colour literals', () => {
     expect(hits(LITERAL, /\.css$/)).toEqual([]);
   });
 
-  // Until the renderer takes its colours from the palette (task 4 of the plan).
-  it.fails('has none in code outside the light palette', () => {
+  it('has none in code outside the light palette', () => {
     expect(hits(LITERAL, /\.tsx?$/)).toEqual([]);
   });
 
@@ -54,6 +53,6 @@ describe('colour literals', () => {
   });
 
   it('allows only files that exist', () => {
-    for (const f of Object.keys(ALLOWED).filter(f => f !== 'render/palette.ts')) expect(existsSync(join(SRC, f)), f).toBe(true);
+    for (const f of Object.keys(ALLOWED).filter(f => f !== 'render/palette.tsx')) expect(existsSync(join(SRC, f)), f).toBe(true);
   });
 });
