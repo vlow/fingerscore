@@ -333,7 +333,7 @@ function realign(state: VoiceState, full: number): void {
   };
   const moved = (t: number, starting: boolean) => t + shifts[barOf(t, starting)];
   for (const n of state.notes) {
-    const end = n.dur > 0 ? moved(n.start + n.dur, false) : NaN;
+    const end = n.dur > 0 ? moved(n.start + n.dur, false) : Number.NaN;
     n.start = moved(n.start, true);
     if (n.dur > 0) n.dur = end - n.start;
   }

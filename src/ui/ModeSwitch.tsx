@@ -29,7 +29,9 @@ export function ModeSwitch(p: { mode: Mode; onMode(m: Mode, byClick: boolean): v
 
   return (
     <div className={s.wrap}>
-      <div role="radiogroup" aria-label="Mode" className={s.group} onKeyDown={onKey}>
+      {/* Roving tabindex: the checked radio is the one Tab stop, so the group itself takes no focus. */}
+      <div role="radiogroup" aria-label="Mode" className={s.group} onKeyDown={onKey} // NOSONAR typescript:S6852
+      >
         {MODES.map((m, k) => (
           <button key={m.mode} ref={el => { refs.current[k] = el; }} type="button" role="radio" className={s.option}
             aria-checked={m.mode === p.mode} tabIndex={m.mode === p.mode ? 0 : -1} onClick={() => p.onMode(m.mode, true)}>

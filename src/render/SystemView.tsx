@@ -105,13 +105,15 @@ export function hitColumns(bar: BarLayout): { id: string; x: number; width: numb
   });
 }
 
+const BEAM_ATTR = { 'data-beam': '' };
+
 /** Horizontal beams over a group's stems; direction by the group's average staff position. */
 function Beams(p: { group: BeamGroup; notes: Placed[] }) {
   const { notes } = p;
   const { up, tip } = beamGeometry(notes);
   const sx = (n: Placed) => n.x + (up ? STEM.upDx : STEM.downDx);
   const level = (k: number) => (up ? tip + 6 * k : tip - 4 - 6 * k);
-  const beam = (from: number, to: number, k: number, key: string, attr: object = { 'data-beam': '' }) => (
+  const beam = (from: number, to: number, k: number, key: string, attr: object = BEAM_ATTR) => (
     <rect key={key} {...attr} x={from} y={level(k)} width={to - from} height={4} fill={INK} />
   );
   const span = (i: number, j: number, k: number) => beam(sx(notes[i]), sx(notes[j]) + STEM.width, k, `${k}-${i}`);
@@ -120,8 +122,9 @@ function Beams(p: { group: BeamGroup; notes: Placed[] }) {
   if (p.group.beams === 2) second.push(span(0, notes.length - 1, 1));
   if (p.group.beams === 'mixed') {
     // second beam over each run of sixteenths; a lone sixteenth gets a stub towards its neighbour
-    for (let i = 0; i < notes.length; i++) {
-      if (notatedLength(notes[i].ev.d) !== 3) continue;
+    let i = 0;
+    while (i < notes.length) {
+      if (notatedLength(notes[i].ev.d) !== 3) { i++; continue; }
       let j = i;
       while (j + 1 < notes.length && notatedLength(notes[j + 1].ev.d) === 3) j++;
       if (j > i) second.push(span(i, j, 1));
@@ -130,7 +133,7 @@ function Beams(p: { group: BeamGroup; notes: Placed[] }) {
         const left = i === notes.length - 1;
         second.push(beam(left ? x - 8 : x, left ? x + STEM.width : x + 8, 1, `stub-${i}`, { 'data-beam-stub': '' }));
       }
-      i = j;
+      i = j + 1;
     }
   }
   return (

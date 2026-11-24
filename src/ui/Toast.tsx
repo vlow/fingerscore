@@ -68,7 +68,8 @@ function ToastView({ toast }: { toast: Toast }) {
   }
 
   return (
-    <div ref={ref} className={s.toast} onKeyDown={onKey}
+    // The handler catches Esc from the action button inside; the box itself is not a control.
+    <div ref={ref} role="presentation" className={s.toast} onKeyDown={onKey}
       onMouseEnter={() => hover(true)} onMouseLeave={() => hover(false)}>
       <span className={s.message}>{toast.message}</span>
       {toast.action && (

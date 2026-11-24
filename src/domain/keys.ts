@@ -21,7 +21,15 @@ const MINOR_NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'G♯', 'A
 export function tonicName(tonicPc: number, mode: Mode): string {
   if (mode === 'major') return MAJOR_NAMES[mod12(tonicPc)];
   if (mode === 'minor') return MINOR_NAMES[mod12(tonicPc)];
-  return spell(60 + mod12(tonicPc), keySignature(tonicPc, mode)).name.replace(/\d+$/, '');
+  return withoutOctave(spell(60 + mod12(tonicPc), keySignature(tonicPc, mode)).name);
+}
+
+/** A spelled name without its octave: "F♯4" and "F♯-1" give "F♯". */
+export function withoutOctave(name: string): string {
+  let end = name.length;
+  while (end > 0 && name[end - 1] >= '0' && name[end - 1] <= '9') end--;
+  if (end < name.length && name[end - 1] === '-') end--;
+  return name.slice(0, end);
 }
 
 export function keyName(tonicPc: number, mode: Mode): string {

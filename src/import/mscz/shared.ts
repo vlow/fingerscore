@@ -31,7 +31,7 @@ export interface Dialect {
 
 /** `a/b` as a number (a fraction of a whole note when it comes from MuseScore). */
 export function fraction(s: string | undefined): number | null {
-  const m = /^\s*(-?\d+)\s*(?:\/\s*(\d+))?\s*$/.exec(s ?? '');
+  const m = /^(-?\d+)(?:\s*\/\s*(\d+))?$/.exec((s ?? '').trim());
   if (!m) return null;
   const d = m[2] === undefined ? 1 : Number(m[2]);
   return d === 0 ? null : Number(m[1]) / d;
@@ -96,7 +96,7 @@ function readGrid(measures: Element[], items: Dialect['items']): { bars: Bar[]; 
       const n = num(text(ts, 'sigN')), d = num(text(ts, 'sigD'));
       if (n !== null && d !== null && d > 0) { sigs.push([n, d]); meter = n * 4 / d; }
     }
-    const declared = (fraction(m.getAttribute('len') ?? undefined) ?? NaN) * 4;
+    const declared = (fraction(m.getAttribute('len') ?? undefined) ?? Number.NaN) * 4;
     const length = declared > 0 ? declared : meter;     // a zero, negative or missing length is the meter's
     bars.push({ el: m, start, length });
     start += length;
