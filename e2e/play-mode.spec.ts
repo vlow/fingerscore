@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.use({ viewport: { width: 1600, height: 800 } });
 
-// SPEC §14 acceptance check 8 (play mode, §11a).
+// SPEC §16 acceptance check 8 (play mode, §11a).
 test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));

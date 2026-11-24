@@ -158,7 +158,6 @@ The PDF code and fonts load on the first click of Download PDF (see "PDF"). The 
 ## What it does not do
 
 - Editing repeats and endings, or changing the time signature, or the key signature other than by transposing.
-- A full accessibility audit.
 
 Later versions plan these.
 
@@ -166,13 +165,66 @@ Not planned yet: insert mode, copy and paste, selecting several notes, and more 
 
 There is no sync between browsers or devices, and none is planned: the app has no server and sends no user data over the network. To move a sheet, use File, then Download JSON, and open the file on the other device.
 
+## Checks
+
+Two end-to-end files test the finished app in Chromium. Both run in CI on every push with the other end-to-end tests.
+
+### Acceptance: `e2e/acceptance.spec.ts`
+
+22 tests, about 46 s. A01 to A12 are the 12 checks of the handoff (SPEC section 16), in its order. V01 to V10 are checks for version 2:
+
+| Test | Covers |
+|---|---|
+| V01 | MuseScore import: title, key, time signature, lyrics, chord symbols |
+| V02 | ABC import in D Dorian: signature and mode |
+| V03 | Cut time: import and playback speed |
+| V04 | Triplets: import, make, change, undo |
+| V05 | Sheet PDF: pages, title, lyrics and chord letters as text |
+| V06 | Scale PDF: name and one chart per note |
+| V07 | Scales: G♭ and F♯ major, the natural sign in E♭ blues |
+| V08 | Alternate fingerings: automatic choice, manual choice after a reload |
+| V09 | The four pages from the footer; the import notice links to the terms |
+| V10 | No request leaves the origin on the core path |
+
+The shipped sample is "Auld Lang Syne"; the handoff's numbers describe "The Water Is Wide". So A01, A02, A03 and A05 pin the sample's values. Unit tests pin the handoff's own numbers for checks 1, 2, 3 and 5 on the handoff song: `src/domain/transpose.test.ts` (checks 1, 2, 3), `src/domain/playback.test.ts` (check 5) and `src/pages/SheetPage.test.tsx` (check 2). `src/acceptanceIndex.test.ts` fails unless each of the 22 numbers appears once.
+
+Run one check by its number:
+
+```
+npx playwright test e2e/acceptance.spec.ts -g "A05"
+```
+
+### Accessibility: `e2e/accessibility.spec.ts`
+
+The file has 93 tests and takes about 80 s. Each of 20 states is opened from empty storage: start (empty, one saved sheet, library, refusal), Tracks, the sheet in View, Edit notes with a note selected, Lyrics and Chords, the out-of-range banner, the alternate-fingering popover, the File menu and the PDF message, Play mode, Scales (default and popover), and the four text pages. Every state gets:
+
+- **Scan:** axe-core with the rule sets `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa`. Zero findings are required.
+- **Target size:** 36 × 36 px for every control, 44 × 44 px for primary actions and the header navigation. The test measures the area that takes the click, by asking the browser which element sits at four points near the corners of the required box. A link inside a sentence is exempt. A note on the paper must be at least 24 px high; its width follows the note spacing (31 px at the narrowest in the sample).
+- **Focus:** every Tab stop shows a mark with at least 3:1 contrast against its surroundings.
+
+Further tests:
+
+- **Keyboard only:** from the instrument to Play mode with no mouse click, including Esc returning focus to the control that opened a menu or popover.
+- **Announcements:** refusals and the PDF's unsupported-character message are alerts; save status and PDF progress are status messages; selecting a note announces its pitch, length and bar; the paper's description names title, instrument and key.
+- **Reduced motion:** with the system setting on, a page turn jumps within one frame; without it, the turn glides.
+- **Narrow screens:** at 320 × 640, 768 × 1024 and 1024 × 768 no state scrolls sideways.
+- **Click areas on the paper:** the densest stretch, the last bar of a system and the edge of an alternate-fingering pill.
+
+There is no exclusion from any rule. Run one state with `npx playwright test e2e/accessibility.spec.ts -g "sheet-file-menu"`.
+
+### Not tested
+
+- A real screen reader (VoiceOver, NVDA, TalkBack).
+- A real phone.
+- Browsers other than Chromium.
+
 ## Run it
 
 ```
 npm install
 npm run dev        # dev server on http://localhost:5173
 npm test           # unit tests (Vitest)
-npm run test:e2e   # end-to-end test (Playwright)
+npm run test:e2e   # end-to-end tests (Playwright), including the two suites under "Checks"
 npm run build      # type-check and build to dist/
 npm run check:bundle  # after a build: code loaded at start at most 400,000 bytes, no PDF library in it
 npm run demo       # regenerate the sample MIDI file

@@ -63,12 +63,13 @@ Part 6b is the last part before hosting. It proves two things about the finished
   - A01 pins the sample's real values on Xaphoon C: no shift, F major, C4–D5, all playable.
   - A02 forces notes out of range with a deliberate shift and checks the red banner, the red noteheads and the "!" boxes with the count the app reports.
   - A03 pins what the sample gives: alto sax writes F major and sounds A♭ major; clarinet writes C major and sounds B♭ major; tenor sax writes F major and sounds E♭ major.
-  - A05 has two parts. The sample plays 56 notes in 39.0 s at ♩ = 100. A self-made ABC fixture with a repeat and two endings proves that playback takes the repeat and reaches the second ending on the second pass.
+  - A05 has two parts. The sample plays 56 notes in 39.0 s at ♩ = 100. The sheet shows no total duration; the track page shows "0:39", and the test derives 39.0 s from the tempo and the bar lengths. A self-made ABC fixture with a repeat and two endings proves that playback takes the repeat and reaches the second ending on the second pass.
   - A10 uses the handoff's own text ("Oh love is gen-tle") in the bulk box.
+  - A07: the chord's text content is "F♯m7♭5/C♯", with "7♭5" drawn raised.
   - The other checks (A04, A06–A09, A11, A12) are tested as the handoff words them.
   - The unit tests that pin the handoff's numbers on the fixture are named in a comment at the head of the file. One of them pins 78.6 s where the handoff says "≈ 76 s"; the report lists this.
 - Version 2 checks:
-  - V01 A MuseScore file imports with title, key, time signature, lyrics and chord symbols.
+  - V01 A MuseScore file imports with title, key, time signature, lyrics and chord symbols. The app takes a sheet's title from the file name for every format, and the test pins that.
   - V02 An ABC file in a mode (Dorian) imports with its signature and mode.
   - V03 A tune in cut time imports and plays at the right speed.
   - V04 Triplets: imported, made from plain notes, changed and undone.
@@ -93,16 +94,18 @@ Part 6b is the last part before hosting. It proves two things about the finished
   - Play mode.
   - Scales: default; alternate popover open.
   - About, Imprint, Privacy, Terms.
-- Result required: zero findings. An exclusion is allowed only for a single rule on a single element, written in the test with its reason. Known candidate: ghost keys in the "Full key map" chart (`#C3C7CE` on white), which show keys that are not pressed and carry no information on their own.
+- Result required: zero findings. An exclusion is allowed only for a single rule on a single element, written in the test with its reason.
+
+As built: there is no exclusion. The ghost keys did not need one. The File menu's "Terms of Use" link became a menu item, so that the menu has only valid children. This reverses a detail of part 6a: the notice was not a menu item and Tab reached the link. Now the arrow keys reach it, Enter or Space follows it, and Tab closes the menu.
 
 ### 5.3 Measured checks
 
-- **Target size:** every button, link, input and other control can be hit in an area of at least 36 × 36 px. Primary actions and the header navigation have at least 44 × 44 px. The test measures the area that takes the click (it asks the browser which element is under points 18 or 22 px from the centre), so a small mark with a larger invisible hit area passes, as the alternate-fingering pill does today. A link inside a sentence is exempt, as in WCAG. Known to be too small today: the footer links (about 17 px high) and the two sliders (about 16 px).
-- **Notes on the paper:** the click area of a note is at least 24 px high (the WCAG 2.2 AA minimum; it is 16 px today). Its width follows the note spacing and can stay below 24 px in dense bars, because wider areas would overlap. The arrow keys move the selection from note to note as the alternative. The report states the smallest measured width.
+- **Target size:** every button, link, input and other control can be hit in an area of at least 36 × 36 px. Primary actions and the header navigation have at least 44 × 44 px. The test measures the area that takes the click (it asks the browser which element is under points 18 or 22 px from the centre), so a small mark with a larger invisible hit area passes, as the alternate-fingering pill does today. A link inside a sentence is exempt, as in WCAG. The measurement found 47 controls too small, not only the footer links and the sliders. Most had rounded corners that the check's corner probes missed. The fix is an invisible square click layer (`src/styles/hit.module.css`), label padding for the selects, a taller click area for the footer links and the two sliders, and 44 px for the Download PDF menu item.
+- **Notes on the paper:** the click area of a note is at least 24 px high (the WCAG 2.2 AA minimum). It was already 252 px high, the full height of the system. `MIN_HIT` (16) is a floor for its width. The width follows the note spacing and can stay below 24 px in dense bars, because wider areas would overlap. The smallest width measured in the sample is 31 px. Nothing was changed. The arrow keys move the selection from note to note as the alternative.
 - **Visible focus:** tabbing through each state, every stop shows a focus mark with at least 3:1 contrast against its surroundings, and the order follows the reading order.
 - **Keyboard only:** one test completes the core path without a mouse: choose an instrument, open the sample, make the sheet, change a note, type a lyric, type a chord, save, download from the File menu, enter and leave play mode. No stop traps the focus. Esc closes a popover or menu and returns focus to the control that opened it.
 - **States:** segmented controls, toggles, menus and popovers expose pressed, checked or expanded as the handoff requires.
-- **Announcements:** import refusals and other errors are alerts. Save status, PDF progress and PDF messages are status messages. In the editing modes the app already announces the selected note in a polite live region ("Selected: G4, bar 3"); the announcement gains the note's length. The paper keeps its accessible name, which tests and users of assistive software rely on, and gains a description with title, instrument and key. Decorative drawings are hidden.
+- **Announcements:** import refusals and other errors are alerts. Save status and PDF progress are status messages; PDF progress goes to the paper's status line. The PDF's unsupported-character message is an alert, because it is an error the player must act on. In the editing modes the app already announces the selected note in a polite live region ("Selected: G4, bar 3"); the announcement gains the note's length. The paper keeps its accessible name, which tests and users of assistive software rely on, and gains a description with title, instrument and key. Decorative drawings are hidden.
 - **Reduced motion:** with the system setting "reduce motion", page turns and scrolling jump instead of gliding. The app already does this; a test pins it. Auto-scroll in play mode stays, because the player starts it.
 - **Narrow screens:** at 320 px width no page scrolls sideways. The paper may scroll inside its own container, as the handoff allows.
 
@@ -111,10 +114,11 @@ Part 6b is the last part before hosting. It proves two things about the finished
 - Sizes and colours change where the rule gives the number. The closing report shows each visible change as a before and after picture.
 - Where the rule can be met in more than one way and the choice shows (for example which of two greys gets darker, or whether a row of small buttons grows or wraps), the builder picks, applies it and lists it for the owner.
 - Print styles and PDF output do not change. The existing PDF and print tests guard this; a fix that would alter them is done for the screen only.
+- Visible changes on screen: alternate-fingering pills that are close together sit 36 px apart (`src/render/pillSpread.ts`); the E♭ key label of the instrument picker has opacity 0.8 instead of 0.6; the File menu is 4 px taller; the footer wraps 12 px wider; the play-mode focus ring is teal; the alternate-fingering popover wraps at 320 px.
 
 ### 5.5 Order of work
 
-1. Build the scan and the measured checks. Record every finding in `e2e/a11y-baseline.json`; the tests pass while the app has no finding beyond the baseline.
+1. Build the scan and the measured checks. Record every finding in `e2e/a11y-baseline.json`; the tests pass while the app has no finding beyond the baseline. The baseline file existed only during the build and is deleted.
 2. Fix the findings in groups (colours; sizes; names and states; focus and keyboard; announcements and motion). Each group removes its entries from the baseline.
 3. Delete the baseline. The tests then require zero findings.
 4. Write the acceptance suite; fix or report what it turns up.
@@ -127,11 +131,11 @@ The README gains a short section: what the two suites cover, how to run one chec
 
 - **Branch:** `v2-quality`.
 - **Target sizes follow the handoff (44 and 36 px)**, which is stricter than WCAG 2.2 AA (24 px).
-- **Notes on the paper are held to 24 px in height**, not 36, because the staff sets their size; their width may stay smaller in dense bars.
+- **Notes on the paper are held to 24 px in height**, not 36, because the staff sets their size; their width may stay smaller in dense bars. The click area is 252 px high, so no change was needed.
 - **Target size is measured on the area that takes the click**, not on the visible mark.
 - **Checks 1, 2, 3 and 5 pin the shipped sample's values**; the handoff's numbers stay pinned by unit tests on the handoff song.
 - **The paper's accessible name stays**; title, instrument and key go into its description.
-- **Ghost keys are treated as decoration** and may be excluded from the contrast rule.
+- **Ghost keys needed no exclusion.**
 - **Chromium only.**
 - **Version 2 checks V01–V10** are my selection of what version 2 added.
 

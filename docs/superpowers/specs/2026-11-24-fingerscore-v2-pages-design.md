@@ -77,6 +77,7 @@ Where it appears:
 - **Drop zone** on the start page: under the hint line, always visible, in every state in which a file can be chosen or dropped.
 - **Gallery** ("Your sheets"): in the library view, beside "Import…". The one-line strip has no import control; the drop zone on the same page carries the notice.
 - **File menu** on the sheet page: a text line directly under "Open JSON file…". The line is not a menu item and takes no keyboard stop; its link does.
+  Changed in part 6b: the link is a menu item, so that the menu has only valid children. The arrow keys reach it, Enter or Space follows it, and Tab closes the menu.
 
 The link opens `/terms` in the same tab everywhere. A sheet with unsaved changes survives the visit, because the app keeps the open sheet in the browser session; a test opens the terms from the File menu with unsaved changes, goes back and finds the changes.
 
@@ -127,7 +128,7 @@ Eyebrow "About", `h1` "Why I made fingerscore", lead paragraph, author line, sec
 
 - Each page: renders its `h1`, sets its title, and holds the sentences section 5.4–5.7 require.
 - Footer: four links with the right targets on every route; GitHub link only with a repository address.
-- Notice: present at the three spots; its link leads to `/terms`; in the File menu it is not a menu item.
+- Notice: present at the three spots; its link leads to `/terms`; in the File menu its link is a menu item (changed in part 6b).
 - Privacy facts: a test compares the storage items the page names with the local and session keys the app writes.
 - Release check: fails with a placeholder, passes with all fields filled (run on a copy, not on the committed file).
 - End-to-end: footer link to each page and back; the notice link from the start page; the production-build test still sees no request leaving the origin.
