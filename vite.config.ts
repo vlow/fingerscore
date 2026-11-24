@@ -1,11 +1,26 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
+// jsPDF imports html2canvas, dompurify and canvg only for doc.html() and addSvgAsImage, which the app never calls.
+// Left alone, the build ships a chunk for each (about 380 kB). They resolve to an empty module instead.
+const STUBBED = new Set(['html2canvas', 'dompurify', 'canvg']);
+const STUB_ID = '\0stubbed-unused-pdf-library';
+const stubUnusedPdfLibraries = {
+  name: 'stub-unused-pdf-libraries',
+  // Before Vite's own resolver, which would find the packages first.
+  enforce: 'pre' as const,
+  resolveId: (id: string) => (STUBBED.has(id) ? STUB_ID : null),
+  load: (id: string) => (id === STUB_ID ? 'export default undefined;' : null),
+};
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [stubUnusedPdfLibraries, react()],
   // Parsers and the PDF code load on demand. Without this the dev server finds their libraries on first use,
   // re-optimises them and reloads the page, which breaks a first import (and a cold end-to-end run).
-  optimizeDeps: { include: ['abcjs/src/parse/abc_parse', 'jszip', '@tonejs/midi', 'midi-file', 'jspdf', 'svg2pdf.js'] },
+  optimizeDeps: {
+    include: ['abcjs/src/parse/abc_parse', 'jszip', '@tonejs/midi', 'midi-file', 'jspdf', 'svg2pdf.js'],
+    rolldownOptions: { plugins: [stubUnusedPdfLibraries] },
+  },
   server: { port: 5173, strictPort: true },
   test: {
     globals: true,

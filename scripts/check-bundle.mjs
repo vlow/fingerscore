@@ -1,12 +1,20 @@
 // Fails when the code that loads at start is over 400 000 bytes or contains the PDF libraries.
 // The start set: the module script and the modulepreload links of dist/index.html, plus the files they import statically
 // (`from"./x.js"`, `import"./x.js"`; a dynamic `import(...)` loads later and does not count).
-import { readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 
 const LIMIT = 400_000;
 // Strings that survive minification: jsPDF's error texts and property names, and svg2pdf.js's error text. The built PDF chunk holds all of them.
 const PDF_MARKERS = ['jsPDF', 'svg2pdf', 'Unsupported image URL'];
+// jsPDF imports html2canvas, dompurify and canvg only for doc.html() and addSvgAsImage, which the app never calls.
+// vite.config.ts stubs them. A marker is a string from the library's own code that jsPDF's chunk does not hold
+// (jsPDF's error texts name the libraries, so a library name alone is no marker).
+const UNUSED_LIBRARIES = [
+  { name: 'html2canvas', marker: 'Unable to find element in cloned iframe' },
+  { name: 'dompurify', marker: 'ALLOWED_URI_REGEXP' },
+  { name: 'canvg', marker: 'core-js_shared__' },
+];
 const dist = 'dist';
 
 let html;
@@ -57,6 +65,17 @@ for (const { f } of set) {
   if (found.length > 0) {
     console.error(`check:bundle: ${f} contains the PDF library (found ${found.map(m => `"${m}"`).join(', ')}). Load it with import() only.`);
     failed = true;
+  }
+}
+
+// Every script in dist/assets, not only the start set.
+for (const name of readdirSync(join(dist, 'assets')).filter(n => n.endsWith('.js'))) {
+  const source = readFileSync(join(dist, 'assets', name), 'utf8');
+  for (const { name: lib, marker } of UNUSED_LIBRARIES) {
+    if (source.includes(marker)) {
+      console.error(`check:bundle: dist/assets/${name} contains ${lib} (found "${marker}"). The build must stub it.`);
+      failed = true;
+    }
   }
 }
 process.exit(failed ? 1 : 0);

@@ -14,7 +14,8 @@
     "demo": "tsx scripts/make-demo-midi.ts",
     "glyphs": "tsx scripts/extract-glyphs.ts",
     "fonts": "tsx scripts/make-pdf-fonts.ts",
-    "icons": "tsx scripts/make-icons.ts"
+    "icons": "tsx scripts/make-icons.ts",
+    "notices": "tsx scripts/make-notices-list.ts"
   },
   "dependencies": {
     "@fontsource/atkinson-hyperlegible": "^5.3.0",
