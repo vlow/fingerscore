@@ -286,11 +286,25 @@ Checkboxes: Fingering charts · Chord symbols (transposed) · └ Raise extensio
 
 ## 11. Playback
 
-- Controls (right side of the mode row): **▶ Play / ■ Stop** (label "Play from selected" when a note is selected in an edit mode) and a tempo slider 40–200 (label "♩ = 100"). Tempo is part of the document and is printed on the sheet.
+- Controls (right side of the mode row): **▶ Listen / ■ Stop** (label "Listen from selected" when a note is selected in an edit mode) and a tempo slider 40–200 (label "♩ = 100"). Tempo is part of the document and is printed on the sheet.
 - Web Audio, scheduled ahead: one oscillator per note → low-pass filter → gain envelope (25 ms attack, 60 ms release, gain 0.22). Timbre per family: sax sawtooth/2200 Hz, Xaphoon sawtooth/1500, clarinet square/1500, flute sine/4000, recorder triangle/3000.
 - Plays **sounding pitch** (`m + shift`). Tied notes sound as one note, rests are silent.
 - Repeats: play to the repeat-end bar (1st ending), jump back to the last repeat-start, on the second pass skip the "1." bar and continue with "2.".
 - The current event is highlighted on the sheet (teal column). Any score edit or leaving the page stops playback.
+
+---
+
+## 11a. Play mode (performance view)
+
+For playing from the screen (tablet on a music stand, laptop). Entered with **Play mode** (outlined teal button, music-stand icon) at the right of the mode row, next to **Listen** (the audio playback button from §11 — renamed from "Play" to avoid confusion).
+
+- **Shows only the score:** full-screen overlay (`position: fixed`, neutral grey background) with the paper centred; header, page bar, sidebar, banners, mode switch and all editing affordances (hit areas, popovers, alternate-fingering pills) are hidden. Title/subtitle are plain text. Entering stops audio playback and leaves edit modes.
+- **Page turning:** pages = viewport height with ~12% overlap (scroll by 88% of the visible height, smooth). Ways to turn: ‹ / › buttons in the toolbar; invisible tap zones on the left/right 12% of the screen; keys → ↓ Page Down Space (next) and ← ↑ Page Up (previous) — this also covers Bluetooth page-turner pedals, which send these keys. Indicator "Page 2 / 4" (`aria-live="polite"`).
+- **Auto-scroll (optional, off by default):** toggle button (label "Auto-scroll" / "Pause", key **A**). Continuous scrolling via `requestAnimationFrame`; the base speed follows the tempo: one system (4 bars of 4/4 = 16 beats) per `16·60/tempo` seconds, scaled by the zoom. **Speed slider 50–200 %** with readout "100% · 1 line / 10 s". Stops automatically at the end; manual scrolling/turning is always possible while it runs.
+- **Size:** A− / A+ (keys − / +), zoom 75–200 %, default 125 %.
+- **Toolbar:** floating dark bar at the bottom centre: Exit · ‹ Page n / m › · Auto-scroll + Speed · A− A+. Wraps on small screens. **Esc** exits.
+- Keep the screen awake while in play mode (Screen Wake Lock API, if available); release on exit.
+- Play-mode settings (zoom, speed) are view preferences, not part of the document/undo history; persist them per device.
 
 ---
 
@@ -372,9 +386,10 @@ Controls (one card): Instrument select · Scale (major, natural minor, harmonic 
 5. Playback of the demo: 73 notes with the repeat (pickup + 16 bars, second pass to the 2nd ending), ≈ 76 s at ♩ = 100.
 6. Edit notes: quarter → eighth inserts an eighth rest; lengths that don't fit are disabled; undo restores everything; editing doesn't change the key.
 7. Chords: typing "Bb" shows "B♭"; "F#m7b5/C#" renders F♯m⁷♭⁵/C♯; transposing +2 moves stored chords.
-8. Lyrics bulk: "Oh love is gen-tle" → Oh | love | is | gen- | tle on consecutive notes.
-9. Save → "Saved"; any change → "Unsaved changes"; Download/Open JSON round-trips the document exactly; foreign JSON is rejected.
-10. Scales: A harmonic minor contains G♯; E blues = E G A B♭ B D (♭5 spelled B♭); C chromatic goes up with sharps and down with flats.
+8. Play mode: hides all editing UI; → / Space turn a page (88 % of the viewport); auto-scroll at 100 % and ♩ = 100 moves one system per 9.6 s; Esc exits.
+9. Lyrics bulk: "Oh love is gen-tle" → Oh | love | is | gen- | tle on consecutive notes.
+10. Save → "Saved"; any change → "Unsaved changes"; Download/Open JSON round-trips the document exactly; foreign JSON is rejected.
+11. Scales: A harmonic minor contains G♯; E blues = E G A B♭ B D (♭5 spelled B♭); C chromatic goes up with sharps and down with flats.
 
 ---
 

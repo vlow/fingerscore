@@ -34,7 +34,7 @@ src/
 3. Renderer: staff, glyphs (`data/glyphs.json`), notes/rests/beams/ties/repeats, fingering charts (compact + full), chords, lyrics — render `data/sample-song.json` to match the prototype.
 4. Sheet page: sidebar (instrument, key bridge, suggestions, range meter, show toggles), banners, alternate-fingering popover.
 5. Editing modes (notes, lyrics, chords, title), undo/redo, keyboard shortcuts.
-6. Playback.
+6. Playback (Listen) and Play mode (performance view with page turning and auto-scroll, SPEC §11a).
 7. Persistence: document format + validation, library, File menu, gallery, drop zone for JSON.
 8. Import: MIDI first (with the demo file behaviour), then MusicXML/.mxl, .mscz, ABC; track page; melody + harmony detection.
 9. Scales page.

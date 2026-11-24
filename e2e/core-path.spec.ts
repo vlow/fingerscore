@@ -27,7 +27,7 @@ test('core path: sample → track → sheet → instruments → alternate → pl
   await page.getByRole('dialog').getByRole('button').nth(1).click();
   await expect(page.getByText(/changed by you/)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Play' }).click();
+  await page.getByRole('button', { name: 'Listen' }).click();
   await expect(page.locator('[data-playing="true"]')).toHaveCount(1);
   await page.getByRole('button', { name: 'Stop' }).click();
   await expect(page.locator('[data-playing="true"]')).toHaveCount(0);
@@ -38,12 +38,12 @@ test('core path: sample → track → sheet → instruments → alternate → pl
     .map(r => r.getAttribute('data-hit')!)
     .find(ev => !svg.querySelector(`[data-ev="${ev}"]`)!.hasAttribute('data-tied')));
   await second.locator(`[data-hit="${id}"]`).click();
-  await page.getByRole('button', { name: 'Play from selected' }).click();
+  await page.getByRole('button', { name: 'Listen from selected' }).click();
   await expect(page.locator('[data-playing="true"]')).toHaveCount(1);
   await expect(second.locator('[data-playing="true"]')).toHaveCount(1);
   await page.getByRole('button', { name: 'Stop' }).click();
   await expect(page.locator('[data-playing="true"]')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Play from selected' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Listen from selected' })).toBeVisible();
 
   // The File menu paints above the page body: its items are the element hit at their own centre.
   const fileButton = page.getByRole('button', { name: /^File/ });

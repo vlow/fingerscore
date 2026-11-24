@@ -61,6 +61,7 @@ a{color:#0E6E68}a:hover{color:#0A4F4A}
 </style>
 </helmet>
 <div tabIndex="-1" onKeyDown="{{onKeys}}" style="min-height: 100vh; background: #F3F4F6; color: #15171C; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 14px; outline: none">
+<sc-if value="{{notPerform}}" hint-placeholder-val="{{ true }}">
   <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 12px 28px; background: #FFFFFF; border-bottom: 1px solid #E2E4E8">
     <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #15171C">
       <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="10" y="2" width="8" height="24" rx="4" fill="#15171C"></rect><circle cx="14" cy="8" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="13" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="18" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="23" r="1.6" fill="#5FD3C6"></circle></svg>
@@ -324,6 +325,7 @@ a{color:#0E6E68}a:hover{color:#0A4F4A}
         <span style="font-size: 13px; color: #4A505C">{{editHint}}</span>
         <div style="flex: 1 1 0"></div>
         <div role="group" aria-label="Playback" style="display: flex; align-items: center; gap: 12px">
+          <button type="button" onClick="{{enterPerform}}" title="Show only the score, with page turning and auto-scroll" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1.5px solid #0E6E68; background: #F0FAF8; color: #0A4F4A; font: 700 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v11H4z"></path><path d="M12 15v5"></path><path d="M8 20h8"></path></svg>Play mode</button>
           <button type="button" onClick="{{togglePlay}}" aria-label="{{playLabel}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 10px; border: none; background: #15171C; color: #FFFFFF; font: 600 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">
             <sc-if value="{{playing}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg></sc-if>
             <sc-if value="{{notPlaying}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"></path></svg></sc-if>
@@ -503,6 +505,179 @@ a{color:#0E6E68}a:hover{color:#0A4F4A}
       </nav>
     </div>
   </footer>
+</sc-if>
+<sc-if value="{{perform}}" hint-placeholder-val="{{ false }}">
+  <div role="region" aria-label="Play mode" tabIndex="-1" ref="{{perfRef}}" onKeyDown="{{perfKeys}}" style="position: fixed; inset: 0; z-index: 100; background: #EEF0F2; outline: none">
+    <div ref="{{scrollRef}}" onScroll="{{onPerfScroll}}" style="position: absolute; inset: 0; overflow-y: auto">
+      <div style="padding: 20px 12px 120px; overflow-x: auto">
+        <div style="width: 940px; margin: 0 auto; box-sizing: border-box; padding: 40px 40px 36px; background: #FFFFFF; zoom: {{pzoom}}">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; margin-bottom: 4px">
+            <h1 style="margin: 0; font: 700 26px/1.25 'Atkinson Hyperlegible', sans-serif; text-align: center">{{sheetTitle}}</h1>
+            <div style="font: 700 14px/1.4 'Atkinson Hyperlegible', sans-serif; color: #2A2D33; text-align: center">{{sheetSub}}</div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5B616E; margin-bottom: 8px">
+            <span>♩ = {{tempo}}</span>
+            <span>{{instName}} · {{headerKeys}}</span>
+          </div>
+          <sc-for list="{{systems}}" as="sys" hint-placeholder-count="5">
+            <div class="sys" style="width: {{sys.w}}px">
+              <svg class="acc" width="40" height="140" aria-hidden="true" style="left: 0px; top: 0px"><path transform="translate(0,115.6) scale(0.0588,-0.0588)" fill="#15171C" d="M434 2Q464 -103 464 -170Q464 -223 427 -257Q390 -291 337 -291Q287 -291 250 -262Q213 -232 213 -190Q213 -160 234 -134Q254 -107 284 -107Q313 -107 332 -128Q350 -150 350 -178Q350 -240 280 -240Q298 -268 338 -268Q353 -268 368 -264Q384 -259 401 -248Q418 -237 428 -214Q439 -190 439 -157Q439 -136 411 -6Q389 -12 356 -12Q259 -12 190 60Q120 132 120 232Q120 267 132 303Q143 339 158 366Q172 394 200 428Q229 463 248 484Q268 504 303 539Q280 621 280 689Q280 779 313 840Q346 900 379 900Q389 900 402 887Q414 874 426 851Q438 828 446 790Q455 753 455 710Q455 551 342 447L368 329Q384 332 397 332Q458 332 500 282Q542 233 542 162Q542 44 434 2ZM426 746Q426 801 394 801Q358 801 333 748Q308 695 308 630Q308 588 321 557Q359 580 392 640Q426 699 426 746ZM498 128Q498 183 466 216Q434 249 383 249L428 23Q498 52 498 128ZM407 17 361 247Q334 241 312 214Q289 187 289 158Q289 143 295 128Q301 114 310 104Q318 94 327 86Q336 78 342 74Q348 71 348 71L340 66Q307 75 278 106Q248 137 248 184Q248 231 278 270Q307 310 343 323L325 430Q168 299 168 177Q168 104 223 55Q278 6 348 6Q365 6 407 17Z"></path></svg>
+              <sc-for list="{{sys.marks}}" as="m" hint-placeholder-count="40">
+                <div class="{{m.cls}}" style="left: {{m.x}}px; top: {{m.y}}px; width: {{m.w}}px; height: {{m.h}}px">{{m.text}}</div>
+              </sc-for>
+              <sc-for list="{{sys.chords}}" as="c" hint-placeholder-count="3">
+                <div class="{{c.cls}}" style="left: {{c.x}}px; top: 2px; width: 80px; height: 16px"><span>{{c.root}}</span><span class="cq">{{c.qual}}</span><span>{{c.extFlat}}</span><sup>{{c.extUp}}</sup><span>{{c.bass}}</span></div>
+              </sc-for>
+              <sc-for list="{{sys.hits}}" as="h" hint-placeholder-count="0">
+                <button type="button" class="hit" aria-label="{{h.label}}" onClick="{{h.pick}}" style="left: {{h.x}}px; {{h.style}}"></button>
+              </sc-for>
+              <sc-if value="{{sys.ed.has}}" hint-placeholder-val="{{ false }}">
+                <div class="edp" role="dialog" aria-label="{{sys.ed.label}}" style="left: {{sys.ed.x}}px; top: {{sys.ed.y}}px">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px">
+                    <strong style="font-size: 13px">{{sys.ed.title}}</strong>
+                    <button type="button" onClick="{{closeEditor}}" aria-label="Close editor" style="width: 32px; height: 32px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B616E" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+                  </div>
+                  <sc-if value="{{sys.ed.isChord}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #5B616E; text-transform: uppercase; letter-spacing: 0.05em">Chord
+                      <input type="text" ref="{{chordRef}}" autoFocus="{{ true }}" value="{{sys.ed.chord}}" onChange="{{sys.ed.onChord}}" onKeyDown="{{sys.ed.onKey}}" placeholder="e.g. Am, F♯7, B♭Δ7/D" style="min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #D5D8DE; font: 700 15px 'Atkinson Hyperlegible', sans-serif; color: #0E6E68; text-transform: none; letter-spacing: 0">
+                    </label>
+                    <div role="group" aria-label="Insert chord symbol" style="display: flex; flex-wrap: wrap; gap: 4px">
+                      <sc-for list="{{sys.ed.chordSyms}}" as="s" hint-placeholder-count="12">
+                        <button type="button" class="symb" title="{{s.label}}" aria-label="Insert {{s.label}}" onMouseDown="{{keepFocus}}" onClick="{{s.ins}}">{{s.t}}</button>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{sys.ed.chordBad}}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size: 12px; color: #B91C1C">Not a chord we can transpose. Start with a note name A–G.</div>
+                    </sc-if>
+                  </div>
+                  </sc-if>
+                  <sc-if value="{{sys.ed.isLyric}}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #5B616E; text-transform: uppercase; letter-spacing: 0.05em">Lyric
+                      <input type="text" ref="{{lyricRef}}" autoFocus="{{ true }}" value="{{sys.ed.lyric}}" onChange="{{sys.ed.onLyric}}" onKeyDown="{{sys.ed.onKey}}" placeholder="syllable" style="min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #D5D8DE; font: 500 15px 'Atkinson Hyperlegible', sans-serif; color: #15171C; text-transform: none; letter-spacing: 0">
+                    </label>
+                    <div role="group" aria-label="Insert lyric symbol" style="display: flex; flex-wrap: wrap; gap: 4px">
+                      <sc-for list="{{sys.ed.lyricSyms}}" as="s" hint-placeholder-count="6">
+                        <button type="button" class="symb" title="{{s.label}}" aria-label="Insert {{s.label}}" onMouseDown="{{keepFocus}}" onClick="{{s.ins}}">{{s.t}}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  </sc-if>
+                  <sc-if value="{{sys.ed.isChord}}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top: 8px; font-size: 11px; color: #5B616E; line-height: 1.4">Shortcuts while typing: <strong>b</strong> → ♭ and <strong>#</strong> → ♯ after a note name. Numbers after the chord quality are raised on the sheet (C<sup style="font-size: 8px">7</sup>).</div>
+                  </sc-if>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px">
+                    <button type="button" onClick="{{prevNote}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">‹ Prev</button>
+                    <button type="button" onClick="{{nextNote}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Next ›</button>
+                    <span style="margin-left: auto; font-size: 11px; color: #5B616E">Enter = next note</span>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-for list="{{sys.altBtns}}" as="b" hint-placeholder-count="0">
+                <button type="button" class="altb" aria-label="{{b.label}}" onClick="{{b.toggle}}" style="left: {{b.x}}px; top: {{b.y}}px; {{b.style}}"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"></path></svg>{{b.count}}</button>
+              </sc-for>
+              <sc-if value="{{sys.pop.has}}" hint-placeholder-val="{{ false }}">
+                <div class="pop" role="dialog" aria-label="Alternate fingerings" style="left: {{sys.pop.x}}px; top: {{sys.pop.y}}px; width: {{sys.pop.w}}px">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font: 700 12px/16px 'Atkinson Hyperlegible', sans-serif; color: #15171C"><span>{{sys.pop.title}}</span><span style="font-weight: 500; color: #5B616E">pick a fingering</span></div>
+                  <div style="display: flex; gap: 8px">
+                    <sc-for list="{{sys.pop.opts}}" as="op" hint-placeholder-count="2">
+                      <button type="button" onClick="{{op.pick}}" style="position: relative; width: 76px; height: 132px; padding: 0; border-radius: 10px; cursor: pointer; {{op.style}}">
+                        <sc-for list="{{op.marks}}" as="m" hint-placeholder-count="9">
+                          <div class="{{m.cls}}" style="left: {{m.x}}px; top: {{m.y}}px; width: {{m.w}}px; height: {{m.h}}px"></div>
+                        </sc-for>
+                        <span style="position: absolute; left: 2px; right: 2px; bottom: 6px; font: 600 10px/12px 'Atkinson Hyperlegible', sans-serif; color: #15171C; text-align: center">{{op.name}}</span>
+                        <sc-if value="{{op.auto}}" hint-placeholder-val="{{ false }}">
+                          <span style="position: absolute; top: 4px; right: 4px; padding: 1px 5px; border-radius: 6px; background: #E3F4F2; color: #0A4F4A; font: 700 9px/12px 'Atkinson Hyperlegible', sans-serif">auto</span>
+                        </sc-if>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-for list="{{sys.r1s}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="20" height="125" aria-hidden="true" style="left: {{a.x}}px; top: 0px"><path transform="translate(0,111.7) scale(0.0467,-0.0467)" fill="#15171C" d="M370 548H297V465H84V548H12V572H370Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.r2s}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="20" height="125" aria-hidden="true" style="left: {{a.x}}px; top: 0px"><path transform="translate(0,111.7) scale(0.0467,-0.0467)" fill="#15171C" d="M12 382H85V465H298V382H370V358H12Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.r4s}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="20" height="125" aria-hidden="true" style="left: {{a.x}}px; top: 0px"><path transform="translate(0,111.7) scale(0.0467,-0.0467)" fill="#15171C" d="M55 208Q55 242 78 260Q100 278 130 278Q150 278 178 267L65 415Q145 487 145 544Q145 589 91 658H136L264 502Q181 404 181 356Q181 310 259 217L243 194Q203 217 176 217Q140 217 140 173Q140 129 179 84L165 62Q55 144 55 208Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.r8s}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="20" height="125" aria-hidden="true" style="left: {{a.x}}px; top: 0px"><path transform="translate(0,111.7) scale(0.0467,-0.0467)" fill="#15171C" d="M136 443Q152 443 175 466Q198 490 213 511H234L138 166H101L173 426Q126 402 97 402Q68 402 44 422Q19 443 19 473Q19 495 35 514Q51 532 79 532Q106 532 122 514Q138 495 138 473Q138 458 131 445Q135 443 136 443Z"></path></svg>
+              </sc-for>
+              <sc-if value="{{sys.ne.has}}" hint-placeholder-val="{{ false }}">
+                <div class="edp" role="dialog" aria-label="Edit note" style="left: {{sys.ne.x}}px; top: {{sys.ne.y}}px">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px">
+                    <strong style="font-size: 13px">{{sys.ne.title}}</strong>
+                    <button type="button" onClick="{{closeEditor}}" aria-label="Close" style="width: 32px; height: 32px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B616E" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+                  </div>
+                  <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #5B616E; margin-bottom: 4px">Pitch</div>
+                  <div style="display: flex; align-items: center; gap: 4px">
+                    <button type="button" class="symb" onClick="{{sys.ne.octDown}}" title="Octave down (Ctrl ↓)" aria-label="Octave down">−8</button>
+                    <button type="button" class="symb" onClick="{{sys.ne.down}}" title="Semitone down (↓)" aria-label="Semitone down">−1</button>
+                    <span style="flex: 1 1 0; min-width: 64px; text-align: center; font: 700 18px 'Atkinson Hyperlegible', sans-serif">{{sys.ne.pitch}}</span>
+                    <button type="button" class="symb" onClick="{{sys.ne.up}}" title="Semitone up (↑)" aria-label="Semitone up">+1</button>
+                    <button type="button" class="symb" onClick="{{sys.ne.octUp}}" title="Octave up (Ctrl ↑)" aria-label="Octave up">+8</button>
+                  </div>
+                  <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #5B616E; margin: 10px 0 4px">Length</div>
+                  <div role="group" aria-label="Length" style="display: flex; gap: 4px">
+                    <button type="button" class="symb" onClick="{{sys.ne.d1.pick}}" disabled="{{sys.ne.d1.off}}" aria-label="Eighth (3)" title="Eighth (3)" style="{{sys.ne.d1.style}}"><svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><ellipse cx="5" cy="16" rx="4" ry="3" fill="currentColor"></ellipse><path d="M8.6 16V2c1 3 5 4 5 8" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+                    <button type="button" class="symb" onClick="{{sys.ne.d2.pick}}" disabled="{{sys.ne.d2.off}}" aria-label="Quarter (4)" title="Quarter (4)" style="{{sys.ne.d2.style}}"><svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><ellipse cx="6" cy="16" rx="4" ry="3" fill="currentColor"></ellipse><path d="M9.6 16V2" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+                    <button type="button" class="symb" onClick="{{sys.ne.d4.pick}}" disabled="{{sys.ne.d4.off}}" aria-label="Half (5)" title="Half (5)" style="{{sys.ne.d4.style}}"><svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><ellipse cx="6" cy="16" rx="3.6" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.6"></ellipse><path d="M9.6 16V2" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+                    <button type="button" class="symb" onClick="{{sys.ne.d8.pick}}" disabled="{{sys.ne.d8.off}}" aria-label="Whole (6)" title="Whole (6)" style="{{sys.ne.d8.style}}"><svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true"><ellipse cx="9" cy="12" rx="5" ry="3.4" fill="none" stroke="currentColor" stroke-width="2"></ellipse></svg></button>
+                    <button type="button" class="symb" onClick="{{sys.ne.dot}}" disabled="{{sys.ne.dotOff}}" aria-label="Dotted (.)" title="Dotted (.)" style="{{sys.ne.dotStyle}}">·</button>
+                    <span style="flex: 1 1 0"></span>
+                    <button type="button" class="symb" onClick="{{sys.ne.tie}}" disabled="{{sys.ne.tieOff}}" aria-label="Tie to next note (T)" title="Tie to next note (T)" style="{{sys.ne.tieStyle}}">⁀</button>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px">
+                    <button type="button" onClick="{{sys.ne.rest}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">{{sys.ne.restLabel}}</button>
+                    <span style="flex: 1 1 0"></span>
+                    <button type="button" onClick="{{sys.ne.addBar}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">+ Bar after</button>
+                    <button type="button" onClick="{{sys.ne.removeBar}}" disabled="{{sys.ne.noRemove}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #F5C2C2; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #8F1414; cursor: pointer">Remove bar</button>
+                  </div>
+                  <div style="margin-top: 8px; font-size: 11px; color: #5B616E; line-height: 1.4">Keys: ↑ ↓ pitch · A–G note name · ← → next · 3 4 5 6 length · . dot · R rest · T tie · Del rest</div>
+                </div>
+              </sc-if>
+              <sc-for list="{{sys.flats}}" as="a" hint-placeholder-count="1">
+                <svg class="acc" width="12" height="27" aria-hidden="true" style="left: {{a.x}}px; top: {{a.y}}px"><path transform="translate(0,24) scale(0.03,-0.03)" fill="{{a.fill}}" d="M222 441Q275 441 302 408Q329 375 329 317Q329 273 300 234Q270 195 192 117Q115 39 56 -34V783L99 802V402Q148 441 222 441ZM232 308Q232 373 183 373Q159 373 134 358Q110 344 99 319V87Q159 155 196 214Q232 274 232 308Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.sharps}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="12" height="31" aria-hidden="true" style="left: {{a.x}}px; top: {{a.y}}px"><path transform="translate(0,21.7) scale(0.03,-0.03)" fill="{{a.fill}}" d="M365 24 319 6V-193L275 -209V-10L138 -63V-262L94 -279V-80L50 -96V0L94 17V262L50 245V341L94 358V589L138 606V376L275 429V659L319 675V446L365 464V366L319 348V104L365 122ZM275 88V332L138 279V34Z"></path></svg>
+              </sc-for>
+              <sc-for list="{{sys.nats}}" as="a" hint-placeholder-count="0">
+                <svg class="acc" width="12" height="30" aria-hidden="true" style="left: {{a.x}}px; top: {{a.y}}px"><path transform="translate(0,20.25) scale(0.03,-0.03)" fill="{{a.fill}}" d="M324 -273 280 -290V3L56 -87V656L99 675V344L324 433ZM280 93V328L99 254V19Z"></path></svg>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #E2E4E8; font-size: 11px; color: #5B616E">
+            <span>{{legend}}</span>
+            <span>fingerscore.eu</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button type="button" onClick="{{prevPage}}" aria-label="Previous page" style="position: absolute; left: 0; top: 0; bottom: 88px; width: 12%; border: none; background: transparent; cursor: w-resize"></button>
+    <button type="button" onClick="{{nextPage}}" aria-label="Next page" style="position: absolute; right: 0; top: 0; bottom: 88px; width: 12%; border: none; background: transparent; cursor: e-resize"></button>
+    <div role="toolbar" aria-label="Play mode controls" style="position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 8px; border-radius: 16px; background: #15171C; color: #FFFFFF; box-shadow: 0 12px 32px rgba(20,22,28,0.3); max-width: calc(100vw - 24px); box-sizing: border-box">
+      <button type="button" onClick="{{exitPerform}}" aria-label="Exit play mode (Esc)" title="Exit (Esc)" style="display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 10px; border: none; font: 700 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; background: #2A2D33; color: #FFFFFF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>Exit</button>
+      <span aria-hidden="true" style="width: 1px; height: 28px; background: #3A3D44"></span>
+      <button type="button" onClick="{{prevPage}}" aria-label="Previous page" title="Previous page (←, Page Up)" style="display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 10px; border: none; font: 700 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; background: #2A2D33; color: #FFFFFF"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+      <span aria-live="polite" style="min-width: 72px; text-align: center; font-size: 14px; font-weight: 700">Page {{pageLabel}}</span>
+      <button type="button" onClick="{{nextPage}}" aria-label="Next page" title="Next page (→, Space, Page Down)" style="display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 10px; border: none; font: 700 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; background: #2A2D33; color: #FFFFFF"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button>
+      <span aria-hidden="true" style="width: 1px; height: 28px; background: #3A3D44"></span>
+      <button type="button" onClick="{{toggleAuto}}" aria-pressed="{{autoOn}}" title="Auto-scroll (A)" style="display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 10px; border: none; font: 700 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; {{autoStyle}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"></path><path d="m6 13 6 6 6-6"></path></svg>{{autoLabel}}</button>
+      <label style="display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 13px; white-space: nowrap">Speed
+        <input type="range" min="0.5" max="2" step="0.05" value="{{sfac}}" onChange="{{onSpeed}}" aria-label="Auto-scroll speed" style="width: 110px; accent-color: #5FD3C6">
+        <span style="min-width: 116px; color: #C9CDD3">{{speedLabel}}</span>
+      </label>
+      <span aria-hidden="true" style="width: 1px; height: 28px; background: #3A3D44"></span>
+      <button type="button" onClick="{{zoomOut}}" aria-label="Smaller" title="Smaller (−)" style="display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 10px; border: none; font: 700 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; background: #2A2D33; color: #FFFFFF">A−</button>
+      <button type="button" onClick="{{zoomIn}}" aria-label="Larger" title="Larger (+)" style="display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 10px; border: none; font: 700 14px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; background: #2A2D33; color: #FFFFFF">A+</button>
+    </div>
+  </div>
+</sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"startChartStyle":{"editor":"enum","options":["compact","full"],"default":"compact","section":"Prototype"},"startInstrument":{"editor":"enum","options":["xc","xbb","ssax","asax","tsax","bsax","cl","rs","ra","fl","picc","afl"],"default":"xc","section":"Prototype"},"useSuggested":{"editor":"boolean","default":false,"section":"Prototype"},"startShift":{"editor":"int","default":0,"min":-24,"max":24,"section":"Prototype"},"$preview":{"width":1440,"height":1980}}'>
@@ -518,6 +693,8 @@ class Component extends DCLogic {
     } catch (err) {}
   }
   componentWillUnmount() {
+    if (this._raf) cancelAnimationFrame(this._raf);
+    try { if (this._wake) this._wake.release(); } catch (e) {}
     var P = this._player;
     if (P) { P.timers.forEach(clearTimeout); try { if (P.ctx && P.ctx.close) P.ctx.close(); } catch (e) {} }
     this._player = null;
@@ -1160,6 +1337,56 @@ class Component extends DCLogic {
       if (s < 60) return "just now"; if (s < 3600) return Math.round(s / 60) + " min ago";
       if (s < 86400) return Math.round(s / 3600) + " h ago"; return d.toLocaleDateString();
     }
+    /* ---------- play mode (performance view): auto-scroll + page turning ---------- */
+    var perform = !!st.perform;
+    var pzoom = st.pzoom || 1.25;
+    var scrollFactor = st.sfac || 1;
+    function sysPx() { return 290 * pzoom; }
+    function baseSpeed() { return sysPx() / (16 * 60 / tempo); }   /* one system (4 bars of 4/4) per 16 beats */
+    function stopAuto() { if (self._raf) { cancelAnimationFrame(self._raf); self._raf = null; } }
+    function startAuto() {
+      stopAuto();
+      var last = null, el = self._scroller, acc = 0;
+      if (!el) return;
+      function step(ts) {
+        if (!self._scroller || !self.state || !self.state.autoscroll) { self._raf = null; return; }
+        if (last != null) {
+          acc += baseSpeed() * (self.state.sfac || 1) * (ts - last) / 1000;
+          if (acc >= 1) { var px = Math.floor(acc); el.scrollTop += px; acc -= px; }
+          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) { self.setState({ autoscroll: false }); self._raf = null; return; }
+        }
+        last = ts; self._raf = requestAnimationFrame(step);
+      }
+      self._raf = requestAnimationFrame(step);
+    }
+    function turn(dir) {
+      var el = self._scroller; if (!el) return;
+      var top = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, el.scrollTop + dir * el.clientHeight * 0.88));
+      try { el.scrollTo({ top: top, behavior: "smooth" }); } catch (e) { el.scrollTop = top; }
+    }
+    function pageInfo() {
+      var el = self._scroller; if (!el) return { pg: 1, of: 1 };
+      var ph = el.clientHeight * 0.88 || 1;
+      return { pg: Math.min(Math.floor(el.scrollTop / ph + 0.05) + 1, Math.max(1, Math.ceil((el.scrollHeight - el.clientHeight) / ph) + 1)), of: Math.max(1, Math.ceil((el.scrollHeight - el.clientHeight) / ph) + 1) };
+    }
+    function wake(on) {
+      try {
+        if (on && navigator.wakeLock && !self._wake) navigator.wakeLock.request("screen").then(function (w) { self._wake = w; }, function () {});
+        if (!on && self._wake) { self._wake.release(); self._wake = null; }
+      } catch (e) {}
+    }
+    function enterPerform() { killPlayer(); wake(true); self.setState({ perform: true, mode: "view", sel: null, open: null, menu: false, playing: false, playIdx: null, autoscroll: false, pg: 1 }); }
+    function exitPerform() { stopAuto(); wake(false); self.setState({ perform: false, autoscroll: false }); }
+    function toggleAuto() { if (st.autoscroll) { stopAuto(); self.setState({ autoscroll: false }); } else { self.setState({ autoscroll: true }); setTimeout(startAuto, 0); } }
+    function perfKeys(e) {
+      var k = e.key;
+      if (k === "ArrowRight" || k === "ArrowDown" || k === "PageDown" || k === " ") { e.preventDefault(); turn(1); }
+      else if (k === "ArrowLeft" || k === "ArrowUp" || k === "PageUp") { e.preventDefault(); turn(-1); }
+      else if (k === "a" || k === "A") { e.preventDefault(); toggleAuto(); }
+      else if (k === "+" || k === "=") { e.preventDefault(); self.setState({ pzoom: Math.min(2, Math.round((pzoom + 0.25) * 100) / 100) }); }
+      else if (k === "-") { e.preventDefault(); self.setState({ pzoom: Math.max(0.75, Math.round((pzoom - 0.25) * 100) / 100) }); }
+      else if (k === "Escape") { e.preventDefault(); exitPerform(); }
+    }
     var editedLyrics = Object.keys(LYR).filter(function (k) { return LYR[k] !== NOTES[k].l; }).length;
     var editedChords = Object.keys(CHD).filter(function (k) { return chordText(k) !== transChord(NOTES[k].c); }).length;
 
@@ -1308,7 +1535,7 @@ class Component extends DCLogic {
             if (op && op.length) {
               var f = op[CHOICE[ni] || 0];
               chartMarks(f, o.x, FY, marks);
-              if (op.length > 1) {
+              if (op.length > 1 && !perform) {
                 var manual = overrides[ni] != null && overrides[ni] !== AUTO[ni];
                 altBtns.push({ x: Math.round(o.x - 13), y: FY + 90, count: op.length, label: "Alternate fingerings for this note (" + op.length + ")",
                   style: openNote === ni ? "background: #15171C; color: #FFFFFF; border-color: #15171C" : manual ? "background: #0E6E68; color: #FFFFFF; border-color: #0E6E68" : "background: #FFFFFF; color: #2A2D33; border-color: #C3C7CE",
@@ -1378,6 +1605,22 @@ class Component extends DCLogic {
       fromImport: !st.origin, fromSaved: !!st.origin,
       savedName: st.origin ? (st.origin.kind === "file" ? st.origin.name : (docTitle() || "Saved sheet")) : "",
       savedMeta: st.origin ? (st.origin.kind === "file" ? "fingerscore sheet" : "saved in this browser") : "",
+      perform: perform, notPerform: !perform,
+      pzoom: pzoom, sfac: scrollFactor,
+      enterPerform: enterPerform, exitPerform: exitPerform,
+      perfKeys: perfKeys,
+      perfRef: function (el) { if (el && !self._perfFocused) { self._perfFocused = true; try { el.focus(); } catch (e) {} } if (!el) self._perfFocused = false; },
+      scrollRef: function (el) { self._scroller = el; },
+      onPerfScroll: function () { var p = pageInfo(); if (p.pg !== st.pg || p.of !== st.pgOf) self.setState({ pg: p.pg, pgOf: p.of }); },
+      pageLabel: (st.pg || 1) + " / " + (st.pgOf || pageInfo().of),
+      prevPage: function () { turn(-1); }, nextPage: function () { turn(1); },
+      toggleAuto: toggleAuto, autoOn: !!st.autoscroll,
+      autoLabel: st.autoscroll ? "Pause" : "Auto-scroll",
+      autoStyle: st.autoscroll ? "background: #5FD3C6; color: #15171C" : "background: #2A2D33; color: #FFFFFF",
+      onSpeed: function (e) { self.setState({ sfac: Number(e.target.value) }); },
+      speedLabel: Math.round(scrollFactor * 100) + "% · 1 line / " + Math.round(16 * 60 / tempo / scrollFactor) + " s",
+      zoomIn: function () { self.setState({ pzoom: Math.min(2, Math.round((pzoom + 0.25) * 100) / 100) }); },
+      zoomOut: function () { self.setState({ pzoom: Math.max(0.75, Math.round((pzoom - 0.25) * 100) / 100) }); },
       tempo: tempo,
       saveNow: saveToBrowser,
       saveStatus: st.libMsg ? st.libMsg : (dirty === null ? (storageOk ? "Not saved yet" : "") : dirty ? "Unsaved changes" : "Saved"),
@@ -1395,7 +1638,7 @@ class Component extends DCLogic {
       downloadPdf: function () { self.setState({ menu: false }); setTimeout(function () { try { window.print(); } catch (e) {} }, 50); },
       importFile: importFile,
       playing: !!st.playing, notPlaying: !st.playing,
-      playLabel: st.playing ? "Stop" : (selNote != null && (noteMode || editMode) ? "Play from selected" : "Play"),
+      playLabel: st.playing ? "Stop" : (selNote != null && (noteMode || editMode) ? "Listen from selected" : "Listen"),
       togglePlay: function () { if (st.playing) stopPlay(); else startPlay(selNote != null && (noteMode || editMode) ? selNote : null); },
       onTempo: function (e) { commit({ tempo: Number(e.target.value) }, "tempo"); },
       editMode: editMode, noteMode: noteMode, isView: mode === "view",

@@ -16,7 +16,7 @@ async function openSample(page: Page): Promise<string[]> {
 
 const mode = (page: Page, name: 'View' | 'Edit notes' | 'Lyrics' | 'Chords') =>
   page.getByRole('radiogroup', { name: 'Mode' }).getByRole('radio', { name }).click();
-const sheet = (page: Page) => page.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter plays from it.' });
+const sheet = (page: Page) => page.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter listens from it.' });
 const undoButton = (page: Page) => page.getByRole('group', { name: 'History' }).getByRole('button', { name: 'Undo' });
 const redoButton = (page: Page) => page.getByRole('group', { name: 'History' }).getByRole('button', { name: 'Redo' });
 const hit = (page: Page, id: string) => page.locator(`[data-hit="${id}"]`);

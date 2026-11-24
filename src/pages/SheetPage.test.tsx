@@ -370,7 +370,7 @@ describe('save and the File menu', () => {
 
     it('stops playback first', async () => {
       open('asax');
-      await user.click(screen.getByRole('button', { name: 'Play' }));
+      await user.click(screen.getByRole('button', { name: 'Listen' }));
       fakePlayer.stop.mockClear();
       await openMenu();
       await user.click(pdfItem());
@@ -503,7 +503,7 @@ describe('save and the File menu', () => {
     it('Print still prints, after stopping playback', async () => {
       const print = vi.spyOn(window, 'print').mockImplementation(() => {});
       open('asax');
-      await user.click(screen.getByRole('button', { name: 'Play' }));
+      await user.click(screen.getByRole('button', { name: 'Listen' }));
       fakePlayer.stop.mockClear();
       await openMenu();
       await user.click(pdfItem('Print'));
@@ -694,7 +694,7 @@ describe('save and the File menu', () => {
 describe('playback', () => {
   it('Play starts the player, Stop stops it', async () => {
     open('asax');
-    const play = screen.getByRole('button', { name: 'Play' });
+    const play = screen.getByRole('button', { name: 'Listen' });
     expect(play).not.toHaveAttribute('aria-pressed');   // the label swap says the state
     fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
     await user.click(play);
@@ -704,12 +704,12 @@ describe('playback', () => {
     fakePlayer.stop.mockImplementation(() => { fakePlayer.playing = false; fakePlayer.play.mock.calls[0][2](null); });
     await user.click(stop);
     expect(fakePlayer.stop).toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
   });
 
   it('stops on tempo or key change and on unmount, not on a title change', async () => {
     const view = open('asax');
-    await user.click(screen.getByRole('button', { name: 'Play' }));
+    await user.click(screen.getByRole('button', { name: 'Listen' }));
     fakePlayer.stop.mockClear();
     await user.type(screen.getByPlaceholderText('Add a title'), 'x');
     expect(fakePlayer.stop).not.toHaveBeenCalled();
@@ -727,9 +727,9 @@ describe('playback', () => {
   it('shows an alert when the browser cannot play', async () => {
     open('asax');
     fakePlayer.play.mockImplementation(() => { throw new Error('no AudioContext'); });
-    await user.click(screen.getByRole('button', { name: 'Play' }));
+    await user.click(screen.getByRole('button', { name: 'Listen' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Playback is not available in this browser.');
-    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
   });
 
   it('tempo slider writes the tempo', () => {
@@ -745,7 +745,7 @@ describe('select a note and play from there', () => {
   const name = (id: string) => derive(doc, DEFAULT_PREFS).byId[id].spelled.name;
   const hit = (id: string) => document.querySelector(`[data-hit="${id}"]`)!;
   const selected = () => document.querySelector('[data-selected="true"]')?.getAttribute('data-ev') ?? null;
-  const sheet = () => screen.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter plays from it.' });
+  const sheet = () => screen.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter listens from it.' });
   const live = () => sheet().querySelector('[aria-live="polite"]')!;
   const tied = doc.score[1].ev[1].id;               // starts a chain over the next two events
   const afterChain = doc.score[2].ev[1].id;          // bar 2, after the chain's continuations
@@ -760,11 +760,11 @@ describe('select a note and play from there', () => {
     open('asax');
     await user.click(hit(afterChain));
     expect(selected()).toBe(afterChain);
-    expect(screen.getByRole('button', { name: 'Play from selected' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Listen from selected' })).toBeInTheDocument();
     expect(live()).toHaveTextContent(`Selected: ${name(afterChain)}, bar 2`);
     await user.click(hit(afterChain));
     expect(selected()).toBeNull();
-    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
     expect(live()).toHaveTextContent('Selection cleared');
   });
 
@@ -778,7 +778,7 @@ describe('select a note and play from there', () => {
     open('asax');
     await user.click(hit(afterChain));
     fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
-    await user.click(screen.getByRole('button', { name: 'Play from selected' }));
+    await user.click(screen.getByRole('button', { name: 'Listen from selected' }));
     const sched = fakePlayer.play.mock.calls[0][0] as Schedule;
     expect(sched.totalTicks).toBeLessThan(buildSchedule(doc).totalTicks);
     expect(sched.marks[0]).toEqual({ evId: afterChain, start: 0 });
@@ -786,12 +786,12 @@ describe('select a note and play from there', () => {
     fakePlayer.stop.mockImplementation(() => { fakePlayer.playing = false; fakePlayer.play.mock.calls[0][2](null); });
     await user.click(screen.getByRole('button', { name: 'Stop' }));
     expect(selected()).toBe(afterChain);
-    expect(screen.getByRole('button', { name: 'Play from selected' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Listen from selected' })).toBeInTheDocument();
   });
 
   it('Play without a selection plays the whole song', async () => {
     open('asax');
-    await user.click(screen.getByRole('button', { name: 'Play' }));
+    await user.click(screen.getByRole('button', { name: 'Listen' }));
     expect(fakePlayer.play.mock.calls[0][0]).toEqual(buildSchedule(doc));
   });
 
@@ -860,7 +860,7 @@ describe('modes, undo and redo', () => {
   const hit = (id: string) => document.querySelector(`[data-hit="${id}"]`)!;
   const clickEvent = (id: string) => user.click(hit(id));
   const selected = () => document.querySelector('[data-selected="true"]')?.getAttribute('data-ev') ?? null;
-  const sheet = () => screen.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter plays from it.' });
+  const sheet = () => screen.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter listens from it.' });
   const syllable = (k: number) => !events[k].rest && !events[k].tiedFrom;
   const tied = doc.score[1].ev[1].id;                // starts a chain over the next two events
   const afterChain = doc.score[2].ev[1].id;
@@ -1165,10 +1165,10 @@ describe('modes, undo and redo', () => {
     open('asax');
     for (const mode of ['View', 'Edit notes', 'Lyrics', 'Chords']) {
       await user.click(screen.getByRole('radio', { name: mode }));
-      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
       await clickEvent(afterChain);
       expect(selected()).toBe(afterChain);
-      expect(screen.getByRole('button', { name: 'Play from selected' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Listen from selected' })).toBeInTheDocument();
       await clickEvent(afterChain);
       expect(selected()).toBeNull();
     }
@@ -1570,7 +1570,7 @@ describe('Edit notes panel and keys', () => {
     const n = current().score[2].ev[1];
     await clickEvent(n.id);
     fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
-    await user.click(screen.getByRole('button', { name: 'Play from selected' }));
+    await user.click(screen.getByRole('button', { name: 'Listen from selected' }));
     expect(fakePlayer.play).toHaveBeenCalledTimes(1);
     fakePlayer.stop.mockClear();
     await screen.findByRole('group', { name: 'Edit notes panel' });
@@ -1926,7 +1926,7 @@ describe('Lyrics mode and the Lyrics & chords card', () => {
     const notes = lyricNotes();
     await clickEvent(notes[0].id);
     fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
-    await user.click(screen.getByRole('button', { name: 'Play from selected' }));
+    await user.click(screen.getByRole('button', { name: 'Listen from selected' }));
     fakePlayer.stop.mockClear();
     await user.type(await screen.findByRole('textbox', { name: 'Lyric' }), 'x');
     expect(ev(notes[0].id).l).toBe(`${notes[0].l}x`);
