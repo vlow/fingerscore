@@ -50,8 +50,21 @@ test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ p
   const expected = (290 * 1.25 / lineSeconds) * 2;
   expect(moved).toBeGreaterThan(expected * 0.6);
   expect(moved).toBeLessThan(expected * 1.5);
+  // A page turn works while auto-scroll runs.
+  const beforeTurn = await scroller.evaluate(el => el.scrollTop);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(beforeTurn + height * 0.8);
   await page.keyboard.press('a');
   await expect(region.getByRole('button', { name: 'Auto-scroll' })).toBeVisible();
+
+  // The wheel scrolls the sheet at the screen edge too, and a click on the toolbar leaves the keys with play mode.
+  await scroller.evaluate(el => { el.scrollTop = 0; });
+  await page.mouse.move(1240, 300);
+  await page.mouse.wheel(0, 200);
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBe(200);
+  await region.getByRole('button', { name: 'Previous page' }).click();
+  await expect(region).toBeFocused();
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBe(0);
 
   // The size is kept for the next visit.
   await page.keyboard.press('+');

@@ -27,23 +27,6 @@
   margin: 0 auto;
 }
 
-.zone {
-  position: absolute;
-  top: 0;
-  bottom: 88px;
-  width: 12%;
-}
-
-.zonePrev {
-  left: 0;
-  cursor: w-resize;
-}
-
-.zoneNext {
-  right: 0;
-  cursor: e-resize;
-}
-
 .bar {
   position: absolute;
   left: 50%;

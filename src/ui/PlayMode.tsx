@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { Derived } from '../domain/derive';
 import { SPEED, ZOOM, beatsPerLine, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget } from '../domain/playMode';
@@ -14,6 +14,12 @@ interface Props { doc: Doc; derived: Derived; layout: SheetLayout; onExit(): voi
 const END_SLACK = 2;
 /** A smooth page turn is over after this long at the latest, whatever became of it. */
 const TURN_MS = 1000;
+/** A tap on the outer part of the screen on either side turns the page. */
+const EDGE = 0.12;
+/** The longest time one frame of auto-scroll counts for: frames stop while the tab is hidden, and the sheet must not jump on return. */
+const MAX_FRAME_MS = 100;
+/** Keys a range input needs for itself; every other key works from the slider as from anywhere. */
+const SLIDER_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
 
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -109,7 +115,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
       const el = scrollerRef.current;
       if (!el) return;
       if (last !== null) {
-        carry += (speedRef.current * (ts - last)) / 1000;
+        carry += (speedRef.current * Math.min(ts - last, MAX_FRAME_MS)) / 1000;
         const px = Math.floor(carry);
         if (px >= 1) { el.scrollTop += px; carry -= px; }
       }
@@ -134,21 +140,44 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   function turn(dir: 1 | -1) {
     const el = scrollerRef.current;
     if (!el) return;
+    // While auto-scroll runs the turn is a jump: the next auto-scroll frame would cancel a smooth scroll.
+    const smooth = !auto && !prefersReducedMotion();
     const pending = goingTo.current;
-    const from = pending && !auto && performance.now() - pending.since < TURN_MS ? pending.top : el.scrollTop;
+    const from = pending && smooth && performance.now() - pending.since < TURN_MS ? pending.top : el.scrollTop;
     const top = turnTarget(from, el.scrollHeight, el.clientHeight, dir);
     if (top === from) return;
-    goingTo.current = { top, since: performance.now() };
-    el.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    goingTo.current = smooth ? { top, since: performance.now() } : null;
+    el.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  /**
+   * A tap or click on the left or right edge of the screen turns the page. The scroller itself takes the click, so
+   * nothing lies over the sheet and a wheel or a finger scrolls at the edges as anywhere.
+   */
+  function onTap(e: MouseEvent<HTMLDivElement>) {
+    const x = e.clientX / window.innerWidth;
+    if (x < EDGE) turn(-1);
+    else if (x > 1 - EDGE) turn(1);
+  }
+
+  /**
+   * A mouse or finger on the toolbar hands the keyboard back to the region: a pedal that sends Space must turn the
+   * page, not press the button last touched. A keyboard press (detail 0) keeps the focus where it is.
+   */
+  function onBarClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.detail > 0) regionRef.current?.focus();
   }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === 'Escape') { e.preventDefault(); onExit(); return; }
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     const from = e.target instanceof Element ? e.target : null;
-    // The slider keeps its own keys; a focused button keeps Space and Enter.
-    if (from?.closest('input')) return;
+    // The slider keeps its arrows; a focused button keeps Space and Enter.
+    if (from?.closest('input') && SLIDER_KEYS.has(e.key)) return;
     const onButton = !!from?.closest('button');
+    const handled = ['ArrowRight', 'ArrowDown', 'PageDown', 'ArrowLeft', 'ArrowUp', 'PageUp', 'a', 'A', '+', '=', '-', '−'];
+    // A held key, or a foot resting on the pedal, counts once.
+    if (e.repeat && (handled.includes(e.key) || (e.key === ' ' && !onButton))) { e.preventDefault(); return; }
     switch (e.key) {
       case ' ':
         if (onButton) return;
@@ -169,18 +198,15 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   return createPortal(
     <div ref={regionRef} role="region" aria-label="Play mode" tabIndex={-1} className={s.overlay} data-print-hide="" onKeyDown={onKey}>
       <div ref={scrollerRef} data-testid="play-scroller" className={s.scroller} onScroll={onScroll}
-        onWheel={() => { goingTo.current = null; }} onTouchMove={() => { goingTo.current = null; }}>
+        onWheel={() => { goingTo.current = null; }} onTouchMove={() => { goingTo.current = null; }} onClick={onTap}>
         <div className={s.pad}>
           <div data-testid="play-zoom" className={s.zoomed} style={{ zoom: prefs.zoom / 100 }}>
             <Paper doc={doc} derived={derived} layout={layout} playingId={null} readOnly />
           </div>
         </div>
       </div>
-      {/* The screen edges turn pages for a finger or a mouse; the toolbar buttons are the same thing for everyone else. */}
-      <div aria-hidden="true" data-turn="prev" className={`${s.zone} ${s.zonePrev}`} onClick={() => turn(-1)} />
-      <div aria-hidden="true" data-turn="next" className={`${s.zone} ${s.zoneNext}`} onClick={() => turn(1)} />
       {/* A− and A+ at their limit stay focusable (aria-disabled): a disabled button would drop the focus, and the keys with it. */}
-      <div role="toolbar" aria-label="Play mode controls" className={s.bar}>
+      <div role="toolbar" aria-label="Play mode controls" className={s.bar} onClick={onBarClick}>
         <button type="button" className={s.btn} aria-label="Exit play mode (Esc)" title="Exit (Esc)" onClick={onExit}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
           Exit

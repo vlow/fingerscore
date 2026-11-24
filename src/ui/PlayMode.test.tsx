@@ -117,16 +117,23 @@ describe('PlayMode', () => {
     const { region, scroller, scrollTo } = open();
     size(scroller, 2760, 1000, 880);
     await user.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(region).toHaveFocus();   // a click hands the keys back: a pedal's Space must not press the button again
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'smooth' });
     size(scroller, 2760, 1000, 1760);
     await user.click(screen.getByRole('button', { name: 'Previous page' }));
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 880, behavior: 'smooth' });
     size(scroller, 2760, 1000, 880);
-    await user.click(region.querySelector('[data-turn="prev"]')!);
+    // The screen edges: the outer 12 % on each side (jsdom's window is 1024 px wide).
+    fireEvent.click(scroller, { clientX: 100 });
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
     size(scroller, 2760, 1000, 0);
-    await user.click(region.querySelector('[data-turn="next"]')!);
+    fireEvent.click(scroller, { clientX: 950 });
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 880, behavior: 'smooth' });
+    scrollTo.mockClear();
+    fireEvent.click(scroller, { clientX: 500 });
+    expect(scrollTo).not.toHaveBeenCalled();
+    // Nothing lies over the sheet's edges, so a wheel or a finger scrolls there too.
+    expect(region.querySelector('[data-turn]')).toBeNull();
   });
 
   it('does nothing on a turn when the sheet fits the screen', () => {
@@ -162,7 +169,7 @@ describe('PlayMode', () => {
     expect(stored()).toEqual({ zoom: 100, speed: 100 });
   });
 
-  it('keeps the focus on A+ at the largest size, so the keys go on working', async () => {
+  it('keeps A+ focusable at the largest size, so the keys go on working', async () => {
     const user = userEvent.setup();
     window.localStorage.setItem(KEY, JSON.stringify({ zoom: 175, speed: 100 }));
     const { onExit } = open();
@@ -170,6 +177,8 @@ describe('PlayMode', () => {
     await user.click(larger);
     expect(zoomOf()).toBe('2');
     expect(larger).toHaveAttribute('aria-disabled', 'true');
+    larger.focus();
+    await user.keyboard('{Enter}');
     expect(larger).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(onExit).toHaveBeenCalledTimes(1);
@@ -195,14 +204,13 @@ describe('PlayMode', () => {
     fireEvent.keyDown(region, { key: 'a' });
     const toggle = screen.getByRole('button', { name: 'Pause' });
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    frame(0);
-    frame(1000);
+    for (let ts = 0; ts <= 1000; ts += 100) frame(ts);
     // One zoomed system (290 px × 1.25) per line time.
     const beats = beatsPerLine(doc, layout.systems.length);
     const perSecond = (290 * 1.25) / ((beats * 60) / doc.tempo);
     expect(scroller.scrollTop).toBe(Math.floor(perSecond));
     scroller.scrollTop = 4000;
-    frame(1016);
+    frame(1116);
     expect(screen.getByRole('button', { name: 'Auto-scroll' })).toHaveAttribute('aria-pressed', 'false');
     expect(frames.size).toBe(0);
   });
@@ -236,8 +244,7 @@ describe('PlayMode', () => {
     // A running scroll takes the new speed without a restart.
     size(scroller, 50000, 1000);
     fireEvent.keyDown(region, { key: 'a' });
-    frame(0);
-    frame(1000);
+    for (let ts = 0; ts <= 1000; ts += 100) frame(ts);
     expect(scroller.scrollTop).toBe(Math.floor((2 * 290 * 1.25) / ((beats * 60) / doc.tempo)));
   });
 
@@ -247,6 +254,49 @@ describe('PlayMode', () => {
     fireEvent.keyDown(screen.getByRole('slider', { name: 'Auto-scroll speed' }), { key: 'ArrowRight' });
     fireEvent.keyDown(screen.getByRole('button', { name: 'Larger' }), { key: ' ' });
     expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('turns with Page Down and Space from the slider: a pedal works wherever the focus is', () => {
+    const { scroller, scrollTo } = open();
+    size(scroller, 2760, 1000);
+    const slider = screen.getByRole('slider', { name: 'Auto-scroll speed' });
+    fireEvent.keyDown(slider, { key: 'PageDown' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 880, behavior: 'smooth' });
+    fireEvent.keyDown(slider, { key: 'a' });
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+  });
+
+  it('turns one page for a held key', () => {
+    const { region, scroller, scrollTo } = open();
+    size(scroller, 5000, 1000);
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    fireEvent.keyDown(region, { key: 'ArrowRight', repeat: true });
+    fireEvent.keyDown(region, { key: 'ArrowRight', repeat: true });
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(region, { key: 'a', repeat: true });
+    expect(screen.getByRole('button', { name: 'Auto-scroll' })).toBeInTheDocument();
+  });
+
+  it('turns at once while auto-scroll runs, and auto-scroll goes on from the new place', () => {
+    const { region, scroller, scrollTo } = open();
+    size(scroller, 5000, 1000);
+    fireEvent.keyDown(region, { key: 'a' });
+    frame(0);
+    // A smooth scroll would be cancelled by the next auto-scroll frame.
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 880, behavior: 'auto' });
+    size(scroller, 5000, 1000, 880);
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'auto' });
+  });
+
+  it('does not jump after the tab was hidden: a long gap between frames counts as a short one', () => {
+    const { region, scroller } = open();
+    size(scroller, 50000, 1000);
+    fireEvent.keyDown(region, { key: 'a' });
+    frame(0);
+    frame(30000);
+    expect(scroller.scrollTop).toBeLessThan(10);
   });
 
   it('exits with Esc from the slider too', () => {
