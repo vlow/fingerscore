@@ -1,0 +1,52 @@
+/* The shared layout of the About, Imprint, Privacy and Terms pages: one column, an eyebrow, one h1, h2 sections. */
+.article {
+  max-width: 680px;
+  margin: 0 auto;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.article h1 {
+  margin: 0 0 24px;
+  color: var(--ink);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.article h2 {
+  margin: 32px 0 8px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.article p {
+  margin: 0 0 12px;
+}
+
+.article a {
+  color: var(--teal);
+}
+
+.article a:hover {
+  color: var(--teal-hover);
+}
+
+.changed {
+  margin: 40px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 14px;
+}

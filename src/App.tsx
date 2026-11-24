@@ -12,6 +12,8 @@ import Start from './pages/Start';
 // React would otherwise reuse one boundary instance, failed state included, across these routes.
 const Tracks = lazy(() => import('./pages/Tracks'));
 const Scales = lazy(() => import('./pages/Scales'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Imprint = lazy(() => import('./pages/Imprint'));
 const pageFallback = <div aria-busy="true" />;
 
 // Dev-only renderer preview; the import is dropped from production builds.
@@ -27,6 +29,8 @@ export default function App() {
           <Route path="/tracks" element={<LoadBoundary key="tracks"><Suspense fallback={pageFallback}><Tracks /></Suspense></LoadBoundary>} />
           <Route path="/sheet" element={<SheetPage />} />
           <Route path="/scales" element={<LoadBoundary key="scales"><Suspense fallback={pageFallback}><Scales /></Suspense></LoadBoundary>} />
+          <Route path="/terms" element={<LoadBoundary key="terms"><Suspense fallback={pageFallback}><Terms /></Suspense></LoadBoundary>} />
+          <Route path="/imprint" element={<LoadBoundary key="imprint"><Suspense fallback={pageFallback}><Imprint /></Suspense></LoadBoundary>} />
           {DevSheet && <Route path="/dev/sheet" element={<LoadBoundary key="dev-sheet"><Suspense fallback={null}><DevSheet /></Suspense></LoadBoundary>} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

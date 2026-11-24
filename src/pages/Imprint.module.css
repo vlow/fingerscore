@@ -1,0 +1,38 @@
+.card {
+  margin: 0 0 8px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.card h2 {
+  margin-top: 0;
+}
+
+.rows {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.rows dt {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.rows dd {
+  margin: 0;
+}
+
+@media (max-width: 520px) {
+  .rows {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .rows dd {
+    margin-bottom: 12px;
+  }
+}
