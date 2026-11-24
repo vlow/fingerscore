@@ -317,7 +317,8 @@ describe('save and the File menu', () => {
     expect(items[0]).toHaveFocus();
     await user.keyboard('{End}');
     expect(items[items.length - 1]).toHaveFocus();
-    // Tab from an item reaches the notice link; Tab from the link closes the menu.
+    // Tab from an item above the notice link reaches it; Tab from the link closes the menu.
+    items[0].focus();
     await user.keyboard('{Tab}');
     expect(within(screen.getByRole('menu')).getByRole('link', { name: 'Terms of Use' })).toHaveFocus();
     await user.keyboard('{Tab}');

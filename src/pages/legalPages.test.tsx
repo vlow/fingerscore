@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import App from '../App';
 import { operator, type Operator } from '../content/operator';
 import { STORAGE_ITEMS } from '../content/storageItems';
@@ -47,7 +47,7 @@ describe('Terms', () => {
       'A song in the public domain can still come in a protected edition or arrangement.',
       'You are responsible for the sheets you make and for what you do with them: printing, sharing, publishing.',
       'Do not pass on sheets of protected music without permission.',
-      'The fingering charts come from published charts.',
+      'The fingerings are taken from published fingering charts.',
       'They can contain errors.',
       'Check them against your instrument.',
       'fingerscore is free and comes as it is.',
@@ -140,11 +140,13 @@ describe('Privacy', () => {
     for (const s of [
       'fingerscore sets no cookies.',
       'fingerscore does not track you.',
+      'fingerscore loads nothing from other sites. The app serves its own fonts.',
+      'The host keeps these logs for 14 days.',
       'A song file is read in your browser and is never uploaded.',
       'Delete a sheet in "Your sheets".',
       'clear the site data',
     ]) expect(bodyText()).toContain(s);
-    for (const r of ['access', 'correction', 'deletion', 'restriction', 'objection', 'complaint to a supervisory authority']) {
+    for (const r of ['access', 'correction', 'deletion', 'restriction', 'objection', 'complaint with a supervisory authority']) {
       expect(bodyText()).toContain(r);
     }
     expect(screen.getByRole('link', { name: 'Imprint' })).toHaveAttribute('href', '/imprint');
@@ -182,16 +184,18 @@ describe('About', () => {
   });
 
   it('credits the sources, not FreeSerif, and links the notices with a plain anchor', () => {
-    inRouter(<About details={owner} />);
-    for (const s of ['The Woodwind Fingering Guide', 'Bravura', 'Atkinson Hyperlegible']) expect(bodyText()).toContain(s);
+    inRouter(<Routes><Route path="/" element={<About details={owner} />} /><Route path="*" element={<p>moved</p>} /></Routes>);
+    for (const s of ['The Woodwind Fingering Guide', 'Sax Teacher UK', 'Bravura', 'Atkinson Hyperlegible']) expect(bodyText()).toContain(s);
+    expect(bodyText()).toContain('abcjs to read ABC files');
     expect(bodyText()).not.toContain('FreeSerif');
     const link = screen.getByRole('link', { name: 'third-party notices' });
     expect(link).toHaveAttribute('href', import.meta.env.BASE_URL + 'third-party-notices.txt');
-    // The listener stops jsdom from trying to navigate. A router link would have set the router location to the href.
+    // The listener stops jsdom from trying to navigate. A router link would have moved to the catch-all route.
     const stop = (e: Event) => e.preventDefault();
     document.addEventListener('click', stop);
     fireEvent.click(link);
     document.removeEventListener('click', stop);
+    expect(screen.queryByText('moved')).toBeNull();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Why I made fingerscore');
   });
 

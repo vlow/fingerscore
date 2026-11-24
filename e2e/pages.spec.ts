@@ -50,6 +50,20 @@ for (const path of ['/', '/terms']) {
   });
 }
 
+// operator.ts cannot be changed from a test, so the check adds the long value to the rendered article.
+test('a 60-character value without spaces does not scroll /imprint sideways at 320 x 640', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await clean(page, '/imprint');
+  await expect(page.locator('h1').first()).toBeVisible();
+  const fits = await page.evaluate(() => {
+    const p = document.createElement('p');
+    p.textContent = 'a'.repeat(30) + '@' + 'b'.repeat(29);
+    document.querySelector('h1')!.parentElement!.appendChild(p);
+    return document.documentElement.scrollWidth <= document.documentElement.clientWidth;
+  });
+  expect(fits).toBe(true);
+});
+
 test('an unsaved change survives a visit to the terms from the File menu', async ({ page }) => {
   await clean(page);
   await page.getByRole('button', { name: /Try a sample/ }).click();

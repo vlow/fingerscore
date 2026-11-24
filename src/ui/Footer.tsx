@@ -14,7 +14,7 @@ export default function Footer({ repositoryUrl = ownerRepositoryUrl }: { reposit
           <Wordmark className="footer-brand-name" />
           <span>© 2026</span>
         </div>
-        <span>Your sheets are stored in your browser. Nothing is stored on the server.</span>
+        <span>Your sheets are stored in your browser, not on a server.</span>
         <nav aria-label="Site" className="footer-links">
           {LINKS.map(([to, label]) => (
             <Fragment key={to}>

@@ -85,7 +85,7 @@ The link opens `/terms` in the same tab everywhere. A sheet with unsaved changes
 1. **What fingerscore is.** fingerscore runs in your browser. A file you open is read on your device. It is not sent to us and we do not store it.
 2. **Your songs.** Import only music that is in the public domain, that you wrote yourself, or that you have permission or a licence to copy and arrange. By importing a file you confirm that this is the case. A song in the public domain can still come in a protected edition or arrangement.
 3. **What you make.** You are responsible for the sheets you make and for what you do with them: printing, sharing, publishing. Do not pass on sheets of protected music without permission.
-4. **Fingerings.** The fingering charts come from published charts. They can contain errors. Check them against your instrument.
+4. **Fingerings.** The fingerings are taken from published fingering charts. They can contain errors. Check them against your instrument.
 5. **No warranty.** fingerscore is free and comes as it is. We are liable without limit for intent, for gross negligence and for injury to life, body or health. Any other liability is excluded as far as the law allows.
 6. **Changes and law.** We may change these terms; the date below shows the last change. German law applies. Contact: see the Imprint.
 

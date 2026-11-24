@@ -10,7 +10,7 @@ it('orders the row: brand, year, storage sentence, then the Site links', () => {
   const kids = [...row.children];
   expect(kids[0]).toHaveClass('footer-brand');
   expect(kids[0]).toHaveTextContent('© 2026');
-  expect(kids[1]).toHaveTextContent('Your sheets are stored in your browser. Nothing is stored on the server.');
+  expect(kids[1]).toHaveTextContent('Your sheets are stored in your browser, not on a server.');
   expect(kids[2]).toBe(screen.getByRole('navigation', { name: 'Site' }));
   const links = within(screen.getByRole('navigation', { name: 'Site' })).getAllByRole('link');
   expect(links.map(l => [l.textContent, l.getAttribute('href')])).toEqual([

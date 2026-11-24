@@ -13,7 +13,7 @@ export default function Terms() {
       <h2>What you make</h2>
       <p>You are responsible for the sheets you make and for what you do with them: printing, sharing, publishing. Do not pass on sheets of protected music without permission.</p>
       <h2>Fingerings</h2>
-      <p>The fingering charts come from published charts. They can contain errors. Check them against your instrument.</p>
+      <p>The fingerings are taken from published fingering charts. They can contain errors. Check them against your instrument.</p>
       <h2>No warranty</h2>
       <p>fingerscore is free and comes as it is. We are liable without limit for intent, for gross negligence and for injury to life, body or health. Any other liability is excluded as far as the law allows.</p>
       <h2>Changes and law</h2>

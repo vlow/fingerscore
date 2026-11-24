@@ -204,6 +204,7 @@
 }
 
 .rights {
+  grid-column: 1 / -1;
   padding: 2px 12px 6px;
   font-size: 12px;
 }

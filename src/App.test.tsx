@@ -13,7 +13,7 @@ it('renders the shell on every route', () => {
   expect(screen.getByRole('link', { name: 'Scales' })).toHaveAttribute('href', '/scales');
   expect(screen.getByRole('link', { name: 'Scales' })).not.toHaveAttribute('aria-current');
   expect(
-    screen.getByText('Your sheets are stored in your browser. Nothing is stored on the server.'),
+    screen.getByText('Your sheets are stored in your browser, not on a server.'),
   ).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Imprint' })).toHaveAttribute('href', '/imprint');
 });

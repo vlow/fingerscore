@@ -22,12 +22,12 @@ export default function Privacy({ details = operator }: { details?: Operator }) 
       <p>
         {details.hostName}, {details.hostAddress}, hosts fingerscore. The host records the IP address, the time, the requested address
         and the browser identification of each request. It does this to keep the server secure. The legal basis is Art. 6 (1) (f) GDPR.
-        The host keeps these logs for: {details.logRetention}.
+        The host keeps these logs for {details.logRetention}.
       </p>
       <h2>Cookies, tracking and third parties</h2>
       <p>fingerscore sets no cookies.</p>
       <p>fingerscore does not track you.</p>
-      <p>Your browser sends no request to any other site. The app serves its own fonts.</p>
+      <p>fingerscore loads nothing from other sites. The app serves its own fonts.</p>
       <h2>Browser storage</h2>
       <p>
         The browser keeps data in two places. Both are on your device only. The app needs this data to work (§ 25 (2) TDDDG).
@@ -43,7 +43,7 @@ export default function Privacy({ details = operator }: { details?: Operator }) 
       <p>A song file is read in your browser and is never uploaded.</p>
       <h2>Your rights</h2>
       <p>
-        You have the right to access, correction, deletion, restriction and objection. You may also lodge a complaint to a
+        You have the right to access, correction, deletion, restriction and objection. You may also lodge a complaint with a
         supervisory authority.
       </p>
     </Article>

@@ -30,13 +30,16 @@ export default function About({ details = operator }: { details?: Operator }) {
       <h2>Under the hood</h2>
       <p>fingerscore runs in your browser. A song file never leaves your device. The page loads no code or fonts from other sites.</p>
       <p>
-        It uses React and React Router for the pages, zustand for state, abcjs for the notation, @tonejs/midi and midi-file to read
+        It uses React and React Router for the pages, zustand for state, abcjs to read ABC files, @tonejs/midi and midi-file to read
         MIDI files, JSZip for archives, and jsPDF with svg2pdf.js for PDF export.
         {details.repositoryUrl !== '' && <> The source is on <a href={details.repositoryUrl}>GitHub</a>.</>}
       </p>
       <h2>Thanks & credits</h2>
-      <p>The fingering charts follow The Woodwind Fingering Guide.</p>
-      <p>The music symbols use the Bravura font. The interface uses Atkinson Hyperlegible.</p>
+      <p>
+        The fingerings come from published charts: The Woodwind Fingering Guide by Timothy Reichard, Sax Teacher UK, Tomplay,
+        Dolmetsch Online, Yamaha and others. The README lists them all.
+      </p>
+      <p>The music symbols are drawn from the outlines of Bravura, a font by Steinberg. The interface uses Atkinson Hyperlegible.</p>
       <p>
         The licences of the libraries and fonts are in the{' '}
         <a href={import.meta.env.BASE_URL + 'third-party-notices.txt'}>third-party notices</a>.

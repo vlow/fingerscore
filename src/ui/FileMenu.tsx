@@ -39,6 +39,7 @@ export default function FileMenu(p: Props) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const openFileRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
 
   const items = () => [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])];
@@ -84,11 +85,18 @@ export default function FileMenu(p: Props) {
       case 'Home': focus(0); break;
       case 'End': focus(-1); break;
       case 'Escape': e.preventDefault(); close(true); break;
-      // From an item, Tab goes to the notice link. From anywhere else, focus goes back to the button first, so Tab moves on from there.
+      // Tab from an item above the notice link goes to the link; Shift+Tab from the link goes back to "Open JSON file…".
+      // Anywhere else focus returns to the button first, so Tab moves on from there.
       case 'Tab': {
         const a = menuRef.current?.querySelector('a');
-        if (e.shiftKey || !a || a === document.activeElement) close(true);
-        else { e.preventDefault(); a.focus(); }
+        const here = document.activeElement;
+        if (a && !e.shiftKey && here && here !== a && !here.contains(a) && here.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) {
+          e.preventDefault();
+          a.focus();
+        } else if (a && e.shiftKey && here === a && openFileRef.current) {
+          e.preventDefault();
+          openFileRef.current.focus();
+        } else close(true);
         break;
       }
       default: return;
@@ -128,7 +136,7 @@ export default function FileMenu(p: Props) {
             <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(p.onDownload)}>
               <Icon d={DOWN} />Download JSON
             </button>
-            <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(() => inputRef.current?.click())}>
+            <button ref={openFileRef} type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(() => inputRef.current?.click())}>
               <Icon d={UP} />Open JSON file…
             </button>
             <RightsNotice className={s.rights} onNavigate={() => close(false)} />

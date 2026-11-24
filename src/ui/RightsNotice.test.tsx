@@ -5,6 +5,7 @@ import { sampleDoc } from '../domain/fixture';
 import { saveEntry } from '../state/library';
 import FileMenu from './FileMenu';
 import Gallery from './Gallery';
+import RightsNotice from './RightsNotice';
 
 const TEXT = 'Only import songs you have the rights to.';
 
@@ -70,10 +71,41 @@ describe('FileMenu', () => {
     expect(link).toHaveFocus();
   });
 
+  it('does not take Tab from the items after the link: it closes the menu', async () => {
+    renderMenu();
+    const menu = await openMenu();
+    within(menu).getByRole('menuitem', { name: /New sheet/ }).focus();
+    await userEvent.tab();
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('moves focus from the link back to "Open JSON file…" with Shift+Tab', async () => {
+    renderMenu();
+    const menu = await openMenu();
+    within(menu).getByRole('link', { name: 'Terms of Use' }).focus();
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: /Open JSON file/ })).toHaveFocus();
+  });
+
+  it('closes the menu on Tab from the link', async () => {
+    renderMenu();
+    const menu = await openMenu();
+    within(menu).getByRole('link', { name: 'Terms of Use' }).focus();
+    await userEvent.tab();
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
   it('closes the menu when the link is clicked', async () => {
     renderMenu();
     const menu = await openMenu();
     await userEvent.click(within(menu).getByRole('link', { name: 'Terms of Use' }));
     expect(screen.queryByRole('menu')).toBeNull();
   });
+});
+
+it('RightsNotice: the link is described by the sentence', () => {
+  render(<MemoryRouter><RightsNotice /></MemoryRouter>);
+  const link = screen.getByRole('link', { name: 'Terms of Use' });
+  expect(link).toHaveAccessibleDescription('Only import songs you have the rights to.');
 });

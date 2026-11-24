@@ -17,7 +17,7 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Downloads the sheet as a PDF (File, then Download PDF). See "PDF" below.
 - Prints the sheet (A4, paper only) through the browser's print dialog.
 - Shows scales with fingerings on a Scales page, linked from the header. Pick an instrument and one of eight scales (major, natural, harmonic and melodic minor, major and minor pentatonic, blues, chromatic) in any of twelve keys; the key with six accidentals comes in both spellings (F♯ and G♭ major, D♯ and E♭ minor). Choose one octave, two octaves or the whole range, up or up and down. Letters follow the scale degrees, except that a double sharp or double flat is written as the plain neighbouring note (A♮ instead of B𝄫). On transposing instruments you name keys by what you read or by what sounds. Notes with more than one fingering get the same "⇅" pill as on a sheet: pick another fingering and the neighbouring notes adapt; "Reset all to auto" undoes your picks, and a change of instrument, scale, key, range, direction or recorder system clears them. Optional: alternate fingerings under each note, note names. Download the scale as a PDF (A4 or Letter, by browser region, like the sheet PDF) or print it (A4, the scale only, with your picks). The page remembers your settings and picks in this browser.
-- Has four text pages, linked from the footer: Terms (/terms), Imprint (/imprint), Privacy (/privacy) and About (/about). Their text comes from `src/content/operator.ts`, which holds the owner's details. A notice at the file drop zone, the File menu and the sheet page links to Terms.
+- Has four text pages, linked from the footer: Terms (/terms), Imprint (/imprint), Privacy (/privacy) and About (/about). Their personal details come from `src/content/operator.ts`, which holds the owner's details. A notice at the start-page drop zone, in the library view of "Your sheets" (beside Import…) and in the File menu links to Terms.
 - Covers 12 instruments: Xaphoon, saxophones, clarinet, flutes, recorders.
 - Ships a sample song, Auld Lang Syne. Regenerate it with `npm run demo`.
 
@@ -219,7 +219,7 @@ Known gaps, with the sources checked for each, are in [docs/fingering-gaps.md](d
 Do these steps before the site goes public.
 
 1. Fill in `src/content/operator.ts`. Every value that starts with `TODO:` is a placeholder. There are eleven: name, address, email, phone, responsibleForContent, hostName, hostAddress, logRetention, aboutLead, authorBio and story. The repository address is optional and lives in `src/content/repository.ts`; set it there once the repository is public.
-2. Have a lawyer read the Terms, Privacy and Imprint pages. Ask whether the notice at the drop zone, the File menu and the sheet page is enough, and whether German versions are needed.
+2. Have a lawyer read the Terms, Privacy and Imprint pages. Ask whether the notice at the start-page drop zone, in the library view of "Your sheets" (beside Import…) and in the File menu is enough, and whether German versions are needed.
 3. Run `npm run check:release`. It builds the app, checks the bundle budget, compares `third-party-packages.json` with the build, and lists every placeholder that is left. It exits 1 until all eleven are filled in.
 4. Configure the host to answer unknown paths with `index.html` (see "Server rule for history routing").
 5. Host the app at the root of a domain. A sub-path such as `example.org/fingerscore/` needs a Vite `base` and a router `basename`. Neither is set.
