@@ -1,20 +1,52 @@
+import { derive } from './derive';
+import { DEFAULT_PREFS } from './transpose';
+import { layoutSheet } from '../render/layout';
 import { mkDoc, type BarSpec } from '../test/helpers';
 import {
-  beatsPerLine, clampSpeed, fitZoom, shownZoom, zoomBelow, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget,
+  READ_AT, SPEED, clampSpeed, fullLineBeats, leadIn, systemAt, systemBeats, fitZoom, shownZoom, zoomBelow, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget,
 } from './playMode';
 
 const bars = (n: number, ticks: number): BarSpec[] => Array.from({ length: n }, () => ({ ev: [[67, ticks]] }));
 
 describe('play mode maths', () => {
-  it('counts the quarter-note beats on an average line', () => {
-    expect(beatsPerLine(mkDoc(bars(8, 48)), 2)).toBe(16);
-    expect(beatsPerLine(mkDoc(bars(8, 36), [6, 8]), 2)).toBe(12);
-    expect(beatsPerLine(mkDoc(bars(8, 48)), 0)).toBe(0);
+  const beatsOf = (doc: ReturnType<typeof mkDoc>) => systemBeats(doc, layoutSheet(doc, derive(doc, DEFAULT_PREFS)).systems);
+
+  it('counts the quarter-note beats of every line', () => {
+    // Nine bars of 4/4: two lines of four bars and a last line with one.
+    expect(beatsOf(mkDoc(bars(9, 48)))).toEqual([16, 16, 4]);
+    expect(beatsOf(mkDoc(bars(8, 36), [6, 8]))).toEqual([12, 12]);
   });
 
-  it('gives a line 9.6 s at ♩ = 100 and 100 %, half of that at 200 %', () => {
+  it('names the pace by a full line, whatever a short last line holds', () => {
+    expect(fullLineBeats([16, 16, 4])).toBe(16);
+    expect(fullLineBeats([13, 16, 16, 16, 4])).toBe(16);
+    expect(fullLineBeats([])).toBe(0);
+  });
+
+  it('finds the line at a height on the sheet', () => {
+    // First line starts 200 px down, lines are 290 px apart, three lines.
+    expect(systemAt(0, 200, 290, 3)).toBe(0);      // above the first line: the first line's pace
+    expect(systemAt(200, 200, 290, 3)).toBe(0);
+    expect(systemAt(489, 200, 290, 3)).toBe(0);
+    expect(systemAt(490, 200, 290, 3)).toBe(1);
+    expect(systemAt(5000, 200, 290, 3)).toBe(2);   // below the last line: the last line's pace
+    expect(systemAt(100, 0, 0, 3)).toBe(0);        // nothing measured
+    expect(systemAt(100, 0, 290, 0)).toBe(0);
+  });
+
+  it('holds the scroll until the music reaches the reading line, 35 % down the screen', () => {
+    expect(READ_AT).toBe(0.35);
+    expect(leadIn(1000)).toBe(350);
+    expect(leadIn(0)).toBe(0);
+  });
+
+  it('offers more room to slow down than to speed up', () => {
+    expect(SPEED).toEqual({ min: 25, max: 150, step: 5, initial: 100 });
+  });
+
+  it('gives a line 9.6 s at ♩ = 100 and 100 %, twice that at 50 %', () => {
     expect(lineSeconds(16, 100, 100)).toBeCloseTo(9.6);
-    expect(lineSeconds(16, 100, 200)).toBeCloseTo(4.8);
+    expect(lineSeconds(16, 100, 50)).toBeCloseTo(19.2);
   });
 
   it('scrolls one zoomed system per line time', () => {
@@ -68,11 +100,14 @@ describe('play mode maths', () => {
     expect(clampZoom(150)).toBe(150);
     expect(clampSpeed(NaN)).toBe(100);
     expect(clampSpeed(20)).toBe(100);
-    expect(clampSpeed(175)).toBe(175);
+    expect(clampSpeed(25)).toBe(25);
+    expect(clampSpeed(200)).toBe(100);
+    expect(clampSpeed(125)).toBe(125);
   });
 
   it('labels the speed', () => {
     expect(speedLabel(16, 100, 100)).toBe('100% · 1 line / 10 s');
-    expect(speedLabel(16, 100, 200)).toBe('200% · 1 line / 5 s');
+    expect(speedLabel(16, 100, 50)).toBe('50% · 1 line / 19 s');
+    expect(speedLabel(16, 100, 100, 7.2)).toBe('100% · starts in 8 s');
   });
 });

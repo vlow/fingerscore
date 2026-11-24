@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
-import { speedLabel, beatsPerLine } from '../domain/playMode';
+import { fullLineBeats, scrollSpeed, speedLabel, systemBeats } from '../domain/playMode';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { layoutSheet } from '../render/layout';
 import PlayMode from './PlayMode';
@@ -17,10 +17,16 @@ function frame(ts: number) {
   frames = new Map();
   act(() => due.forEach(cb => cb(ts)));
 }
+/** A clock for auto-scroll: run(ms) plays that much time in frames of 100 ms. */
+let now = 0;
+function run(ms: number) {
+  for (let t = 0; t < ms; t += 100) frame(now += 100);
+}
 
 beforeEach(() => {
   window.localStorage.clear();
   frames = new Map();
+  now = 0;
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { frames.set(nextFrame, cb); return nextFrame++; });
   vi.stubGlobal('cancelAnimationFrame', (id: number) => { frames.delete(id); });
 });
@@ -234,21 +240,68 @@ describe('PlayMode', () => {
     expect(screen.getByRole('slider', { name: 'Auto-scroll speed' })).toHaveValue('100');
   });
 
-  it('auto-scrolls at the speed of the music and stops at the end', () => {
-    const { region, scroller, doc, layout } = open();
-    size(scroller, 5000, 1000);
-    fireEvent.keyDown(region, { key: 'a' });
-    const toggle = screen.getByRole('button', { name: 'Pause' });
-    expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    for (let ts = 0; ts <= 1000; ts += 100) frame(ts);
-    // One zoomed system (290 px × 1.25) per line time.
-    const beats = beatsPerLine(doc, layout.systems.length);
-    const perSecond = (290 * 1.25) / ((beats * 60) / doc.tempo);
-    expect(scroller.scrollTop).toBe(Math.floor(perSecond));
-    scroller.scrollTop = 4000;
-    frame(1116);
+  /** Starts auto-scroll on a tall sheet and returns the pace (px/s at 100 %) of the first two lines, slowest first. */
+  function startAuto(o: ReturnType<typeof open>) {
+    size(o.scroller, 50000, 1000);
+    fireEvent.keyDown(o.region, { key: 'a' });
+    frame(now);
+    const beats = systemBeats(o.doc, o.layout.systems);
+    const pace = beats.slice(0, 2).map(b => scrollSpeed(b, o.doc.tempo, 100, 125)).sort((a, b) => a - b);
+    return { beats, slow: pace[0], fast: pace[1] };
+  }
+  const readout = () => screen.getByRole('slider', { name: 'Auto-scroll speed' }).nextElementSibling!.textContent!;
+
+  it('waits until the music is 35 % down the screen, then scrolls at the pace of the music', () => {
+    const o = open();
+    const { slow, fast } = startAuto(o);
+    expect(screen.getByRole('button', { name: 'Pause' })).toHaveAttribute('aria-pressed', 'true');
+    // 350 px of a 1000 px screen: the music takes 350 / pace seconds to get there. Nothing moves before.
+    const wait = 350 / fast;
+    run(Math.floor(wait - 1) * 1000);
+    expect(o.scroller.scrollTop).toBe(0);
+    expect(readout()).toMatch(/^100% · starts in \d+ s$/);
+    run(Math.ceil(350 / slow - Math.floor(wait - 1)) * 1000);
+    expect(readout()).toMatch(/^100% · 1 line \/ \d+ s$/);
+    // From here the sheet moves as fast as the music: 3 s of it.
+    const from = o.scroller.scrollTop;
+    run(3000);
+    expect(o.scroller.scrollTop - from).toBeGreaterThanOrEqual(Math.floor(slow * 3) - 1);
+    expect(o.scroller.scrollTop - from).toBeLessThanOrEqual(Math.ceil(fast * 3) + 1);
+  });
+
+  it('paces every line by its own beats: a short last line does not hurry the others', () => {
+    const o = open();
+    const { beats } = startAuto(o);
+    // Put the reading line in the fourth line (lines are 290 px × 1.25 apart; jsdom measures nothing).
+    run(15000);   // past the wait
+    o.scroller.scrollTop = 1000 - 350 + 100;
+    const from = o.scroller.scrollTop;
+    const at = Math.floor((from + 350) / 362.5);
+    run(1000);
+    const expected = scrollSpeed(beats[at], o.doc.tempo, 100, 125);
+    expect(Math.abs(o.scroller.scrollTop - from - expected)).toBeLessThanOrEqual(1.5);
+    expect(beats[beats.length - 1]).toBeLessThan(beats[at]);   // the sample ends on a short line
+  });
+
+  it('stops at the end of the sheet', () => {
+    const o = open();
+    startAuto(o);
+    o.scroller.scrollTop = 49000;
+    run(100);
     expect(screen.getByRole('button', { name: 'Auto-scroll' })).toHaveAttribute('aria-pressed', 'false');
     expect(frames.size).toBe(0);
+  });
+
+  it('waits again after a page turn: the player reads from the top of the new page', () => {
+    const o = open();
+    startAuto(o);
+    run(60000);
+    expect(readout()).toMatch(/1 line/);
+    fireEvent.keyDown(o.region, { key: 'ArrowRight' });
+    const from = o.scroller.scrollTop;
+    run(1000);
+    expect(readout()).toMatch(/starts in/);
+    expect(o.scroller.scrollTop).toBe(from);
   });
 
   it('switches auto-scroll off at once when the sheet fits the screen', () => {
@@ -269,19 +322,25 @@ describe('PlayMode', () => {
     expect(screen.getByRole('button', { name: 'Auto-scroll' })).toBeInTheDocument();
   });
 
-  it('shows the line time and follows the speed slider', () => {
-    const { doc, layout, scroller, region } = open();
-    const beats = beatsPerLine(doc, layout.systems.length);
-    expect(screen.getByText(speedLabel(beats, doc.tempo, 100))).toBeInTheDocument();
+  it('shows the time of a full line and follows the speed slider', () => {
+    const o = open();
+    const full = fullLineBeats(systemBeats(o.doc, o.layout.systems));
+    expect(readout()).toBe(speedLabel(full, o.doc.tempo, 100));
     const slider = screen.getByRole('slider', { name: 'Auto-scroll speed' });
-    fireEvent.change(slider, { target: { value: '200' } });
-    expect(screen.getByText(speedLabel(beats, doc.tempo, 200))).toBeInTheDocument();
-    expect(stored()).toEqual({ zoom: 125, speed: 200 });
+    expect(slider).toHaveAttribute('min', '25');
+    expect(slider).toHaveAttribute('max', '150');
     // A running scroll takes the new speed without a restart.
-    size(scroller, 50000, 1000);
-    fireEvent.keyDown(region, { key: 'a' });
-    for (let ts = 0; ts <= 1000; ts += 100) frame(ts);
-    expect(scroller.scrollTop).toBe(Math.floor((2 * 290 * 1.25) / ((beats * 60) / doc.tempo)));
+    startAuto(o);
+    run(60000);
+    let from = o.scroller.scrollTop;
+    run(2000);
+    const before = o.scroller.scrollTop - from;
+    fireEvent.change(slider, { target: { value: '50' } });
+    expect(readout()).toBe(speedLabel(full, o.doc.tempo, 50));
+    expect(stored()).toEqual({ zoom: 125, speed: 50 });
+    from = o.scroller.scrollTop;
+    run(2000);
+    expect(Math.abs((o.scroller.scrollTop - from) * 2 - before)).toBeLessThanOrEqual(4);
   });
 
   it('leaves the arrow keys to the speed slider, and Space to a focused button', () => {
@@ -327,12 +386,12 @@ describe('PlayMode', () => {
   });
 
   it('does not jump after the tab was hidden: a long gap between frames counts as a short one', () => {
-    const { region, scroller } = open();
-    size(scroller, 50000, 1000);
-    fireEvent.keyDown(region, { key: 'a' });
-    frame(0);
-    frame(30000);
-    expect(scroller.scrollTop).toBeLessThan(10);
+    const o = open();
+    startAuto(o);
+    run(60000);
+    const from = o.scroller.scrollTop;
+    frame(now += 30000);
+    expect(o.scroller.scrollTop - from).toBeLessThan(10);
   });
 
   it('exits with Esc from the slider too', () => {

@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { Derived } from '../domain/derive';
 import {
-  SPEED, ZOOM, beatsPerLine, fitZoom, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom, turnTarget, zoomBelow,
+  READ_AT, SPEED, ZOOM, fitZoom, fullLineBeats, leadIn, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom, systemAt,
+  systemBeats, turnTarget, zoomBelow,
 } from '../domain/playMode';
 import type { Doc } from '../domain/types';
-import type { SheetLayout } from '../render/layout';
+import { SHEET, type SheetLayout } from '../render/layout';
 import { Paper } from '../render/Paper';
 import { readPlayModePrefs, writePlayModePrefs } from '../state/playModePrefs';
 import s from './PlayMode.module.css';
@@ -75,10 +76,16 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const beats = beatsPerLine(doc, layout.systems.length);
-  // The running scroll reads its speed here, so the slider, the zoom and the tempo apply without a restart.
-  const speedRef = useRef(0);
-  speedRef.current = scrollSpeed(beats, doc.tempo, prefs.speed, zoom);
+  const beats = useMemo(() => systemBeats(doc, layout.systems), [doc, layout]);
+  // The running scroll reads its pace here, so the slider, the zoom and the tempo apply without a restart.
+  const pace = useRef({ beats, tempo: doc.tempo, speed: prefs.speed, zoom });
+  pace.current = { beats, tempo: doc.tempo, speed: prefs.speed, zoom };
+  // Where the lines are in the scrolled content: the top of the first one and the distance to the next.
+  const lines = useRef({ firstTop: 0, pitch: 0 });
+  // Auto-scroll waits while the music comes down from the top of the screen to the reading line: how far it has
+  // come (CSS pixels), and the seconds left for the readout.
+  const travelled = useRef(0);
+  const [startsIn, setStartsIn] = useState<number | null>(null);
 
   useWakeLock();
 
@@ -92,6 +99,12 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   const measure = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
+    const systems = el.querySelectorAll('[data-testid="system"]');
+    if (systems.length > 0) {
+      const top = (sys: Element) => sys.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+      const firstTop = top(systems[0]);
+      lines.current = { firstTop, pitch: systems.length > 1 ? (top(systems[systems.length - 1]) - firstTop) / (systems.length - 1) : 0 };
+    }
     const next = { n: pageNumber(el.scrollTop, el.scrollHeight, el.clientHeight), of: pageCount(el.scrollHeight, el.clientHeight) };
     setPage(prev => (prev.n === next.n && prev.of === next.of ? prev : next));
   }, []);
@@ -127,20 +140,33 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     let id = 0;
     let last: number | null = null;
     let carry = 0;
+    travelled.current = 0;
     const step = (ts: number) => {
       const el = scrollerRef.current;
       if (!el) return;
-      if (last !== null) {
-        carry += (speedRef.current * Math.min(ts - last, MAX_FRAME_MS)) / 1000;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - END_SLACK) { setAuto(false); return; }
+      // The pace of the line the player reads: every line passes in the time its own beats take.
+      const p = pace.current;
+      const pitch = lines.current.pitch > 0 ? lines.current.pitch : (SHEET.systemHeight * p.zoom) / 100;
+      const at = systemAt(el.scrollTop + READ_AT * el.clientHeight, lines.current.firstTop, pitch, p.beats.length);
+      const speed = scrollSpeed(p.beats[at] ?? 0, p.tempo, p.speed, p.zoom);
+      const moved = last === null ? 0 : (speed * Math.min(ts - last, MAX_FRAME_MS)) / 1000;
+      last = ts;
+      const wait = leadIn(el.clientHeight) - travelled.current;
+      if (wait > 0 && speed > 0) {
+        travelled.current += moved;
+        const left = Math.ceil(Math.max(0, wait - moved) / speed);
+        setStartsIn(left > 0 ? left : null);
+      } else {
+        setStartsIn(null);
+        carry += moved;
         const px = Math.floor(carry);
         if (px >= 1) { el.scrollTop += px; carry -= px; }
       }
-      last = ts;
-      if (el.scrollTop + el.clientHeight >= el.scrollHeight - END_SLACK) { setAuto(false); return; }
       id = requestAnimationFrame(step);
     };
     id = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(id);
+    return () => { cancelAnimationFrame(id); setStartsIn(null); };
   }, [auto]);
 
   // Where a page turn is scrolling to. A second turn before it arrives (a pedal pressed twice) counts from there,
@@ -163,6 +189,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     const top = turnTarget(from, el.scrollHeight, el.clientHeight, dir);
     if (top === from) return;
     goingTo.current = smooth ? { top, since: performance.now() } : null;
+    // After a turn the player reads from the top of the new page: auto-scroll waits again.
+    travelled.current = 0;
     el.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
   }
 
@@ -247,7 +275,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
           Speed
           <input type="range" className={s.slider} aria-label="Auto-scroll speed" min={SPEED.min} max={SPEED.max} step={SPEED.step}
             value={prefs.speed} onChange={e => change({ speed: Number(e.target.value) })} />
-          <span className={s.readout}>{speedLabel(beats, doc.tempo, prefs.speed)}</span>
+          <span className={s.readout}>{speedLabel(fullLineBeats(beats), doc.tempo, prefs.speed, startsIn)}</span>
         </label>
         <span aria-hidden="true" className={s.rule} />
         <button type="button" className={s.btn} aria-label="Smaller" title="Smaller (−)" aria-disabled={!canShrink}

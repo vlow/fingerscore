@@ -1,17 +1,39 @@
-import { SHEET } from '../render/layout';
+import { SHEET, type SystemLayout } from '../render/layout';
 import { TPQ } from './time';
 import type { Doc } from './types';
 
 /** Play mode (SPEC §11a): paper zoom and auto-scroll speed factor, both in percent. */
 export const ZOOM = { min: 75, max: 200, step: 25, initial: 125 } as const;
-export const SPEED = { min: 50, max: 200, step: 5, initial: 100 } as const;
+/** 100 % is the pace of the music. Players slow the scroll down far more often than they speed it up. */
+export const SPEED = { min: 25, max: 150, step: 5, initial: 100 } as const;
 /** A page turn moves by this share of the visible height, so 12 % of the last page stays in view. */
 export const TURN = 0.88;
 
-/** Quarter-note beats on an average line of this sheet. */
-export function beatsPerLine(doc: Doc, systems: number): number {
-  if (systems <= 0) return 0;
-  return doc.score.reduce((sum, b) => sum + b.cap, 0) / TPQ / systems;
+/**
+ * Where the player reads, as a share of the visible height. Auto-scroll keeps the music there: it waits until the
+ * music has come down from the top to this line, then moves at the music's pace.
+ */
+export const READ_AT = 0.35;
+
+/** Quarter-note beats on every line of the sheet. Each line scrolls by in its own time. */
+export function systemBeats(doc: Doc, systems: SystemLayout[]): number[] {
+  return systems.map(sys => sys.bars.reduce((sum, b) => sum + doc.score[b.bar].cap, 0) / TPQ);
+}
+
+/** The beats of a full line, for the readout: a short last line or a pickup does not count. */
+export function fullLineBeats(beats: number[]): number {
+  return beats.length ? Math.max(...beats) : 0;
+}
+
+/** The line at height y of the scrolled content: lines start at firstTop and are pitch apart. */
+export function systemAt(y: number, firstTop: number, pitch: number, count: number): number {
+  if (count <= 0 || pitch <= 0) return 0;
+  return Math.max(0, Math.min(count - 1, Math.floor((y - firstTop) / pitch)));
+}
+
+/** How far the music travels down the screen before auto-scroll starts to move, in CSS pixels. */
+export function leadIn(clientHeight: number): number {
+  return READ_AT * Math.max(0, clientHeight);
 }
 
 /** Seconds one line takes at this tempo and speed factor (percent). */
@@ -73,7 +95,8 @@ export const clampZoom = (v: unknown): number => inRange(v, ZOOM);
 /** A stored speed factor, or the default when it is not a number in range. */
 export const clampSpeed = (v: unknown): number => inRange(v, SPEED);
 
-/** The readout next to the speed slider: "100% · 1 line / 10 s". */
-export function speedLabel(beats: number, tempo: number, speed: number): string {
+/** The readout next to the speed slider: "100% · 1 line / 10 s", or "100% · starts in 8 s" while auto-scroll waits. */
+export function speedLabel(beats: number, tempo: number, speed: number, startsIn: number | null = null): string {
+  if (startsIn !== null) return `${speed}% · starts in ${Math.ceil(startsIn)} s`;
   return `${speed}% · 1 line / ${Math.round(lineSeconds(beats, tempo, speed))} s`;
 }

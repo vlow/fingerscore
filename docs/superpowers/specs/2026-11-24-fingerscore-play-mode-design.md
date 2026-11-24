@@ -57,8 +57,9 @@ A player reads the sheet from a tablet on a music stand or from a laptop while p
 
 - Toggle button "Auto-scroll" / "Pause", `aria-pressed`, key **A**. Off by default.
 - A `requestAnimationFrame` loop adds whole pixels to `scrollTop`. It stops at the end of the sheet. Manual scrolling and turning work while it runs.
-- **Speed (deviation from §11a, the owner's decision):** the spec fixes a line at 16 beats. The app takes the sheet's real average: `beatsPerLine = total quarter-note beats of all bars / number of systems`. A line takes `beatsPerLine · 60 / tempo / factor` seconds; the speed is `systemHeight · zoom` pixels in that time. A 4/4 sheet with four bars on every line gives the spec's 9.6 s at ♩ = 100.
-- Slider 50–200% in steps of 5, readout "100% · 1 line / 10 s".
+- **Pace (deviation from §11a, the owner's decision):** the spec fixes a line at 16 beats. The app paces every line by its own beats: the line at the reading line passes in `beats · 60 / tempo / factor` seconds, and the speed is `systemHeight · zoom` pixels in that time. An average over the sheet was tried first and ran 23% fast on the demo, because its last line holds one bar.
+- **Reading line:** the music is kept 35% down the screen. After Auto-scroll is pressed, and after a page turn, the sheet waits until the music has come down from the top to that line, then moves. Without the wait the line being played leaves the screen at the top while it is played. The readout counts down: "100% · starts in 8 s".
+- Slider 25–150% in steps of 5, readout "100% · 1 line / 10 s" for a full line. 100% is the pace of the music; players slow the scroll down more often than they speed it up.
 
 ### 4.5 Size, wake lock, preferences
 

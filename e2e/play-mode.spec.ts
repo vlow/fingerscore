@@ -40,16 +40,24 @@ test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ p
   await page.keyboard.press('PageUp');
   await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBe(0);
 
-  // Auto-scroll moves the sheet at the pace the readout names: one zoomed line in that many seconds.
+  // Auto-scroll first lets the music come down to the reading line (35 % of the screen), then moves at the pace
+  // the readout names: one zoomed line (290 px × 1.25) in that many seconds.
   const label = await region.getByText(/1 line \/ \d+ s$/).textContent();
   const lineSeconds = Number(/(\d+) s$/.exec(label!)![1]);
+  expect(lineSeconds).toBe(10);   // four bars of 4/4 at ♩ = 100: 9.6 s
   await page.keyboard.press('a');
   await expect(region.getByRole('button', { name: 'Pause' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(region.getByText(/starts in \d+ s$/)).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(await scroller.evaluate(el => el.scrollTop)).toBe(0);
+  await expect(region.getByText(/1 line \/ 10 s$/)).toBeVisible({ timeout: 15000 });
+  const start = await scroller.evaluate(el => el.scrollTop);
   await page.waitForTimeout(2000);
-  const moved = await scroller.evaluate(el => el.scrollTop);
-  const expected = (290 * 1.25 / lineSeconds) * 2;
+  const moved = (await scroller.evaluate(el => el.scrollTop)) - start;
+  const expected = (290 * 1.25 / 9.6) * 2;
   expect(moved).toBeGreaterThan(expected * 0.6);
   expect(moved).toBeLessThan(expected * 1.5);
+
   // A page turn works while auto-scroll runs.
   const beforeTurn = await scroller.evaluate(el => el.scrollTop);
   await page.keyboard.press('ArrowRight');
