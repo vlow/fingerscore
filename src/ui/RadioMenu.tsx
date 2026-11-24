@@ -83,7 +83,7 @@ export default function RadioMenu<T extends string>(p: {
         {p.children}
       </button>
       {open && (
-        <div ref={menuRef} id={menuId} role="menu" aria-label={p.label} className={`${s.menu} ${p.placement === 'above' ? s.above : s.below}`} onKeyDown={onMenuKey}>
+        <div ref={menuRef} id={menuId} role="menu" aria-label={p.label} tabIndex={-1} className={`${s.menu} ${p.placement === 'above' ? s.above : s.below}`} onKeyDown={onMenuKey}>
           {p.choices.map(c => (
             <button key={c.value} type="button" role="menuitemradio" aria-checked={c.value === p.value} tabIndex={-1}
               className={s.item} onClick={() => choose(c.value)}>

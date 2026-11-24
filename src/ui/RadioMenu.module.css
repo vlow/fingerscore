@@ -42,6 +42,11 @@
   box-sizing: border-box;
 }
 
+/* Focusable so that a click on its padding keeps the focus inside; the items show the focus mark. */
+.menu:focus {
+  outline: none;
+}
+
 .below {
   top: 52px;
 }
