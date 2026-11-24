@@ -63,7 +63,7 @@ A player wants a file of the sheet to put on a tablet, send to a band mate or pr
 - **What is drawn:** exactly what the paper shows for the sheet's settings — the Show switches for fingerings, chords and lyrics, chart style, recorder system, transposition, "raise extended notes", the player's fingering choices, amber and red marks for notes outside the range. Not drawn: the selection highlight, the playback highlight, the "⇅" buttons, the editing panel, the dashed outlines of the title fields.
 - **Scales:** the caption line (18 bold, centred) as on the Scales paper, the staff lines with note names and charts (alternates stacked when that option is on), legend and "fingerscore.eu"; the notice above the paper is not part of it. Same margins, scale, break rule and footer (`{caption} · page {n} of {N}`). A staff line is the unit that is never split. A line is never scaled to fit the rest of a page: it starts the next page. Only a line taller than a page is scaled down to the page height. The caption is cut and fitted like a title. The document subject of a scale PDF is the scale name.
 - **Colours** as on screen.
-- **Document properties:** title = sheet title (or the scale caption), subject = subtitle (the scale name for a scale), creator = "fingerscore". No author, no keywords.
+- **Document properties:** title = sheet title with line breaks collapsed and cut at 300 characters (or the scale caption), subject = subtitle (the scale name for a scale), creator = "fingerscore". No author, no keywords.
 
 ### 4.3 How it is built
 
@@ -96,7 +96,10 @@ A player wants a file of the sheet to put on a tablet, send to a band mate or pr
 - PDF content, in a real browser (Playwright), read back with a PDF parser that is a development dependency only: page count and page size; the title, a lyric line and a chord symbol are present as text; a sheet with ♭, ♯, ♩, Δ, ‿ and Polish lyrics has every character; the legend shows its discs; fonts are embedded; no element lies outside the margins; no system straddles two pages.
 - Visual: one PDF page of the sample song and one of a scale are rendered to an image in the test run and looked at during the build; the image paths go into the task report.
 - End-to-end: Download PDF on the sheet page and on the Scales page gives a download with the expected name that starts with `%PDF`; the unsupported-character message appears for a Cyrillic lyric; a failed load of the PDF code shows the load message; Print still opens the print path.
-- Bundle: the entry chunk limit holds and the entry does not contain the PDF library.
+- Bundle: `npm run check:bundle` adds up every file the page loads at start (limit 400,000 bytes) and fails if one of them contains the PDF library.
+- Fonts: the committed PDF fonts and `coverage.json` must match the installed font package.
+- Notices: `THIRD-PARTY-NOTICES.md` and the copy served with the app must be identical.
+- Production build: `npm run test:e2e:preview` downloads a PDF from the build served by `vite preview`.
 
 ## 5. Calls made by the author
 

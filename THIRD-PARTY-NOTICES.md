@@ -105,7 +105,7 @@ Licence: (MIT OR GPL-3.0-or-later). Repository: https://github.com/Stuk/jszip.gi
 
 Unpacks compressed MusicXML (.mxl) and MuseScore (.mscz) files (code loaded when such a file is opened).
 
-The licence file offers JSZip under the MIT licence or under the GPL version 3, at the user's choice. The file's own statement and its MIT text follow; the full GPL text in the file is not repeated here.
+The licence file offers JSZip under the MIT licence or under the GPL version 3, at the user's choice. fingerscore uses JSZip under the MIT licence. The file's own statement and its MIT text follow; the full GPL text in the file is not repeated here.
 
 Licence file: `node_modules/jszip/LICENSE.markdown`
 
