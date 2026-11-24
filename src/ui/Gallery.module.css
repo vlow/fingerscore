@@ -1,95 +1,191 @@
-.gallery {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-}
-
-.heading {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.count {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
+/* "Your sheets": a strip of five bars, or the library view in its place. 16px more room above than the page gap. */
 .card {
-  position: relative;
+  margin-top: 16px;
+  padding: 28px 0 20px;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  border-radius: 16px;
   background: var(--card);
 }
 
-.card:hover {
-  border-color: var(--border-2);
+.library {
+  padding: 0;
 }
 
-/* The whole card opens the sheet; the delete button sits on top of it, outside the link. */
-.open {
-  position: relative;
+.spacer {
+  flex: 1 1 0;
+}
+
+.textButton {
+  min-height: 36px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.textButton:hover {
+  color: var(--teal-hover);
+}
+
+.error {
+  margin: 0 16px 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--red-bg);
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* --- the mini staff --- */
+
+.staff {
+  display: block;
+  overflow: visible;
+}
+
+.staff line {
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.staff > line {
+  shape-rendering: crispEdges;
+}
+
+.staff ellipse {
+  fill: var(--ink);
+}
+
+.staff[data-empty] > line {
+  stroke: var(--border-2);
+}
+
+.staff rect {
+  fill: var(--ghost);
+}
+
+/* --- strip --- */
+
+.stripHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px 6px;
+}
+
+.label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Five bars on one line; on a narrow screen the line scrolls sideways instead of squeezing the bars. */
+.bars {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.bar {
+  flex: 0 0 max(20%, 180px);
+  min-width: 0;
+  border-left: 1.5px solid var(--ink);
+}
+
+.bar:first-child {
+  border-left: none;
+}
+
+.pad {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  min-height: 44px;
-  /* The right padding keeps every line clear of the delete button (36px + 6px inset + 6px gap). */
-  padding: 46px 48px 12px 14px;
-  border-radius: var(--radius-card);
+  gap: 8px;
+  padding: 0 16px;
+  border-left-color: var(--border-2);
+}
+
+.barOpen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px;
   color: var(--ink);
   text-decoration: none;
 }
 
-.staff {
-  position: absolute;
-  top: 12px;
-  left: 0;
-  width: 100%;
-  height: 25px;
-  stroke: var(--border-2);
-  stroke-width: 1;
+.barOpen:hover .title {
+  color: var(--teal-hover);
 }
 
 .title {
   overflow: hidden;
   font-size: 15px;
+  font-weight: 700;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.inst {
-  color: var(--text);
-  overflow-wrap: anywhere;
-  font-size: 13px;
-}
-
-.ago {
+.meta {
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.delete {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
+.barActions {
   display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 8px 12px 0;
+}
+
+/* --- Open · Play · delete --- */
+
+.openLink,
+.playLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.openLink {
+  color: var(--teal);
+}
+
+.playLink {
+  color: var(--ink);
+}
+
+.openLink:hover,
+.playLink:hover {
+  background: var(--page);
+}
+
+.bin {
+  display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 36px;
@@ -102,33 +198,277 @@
   cursor: pointer;
 }
 
-.delete:hover {
+.bin:hover {
   background: var(--red-bg);
 }
 
-.more {
-  align-self: flex-start;
+.confirm {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.ask {
+  margin-right: auto;
+  padding-left: 4px;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.confirmDelete,
+.keep {
   min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirmDelete {
+  border: 1px solid var(--red);
+  background: var(--red);
+  color: #ffffff;
+}
+
+.keep {
+  border: 1px solid var(--border-2);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.keep:hover {
+  background: var(--page);
+}
+
+/* --- library view --- */
+
+.libHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px 14px;
+}
+
+.libTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.count {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+  min-height: 40px;
   padding: 0 12px;
   border: 1px solid var(--border-2);
-  border-radius: 8px;
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+
+.search:focus-within {
+  outline: 3px solid var(--teal);
+  outline-offset: 1px;
+}
+
+.search input {
+  flex: 1 1 0;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sort select {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
   background: var(--card);
   color: var(--ink);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 16px 12px;
+}
+
+.chip {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.more:hover {
+.chip[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1.4fr) minmax(0, 1fr) 110px 190px;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid #eef0f2;
+}
+
+.rowTitle {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowTitle:hover {
+  color: var(--teal-hover);
+}
+
+.rowMeta {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowDate {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 36px;
+}
+
+/* In a row the controls sit together at the right. */
+.rowActions .spacer {
+  display: none;
+}
+
+.none {
+  margin: 0;
+  padding: 20px 16px;
+  border-top: 1px solid #eef0f2;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.libFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 16px;
+  border-top: 1px solid #eef0f2;
+  background: var(--pagebar);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.note {
+  flex: 1 1 0;
+  color: var(--teal-hover);
+  font-weight: 700;
+}
+
+.footActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footButton {
+  min-height: 36px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.footButton:hover {
   background: var(--page);
 }
 
-.error {
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: var(--radius);
-  background: var(--red-bg);
-  color: var(--red);
-  font-weight: 600;
+/* Narrow screens: title and controls on the first line, instrument and date below; no incipit. */
+@media (max-width: 760px) {
+  .search {
+    flex: 1 1 200px;
+    width: auto;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+  }
+
+  .rowStaff {
+    display: none;
+  }
+
+  .rowActions {
+    grid-row: span 3;
+    grid-column: 2;
+    grid-row-start: 1;
+  }
+
+  .rowTitle,
+  .rowMeta,
+  .rowDate {
+    grid-column: 1;
+  }
 }

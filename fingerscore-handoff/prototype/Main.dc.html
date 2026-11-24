@@ -25,8 +25,8 @@ a{color:#0E6E68}a:hover{color:#0A4F4A}
 <div style="min-height: 100vh; background: #F3F4F6; color: #15171C; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; font-size: 15px">
   <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 12px 28px; background: #FFFFFF; border-bottom: 1px solid #E2E4E8">
     <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #15171C">
-      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="10" y="2" width="8" height="24" rx="4" fill="#15171C"></rect><circle cx="14" cy="8" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="13" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="18" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="23" r="1.6" fill="#5FD3C6"></circle></svg>
-      <span style="font-family: 'Atkinson Hyperlegible', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.01em">fingerscore</span>
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><path d="M30 60 V22 C30 11 36 6 46 7" fill="none" stroke="#15171C" stroke-width="8" stroke-linecap="round"></path><circle cx="17" cy="29" r="5.5" fill="#0E6E68"></circle><circle cx="43" cy="29" r="5" fill="none" stroke="#15171C" stroke-width="3"></circle></svg>
+      <span style="font-family: 'Atkinson Hyperlegible', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.01em">finger<span style="color: #0E6E68">score</span></span>
     </a>
     <div style="flex: 1 1 0"></div>
     <nav aria-label="Main" style="display: flex; gap: 4px">
@@ -42,27 +42,122 @@ a{color:#0E6E68}a:hover{color:#0A4F4A}
     </div>
 
     <sc-if value="{{hasLib}}" hint-placeholder-val="{{ false }}">
-      <section aria-labelledby="lib-h" style="display: flex; flex-direction: column; gap: 10px">
-        <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px">
-          <h2 id="lib-h" style="margin: 0; font-family: 'Atkinson Hyperlegible', sans-serif; font-size: 17px; font-weight: 700">Your sheets</h2>
-          <span style="font-size: 13px; color: #5B616E">{{libCount}} · saved in this browser</span>
+      <sc-if value="{{libClosed}}" hint-placeholder-val="{{ true }}">
+      <section aria-labelledby="lib-h" style="margin-top: 16px; border-radius: 16px; overflow: hidden; border: 1px solid #E2E4E8; background: #FFFFFF; padding: 28px 0 20px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 16px 14px">
+          <h2 id="lib-h" style="margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #5B616E">Your sheets</h2>
+          <sc-if value="{{moreLib}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{openLib}}" style="padding: 0; border: none; background: none; font: 400 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{moreLabel}}</button></sc-if>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px">
+        <div style="display: flex; flex-wrap: wrap; row-gap: 20px">
           <sc-for list="{{lib}}" as="it" hint-placeholder-count="3">
-            <div style="position: relative; border-radius: 14px; background: #FFFFFF; border: 1px solid #E2E4E8; overflow: hidden">
-              <a href="Editor.dc.html" onClick="{{it.open}}" style="display: flex; flex-direction: column; gap: 3px; padding: 46px 14px 12px; text-decoration: none; color: #15171C; background-image: repeating-linear-gradient(to bottom, #D5D8DE 0 1px, transparent 1px 6px); background-size: 100% 25px; background-repeat: no-repeat; background-position: 0 12px">
-                <strong style="font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 24px">{{it.title}}</strong>
-                <span style="font-size: 13px; color: #2A2D33">{{it.inst}}</span>
-                <span style="font-size: 12px; color: #5B616E">{{it.ago}}</span>
+            <div style="position: relative; flex: 0 0 20%; min-width: 0; box-sizing: border-box; {{it.sep}}">
+              <a href="Editor.dc.html" onClick="{{it.open}}" style="display: flex; flex-direction: column; gap: 8px; padding: 0 16px; text-decoration: none; color: #15171C">
+                <span style="font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; ">{{it.title}}</span>
+                <span aria-hidden="true" style="position: relative; display: block; height: 34px">
+                  <span style="position: absolute; left: 0; right: 0; top: 4px; height: 1px; background: #15171C"></span>
+                  <span style="position: absolute; left: 0; right: 0; top: 10.5px; height: 1px; background: #15171C"></span>
+                  <span style="position: absolute; left: 0; right: 0; top: 17px; height: 1px; background: #15171C"></span>
+                  <span style="position: absolute; left: 0; right: 0; top: 23.5px; height: 1px; background: #15171C"></span>
+                  <span style="position: absolute; left: 0; right: 0; top: 30px; height: 1px; background: #15171C"></span>
+                  <sc-for list="{{it.notes}}" as="nt" hint-placeholder-count="6">
+                    <span style="position: absolute; left: {{nt.x}}%; top: {{nt.y}}px; width: 8px; height: 6px; margin-left: -4px; margin-top: -3px; border-radius: 50%; background: #15171C; transform: rotate(-20deg)"></span>
+                    <span style="position: absolute; left: {{nt.x}}%; top: {{nt.sy}}px; width: 1px; height: 19px; margin-left: {{nt.sm}}px; background: #15171C"></span>
+                  </sc-for>
+                </span>
+                <span style="font-size: 12px; color: #5B616E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.inst}} · {{it.agoShort}}</span>
               </a>
-              <button type="button" onClick="{{it.remove}}" aria-label="Delete {{it.title}}" style="position: absolute; right: 6px; bottom: 6px; width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; color: #8F1414; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg></button>
+              <div style="display: flex; align-items: center; gap: 4px; padding: 8px 12px 0">
+                <sc-if value="{{it.idle}}" hint-placeholder-val="{{ true }}">
+                  <a href="Editor.dc.html" onClick="{{it.open}}" style="display: inline-flex; align-items: center; min-height: 36px; padding: 0 8px; border-radius: 8px; font-size: 13px; font-weight: 700; color: #0E6E68; text-decoration: none">Open</a>
+                  <a href="Editor.dc.html" onClick="{{it.play}}" title="Open in Play mode" style="display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 8px; border-radius: 8px; font-size: 13px; font-weight: 700; color: #15171C; text-decoration: none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"></path></svg>Play</a>
+                  <span style="flex: 1 1 0"></span>
+                  <button type="button" onClick="{{it.askDelete}}" aria-label="Delete {{it.title}}" title="Delete" style="width: 36px; height: 36px; border: none; border-radius: 8px; background: transparent; color: #8F1414; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg></button>
+                </sc-if>
+                <sc-if value="{{it.confirming}}" hint-placeholder-val="{{ false }}">
+                  <span role="alert" style="font-size: 13px; color: #8F1414; font-weight: 700; padding-left: 4px">Delete?</span>
+                  <span style="flex: 1 1 0"></span>
+                  <button type="button" onClick="{{it.remove}}" style="min-height: 32px; padding: 0 10px; border: none; border-radius: 8px; background: #B91C1C; color: #FFFFFF; font: 700 13px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">Delete</button>
+                  <button type="button" onClick="{{it.cancelDelete}}" style="min-height: 32px; padding: 0 10px; border: 1px solid #D5D8DE; border-radius: 8px; background: #FFFFFF; color: #15171C; font: 700 13px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">Keep</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        <sc-for list="{{pads}}" as="pd" hint-placeholder-count="0">
+            <div aria-hidden="true" style="flex: 0 0 20%; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 0 16px; border-left: 1.5px solid #D5D8DE">
+              <span style="font-size: 15px; line-height: 18px">&nbsp;</span>
+              <span style="position: relative; display: block; height: 34px">
+                <span style="position: absolute; left: 0; right: 0; top: 4px; height: 1px; background: #D5D8DE"></span>
+                <span style="position: absolute; left: 0; right: 0; top: 10.5px; height: 1px; background: #D5D8DE"></span>
+                <span style="position: absolute; left: 0; right: 0; top: 17px; height: 1px; background: #D5D8DE"></span>
+                <span style="position: absolute; left: 0; right: 0; top: 23.5px; height: 1px; background: #D5D8DE"></span>
+                <span style="position: absolute; left: 0; right: 0; top: 30px; height: 1px; background: #D5D8DE"></span>
+                <span style="position: absolute; left: 50%; top: 10.5px; width: 14px; height: 3.5px; margin-left: -7px; background: #C3C7CE"></span>
+              </span>
             </div>
           </sc-for>
         </div>
-        <sc-if value="{{moreLib}}" hint-placeholder-val="{{ false }}">
-          <button type="button" onClick="{{toggleAll}}" style="align-self: flex-start; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 600 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">{{moreLabel}}</button>
-        </sc-if>
       </section>
+      </sc-if>
+      <sc-if value="{{libOpen}}" hint-placeholder-val="{{ false }}">
+      <section aria-labelledby="lib2-h" style="margin-top: 16px; border-radius: 16px; overflow: hidden; border: 1px solid #E2E4E8; background: #FFFFFF">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 18px 16px 14px">
+          <h2 id="lib2-h" style="margin: 0; font-size: 22px; font-weight: 700">Your sheets</h2>
+          <span style="font-size: 13px; color: #5B616E">{{libCount}} saved in this browser</span>
+          <span style="flex: 1 1 0"></span>
+          <label style="display: flex; align-items: center; gap: 8px; width: 240px; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #D5D8DE; box-sizing: border-box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B616E" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input type="search" value="{{q}}" onChange="{{onQ}}" placeholder="Search titles or instruments" aria-label="Search your sheets" style="flex: 1 1 0; min-width: 0; border: none; outline: none; font: 400 14px 'Atkinson Hyperlegible', sans-serif; color: #15171C; background: transparent"></label>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #5B616E">Sort
+            <select value="{{sort}}" onChange="{{onSort}}" style="min-height: 40px; padding: 0 8px; border-radius: 10px; border: 1px solid #D5D8DE; background: #FFFFFF; font: 700 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C"><option value="recent">Recently saved</option><option value="title">Title A–Z</option><option value="instrument">Instrument</option></select>
+          </label>
+          <button type="button" onClick="{{closeLib}}" style="min-height: 40px; padding: 0 12px; border: none; background: none; font: 400 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">Close</button>
+        </div>
+        <div role="group" aria-label="Filter by instrument" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px">
+          <sc-for list="{{famChips}}" as="c" hint-placeholder-count="3">
+            <button type="button" onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" style="min-height: 32px; padding: 0 12px; border-radius: 999px; font: 700 13px 'Atkinson Hyperlegible', sans-serif; cursor: pointer; {{c.style}}">{{c.label}}</button>
+          </sc-for>
+        </div>
+        <sc-for list="{{libAll}}" as="it" hint-placeholder-count="3">
+          <div style="display: grid; grid-template-columns: 150px minmax(0, 1.4fr) minmax(0, 1fr) 110px 190px; align-items: center; gap: 16px; padding: 10px 16px; border-top: 1px solid #EEF0F2">
+            <span aria-hidden="true" style="position: relative; display: block; width: 150px; height: 34px">
+                  <span style="position: absolute; left: 0; right: 0; top: 4px; height: 1px; background: #15171C"></span>
+                  <span style="position: absolute; left: 0; right: 0; top: 10.5px; height: 1px; background: #15171C"></span>
+                  <span style="position: absolute; left: 0; right: 0; top: 17px; height: 1px; background: #15171C"></span>
+                  <span style="position: absolute; left: 0; right: 0; top: 23.5px; height: 1px; background: #15171C"></span>
+                  <span style="position: absolute; left: 0; right: 0; top: 30px; height: 1px; background: #15171C"></span>
+                  <sc-for list="{{it.notes}}" as="nt" hint-placeholder-count="6">
+                    <span style="position: absolute; left: {{nt.x}}%; top: {{nt.y}}px; width: 8px; height: 6px; margin-left: -4px; margin-top: -3px; border-radius: 50%; background: #15171C; transform: rotate(-20deg)"></span>
+                    <span style="position: absolute; left: {{nt.x}}%; top: {{nt.sy}}px; width: 1px; height: 19px; margin-left: {{nt.sm}}px; background: #15171C"></span>
+                  </sc-for>
+                </span>
+            <a href="Editor.dc.html" onClick="{{it.open}}" style="font-weight: 700; font-size: 15px; color: #15171C; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.title}}</a>
+            <span style="font-size: 13px; color: #2A2D33; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.meta}}</span>
+            <span style="font-size: 13px; color: #5B616E">{{it.agoShort}}</span>
+            <span style="display: flex; align-items: center; gap: 4px; justify-content: flex-end">
+              <sc-if value="{{it.idle}}" hint-placeholder-val="{{ true }}">
+                <a href="Editor.dc.html" onClick="{{it.open}}" style="display: inline-flex; align-items: center; min-height: 36px; padding: 0 8px; font-size: 13px; font-weight: 700; color: #0E6E68; text-decoration: none">Open</a>
+                <a href="Editor.dc.html" onClick="{{it.play}}" title="Open in Play mode" style="display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 8px; font-size: 13px; font-weight: 700; color: #15171C; text-decoration: none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"></path></svg>Play</a>
+                <button type="button" onClick="{{it.askDelete}}" aria-label="Delete {{it.title}}" title="Delete" style="width: 36px; height: 36px; border: none; border-radius: 8px; background: transparent; color: #8F1414; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg></button>
+              </sc-if>
+              <sc-if value="{{it.confirming}}" hint-placeholder-val="{{ false }}">
+                <span role="alert" style="font-size: 13px; color: #8F1414; font-weight: 700; margin-right: 4px">Delete?</span>
+                <button type="button" onClick="{{it.remove}}" style="min-height: 32px; padding: 0 10px; border: none; border-radius: 8px; background: #B91C1C; color: #FFFFFF; font: 700 13px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">Delete</button>
+                <button type="button" onClick="{{it.cancelDelete}}" style="min-height: 32px; padding: 0 10px; border: 1px solid #D5D8DE; border-radius: 8px; background: #FFFFFF; color: #15171C; font: 700 13px 'Atkinson Hyperlegible', sans-serif; cursor: pointer">Keep</button>
+              </sc-if>
+            </span>
+          </div>
+        </sc-for>
+        <sc-if value="{{noMatches}}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 20px 16px; border-top: 1px solid #EEF0F2; font-size: 14px; color: #5B616E">No sheets match your search.</div>
+        </sc-if>
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid #EEF0F2; background: #FAFAFB; font-size: 13px; color: #5B616E">
+          <span>Stored only in this browser.</span>
+          <span style="display: flex; align-items: center; gap: 4px">
+            <button type="button" onClick="{{exportAll}}" style="min-height: 36px; padding: 0 10px; border: none; background: none; font: 700 13px 'Atkinson Hyperlegible', sans-serif; color: #15171C; cursor: pointer">Export all as JSON</button>
+            <span aria-hidden="true">·</span>
+            <label style="position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; font-weight: 700; color: #15171C; cursor: pointer">Import…<input type="file" accept=".json,application/json" onChange="{{importLib}}" style="position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden"></label>
+          </span>
+        </div>
+      </section>
+      </sc-if>
     </sc-if>
 
     <section aria-labelledby="inst-h" style="padding: 14px 16px 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E2E4E8; display: flex; flex-direction: column; gap: 10px">
@@ -165,8 +260,8 @@ a{color:#0E6E68}a:hover{color:#0A4F4A}
   <footer style="margin-top: 40px; background: #FFFFFF; border-top: 1px solid #E2E4E8">
     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 20px 28px">
       <div style="display: flex; align-items: center; gap: 8px">
-        <svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><rect x="10" y="2" width="8" height="24" rx="4" fill="#15171C"></rect><circle cx="14" cy="8" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="13" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="18" r="1.6" fill="#FFFFFF"></circle><circle cx="14" cy="23" r="1.6" fill="#5FD3C6"></circle></svg>
-        <span style="font-family: 'Atkinson Hyperlegible', sans-serif; font-weight: 700; font-size: 15px; color: #15171C">fingerscore</span>
+        <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true"><path d="M30 60 V22 C30 11 36 6 46 7" fill="none" stroke="#15171C" stroke-width="8" stroke-linecap="round"></path><circle cx="17" cy="29" r="5.5" fill="#0E6E68"></circle><circle cx="43" cy="29" r="5" fill="none" stroke="#15171C" stroke-width="3"></circle></svg>
+        <span style="font-family: 'Atkinson Hyperlegible', sans-serif; font-weight: 700; font-size: 15px; color: #15171C">finger<span style="color: #0E6E68">score</span></span>
         <span style="font-size: 13px; color: #5B616E">© 2026</span>
       </div>
       <span style="font-size: 13px; color: #5B616E">Your sheets are stored in your browser. Nothing is stored on the server.</span>
@@ -417,15 +512,63 @@ class Component extends DCLogic {
     function setPending(id) { try { window.localStorage.setItem("fingerscore.pending", id); } catch (e) {} }
     function ago(iso) { var d = new Date(iso), s = (Date.now() - d.getTime()) / 1000; if (s < 60) return "Saved just now"; if (s < 3600) return "Saved " + Math.round(s / 60) + " min ago"; if (s < 86400) return "Saved " + Math.round(s / 3600) + " h ago"; return "Saved " + d.toLocaleDateString(); }
     var LIB = readLib(), showAll = !!st.showAll;
-    out.lib = (showAll ? LIB : LIB.slice(0, 4)).map(function (e) {
-      return { title: e.title || "Untitled sheet", inst: e.inst || "", ago: ago(e.savedAt),
+    function incipitOf(e) {
+      var ms = [];
+      try { (e.doc && e.doc.score || []).forEach(function (b) { (b.ev || []).forEach(function (v) { if (!v.r && ms.length < 6) ms.push(v.m); }); }); } catch (err) {}
+      if (ms.length < 2) { var h = 0; String(e.id || e.title).split("").forEach(function (ch) { h = (h * 31 + ch.charCodeAt(0)) >>> 0; }); ms = []; var p = 64; for (var q = 0; q < 6; q++) { p += [-3, -2, -1, 1, 2, 3][(h >> (q * 3)) % 6]; ms.push(p); } }
+      var lo = Math.min.apply(null, ms), hi = Math.max.apply(null, ms), span = Math.max(1, hi - lo);
+      return ms.map(function (m, k) {
+        var step = Math.round((m - lo) / span * 7);            /* 0..7 staff steps */
+        var y = 30 - step * 3.25 - 1.6;
+        var down = y < 17; return { x: Math.round(8 + k * 84 / Math.max(1, ms.length - 1)), y: Math.round(y * 10) / 10, sy: Math.round((down ? y : y - 19) * 10) / 10, sm: down ? -4 : 3 };
+      });
+    }
+    function agoShort(iso) { var s = (Date.now() - new Date(iso).getTime()) / 1000; if (s < 3600) return "just now"; if (s < 86400) return Math.round(s / 3600) + " h ago"; if (s < 172800) return "yesterday"; return new Date(iso).toLocaleDateString(); }
+    function famOf(e) { var s = (e.fam || e.inst || "").toLowerCase(); return s.indexOf("sax") >= 0 ? "Saxophone" : s.indexOf("clarinet") >= 0 ? "Clarinet" : s.indexOf("flute") >= 0 || s.indexOf("piccolo") >= 0 ? "Flute" : s.indexOf("xaphoon") >= 0 ? "Xaphoon" : s.indexOf("recorder") >= 0 ? "Recorder" : "Other"; }
+    function entryVals(e, idx) {
+      return { title: e.title || "Untitled sheet", inst: e.inst || "", key: e.key || "", ago: ago(e.savedAt), agoShort: agoShort(e.savedAt), notes: incipitOf(e),
+        meta: (e.inst || "") + (e.key ? " · " + e.key : ""),
+        sep: idx % 5 ? "border-left: 1.5px solid #15171C" : "",
         open: function () { setPending(e.id); },
-        remove: function () { writeLib(readLib().filter(function (x) { return x.id !== e.id; })); self.setState({ libRev: (st.libRev || 0) + 1 }); } };
-    });
+        play: function () { setPending(e.id); try { window.localStorage.setItem("fingerscore.pendingPerform", "1"); } catch (err) {} },
+        idle: st.confirmDel !== e.id, confirming: st.confirmDel === e.id,
+        askDelete: function () { self.setState({ confirmDel: e.id }); },
+        cancelDelete: function () { self.setState({ confirmDel: null }); },
+        remove: function () { writeLib(readLib().filter(function (x) { return x.id !== e.id; })); var left = readLib().length; self.setState({ libRev: (st.libRev || 0) + 1, confirmDel: null, libOpen: left > 0 ? st.libOpen : false }); } };
+    }
+    /* strip: up to 5 sheets, padded with empty bars (one sheet = one bar + four empty) */
+    out.lib = LIB.slice(0, 5).map(entryVals);
+    out.pads = []; for (var pd = LIB.length; pd < 5; pd++) out.pads.push({ k: pd });
     out.hasLib = LIB.length > 0;
     out.libCount = LIB.length + (LIB.length === 1 ? " sheet" : " sheets");
-    out.moreLib = !showAll && LIB.length > 4; out.moreLabel = "Show all " + LIB.length;
-    out.toggleAll = function () { self.setState({ showAll: true }); };
+    out.moreLib = LIB.length > 0; out.moreLabel = "All " + LIB.length;
+    var libOpen = !!st.libOpen && LIB.length > 0;
+    out.libOpen = libOpen; out.libClosed = !libOpen;
+    out.openLib = function () { self.setState({ libOpen: true, confirmDel: null }); };
+    out.closeLib = function () { self.setState({ libOpen: false, confirmDel: null, q: "", famF: null }); };
+    /* library view: search, sort, instrument filter */
+    var q = (st.q || "").toLowerCase(), sortBy = st.sort || "recent", famF = st.famF || null;
+    var FAMS2 = ["Saxophone", "Clarinet", "Flute", "Xaphoon", "Recorder", "Other"];
+    var counts = {}; LIB.forEach(function (e) { var f2 = famOf(e); counts[f2] = (counts[f2] || 0) + 1; });
+    out.famChips = [{ label: "All " + LIB.length, f: null }].concat(FAMS2.filter(function (f2) { return counts[f2]; }).map(function (f2) { return { label: f2 + " " + counts[f2], f: f2 }; })).map(function (c) {
+      var on = c.f === famF;
+      return { label: c.label, pressed: on, style: on ? "background: #15171C; color: #FFFFFF; border: 1px solid #15171C" : "background: #FFFFFF; color: #15171C; border: 1px solid #D5D8DE", pick: function () { self.setState({ famF: c.f }); } };
+    });
+    var view = LIB.filter(function (e) { return (!famF || famOf(e) === famF) && (!q || (e.title || "").toLowerCase().indexOf(q) >= 0 || (e.inst || "").toLowerCase().indexOf(q) >= 0); });
+    view.sort(function (a, b) {
+      if (sortBy === "title") return (a.title || "").localeCompare(b.title || "");
+      if (sortBy === "instrument") return (a.inst || "").localeCompare(b.inst || "") || (a.title || "").localeCompare(b.title || "");
+      return String(b.savedAt).localeCompare(String(a.savedAt));
+    });
+    out.libAll = view.map(entryVals);
+    out.noMatches = view.length === 0;
+    out.q = st.q || ""; out.onQ = function (e) { self.setState({ q: e.target.value }); };
+    out.sort = sortBy; out.onSort = function (e) { self.setState({ sort: e.target.value }); };
+    function download(name, text) {
+      try { var url = URL.createObjectURL(new Blob([text], { type: "application/json" })); var a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 2000); } catch (err) {}
+    }
+    out.exportAll = function () { download("fingerscore-library.json", JSON.stringify({ app: "fingerscore", format: 1, kind: "library", savedAt: new Date().toISOString(), sheets: readLib().map(function (e) { return { title: e.title, inst: e.inst, key: e.key, fam: e.fam, savedAt: e.savedAt, doc: e.doc }; }) }, null, 2)); };
+    out.importLib = function (e) { out.onFile(e); };
     var P = st.picked || null;
     out.isIdle = !P; out.isSong = !!P && P.kind === "song"; out.isSheet = !!P && P.kind === "sheet"; out.isError = !!P && P.kind === "error";
     out.pickedName = P ? P.name : ""; out.pickedTitle = P ? (P.title || "") : "";
@@ -442,6 +585,13 @@ class Component extends DCLogic {
         rd.onload = function () {
           try {
             var d = JSON.parse(String(rd.result));
+            if (d && d.app === "fingerscore" && d.kind === "library" && d.sheets && d.sheets.length) {
+              var lst = readLib();
+              d.sheets.forEach(function (s, n) { if (s && s.doc) lst.unshift({ id: "s" + Date.now().toString(36) + n + Math.random().toString(36).slice(2, 6), title: s.title || "Untitled sheet", inst: s.inst || "", key: s.key || "", fam: s.fam || "", savedAt: s.savedAt || new Date().toISOString(), doc: s.doc }); });
+              writeLib(lst);
+              self.setState({ picked: { kind: "sheet", name: f.name, title: d.sheets.length + " sheets", id: null }, drag: false, libRev: (st.libRev || 0) + 1 });
+              return;
+            }
             if (!d || d.app !== "fingerscore" || !d.doc) throw new Error("not ours");
             var id = "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ins = INST[d.doc.inst] || INST.xc, title = d.title || d.doc.title || "Untitled sheet";
             var list = readLib(); list.unshift({ id: id, title: title, inst: ins.name, savedAt: new Date().toISOString(), doc: d.doc }); writeLib(list);

@@ -118,11 +118,13 @@ Width: a 4/4 bar with eighth triplets needs about a third more width than a plai
 
 - Save keeps the sheet in your browser's local storage. Press the Save button or Ctrl/⌘+S. The sheet page shows "Not saved yet", "Unsaved changes" or "Saved".
 - Sheets live only in this browser on this device. Clearing site data deletes them.
-- The start page lists your saved sheets under "Your sheets". Open one with a click. Delete one and Undo brings it back for a few seconds.
+- The start page shows your five newest sheets under "Your sheets" as one line of music: each bar holds a title, the first six notes, the instrument and when you saved it. Open opens the sheet, Play opens it in Play mode. The bin asks "Delete?" first, and Undo brings a deleted sheet back for a few seconds.
+- "All N" turns the strip into the library view: search titles and instruments, sort by save time, title or instrument, and filter by instrument family. Close returns to the strip.
 - To back up a sheet or move it to another computer, choose File, then Download JSON. Open it there with File, then Open JSON file…, or drop it on the start page. The start page drop zone takes songs (MIDI, MusicXML, MuseScore, ABC) and saved-sheet files (.json).
+- To back up or move every sheet at once, open the library view and choose Export all as JSON. It downloads `fingerscore-library.json`. Import… in the library view, or the start page drop zone, adds every sheet of that file under a new id; importing the same file twice adds the sheets twice.
 - The File menu also lists your saved sheets.
 
-The file format is one JSON format: `{ app, format, savedAt, title, doc }`. The app validates every file on import and refuses anything else. No compatibility promise holds before the public release: a later version may change the format and reject older files.
+A sheet file is `{ app, format, savedAt, title, doc }`. A library file is `{ app, format, kind: "library", savedAt, sheets }`, with `{ title, inst, key, fam, savedAt, doc }` per sheet. The app validates every file on import and refuses anything else; a library import skips damaged sheets and says how many. No compatibility promise holds before the public release: a later version may change the format and reject older files.
 
 ### PDF
 
@@ -174,6 +176,7 @@ npm run test:e2e   # end-to-end test (Playwright)
 npm run build      # type-check and build to dist/
 npm run check:bundle  # after a build: code loaded at start at most 400,000 bytes, no PDF library in it
 npm run demo       # regenerate the sample MIDI file
+npm run icons      # regenerate favicon.ico and the app icons in public/ from fingerscore-handoff/brand/
 ```
 
 `npm run test:e2e` attaches to a dev server on port 5173 or starts its own. If Playwright reports a missing browser, run `npx playwright install chromium` once.

@@ -10,6 +10,20 @@ export type ParseResult =
   | { ok: true; doc: Doc; title: string }
   | { ok: false; reason: 'not-a-sheet' | 'damaged' };
 
+/** One sheet of a library export: what the library lists about it, and the document. */
+export interface LibrarySheet { title: string; inst: string; key: string; fam: string; savedAt: string; doc: Doc }
+export interface LibraryFile { app: 'fingerscore'; format: 1; kind: 'library'; savedAt: string; sheets: LibrarySheet[] }
+/** A sheet read from a file; savedAt is null when the file gives no usable time. */
+export interface ImportedSheet { doc: Doc; savedAt: string | null }
+export type ImportFailure = 'not-a-sheet' | 'damaged' | 'empty-library';
+/** A single sheet file or a library export. `skipped` counts the library's damaged sheets. */
+export type ImportParse =
+  | { ok: true; kind: 'sheet'; doc: Doc; title: string }
+  | { ok: true; kind: 'library'; sheets: ImportedSheet[]; skipped: number }
+  | { ok: false; reason: ImportFailure };
+
+export const LIBRARY_FILE_NAME = 'fingerscore-library.json';
+
 export function toFile(doc: Doc, now: Date = new Date()): SheetFile {
   return { app: 'fingerscore', format: 1, savedAt: now.toISOString(), title: doc.title, doc };
 }
@@ -18,31 +32,57 @@ export function serializeFile(doc: Doc, now?: Date): string {
   return JSON.stringify(toFile(doc, now), null, 2);
 }
 
+/** The library export: every sheet in one file. Not indented, so that it stays about as large as the stored library. */
+export function serializeLibrary(sheets: LibrarySheet[], now: Date = new Date()): string {
+  const file: LibraryFile = {
+    app: 'fingerscore', format: 1, kind: 'library', savedAt: now.toISOString(),
+    sheets: sheets.map(({ title, inst: instName, key, fam, savedAt, doc }) => ({ title, inst: instName, key, fam, savedAt, doc })),
+  };
+  return JSON.stringify(file);
+}
+
 /** Limits on what an import may hold; anything larger is refused before or during validation. */
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+export const MAX_LIBRARY_BYTES = 4 * MAX_FILE_BYTES;
+export const MAX_LIBRARY_SHEETS = 2000;
 export const MAX_BARS = 2000;
 export const MAX_EVENTS_PER_BAR = 64;
 
+async function textOf(file: File, maxBytes: number): Promise<string | null> {
+  if (file.size > maxBytes) return null;
+  try {
+    return await file.text();
+  } catch {
+    return null;
+  }
+}
+
 /** Reads a sheet file: one larger than MAX_FILE_BYTES is refused unread, as not a sheet. */
 export async function readSheet(file: File): Promise<ParseResult> {
-  if (file.size > MAX_FILE_BYTES) return { ok: false, reason: 'not-a-sheet' };
-  let text: string;
+  const text = await textOf(file, MAX_FILE_BYTES);
+  return text === null ? { ok: false, reason: 'not-a-sheet' } : parseFileText(text);
+}
+
+/** Reads a sheet file or a library export. A single sheet keeps the MAX_FILE_BYTES limit; a library may be larger. */
+export async function readImport(file: File): Promise<ImportParse> {
+  const text = await textOf(file, MAX_LIBRARY_BYTES);
+  if (text === null) return { ok: false, reason: 'not-a-sheet' };
+  const parsed = parseImportText(text);
+  if (parsed.ok && parsed.kind === 'sheet' && file.size > MAX_FILE_BYTES) return { ok: false, reason: 'not-a-sheet' };
+  return parsed;
+}
+
+function parseJson(text: string): { value: unknown } | null {
   try {
-    text = await file.text();
+    return { value: JSON.parse(text) };
   } catch {
-    return { ok: false, reason: 'not-a-sheet' };
+    return null;
   }
-  return parseFileText(text);
 }
 
 export function parseFileText(text: string): ParseResult {
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    return { ok: false, reason: 'not-a-sheet' };
-  }
-  return parseFile(value);
+  const json = parseJson(text);
+  return json ? parseFile(json.value) : { ok: false, reason: 'not-a-sheet' };
 }
 
 export function parseFile(value: unknown): ParseResult {
@@ -51,6 +91,31 @@ export function parseFile(value: unknown): ParseResult {
   }
   const doc = validateDoc(value.doc);
   return doc ? { ok: true, doc, title: doc.title } : { ok: false, reason: 'damaged' };
+}
+
+export function parseImportText(text: string): ImportParse {
+  const json = parseJson(text);
+  return json ? parseImport(json.value) : { ok: false, reason: 'not-a-sheet' };
+}
+
+/** A library export gives its valid sheets and counts the damaged ones; any other value is read as a single sheet. */
+export function parseImport(value: unknown): ImportParse {
+  if (!isObject(value) || value.kind !== 'library') {
+    const single = parseFile(value);
+    return single.ok ? { ...single, kind: 'sheet' } : single;
+  }
+  if (value.app !== 'fingerscore' || value.format !== 1 || !Array.isArray(value.sheets)) return { ok: false, reason: 'not-a-sheet' };
+  if (value.sheets.length === 0) return { ok: false, reason: 'empty-library' };
+  if (value.sheets.length > MAX_LIBRARY_SHEETS) return { ok: false, reason: 'damaged' };
+  const sheets: ImportedSheet[] = [];
+  for (const raw of value.sheets) {
+    const doc = isObject(raw) ? validateDoc(raw.doc) : null;
+    if (!doc) continue;
+    const savedAt = isObject(raw) && isStr(raw.savedAt) && !Number.isNaN(Date.parse(raw.savedAt)) ? raw.savedAt : null;
+    sheets.push({ doc, savedAt });
+  }
+  if (sheets.length === 0) return { ok: false, reason: 'damaged' };
+  return { ok: true, kind: 'library', sheets, skipped: value.sheets.length - sheets.length };
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -221,8 +286,16 @@ export function fileName(title: string): string {
   return `${slug(title) || 'sheet'}.fingerscore.json`;
 }
 
-export function importMessage(file: string, reason: 'not-a-sheet' | 'damaged'): string {
+export function importMessage(file: string, reason: ImportFailure): string {
+  if (reason === 'empty-library') return `"${file}" holds no sheets.`;
   return reason === 'not-a-sheet'
     ? `"${file}" isn't a fingerscore sheet.`
     : `"${file}" is damaged and can't be opened.`;
+}
+
+/** What a library import added: "3 sheets added to your sheets", with the damaged sheets it left out. */
+export function importedMessage(added: number, skipped: number): string {
+  const sheets = (n: number) => `${n} ${n === 1 ? 'sheet' : 'sheets'}`;
+  const left = skipped > 0 ? ` · ${skipped} damaged ${skipped === 1 ? 'sheet' : 'sheets'} skipped` : '';
+  return `${sheets(added)} added to your sheets${left}`;
 }

@@ -689,6 +689,23 @@ describe('save and the File menu', () => {
     renderSheet('/sheet?id=nope');
     expect(currentPath()).toBe('/');
   });
+
+  it('/sheet?id=…&mode=play opens the saved sheet in Play mode, once: after Exit the editor shows and stays', async () => {
+    const r = saveEntry({ ...sampleDoc('cl'), title: 'Linked' }, null);
+    if (!r.ok) throw new Error(r.message);
+    useApp.setState({ doc: null });
+    renderSheet(`/sheet?id=${r.entry.id}&mode=play`);
+    const stage = await screen.findByRole('region', { name: 'Play mode' });
+    expect(within(stage).getByText('Linked')).toBeInTheDocument();
+    expect(currentPath()).toBe('/sheet');
+    await user.click(screen.getByRole('button', { name: 'Exit play mode (Esc)' }));
+    expect(screen.queryByRole('region', { name: 'Play mode' })).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Sheet title' })).toHaveValue('Linked');
+    cleanup();
+    renderSheet(`/sheet?id=${r.entry.id}`);
+    expect(await screen.findByRole('textbox', { name: 'Sheet title' })).toHaveValue('Linked');
+    expect(screen.queryByRole('region', { name: 'Play mode' })).toBeNull();
+  });
 });
 
 describe('playback', () => {

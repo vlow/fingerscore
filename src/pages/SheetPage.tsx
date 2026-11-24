@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { derive } from '../domain/derive';
 import { locate } from '../domain/edit';
 import { hasSatellites } from '../domain/fingerings';
@@ -50,12 +50,15 @@ export default function SheetPage() {
   const navigate = useNavigate();
   const id = params.get('id');
 
+  const play = params.get('mode') === 'play';
+
   // /sheet?id=… opens a saved sheet, then drops the query; an unknown id goes to the start page.
+  // &mode=play (▶ Play in the library) opens the sheet in Play mode.
   useEffect(() => {
     if (id === null) return;
-    if (useApp.getState().openEntry(id)) navigate('/sheet', { replace: true });
+    if (useApp.getState().openEntry(id)) navigate('/sheet', { replace: true, state: play ? { playMode: true } : null });
     else navigate('/', { replace: true, state: { missingSheet: true } });
-  }, [id, navigate]);
+  }, [id, play, navigate]);
 
   if (id !== null) return null;
   if (!doc) return <Navigate to="/" replace />;
@@ -106,7 +109,13 @@ function Sheet({ doc }: { doc: Doc }) {
   }
 
   // Play mode (SPEC §11a) covers the page: no audio, no edit mode, no selection, and nothing that changes the document.
-  const [performing, setPerforming] = useState(false);
+  // A sheet opened with ▶ Play starts there, once: the history entry loses that state, so a reload shows the editor.
+  const location = useLocation();
+  const startsInPlayMode = (location.state as { playMode?: boolean } | null)?.playMode === true;
+  const [performing, setPerforming] = useState(startsInPlayMode);
+  useEffect(() => {
+    if (startsInPlayMode) navigate(location.pathname, { replace: true, state: null });
+  }, [startsInPlayMode, location.pathname, navigate]);
   const playModeButton = useRef<HTMLButtonElement>(null);
   function enterPlayMode() {
     stopPlay();

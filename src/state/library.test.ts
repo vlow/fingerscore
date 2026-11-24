@@ -11,7 +11,7 @@ import { defaultBuildOptions } from '../import';
 import { parseMidi } from '../import/midi';
 import { parseMusicXml } from '../import/musicxml';
 import type { ParsedSong } from '../import/types';
-import { BLOCKED_MESSAGE, FULL_MESSAGE, INCONSISTENT_MESSAGE, deleteEntry, getEntry, listEntries, restoreEntry, saveEntry, writeFailureMessage } from './library';
+import { BLOCKED_MESSAGE, FULL_MESSAGE, INCONSISTENT_MESSAGE, addSheets, deleteEntry, getEntry, listEntries, restoreEntry, saveEntry, writeFailureMessage } from './library';
 
 beforeEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
 const T = (s: string) => new Date(s);
@@ -136,5 +136,63 @@ describe('saveEntry refuses what the library could not read back', () => {
     }
     expect(checked).toBe(7 * 12 * 2);
     expect(overrides).toBeGreaterThan(0);
+  });
+});
+
+describe('key and family', () => {
+  it('an entry stores the written key and the instrument family', () => {
+    const doc = { ...sampleDoc('asax'), originalTonicPc: 10, originalMode: 'major' as const, shift: 0 };   // sounds B♭ major, alto reads G major
+    const r = saveEntry(doc, null);
+    expect(r.ok && r.entry).toMatchObject({ key: 'G major', fam: 'Saxophone', inst: 'Alto sax in E♭' });
+    expect(JSON.parse(localStorage.getItem('fingerscore.library.v1')!)[0]).toMatchObject({ key: 'G major', fam: 'Saxophone' });
+    expect(saveEntry({ ...sampleDoc('rs'), originalTonicPc: 9, originalMode: 'minor', shift: 0 }, null)).toMatchObject({ entry: { key: 'A minor', fam: 'Recorder' } });
+  });
+
+  it('listing reads both from the document, not from what is stored', () => {
+    const r = saveEntry(sampleDoc('cl'), null);
+    if (!r.ok) throw new Error(r.message);
+    const raw = JSON.parse(localStorage.getItem('fingerscore.library.v1')!);
+    raw[0].key = 'X'; raw[0].fam = 'Kazoo'; raw[0].inst = 'Kazoo';
+    delete raw[0].inst;
+    localStorage.setItem('fingerscore.library.v1', JSON.stringify(raw));
+    expect(listEntries()[0]).toMatchObject({ key: r.entry.key, fam: 'Clarinet', inst: 'Clarinet in B♭' });
+  });
+});
+
+describe('addSheets', () => {
+  const sheet = (title: string, savedAt: string | null) => ({ doc: { ...sampleDoc('fl'), title }, savedAt });
+
+  it('adds every sheet under a new id and keeps the list newest first', () => {
+    saveEntry({ ...sampleDoc('asax'), title: 'Mine' }, null, T('2026-11-22T10:00:00Z'));
+    const r = addSheets([sheet('Old', '2026-11-20T10:00:00Z'), sheet('New', '2026-11-23T10:00:00Z')], T('2026-11-24T10:00:00Z'));
+    expect(r.ok && r.entries.map(e => e.title)).toEqual(['Old', 'New']);
+    expect(listEntries().map(e => e.title)).toEqual(['New', 'Mine', 'Old']);
+    expect(new Set(listEntries().map(e => e.id)).size).toBe(3);
+    expect(listEntries()[0]).toMatchObject({ savedAt: '2026-11-23T10:00:00.000Z', inst: 'Flute in C', fam: 'Flute' });
+  });
+
+  it('importing the same sheets twice adds them twice', () => {
+    addSheets([sheet('A', null)]); addSheets([sheet('A', null)]);
+    expect(listEntries().map(e => e.title)).toEqual(['A', 'A']);
+  });
+
+  it('a sheet without a save time, or with one in the future, counts as saved now', () => {
+    addSheets([sheet('No time', null), sheet('Future', '2099-01-01T00:00:00Z')], T('2026-11-24T10:00:00Z'));
+    expect(listEntries().map(e => e.savedAt)).toEqual(['2026-11-24T10:00:00.000Z', '2026-11-24T10:00:00.000Z']);
+    expect(listEntries().map(e => e.title)).toEqual(['No time', 'Future']);
+  });
+
+  it('adds nothing when storage is full or blocked', () => {
+    saveEntry({ ...sampleDoc('asax'), title: 'Mine' }, null);
+    const setItem = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === 'fingerscore.library.v1') throw new DOMException('full', 'QuotaExceededError');
+      setItem.call(this, k, v);
+    });
+    expect(addSheets([sheet('A', null), sheet('B', null)])).toEqual({ ok: false, message: FULL_MESSAGE });
+    spy.mockImplementation(() => { throw new DOMException('blocked', 'SecurityError'); });
+    expect(addSheets([sheet('A', null)])).toEqual({ ok: false, message: BLOCKED_MESSAGE });
+    spy.mockRestore();
+    expect(listEntries().map(e => e.title)).toEqual(['Mine']);
   });
 });

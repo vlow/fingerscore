@@ -39,6 +39,7 @@ export default function Start() {
   }, [missingInState, location.pathname, location.search, location.hash, navigate]);
   const [error, setError] = useState<string | null>(null);
   const [libraryVersion, setLibraryVersion] = useState(0);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const dropInput = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -86,7 +87,10 @@ export default function Start() {
 
       {missingSheet && <p role="alert" className={s.missing}>That sheet is no longer saved in this browser.</p>}
 
-      <Gallery version={libraryVersion} emptyFocus={() => dropInput.current ?? heading.current} />
+      <Gallery
+        version={libraryVersion} emptyFocus={() => dropInput.current ?? heading.current}
+        open={libraryOpen} onOpenChange={setLibraryOpen}
+      />
 
       <InstrumentPicker value={instId} onChange={setPreferredInstrument} />
 
@@ -95,6 +99,7 @@ export default function Start() {
         onSong={acceptSong}
         onContinue={() => { const song = useApp.getState().song; if (song) continueWith(song); }}
         onSheet={() => setLibraryVersion(n => n + 1)}
+        onShowLibrary={() => setLibraryOpen(true)}
         onUnsavedSheet={(doc, name) => useApp.getState().openUnsaved(doc, name)}
         inputRef={dropInput}
       />

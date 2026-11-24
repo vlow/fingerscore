@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { sampleDoc } from './fixture';
 import { inst } from './instruments';
 import { optionsFor } from './fingerings';
 import { derive } from './derive';
 import { DEFAULT_PREFS } from './transpose';
-import { canonical, fileName, importMessage, MAX_FILE_BYTES, parseFile, parseFileText, readSheet, serializeFile, toFile } from './persistence';
+import {
+  canonical, fileName, importedMessage, importMessage, LIBRARY_FILE_NAME, MAX_FILE_BYTES, MAX_LIBRARY_BYTES, MAX_LIBRARY_SHEETS, parseFile, parseFileText,
+  parseImport, parseImportText, readImport, readSheet, serializeFile, serializeLibrary, toFile, type LibrarySheet,
+} from './persistence';
 import type { Doc, Ev } from './types';
 
 const doc = () => sampleDoc('asax');
@@ -248,5 +251,79 @@ describe('sheet file', () => {
   it('messages', () => {
     expect(importMessage('a.json', 'not-a-sheet')).toBe('"a.json" isn\'t a fingerscore sheet.');
     expect(importMessage('a.json', 'damaged')).toBe('"a.json" is damaged and can\'t be opened.');
+  });
+});
+
+describe('library file', () => {
+  const sheets = (...titles: string[]): LibrarySheet[] =>
+    titles.map((title, i) => ({ title, inst: 'Alto sax in E♭', key: 'G major', fam: 'Saxophone', savedAt: `2026-11-2${i + 1}T10:00:00.000Z`, doc: { ...sampleDoc('asax'), title } }));
+
+  it('envelope: kind "library" and one object per sheet', () => {
+    const file = JSON.parse(serializeLibrary(sheets('A', 'B'), new Date('2026-11-23T12:00:00Z')));
+    expect(file).toMatchObject({ app: 'fingerscore', format: 1, kind: 'library', savedAt: '2026-11-23T12:00:00.000Z' });
+    expect(file.sheets.map((sh: LibrarySheet) => Object.keys(sh))).toEqual([['title', 'inst', 'key', 'fam', 'savedAt', 'doc'], ['title', 'inst', 'key', 'fam', 'savedAt', 'doc']]);
+    expect(LIBRARY_FILE_NAME).toBe('fingerscore-library.json');
+  });
+
+  it('leaves out what a library entry holds besides the listed fields (its id)', () => {
+    const entry = { ...sheets('A')[0], id: 'secret-id' };
+    expect(serializeLibrary([entry])).not.toContain('secret-id');
+  });
+
+  it('round-trips every document and its save time', () => {
+    const r = parseImportText(serializeLibrary(sheets('A', 'B')));
+    expect(r).toMatchObject({ ok: true, kind: 'library', skipped: 0 });
+    if (!r.ok || r.kind !== 'library') return;
+    expect(r.sheets.map(sh => sh.doc)).toEqual(sheets('A', 'B').map(sh => sh.doc));
+    expect(r.sheets.map(sh => sh.savedAt)).toEqual(['2026-11-21T10:00:00.000Z', '2026-11-22T10:00:00.000Z']);
+  });
+
+  it('a single sheet file is still read as a sheet', () => {
+    expect(parseImportText(serializeFile({ ...sampleDoc('fl'), title: 'One' }))).toMatchObject({ ok: true, kind: 'sheet', title: 'One' });
+    expect(parseImportText('{"name":"x"}')).toEqual({ ok: false, reason: 'not-a-sheet' });
+    expect(parseImportText('not json')).toEqual({ ok: false, reason: 'not-a-sheet' });
+  });
+
+  it('skips damaged sheets and counts them; an unusable save time becomes null', () => {
+    const file = JSON.parse(serializeLibrary(sheets('A', 'B', 'C')));
+    file.sheets[1].doc.score = [];
+    file.sheets[2].savedAt = 'yesterday';
+    file.sheets.push(null, { title: 'no doc' });
+    const r = parseImport(file);
+    expect(r).toMatchObject({ ok: true, kind: 'library', skipped: 3 });
+    if (!r.ok || r.kind !== 'library') return;
+    expect(r.sheets.map(sh => [sh.doc.title, sh.savedAt])).toEqual([['A', '2026-11-21T10:00:00.000Z'], ['C', null]]);
+  });
+
+  it('refuses a library without sheets, with only damaged sheets, of another format, or with too many sheets', () => {
+    const base = { app: 'fingerscore', format: 1, kind: 'library', savedAt: '' };
+    expect(parseImport({ ...base, sheets: [] })).toEqual({ ok: false, reason: 'empty-library' });
+    expect(parseImport({ ...base, sheets: [{ doc: {} }] })).toEqual({ ok: false, reason: 'damaged' });
+    expect(parseImport({ ...base })).toEqual({ ok: false, reason: 'not-a-sheet' });
+    expect(parseImport({ ...base, format: 2, sheets: sheets('A') })).toEqual({ ok: false, reason: 'not-a-sheet' });
+    expect(parseImport({ ...base, app: 'other', sheets: sheets('A') })).toEqual({ ok: false, reason: 'not-a-sheet' });
+    expect(parseImport({ ...base, sheets: Array.from({ length: MAX_LIBRARY_SHEETS + 1 }, () => null) })).toEqual({ ok: false, reason: 'damaged' });
+  });
+
+  it('a library file is not a sheet for "Open JSON file…"', () => {
+    expect(parseFileText(serializeLibrary(sheets('A')))).toEqual({ ok: false, reason: 'not-a-sheet' });
+  });
+
+  it('readImport reads a library of more than 5 MB but refuses a single sheet of that size, and anything over 20 MB unread', async () => {
+    const sized = (text: string, size: number) => { const f = new File([text], 'x.json'); Object.defineProperty(f, 'size', { value: size }); return f; };
+    expect((await readImport(sized(serializeLibrary(sheets('A')), MAX_FILE_BYTES + 1))).ok).toBe(true);
+    expect(await readImport(sized(serializeFile(sampleDoc('asax')), MAX_FILE_BYTES + 1))).toEqual({ ok: false, reason: 'not-a-sheet' });
+    const huge = sized('{}', MAX_LIBRARY_BYTES + 1);
+    const text = vi.spyOn(huge, 'text');
+    expect(await readImport(huge)).toEqual({ ok: false, reason: 'not-a-sheet' });
+    expect(text).not.toHaveBeenCalled();
+  });
+
+  it('messages', () => {
+    expect(importMessage('a.json', 'empty-library')).toBe('"a.json" holds no sheets.');
+    expect(importedMessage(1, 0)).toBe('1 sheet added to your sheets');
+    expect(importedMessage(3, 0)).toBe('3 sheets added to your sheets');
+    expect(importedMessage(3, 1)).toBe('3 sheets added to your sheets · 1 damaged sheet skipped');
+    expect(importedMessage(2, 2)).toBe('2 sheets added to your sheets · 2 damaged sheets skipped');
   });
 });

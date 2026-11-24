@@ -37,7 +37,7 @@ This spec describes the agreed behaviour. The clickable prototype in `prototype/
 | `/privacy` | Privacy policy | *(to be written — placeholder link)* |
 
 ### 2.1 Global header (identical on every page)
-Left: logo mark + wordmark "fingerscore" (link to `/`). Right: nav "Songs" | "Scales" with the current section highlighted (`aria-current="page"`). Nothing page-specific in the header.
+Left: logo mark (f-mark, 30 px) + wordmark "finger" ink + "score" teal (link to `/`). Right: nav "Songs" | "Scales" with the current section highlighted (`aria-current="page"`). Nothing page-specific in the header.
 
 ### 2.2 Page bar (page-specific, directly below the header)
 Light grey bar (`#FAFAFB`, bottom border). Content per page:
@@ -47,7 +47,7 @@ Light grey bar (`#FAFAFB`, bottom border). Content per page:
 - Start, Scales, About, Imprint: no page bar.
 
 ### 2.3 Global footer (identical on every page)
-One row, same horizontal padding as the header: logo + "fingerscore © 2026" · "Your sheets are stored in your browser. Nothing is stored on the server." · spacer · links **About · GitHub · Privacy · Imprint**. GitHub uses a neutral `</>` icon (no GitHub logo). The site is English only — no German labels.
+One row, same horizontal padding as the header: 22 px logo mark + wordmark + "© 2026" · "Your sheets are stored in your browser. Nothing is stored on the server." · spacer · links **About · GitHub · Privacy · Imprint**. GitHub uses a neutral `</>` icon (no GitHub logo). The site is English only — no German labels.
 
 ---
 
@@ -79,7 +79,7 @@ Source of truth: `data/instruments.json`.
 
 ## 4. Start page (`/`)
 
-Order top to bottom: headline → "Your sheets" gallery (only if non-empty) → instrument picker → drop zone → key preferences → "Try a sample" link → "How it works" (3 steps) → footer.
+Order top to bottom: headline → "Your sheets" (only if non-empty, §4.4) → instrument picker → drop zone → key preferences → "Try a sample" link → "How it works" (3 steps) → footer.
 
 ### 4.1 Headline
 H1 "Sheet music with fingering charts for woodwinds". Subline: "Upload a MIDI, MusicXML or MuseScore file. We transpose it to a key that suits your instrument and add a fingering chart under every note."
@@ -101,10 +101,23 @@ H1 "Sheet music with fingering charts for woodwinds". Subline: "Upload a MIDI, M
   - **Invalid JSON** → "file.json isn't a fingerscore sheet" [Try another file].
   - Unsupported/unparseable song → clear error with the file name.
 
-### 4.4 "Your sheets" gallery
-- Shown only if the library has entries. Header "Your sheets" + "N sheets · saved in this browser".
-- Responsive card grid (`auto-fill, minmax(220px, 1fr)`), most recent first, 4 shown + "Show all N".
-- Card: decorative staff lines at the top, title, instrument, "Saved 5 min ago". Whole card opens the sheet; a delete icon button (with confirmation or undo toast) removes it.
+### 4.4 "Your sheets" — one line of music
+Placed between the headline and the instrument picker (16 px extra space above). **Hidden when nothing is saved** (no empty state).
+
+**Strip (default):** a white card with the small-caps label "YOUR SHEETS" and an underlined link **All N** (shown from 1 sheet). Below, one staff line divided into **5 bars** (1.5 px ink bar lines between bars, no bar lines at the ends). Each bar = one sheet, most recently saved first:
+- title (bold 15 px, ellipsis);
+- an **incipit**: a 5-line mini staff (34 px high) with the sheet's first six notes (relative pitch contour, stems flip at the middle line; sheets without notes get a generated contour from their id);
+- meta "Instrument · saved ago" (12 px, muted);
+- controls: **Open** (teal text), **▶ Play** (opens the sheet directly in Play mode), and a **delete** bin icon (red) which asks inline "**Delete?** [Delete] [Keep]" before removing.
+- With fewer than 5 sheets the remaining bars are drawn as **empty bars** (light grey lines, whole rest), so one sheet = one bar + four empty bars.
+
+**Library view ("All N"):** the card turns into a full library in place:
+- header "Your sheets · N sheets saved in this browser", search field (titles and instruments), **Sort** (Recently saved / Title A–Z / Instrument), **Close** (back to the strip; also resets search/filter);
+- instrument-family filter chips with counts ("All 7", "Saxophone 2", …; only families present), single-select;
+- one row per sheet: incipit (150 px) · title (opens) · "Instrument · Key" · date · Open / ▶ Play / delete (same inline confirmation);
+- "No sheets match your search." when filtered empty;
+- footer "Stored only in this browser." · **Export all as JSON** · **Import…** (single sheets or library files);
+- deleting the last sheet closes the view (and hides the section).
 
 ### 4.5 Key preferences (checkboxes, default on)
 "Prefer the easy register (no octave key or overblowing)" and "Prefer keys with few sharps or flats" — feed the scoring weights in §6.3.
@@ -347,10 +360,12 @@ Controls (one card): Instrument select · Scale (major, natural minor, harmonic 
 - Validation on import: `app === "fingerscore"`, `format` supported, `doc.score` well-formed (bar sums = cap, allowed durations). Reject with a clear message otherwise. Migrate older formats explicitly.
 
 ### 13.2 Browser library
-- `localStorage` key `fingerscore.library.v1`: array of `{ id, title, inst (display name), savedAt, doc }`, newest first. IDs: time-based + random suffix. Wrap all storage access in try/catch; if blocked/full, show "This browser blocks local storage. Use "Download JSON" instead." / "Couldn't save — the browser storage may be full." Consider IndexedDB if sheets get large.
+- `localStorage` key `fingerscore.library.v1`: array of `{ id, title, inst (display name), key (written key name, e.g. "G major"), fam (instrument family), savedAt, doc }`, newest first. IDs: time-based + random suffix. Wrap all storage access in try/catch; if blocked/full, show "This browser blocks local storage. Use "Download JSON" instead." / "Couldn't save — the browser storage may be full." Consider IndexedDB if sheets get large.
 - **Save** button saves/updates the current entry (first save creates it). Status text: "Not saved yet" / "Unsaved changes" / "Saved" (compare a canonical serialisation of the document against the last saved one).
 - **File ▾** menu: **Download PDF** (primary, teal) · **Download JSON** · **Open JSON file…** · **New sheet** (→ `/`), then "Saved in this browser" list (title, instrument · saved ago, current one highlighted, Open, Delete) and a note "Sheets are stored only on this device. Download a JSON file to back up or move a sheet to another computer."
-- Opening from the start page gallery: navigate to `/sheet?id=<id>` (the prototype used a `fingerscore.pending` key because artboards can't pass parameters).
+- **Library export file** (`fingerscore-library.json`): `{ "app": "fingerscore", "format": 1, "kind": "library", "savedAt": "…", "sheets": [ { "title", "inst", "key", "fam", "savedAt", "doc" } ] }`. Importing it (library view "Import…" or the start-page drop zone) adds every sheet with a new id. After a library import the drop zone shows "N sheets added to your sheets" with a **Show library** button (not "Open sheet").
+- **Play from the library:** opens `/sheet?id=<id>&mode=play` directly in Play mode (§11a).
+- Opening from the start page library: navigate to `/sheet?id=<id>` (the prototype used a `fingerscore.pending` key because artboards can't pass parameters).
 
 ### 13.3 PDF
 "Download PDF" must produce a clean, paginated A4/Letter PDF of the paper only (title, systems, legend). v1 may use a print stylesheet + `window.print()`; preferred: generate from the SVG (e.g. `svg2pdf.js` + `jsPDF`) with page breaks between systems.
@@ -367,6 +382,7 @@ Controls (one card): Instrument select · Scale (major, natural minor, harmonic 
 
 ## 15. Design system
 
+- **Logo:** concept E "f-mark" — a lowercase f whose crossbar is a closed (teal) and an open hole. Header: 30 px mark + wordmark "finger" (ink) + "score" (teal) in Atkinson Hyperlegible Bold 20 px; footer: 22 px mark + 15 px wordmark. Favicon: simplified heavier mark with light/dark variants; app icon: white mark on a teal rounded square. Assets in `brand/`. Trademark clearance still to be done (see brand/README.md).
 - **Typeface:** Atkinson Hyperlegible (400/700 + italics), self-hosted, everywhere (UI, headings, sheet). Hierarchy via size rather than many weights.
 - **Colours:** ink `#15171C`, text `#2A2D33`, muted `#5B616E` / `#4A505C`, borders `#E2E4E8` / `#D5D8DE`, page `#F3F4F6`, page bar `#FAFAFB`, cards `#FFFFFF`; accent teal `#0E6E68` (hover `#0A4F4A`, tint `#E3F4F2`, light `#F0FAF8`); amber `#B45309` on `#FFF7ED`; red `#B91C1C` on `#FEF2F2`. Selected segment = ink fill. Ghost keys `#C3C7CE`.
 - **Shapes:** radius 10px controls, 12–16px cards, 999px pills; card border 1px; popovers with soft shadow `0 12px 32px rgba(20,22,28,.18)`.
@@ -387,9 +403,10 @@ Controls (one card): Instrument select · Scale (major, natural minor, harmonic 
 6. Edit notes: quarter → eighth inserts an eighth rest; lengths that don't fit are disabled; undo restores everything; editing doesn't change the key.
 7. Chords: typing "Bb" shows "B♭"; "F#m7b5/C#" renders F♯m⁷♭⁵/C♯; transposing +2 moves stored chords.
 8. Play mode: hides all editing UI; → / Space turn a page (88 % of the viewport); auto-scroll at 100 % and ♩ = 100 moves one system per 9.6 s; Esc exits.
-9. Lyrics bulk: "Oh love is gen-tle" → Oh | love | is | gen- | tle on consecutive notes.
-10. Save → "Saved"; any change → "Unsaved changes"; Download/Open JSON round-trips the document exactly; foreign JSON is rejected.
-11. Scales: A harmonic minor contains G♯; E blues = E G A B♭ B D (♭5 spelled B♭); C chromatic goes up with sharps and down with flats.
+9. Library: with 1 saved sheet the start page shows 1 bar + 4 empty bars and "All 1"; All opens the library view; filter/sort/search work; delete asks first; Play opens the sheet in Play mode.
+10. Lyrics bulk: "Oh love is gen-tle" → Oh | love | is | gen- | tle on consecutive notes.
+11. Save → "Saved"; any change → "Unsaved changes"; Download/Open JSON round-trips the document exactly; foreign JSON is rejected.
+12. Scales: A harmonic minor contains G♯; E blues = E G A B♭ B D (♭5 spelled B♭); C chromatic goes up with sharps and down with flats.
 
 ---
 

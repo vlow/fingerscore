@@ -14,11 +14,12 @@ Everything needed to build **fingerscore.eu**: a browser-only web app that turns
 | `data/sample-song.json` | The demo song ("The Water Is Wide", as imported from MIDI) in the document model. |
 | `data/glyphs.json`, `data/glyphs/*.svg` | Treble clef, accidentals and rests as outline paths (GNU FreeSerif) with placement transforms. |
 | `prototype/*.dc.html` | The clickable design prototype (one file per screen). Open them as reference for layout, copy and interaction; the logic inside each `<script type="text/x-dc">` block is a working reference implementation of the algorithms. They need the Design-canvas runtime (`support.js`, not included) to run — read them, don't ship them. |
+| `brand/` | Logo assets (concept E "f-mark"): `mark.svg`, `mark-on-dark.svg`, `favicon.svg`, `app-icon.svg`, `wordmark.svg`, and `README.md` with usage, minimum sizes and the open trademark clearance. `npm run icons` builds the icon files in `public/` from them. |
 | `prototype/canvas.json` | Layout of the design canvas (which screen is which). |
 | `reference/` | The songbook page the fingering style is modelled on (internal reference only — do not publish). |
 
 ### Prototype screens
-`Main` start page · `Tracks` choose a part · `Editor` sheet editor (suggested key) · `EditorOutOfRange` original key with range warnings · `EditorAltoSax` / `EditorRecorder` / `EditorClarinet` other instruments · `Scales` · `About` · `Imprint` · studies: `PickerOptions` (instrument picker, option A chosen), `FontOptions` (option C, Atkinson Hyperlegible, chosen), `SaxFingeringStudy` (compact + full key map chosen), `ClarinetFingeringStudy`.
+`Main` start page · `Tracks` choose a part · `Editor` sheet editor (suggested key) · `EditorOutOfRange` original key with range warnings · `EditorAltoSax` / `EditorRecorder` / `EditorClarinet` other instruments · `Scales` · `About` · `Imprint` · studies: `PickerOptions` (instrument picker, option A chosen), `FontOptions` (option C, Atkinson Hyperlegible, chosen), `SaxFingeringStudy` (compact + full key map chosen), `ClarinetFingeringStudy`, `LogoOptions` (E chosen), `LibraryOptions` / `LibraryOptions2` / `LibraryOptions3` (K chosen), `MainLibK` (K on the full page), `LibraryStates` (1c / 2a / 3b chosen).
 
 ## Suggested prompt for Claude Code
 

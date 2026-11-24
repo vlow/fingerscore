@@ -1,10 +1,10 @@
 import { useId, useState, type ChangeEvent, type DragEvent, type Ref } from 'react';
 import { Link } from 'react-router-dom';
-import { importMessage, readSheet } from '../domain/persistence';
+import { importedMessage, importMessage, readImport } from '../domain/persistence';
 import type { Doc } from '../domain/types';
 import { ACCEPT, parseFile } from '../import';
 import { ImportError, type ParsedSong } from '../import/types';
-import { saveEntry, type LibraryEntry } from '../state/library';
+import { addSheets, saveEntry, type LibraryEntry } from '../state/library';
 import s from './DropZone.module.css';
 
 interface Props {
@@ -12,8 +12,10 @@ interface Props {
   instrumentName: string;
   onSong(song: ParsedSong): void;
   onContinue(): void;
-  /** A saved sheet (.json) was added to the library. */
-  onSheet?(entry: LibraryEntry): void;
+  /** A saved sheet or the sheets of a library export (.json) were added to the library. */
+  onSheet?(): void;
+  /** "Show library" after a library import. */
+  onShowLibrary?(): void;
   /** A saved sheet (.json) could not be added to the library: open it as the current sheet instead. */
   onUnsavedSheet?(doc: Doc, fileName: string): void;
   /** The file input, present while the zone is idle. */
@@ -25,6 +27,7 @@ type State =
   | { kind: 'parsing'; file: string }
   | { kind: 'ready'; file: string }
   | { kind: 'sheet'; entry: LibraryEntry }
+  | { kind: 'library'; message: string }
   | { kind: 'unsaved'; title: string; message: string }
   | { kind: 'error'; message: string };
 
@@ -34,15 +37,24 @@ export function errorMessage(e: unknown, file: string): string {
 
 const isSheetFile = (name: string) => name.toLowerCase().endsWith('.json');
 
-/** Reads a saved sheet and adds it to the library; a failed save returns the sheet with the storage message. */
-async function addSheet(file: File): Promise<{ entry: LibraryEntry } | { doc: Doc; message: string } | { error: string }> {
-  const parsed = await readSheet(file);
+type Added = { entry: LibraryEntry } | { library: string } | { doc: Doc; message: string } | { error: string };
+
+/**
+ * Reads a saved sheet or a library export and adds it to the library. A single sheet whose save fails comes back
+ * with the storage message, to be opened unsaved; a library that cannot be stored is an error.
+ */
+async function addSheet(file: File): Promise<Added> {
+  const parsed = await readImport(file);
   if (!parsed.ok) return { error: importMessage(file.name, parsed.reason) };
+  if (parsed.kind === 'library') {
+    const added = addSheets(parsed.sheets);
+    return added.ok ? { library: importedMessage(added.entries.length, parsed.skipped) } : { error: added.message };
+  }
   const saved = saveEntry(parsed.doc, null);
   return saved.ok ? { entry: saved.entry } : { doc: parsed.doc, message: saved.message };
 }
 
-export default function DropZone({ instrumentName, onSong, onContinue, onSheet, onUnsavedSheet, inputRef }: Props) {
+export default function DropZone({ instrumentName, onSong, onContinue, onSheet, onShowLibrary, onUnsavedSheet, inputRef }: Props) {
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [drag, setDrag] = useState(false);
   const titleId = useId();
@@ -58,8 +70,8 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
         setState({ kind: 'unsaved', title: r.doc.title.trim() || 'Untitled sheet', message: r.message });
         return;
       }
-      onSheet?.(r.entry);
-      setState({ kind: 'sheet', entry: r.entry });
+      onSheet?.();
+      setState('library' in r ? { kind: 'library', message: r.library } : { kind: 'sheet', entry: r.entry });
       return;
     }
     try {
@@ -150,6 +162,15 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
           <p className={s.result} role="status">✓ "{state.entry.title}" added to your sheets</p>
           <div className={s.actions}>
             <Link to={`/sheet?id=${encodeURIComponent(state.entry.id)}`} className={s.primary}>Open sheet →</Link>
+            <button type="button" className={s.secondary} onClick={reset}>Add another</button>
+          </div>
+        </div>
+      )}
+      {state.kind === 'library' && (
+        <div className={s.content}>
+          <p className={s.result} role="status">✓ {state.message}</p>
+          <div className={s.actions}>
+            <button type="button" className={s.primary} onClick={() => { reset(); onShowLibrary?.(); }}>Show library</button>
             <button type="button" className={s.secondary} onClick={reset}>Add another</button>
           </div>
         </div>

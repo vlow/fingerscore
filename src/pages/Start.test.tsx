@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { writeMidi, type MidiEvent } from 'midi-file';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { sampleDoc } from '../domain/fixture';
-import { serializeFile } from '../domain/persistence';
+import { serializeFile, serializeLibrary } from '../domain/persistence';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { FULL_MESSAGE, listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
@@ -36,6 +36,12 @@ function renderStart({ state }: { state?: unknown } = {}) {
 }
 
 const user = userEvent.setup();
+
+/** The bin asks first: "Delete?" [Delete] [Keep]. */
+async function deleteSheet(title: string) {
+  await user.click(screen.getByRole('button', { name: `Delete ${title}` }));
+  await user.click(screen.getByRole('button', { name: 'Delete' }));
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -221,19 +227,55 @@ it('shows no missing-sheet alert without that state', () => {
 
 it('no gallery without saved sheets', () => { renderStart(); expect(screen.queryByRole('heading', { name: 'Your sheets' })).toBeNull(); });
 
-it('gallery lists saved sheets newest first, four at a time', async () => {
+it('the strip lists the five newest sheets, newest first; All 6 opens the library view with every sheet', async () => {
   for (let i = 1; i <= 6; i++) saveEntry({ ...sampleDoc('asax'), title: `Sheet ${i}` }, null, new Date(Date.UTC(2026, 10, 22, 10, i)));
-  renderStart(); const g = screen.getByRole('region', { name: 'Your sheets' });
-  expect(within(g).getByText('6 sheets · saved in this browser')).toBeInTheDocument();
-  expect(within(g).getAllByRole('link').map(a => a.textContent)).toEqual(expect.arrayContaining([expect.stringContaining('Sheet 6')]));
-  expect(within(g).getAllByRole('link')).toHaveLength(4); expect(within(g).getAllByRole('link')[0]).toHaveTextContent('Sheet 6');
-  expect(within(g).getAllByRole('link')[0]).toHaveAttribute('href', expect.stringMatching(/^\/sheet\?id=/)); expect(within(g).getAllByRole('link')[0]).toHaveTextContent('Alto sax in E♭');
-  await user.click(within(g).getByRole('button', { name: 'Show all 6' })); expect(within(g).getAllByRole('link')).toHaveLength(6);
+  renderStart(); const g = () => screen.getByRole('region', { name: 'Your sheets' });
+  const titles = () => within(g()).getAllByRole('link', { name: /^Sheet \d/ });
+  expect(titles().map(a => a.textContent!.slice(0, 7))).toEqual(['Sheet 6', 'Sheet 5', 'Sheet 4', 'Sheet 3', 'Sheet 2']);
+  expect(titles()[0]).toHaveAttribute('href', expect.stringMatching(/^\/sheet\?id=/)); expect(titles()[0]).toHaveTextContent('Alto sax in E♭');
+  expect(g().querySelectorAll('li')).toHaveLength(5);
+  await user.click(within(g()).getByRole('button', { name: 'All 6' }));
+  expect(within(g()).getByText('6 sheets saved in this browser')).toBeInTheDocument(); expect(titles()).toHaveLength(6);
+  expect(within(g()).getAllByText(/^Alto sax in E♭ · [A-G][♯♭]? major$/)).toHaveLength(6);
+});
+
+it('one sheet is one bar and four empty bars, with All 1', () => {
+  saveEntry({ ...sampleDoc('asax'), title: 'Only' }, null); renderStart(); const g = screen.getByRole('region', { name: 'Your sheets' });
+  expect(within(g).getAllByRole('listitem')).toHaveLength(1); expect(g.querySelectorAll('li[aria-hidden="true"]')).toHaveLength(4);
+  expect(within(g).getByRole('button', { name: 'All 1' })).toBeInTheDocument();
+});
+
+it('a title and its instrument line carry their whole text as a tooltip, in the strip and in the library view', async () => {
+  const long = 'A very long title that will not fit into one bar';
+  saveEntry({ ...sampleDoc('asax'), title: long }, null); renderStart();
+  expect(screen.getByText(long).closest('a')).toHaveAttribute('title', long);   // the whole bar link: title and incipit
+  expect(screen.getByText(long).closest('a')!.querySelector('svg')).not.toBeNull();
+  expect(screen.getByText(/^Alto sax in E♭ · just now$/)).toHaveAttribute('title', 'Alto sax in E♭ · just now');
+  await user.click(screen.getByRole('button', { name: 'All 1' }));
+  expect(screen.getByRole('link', { name: long })).toHaveAttribute('title', long);
+  const meta = screen.getByText(/^Alto sax in E♭ · [A-G][♯♭]? major$/); expect(meta).toHaveAttribute('title', meta.textContent);
+});
+
+it('Open and Play link to the sheet; Play opens it in Play mode', () => {
+  saveEntry({ ...sampleDoc('asax'), title: 'Tune' }, null); renderStart(); const id = listEntries()[0].id;
+  expect(screen.getByRole('link', { name: 'Open Tune' })).toHaveAttribute('href', `/sheet?id=${id}`);
+  expect(screen.getByRole('link', { name: 'Play Tune' })).toHaveAttribute('href', `/sheet?id=${id}&mode=play`);
+});
+
+it('delete asks first: Keep and Escape leave the sheet and give focus back to the bin', async () => {
+  saveEntry({ ...sampleDoc('asax'), title: 'Stay' }, null); renderStart();
+  const bin = () => screen.getByRole('button', { name: 'Delete Stay' });
+  await user.click(bin());
+  expect(screen.getByRole('group', { name: 'Delete Stay?' })).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus();
+  expect(screen.queryByRole('link', { name: 'Open Stay' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Keep' })); expect(bin()).toHaveFocus(); expect(listEntries()).toHaveLength(1);
+  await user.click(bin()); await user.keyboard('{Escape}'); expect(bin()).toHaveFocus(); expect(listEntries()).toHaveLength(1);
+  expect(screen.queryByText(/^Deleted/)).toBeNull();
 });
 
 it('delete with undo', async () => {
   saveEntry({ ...sampleDoc('asax'), title: 'Keep' }, null); saveEntry({ ...sampleDoc('cl'), title: 'Drop me' }, null); renderStart();
-  await user.click(screen.getByRole('button', { name: 'Delete Drop me' })); expect(screen.queryByText('Drop me')).toBeNull(); expect(listEntries()).toHaveLength(1);
+  await deleteSheet('Drop me'); expect(screen.queryByText('Drop me')).toBeNull(); expect(listEntries()).toHaveLength(1);
   expect(screen.getByRole('status')).toHaveTextContent('Deleted "Drop me"'); await user.click(screen.getByRole('button', { name: 'Undo' }));
   expect(screen.getByText('Drop me')).toBeInTheDocument(); expect(listEntries()).toHaveLength(2);
 });
@@ -269,7 +311,7 @@ it('deleting the open sheet\'s entry unlinks it; undo links it again', async () 
   expect(useApp.getState().saveSheet()).toBe(true);
   const id = useApp.getState().libraryId;
   renderStart();
-  await user.click(screen.getByRole('button', { name: 'Delete Open one' }));
+  await deleteSheet('Open one');
   expect(useApp.getState().libraryId).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Undo' }));
   expect(useApp.getState().libraryId).toBe(id);
@@ -285,10 +327,11 @@ function saveSheets(...titles: string[]) {
   [...titles].reverse().forEach((title, i) => saveEntry({ ...sampleDoc('asax'), title }, null, new Date(Date.UTC(2026, 10, 22, 10, i))));
 }
 
-it('the count is singular for one sheet', () => {
+it('the count is singular for one sheet', async () => {
   saveSheets('Only');
   renderStart();
-  expect(screen.getByText('1 sheet · saved in this browser')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'All 1' }));
+  expect(screen.getByText('1 sheet saved in this browser')).toBeInTheDocument();
 });
 
 it('an upper-case .JSON name takes the saved-sheet path', async () => {
@@ -315,9 +358,10 @@ it('a storage failure opens the sheet unsaved and shows the storage message', as
   expect(useApp.getState().libraryId).toBeNull();
 });
 
-it('a .json file larger than 5 MB is refused unread', async () => {
+it('a .json file larger than a library may be (20 MB) is refused unread', async () => {
   renderStart();
-  const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'huge.json');
+  const big = new File(['{}'], 'huge.json');
+  Object.defineProperty(big, 'size', { value: 20 * 1024 * 1024 + 1 });
   const text = vi.spyOn(big, 'text');
   drop(big);
   expect(await screen.findByRole('alert')).toHaveTextContent('"huge.json" isn\'t a fingerscore sheet.');
@@ -351,7 +395,7 @@ it('a failed delete shows the storage message and keeps the card', async () => {
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string) {
     if (k === 'fingerscore.library.v1') throw new DOMException('full', 'QuotaExceededError');
   });
-  await user.click(screen.getByRole('button', { name: 'Delete Stuck' }));
+  await deleteSheet('Stuck');
   expect(within(screen.getByRole('region', { name: 'Your sheets' })).getByRole('alert')).toHaveTextContent(FULL_MESSAGE);
   expect(cardLink('Stuck')).toBeInTheDocument();
 });
@@ -365,7 +409,7 @@ it('the gallery storage alert clears on the next library change: a successful de
   });
 
   let spy = fail();
-  await user.click(screen.getByRole('button', { name: 'Delete Stuck' }));
+  await deleteSheet('Stuck');
   expect(within(region()).getByRole('alert')).toHaveTextContent(FULL_MESSAGE);
   spy.mockRestore();
   drop(sheetFile('Fresh'));
@@ -373,10 +417,10 @@ it('the gallery storage alert clears on the next library change: a successful de
   expect(within(region()).queryByRole('alert')).toBeNull();
 
   spy = fail();
-  await user.click(screen.getByRole('button', { name: 'Delete Stuck' }));
+  await deleteSheet('Stuck');
   expect(within(region()).getByRole('alert')).toHaveTextContent(FULL_MESSAGE);
   spy.mockRestore();
-  await user.click(screen.getByRole('button', { name: 'Delete Other' }));
+  await deleteSheet('Other');
   expect(within(region()).queryByRole('alert')).toBeNull();
 });
 
@@ -384,12 +428,12 @@ describe('keyboard focus in the gallery', () => {
   it('after a delete: Undo, then the next card; Undo returns to the restored card', async () => {
     saveSheets('A', 'B', 'C');
     renderStart();
-    await user.click(screen.getByRole('button', { name: 'Delete B' }));
+    await deleteSheet('B');
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' }));
     await user.keyboard('{Escape}');
     expect(document.activeElement).toBe(cardLink('C'));
 
-    await user.click(screen.getByRole('button', { name: 'Delete A' }));
+    await deleteSheet('A');
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(document.activeElement).toBe(cardLink('A'));
   });
@@ -397,7 +441,7 @@ describe('keyboard focus in the gallery', () => {
   it('deleting the last card in the list moves focus to the previous card', async () => {
     saveSheets('A', 'B');
     renderStart();
-    await user.click(screen.getByRole('button', { name: 'Delete B' }));
+    await deleteSheet('B');
     await user.keyboard('{Escape}');
     expect(document.activeElement).toBe(cardLink('A'));
   });
@@ -405,13 +449,13 @@ describe('keyboard focus in the gallery', () => {
   it('deleting the only card moves focus to the drop zone; Undo brings the card back focused', async () => {
     saveSheets('Only');
     renderStart();
-    await user.click(screen.getByRole('button', { name: 'Delete Only' }));
+    await deleteSheet('Only');
     expect(screen.queryByRole('region', { name: 'Your sheets' })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' }));
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(document.activeElement).toBe(cardLink('Only'));
 
-    await user.click(screen.getByRole('button', { name: 'Delete Only' }));
+    await deleteSheet('Only');
     await user.keyboard('{Escape}');
     expect(document.activeElement).toBe(screen.getByLabelText(/drop a song or a saved sheet/i));
   });
@@ -420,27 +464,138 @@ describe('keyboard focus in the gallery', () => {
     renderStart();
     drop(sheetFile('Dropped'));
     await screen.findByText('✓ "Dropped" added to your sheets');
-    await user.click(screen.getByRole('button', { name: 'Delete Dropped' }));
+    await deleteSheet('Dropped');
     await user.keyboard('{Escape}');
     const h1 = screen.getByRole('heading', { level: 1 });
     expect(document.activeElement).toBe(h1);
     expect(h1).toHaveAttribute('tabindex', '-1');
   });
 
-  it('Show all moves focus to the first revealed card', async () => {
+  it('All N moves focus to the search field; Close gives it back to All N', async () => {
     saveSheets('S6', 'S5', 'S4', 'S3', 'S2', 'S1');
     renderStart();
-    await user.click(screen.getByRole('button', { name: 'Show all 6' }));
-    expect(document.activeElement).toBe(cardLink('S2'));
+    await user.click(screen.getByRole('button', { name: 'All 6' }));
+    expect(screen.getByRole('searchbox', { name: 'Search your sheets' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('button', { name: 'All 6' })).toHaveFocus();
   });
 
-  it('deleting the last revealed card moves focus to the card before it', async () => {
+  it('deleting the last row of the library view moves focus to the row before it', async () => {
     saveSheets('S6', 'S5', 'S4', 'S3', 'S2', 'S1');
     renderStart();
-    await user.click(screen.getByRole('button', { name: 'Show all 6' }));
-    await user.click(screen.getByRole('button', { name: 'Delete S1' }));
+    await user.click(screen.getByRole('button', { name: 'All 6' }));
+    await deleteSheet('S1');
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' }));
     await user.keyboard('{Escape}');
     expect(document.activeElement).toBe(cardLink('S2'));
+  });
+
+  it('Undo of a sheet beyond the strip opens the library view on it', async () => {
+    saveSheets('S6', 'S5', 'S4', 'S3', 'S2', 'S1');
+    renderStart();
+    await user.click(screen.getByRole('button', { name: 'All 6' }));
+    await deleteSheet('S1');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('6 sheets saved in this browser')).toBeInTheDocument();
+    expect(document.activeElement).toBe(cardLink('S1'));
+  });
+});
+
+describe('the library view', () => {
+  const open = async () => { await user.click(screen.getByRole('button', { name: /^All \d+$/ })); };
+  const rows = () => within(screen.getByRole('region', { name: 'Your sheets' })).getAllByRole('listitem').map(li => within(li).getAllByRole('link')[0].textContent);
+  function seed() {
+    saveEntry({ ...sampleDoc('cl'), title: 'Banana' }, null, new Date(Date.UTC(2026, 10, 22, 10, 1)));
+    saveEntry({ ...sampleDoc('asax'), title: 'cherry' }, null, new Date(Date.UTC(2026, 10, 22, 10, 2)));
+    saveEntry({ ...sampleDoc('tsax'), title: 'Apple' }, null, new Date(Date.UTC(2026, 10, 22, 10, 3)));
+  }
+
+  it('sorts by save time, title or instrument', async () => {
+    seed(); renderStart(); await open();
+    expect(rows()).toEqual(['Apple', 'cherry', 'Banana']);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort' }), 'Title A–Z');
+    expect(rows()).toEqual(['Apple', 'Banana', 'cherry']);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort' }), 'Instrument');
+    expect(rows()).toEqual(['cherry', 'Banana', 'Apple']);
+  });
+
+  it('filters by instrument family: one chip per family that has sheets, with counts', async () => {
+    seed(); renderStart(); await open();
+    const chips = within(screen.getByRole('group', { name: 'Filter by instrument' }));
+    expect(chips.getAllByRole('button').map(b => b.textContent)).toEqual(['All 3', 'Saxophone 2', 'Clarinet 1']);
+    expect(chips.getByRole('button', { name: 'All 3' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(chips.getByRole('button', { name: 'Saxophone 2' }));
+    expect(rows()).toEqual(['Apple', 'cherry']);
+    expect(chips.getByRole('button', { name: 'Saxophone 2' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(chips.getByRole('button', { name: 'All 3' }));
+    expect(rows()).toHaveLength(3);
+  });
+
+  it('searches titles and instruments; no match says so; Close resets the search', async () => {
+    seed(); renderStart(); await open();
+    await user.type(screen.getByRole('searchbox'), 'clarinet');
+    expect(rows()).toEqual(['Banana']);
+    await user.clear(screen.getByRole('searchbox')); await user.type(screen.getByRole('searchbox'), 'APP');
+    expect(rows()).toEqual(['Apple']);
+    await user.type(screen.getByRole('searchbox'), 'zzz');
+    expect(screen.getByText('No sheets match your search.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Close' })); await open();
+    expect(screen.getByRole('searchbox')).toHaveValue(''); expect(rows()).toHaveLength(3);
+  });
+
+  it('deleting the last sheet closes the view and hides the section', async () => {
+    saveSheets('Only'); renderStart(); await open();
+    await deleteSheet('Only');
+    expect(screen.queryByRole('region', { name: 'Your sheets' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByRole('button', { name: 'All 1' })).toBeInTheDocument();
+  });
+
+  it('Undo clears a search that would hide the restored sheet', async () => {
+    seed(); renderStart(); await open();
+    await deleteSheet('Banana');
+    await user.type(screen.getByRole('searchbox'), 'apple');
+    expect(rows()).toEqual(['Apple']);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByRole('searchbox')).toHaveValue(''); expect(rows()).toHaveLength(3);
+    expect(document.activeElement).toBe(cardLink('Banana'));
+  });
+
+  it('Export all as JSON downloads the library; Import… adds the sheets of that file', async () => {
+    seed(); renderStart(); await open();
+    let exported: Blob | null = null;
+    const createObjectURL = vi.fn((b: Blob) => { exported = b; return 'blob:x'; });
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await user.click(screen.getByRole('button', { name: 'Export all as JSON' }));
+    expect(click).toHaveBeenCalled();
+    const text = await exported!.text();
+    expect(JSON.parse(text)).toMatchObject({ app: 'fingerscore', format: 1, kind: 'library', sheets: [{ title: 'Apple', inst: 'Tenor sax in B♭', fam: 'Saxophone' }, { title: 'cherry' }, { title: 'Banana', key: expect.stringMatching(/ major$/) }] });
+
+    await user.upload(screen.getByLabelText('Import sheets'), new File([text], 'fingerscore-library.json', { type: 'application/json' }));
+    expect(await screen.findByText('✓ 3 sheets added to your sheets')).toBeInTheDocument();
+    expect(listEntries()).toHaveLength(6); expect(new Set(listEntries().map(e => e.id)).size).toBe(6);
+    expect(screen.getByText('6 sheets saved in this browser')).toBeInTheDocument();
+
+    await user.upload(screen.getByLabelText('Import sheets'), sheetFile('Single'));
+    expect(await screen.findByText('✓ "Single" added to your sheets')).toBeInTheDocument();
+    await user.upload(screen.getByLabelText('Import sheets'), new File(['{"name":"x"}'], 'foreign.json', { type: 'application/json' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('"foreign.json" isn\'t a fingerscore sheet.');
+    expect(listEntries()).toHaveLength(7);
+  });
+
+  it('a library file dropped on the zone adds every sheet and offers Show library', async () => {
+    renderStart();
+    const text = serializeLibrary([1, 2].map(n => ({ title: `L${n}`, inst: '', key: '', fam: '', savedAt: `2026-11-2${n}T10:00:00.000Z`, doc: { ...sampleDoc('fl'), title: `L${n}` } })));
+    drop(new File([text], 'fingerscore-library.json', { type: 'application/json' }));
+    expect(await screen.findByText('✓ 2 sheets added to your sheets')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Open sheet/ })).toBeNull();
+    expect(listEntries().map(e => e.title)).toEqual(['L2', 'L1']);
+    await user.click(screen.getByRole('button', { name: 'Show library' }));
+    expect(screen.getByText('2 sheets saved in this browser')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Search your sheets' })).toHaveFocus();
+    expect(screen.getByText('Drop a song or a saved sheet here')).toBeInTheDocument();
   });
 });
