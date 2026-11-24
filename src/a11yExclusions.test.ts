@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /** The exclusions of the accessibility scan: each one has a reason, and the list does not grow unnoticed. */
-const EXCLUSION_COUNT = 1;
+const EXCLUSION_COUNT = 0;
 
 const source = readFileSync(join(process.cwd(), 'e2e/accessibility.spec.ts'), 'utf8');
 const list = /export const EXCLUSIONS[^=]*=\s*\[([\s\S]*?)\n\];/.exec(source)?.[1] ?? '';

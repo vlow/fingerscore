@@ -81,7 +81,7 @@ test('an unsaved change survives a visit to the terms from the File menu', async
   const rests = await page.locator('[data-rest]').count();
 
   await page.getByRole('button', { name: 'File', exact: true }).click();
-  await page.getByRole('menu', { name: 'File' }).getByRole('link', { name: 'Terms of Use' }).click();
+  await page.getByRole('menu', { name: 'File' }).getByRole('menuitem', { name: 'Terms of Use' }).click();
   await expect(page).toHaveURL(/\/terms$/);
   await page.goBack();
 

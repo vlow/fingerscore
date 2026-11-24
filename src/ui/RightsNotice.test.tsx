@@ -39,59 +39,37 @@ async function openMenu() {
 }
 
 describe('FileMenu', () => {
-  it('draws the notice right after "Open JSON file…", outside the menu items', async () => {
+  it('draws the notice right after "Open JSON file…", its link a menu item described by the sentence', async () => {
     renderMenu();
     const menu = await openMenu();
     const open = within(menu).getByRole('menuitem', { name: /Open JSON file/ });
-    const p = screen.getByText(TEXT, { exact: false }).closest('p')!;
-    expect(p).not.toHaveAttribute('role', 'menuitem');
-    expect(p.closest('[role=menuitem]')).toBeNull();
-    // document order: Open JSON file…, notice, New sheet
-    const all = [...menu.querySelectorAll('[role=menuitem], p')];
+    const link = within(menu).getByRole('menuitem', { name: 'Terms of Use' });
+    expect(link).toHaveAttribute('href', '/terms');
+    expect(link).toHaveAttribute('tabindex', '-1');
+    expect(link).toHaveAccessibleDescription(TEXT);
+    expect(link.closest('p')).toHaveAttribute('role', 'none');
+    expect(screen.getByText(TEXT)).toBeVisible();
+    // document order: Open JSON file…, Terms of Use, New sheet
+    const all = [...menu.querySelectorAll('[role=menuitem]')];
     const i = all.indexOf(open);
-    expect(all[i + 1]).toBe(p);
+    expect(all[i + 1]).toBe(link);
     expect(all[i + 2]).toBe(within(menu).getByRole('menuitem', { name: /New sheet/ }));
   });
 
-  it('keeps the arrow keys on the items: ArrowDown from "Open JSON file…" focuses "New sheet"', async () => {
+  it('puts the link in the arrow-key order, between "Open JSON file…" and "New sheet"', async () => {
     renderMenu();
     const menu = await openMenu();
     within(menu).getByRole('menuitem', { name: /Open JSON file/ }).focus();
     await userEvent.keyboard('{ArrowDown}');
+    expect(within(menu).getByRole('menuitem', { name: 'Terms of Use' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
     expect(within(menu).getByRole('menuitem', { name: /New sheet/ })).toHaveFocus();
   });
 
-  it('reaches the link with Tab', async () => {
+  it.each(['Open JSON file', 'Terms of Use', 'New sheet'])('closes the menu on Tab from %s', async name => {
     renderMenu();
     const menu = await openMenu();
-    const link = within(menu).getByRole('link', { name: 'Terms of Use' });
-    expect(link).not.toHaveAttribute('tabindex', '-1');
-    within(menu).getByRole('menuitem', { name: /Open JSON file/ }).focus();
-    await userEvent.tab();
-    expect(link).toHaveFocus();
-  });
-
-  it('does not take Tab from the items after the link: it closes the menu', async () => {
-    renderMenu();
-    const menu = await openMenu();
-    within(menu).getByRole('menuitem', { name: /New sheet/ }).focus();
-    await userEvent.tab();
-    expect(screen.queryByRole('menu')).toBeNull();
-  });
-
-  it('moves focus from the link back to "Open JSON file…" with Shift+Tab', async () => {
-    renderMenu();
-    const menu = await openMenu();
-    within(menu).getByRole('link', { name: 'Terms of Use' }).focus();
-    await userEvent.tab({ shift: true });
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-    expect(within(menu).getByRole('menuitem', { name: /Open JSON file/ })).toHaveFocus();
-  });
-
-  it('closes the menu on Tab from the link', async () => {
-    renderMenu();
-    const menu = await openMenu();
-    within(menu).getByRole('link', { name: 'Terms of Use' }).focus();
+    within(menu).getByRole('menuitem', { name: new RegExp(name) }).focus();
     await userEvent.tab();
     expect(screen.queryByRole('menu')).toBeNull();
   });
@@ -99,7 +77,7 @@ describe('FileMenu', () => {
   it('closes the menu when the link is clicked', async () => {
     renderMenu();
     const menu = await openMenu();
-    await userEvent.click(within(menu).getByRole('link', { name: 'Terms of Use' }));
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Terms of Use' }));
     expect(screen.queryByRole('menu')).toBeNull();
   });
 });
@@ -108,4 +86,12 @@ it('RightsNotice: the link is described by the sentence', () => {
   render(<MemoryRouter><RightsNotice /></MemoryRouter>);
   const link = screen.getByRole('link', { name: 'Terms of Use' });
   expect(link).toHaveAccessibleDescription('Only import songs you have the rights to.');
+});
+
+it('RightsNotice outside a menu: a plain link, no role on it or its wrapper', () => {
+  render(<MemoryRouter><RightsNotice /></MemoryRouter>);
+  const link = screen.getByRole('link', { name: 'Terms of Use' });
+  expect(link).not.toHaveAttribute('role');
+  expect(link).not.toHaveAttribute('tabindex');
+  expect(link.closest('p')).not.toHaveAttribute('role');
 });

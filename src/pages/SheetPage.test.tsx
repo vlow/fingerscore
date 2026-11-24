@@ -294,7 +294,7 @@ describe('save and the File menu', () => {
     await user.click(btn);
     const menu = screen.getByRole('menu');
     expect(btn).toHaveAttribute('aria-expanded', 'true');
-    expect(within(menu).getAllByRole('menuitem').slice(0, 5).map(i => i.textContent)).toEqual(['Download PDF', 'Print', 'Download JSON', 'Open JSON file…', 'New sheet']);
+    expect(within(menu).getAllByRole('menuitem').slice(0, 6).map(i => i.textContent)).toEqual(['Download PDF', 'Print', 'Download JSON', 'Open JSON file…', 'Terms of Use', 'New sheet']);
     expect(within(menu).getByText('No saved sheets yet.')).toBeInTheDocument();
     expect(within(menu).getByText(/Sheets are stored only on this device/)).toBeInTheDocument();
     await user.keyboard('{Escape}');
@@ -317,10 +317,8 @@ describe('save and the File menu', () => {
     expect(items[0]).toHaveFocus();
     await user.keyboard('{End}');
     expect(items[items.length - 1]).toHaveFocus();
-    // Tab from an item above the notice link reaches it; Tab from the link closes the menu.
+    // Tab closes the menu from every item, the notice link included.
     items[0].focus();
-    await user.keyboard('{Tab}');
-    expect(within(screen.getByRole('menu')).getByRole('link', { name: 'Terms of Use' })).toHaveFocus();
     await user.keyboard('{Tab}');
     expect(screen.queryByRole('menu')).toBeNull();
     await user.click(btn);

@@ -39,7 +39,6 @@ export default function FileMenu(p: Props) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const openFileRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
 
   const items = () => [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])];
@@ -85,20 +84,7 @@ export default function FileMenu(p: Props) {
       case 'Home': focus(0); break;
       case 'End': focus(-1); break;
       case 'Escape': e.preventDefault(); close(true); break;
-      // Tab from an item above the notice link goes to the link; Shift+Tab from the link goes back to "Open JSON file…".
-      // Anywhere else focus returns to the button first, so Tab moves on from there.
-      case 'Tab': {
-        const a = menuRef.current?.querySelector('a');
-        const here = document.activeElement;
-        if (a && !e.shiftKey && here && here !== a && !here.contains(a) && here.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) {
-          e.preventDefault();
-          a.focus();
-        } else if (a && e.shiftKey && here === a && openFileRef.current) {
-          e.preventDefault();
-          openFileRef.current.focus();
-        } else close(true);
-        break;
-      }
+      case 'Tab': close(true); break;
       default: return;
     }
     e.stopPropagation();
@@ -136,10 +122,10 @@ export default function FileMenu(p: Props) {
             <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(p.onDownload)}>
               <Icon d={DOWN} />Download JSON
             </button>
-            <button ref={openFileRef} type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(() => inputRef.current?.click())}>
+            <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(() => inputRef.current?.click())}>
               <Icon d={UP} />Open JSON file…
             </button>
-            <RightsNotice className={s.rights} onNavigate={() => close(false)} />
+            <RightsNotice inMenu className={s.rights} onNavigate={() => close(false)} />
             <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(p.onNew)}>
               <Icon d={PLUS} />New sheet
             </button>
