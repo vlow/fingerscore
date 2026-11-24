@@ -27,7 +27,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      # No install scripts: no package the build or the tests use needs one, and a compromised package cannot run code here.
+      - run: npm ci --ignore-scripts
 
       - name: Build
         run: npm run build
@@ -40,7 +41,7 @@ jobs:
         run: npm test -- --coverage
 
       - name: Install the Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
       - name: End-to-end tests (dev server)
         run: npm run test:e2e
       - name: End-to-end tests (production build)
