@@ -1,0 +1,11 @@
+.notice {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.notice a {
+  color: var(--teal-hover);
+  font-weight: 600;
+  text-decoration: underline;
+}

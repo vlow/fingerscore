@@ -15,7 +15,7 @@ it('renders the shell on every route', () => {
   expect(
     screen.getByText('Your sheets are stored in your browser. Nothing is stored on the server.'),
   ).toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: 'Imprint' })).toBeNull(); // version 2
+  expect(screen.getByRole('link', { name: 'Imprint' })).toHaveAttribute('href', '/imprint');
 });
 
 it.each(['/', '/tracks', '/sheet'])('header: Songs is current on %s, the brand link never is', path => {

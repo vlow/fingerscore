@@ -1,5 +1,7 @@
 // The owner's details. Every value that starts with "TODO:" is a placeholder: the pages draw it as it is,
 // and `npm run check:release` fails until each one is filled. Optional fields stay '' when they do not apply.
+import { repositoryUrl } from './repository';
+
 export interface Operator {
   name: string;
   address: string[];
@@ -31,7 +33,7 @@ export const operator: Operator = {
   hostName: 'TODO: name of the hosting provider',
   hostAddress: 'TODO: address of the hosting provider',
   logRetention: 'TODO: how long the host keeps server logs',
-  repositoryUrl: '',
+  repositoryUrl,
   aboutLead: 'TODO: one or two sentences that open the About page',
   authorBio: 'TODO: short bio of the author',
   story: ['TODO: story paragraph'],

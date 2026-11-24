@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { timeAgo } from '../domain/timeAgo';
 import type { LibraryEntry } from '../state/library';
+import RightsNotice from './RightsNotice';
 import s from './FileMenu.module.css';
 
 interface Props {
@@ -83,8 +84,13 @@ export default function FileMenu(p: Props) {
       case 'Home': focus(0); break;
       case 'End': focus(-1); break;
       case 'Escape': e.preventDefault(); close(true); break;
-      // Focus goes back to the button first, so Tab moves on from there.
-      case 'Tab': close(true); break;
+      // From an item, Tab goes to the notice link. From anywhere else, focus goes back to the button first, so Tab moves on from there.
+      case 'Tab': {
+        const a = menuRef.current?.querySelector('a');
+        if (e.shiftKey || !a || a === document.activeElement) close(true);
+        else { e.preventDefault(); a.focus(); }
+        break;
+      }
       default: return;
     }
     e.stopPropagation();
@@ -125,6 +131,7 @@ export default function FileMenu(p: Props) {
             <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(() => inputRef.current?.click())}>
               <Icon d={UP} />Open JSON file…
             </button>
+            <RightsNotice className={s.rights} onNavigate={() => close(false)} />
             <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(p.onNew)}>
               <Icon d={PLUS} />New sheet
             </button>

@@ -157,3 +157,15 @@
 .secondary:hover {
   background: var(--page);
 }
+
+/* Sits above the file input, which covers the zone. Only the link takes clicks; the text lets them through to the input. */
+.notice {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  pointer-events: none;
+}
+
+.notice a {
+  pointer-events: auto;
+}

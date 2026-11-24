@@ -23,3 +23,33 @@ it('lists the five formats as chips and accepts MuseScore and ABC files', () => 
   const accept = screen.getByLabelText(/drop a song/i).getAttribute('accept') ?? '';
   for (const ext of ['.mscz', '.mscx', '.abc']) expect(accept).toContain(ext);
 });
+
+describe('import notice', () => {
+  const R = () => render(<MemoryRouter><DropZone instrumentName="alto sax" onSong={() => {}} onContinue={() => {}} /></MemoryRouter>);
+  const notice = () => screen.getByRole('link', { name: 'Terms of Use' });
+
+  function expectNotice() {
+    expect(screen.getByText('Only import songs you have the rights to.', { exact: false })).toBeInTheDocument();
+    expect(notice()).toHaveAttribute('href', '/terms');
+    // The link is not inside the file input, a label, or a button: a click on it opens no file dialog.
+    expect(notice().closest('input, label, button')).toBeNull();
+  }
+
+  it('shows the notice when idle', () => { R(); expectNotice(); });
+
+  it('shows the notice with the "Choose another file" button', async () => {
+    vi.mocked(parseFile).mockResolvedValue({} as never);
+    R();
+    await userEvent.upload(screen.getByLabelText(/drop a song/i), new File(['x'], 'a.mid'));
+    expect(await screen.findByRole('button', { name: 'Choose another file' })).toBeInTheDocument();
+    expectNotice();
+  });
+
+  it('shows the notice after an error', async () => {
+    vi.mocked(parseFile).mockRejectedValue(new Error('bad'));
+    R();
+    await userEvent.upload(screen.getByLabelText(/drop a song/i), new File(['x'], 'a.mid'));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expectNotice();
+  });
+});

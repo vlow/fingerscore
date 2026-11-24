@@ -5,6 +5,7 @@ import type { Doc } from '../domain/types';
 import { ACCEPT, parseFile } from '../import';
 import { ImportError, type ParsedSong } from '../import/types';
 import { addSheets, saveEntry, type LibraryEntry } from '../state/library';
+import RightsNotice from './RightsNotice';
 import s from './DropZone.module.css';
 
 interface Props {
@@ -191,6 +192,7 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
           <button type="button" className={s.secondary} onClick={reset}>Try another file</button>
         </div>
       )}
+      <RightsNotice className={s.notice} />
     </div>
   );
 }

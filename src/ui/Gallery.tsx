@@ -8,6 +8,7 @@ import { timeAgo } from '../domain/timeAgo';
 import { deleteWithUndo } from '../state/deleteWithUndo';
 import { addSheets, listEntries, saveEntry, type LibraryEntry } from '../state/library';
 import { downloadText } from './download';
+import RightsNotice from './RightsNotice';
 import s from './Gallery.module.css';
 
 /** The strip is one line of music: five bars, one sheet each. */
@@ -323,6 +324,7 @@ export default function Gallery({ version = 0, emptyFocus, open = false, onOpenC
             aria-label="Import sheets" onChange={e => void importFile(e)}
           />
         </span>
+        <RightsNotice />
       </div>
     </section>
   );
