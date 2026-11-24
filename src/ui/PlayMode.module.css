@@ -1,0 +1,139 @@
+/* Play mode (SPEC §11a), after the prototype (Editor.dc.html, "Play mode" region): the paper alone, a floating bar. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #eef0f2;
+  color: var(--ink);
+  font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
+  outline: none;
+}
+
+.scroller {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Room below the last line for the toolbar. */
+.pad {
+  padding: 20px 12px 120px;
+  overflow-x: auto;
+}
+
+.zoomed {
+  width: max-content;
+  margin: 0 auto;
+}
+
+.zone {
+  position: absolute;
+  top: 0;
+  bottom: 88px;
+  width: 12%;
+}
+
+.zonePrev {
+  left: 0;
+  cursor: w-resize;
+}
+
+.zoneNext {
+  right: 0;
+  cursor: e-resize;
+}
+
+.bar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 8px;
+  border-radius: 16px;
+  background: #15171c;
+  color: #ffffff;
+  box-shadow: 0 12px 32px rgba(20, 22, 28, 0.3);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 10px;
+  background: #2a2d33;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #3a3d44;
+}
+
+.btn[aria-disabled='true'],
+.btn[aria-disabled='true']:hover {
+  background: #2a2d33;
+  color: #7b808a;
+  cursor: default;
+}
+
+.btn:focus-visible,
+.slider:focus-visible {
+  outline: 2px solid #5fd3c6;
+  outline-offset: 2px;
+}
+
+.on,
+.on:hover {
+  background: #5fd3c6;
+  color: #15171c;
+}
+
+.rule {
+  width: 1px;
+  height: 28px;
+  background: #3a3d44;
+}
+
+.page {
+  min-width: 72px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.slider {
+  width: 110px;
+  accent-color: #5fd3c6;
+}
+
+.readout {
+  min-width: 116px;
+  color: #c9cdd3;
+}
