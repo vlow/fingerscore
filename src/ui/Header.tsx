@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { LogoMark, Wordmark } from './icons';
+import ThemeMenu from './ThemeMenu';
 
 /** Routes that belong to the "Songs" section. */
 const SONG_PATHS = ['/', '/tracks', '/sheet'];
@@ -22,6 +23,7 @@ export default function Header() {
           Scales
         </Link>
       </nav>
+      <ThemeMenu />
     </header>
   );
 }

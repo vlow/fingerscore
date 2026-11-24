@@ -1,12 +1,12 @@
 type LogoMarkProps = { size?: number };
 
-/** The f-mark (brand/mark.svg): a lowercase f whose crossbar is one closed and one open hole. */
+/** The f-mark (brand/mark.svg, in dark mode brand/mark-on-dark.svg): a lowercase f whose crossbar is one closed and one open hole. */
 export function LogoMark({ size = 30 }: LogoMarkProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-      <path d="M30 60 V22 C30 11 36 6 46 7" fill="none" stroke="#15171C" strokeWidth="8" strokeLinecap="round" />
-      <circle cx="17" cy="29" r="5.5" fill="#0E6E68" />
-      <circle cx="43" cy="29" r="5" fill="none" stroke="#15171C" strokeWidth="3" />
+      <path d="M30 60 V22 C30 11 36 6 46 7" fill="none" stroke="var(--c-text)" strokeWidth="8" strokeLinecap="round" />
+      <circle cx="17" cy="29" r="5.5" fill="var(--c-accent)" />
+      <circle cx="43" cy="29" r="5" fill="none" stroke="var(--c-text)" strokeWidth="3" />
     </svg>
   );
 }

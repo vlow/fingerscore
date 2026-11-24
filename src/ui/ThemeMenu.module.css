@@ -1,0 +1,96 @@
+/* Theme switch of the header (dark mode design 4.2), after the File menu. */
+.wrap {
+  position: relative;
+  display: flex;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover,
+.button[aria-expanded='true'] {
+  background: var(--c-bg);
+}
+
+.menu {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 176px;
+  padding: 6px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius-card);
+  background: var(--c-surface);
+  box-shadow: 0 16px 40px var(--c-shadow);
+  box-sizing: border-box;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--c-bg);
+}
+
+.item[aria-checked='true'] {
+  background: var(--c-accent-tint);
+  color: var(--c-accent-hover);
+}
+
+.itemLabel {
+  flex: 1 1 auto;
+}
+
+.check {
+  flex: none;
+}
+
+/* A narrow header keeps the icon; the button's name still says the theme. */
+@media (max-width: 560px) {
+  .button {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .label {
+    display: none;
+  }
+}
+
+@media print {
+  .wrap {
+    display: none;
+  }
+}
