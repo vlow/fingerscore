@@ -72,9 +72,9 @@ window.__a11y = (() => {
   };
 
   // Colours: computed values are rgb() or rgba().
-  const parse = text => {
+  const parse = (text, el) => {
     const m = /^rgba?\\(([^)]+)\\)$/.exec(text.trim());
-    if (!m) throw new Error('colour not understood: ' + text);
+    if (!m) throw new Error('colour not understood on ' + describe(el) + ': ' + text);
     const n = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number);
     return { r: n[0], g: n[1], b: n[2], a: n.length > 3 ? n[3] : 1 };
   };
@@ -86,18 +86,18 @@ window.__a11y = (() => {
     const chain = [];
     for (let e = el.parentElement; e; e = e.parentElement) chain.unshift(e);
     let bg = { r: 255, g: 255, b: 255, a: 1 };
-    for (const e of chain) { const c = parse(getComputedStyle(e).backgroundColor); if (c.a > 0) bg = over(c, bg); }
+    for (const e of chain) { const c = parse(getComputedStyle(e).backgroundColor, e); if (c.a > 0) bg = over(c, bg); }
     return bg;
   };
   const snap = el => {
     const cs = getComputedStyle(el);
     const outer = behind(el);
-    const own = over(parse(cs.backgroundColor), outer);
+    const own = over(parse(cs.backgroundColor, el), outer);
     return {
       outline: cs.outlineStyle === 'none' || parseFloat(cs.outlineWidth) === 0 ? null : cs.outlineColor,
       shadow: cs.boxShadow,
       border: ['Top', 'Right', 'Bottom', 'Left'].map(s => parseFloat(cs['border' + s + 'Width']) > 0 && cs['border' + s + 'Style'] !== 'none' ? cs['border' + s + 'Color'] : null),
-      outer, own,
+      outer, own, el,
     };
   };
   const NONE = { outline: null, shadow: 'none', border: [null, null, null, null] };
@@ -106,7 +106,7 @@ window.__a11y = (() => {
     off = off || NONE;
     let best = 0;
     const against = (colour, ground) => {
-      const c = parse(colour);
+      const c = parse(colour, on.el);
       if (c.a === 0) return;
       best = Math.max(best, ratio(over(c, ground), ground));
     };
@@ -122,7 +122,8 @@ window.__a11y = (() => {
     on.border.forEach((colour, i) => { if (colour && colour !== off.border[i]) against(colour, on.own); });
     return best;
   };
-  const settled = () => Promise.all(document.getAnimations().map(a => a.finished.catch(() => undefined)));
+  // An animation that never ends cannot be waited for.
+  const settled = () => Promise.all(document.getAnimations().filter(a => a.effect && a.effect.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => undefined)));
   return { describe, roleOf, nameOf, snap, markRatio, settled };
 })();
 `;
@@ -155,18 +156,28 @@ function counted(list: string[]): string[] {
   return [...counts].map(([item, n]) => (n > 1 ? `${item} ×${n}` : item));
 }
 
-interface TargetResult { failures: string[]; near: string[] }
+interface TargetResult { failures: string[]; near: string[]; measured: number; inside: number; overlayOpen: boolean }
 
 /**
  * Controls whose click area is smaller than the size they need; "role name (need px)".
  * The area is the union of the control's box and its labels' boxes. While a menu or dialog is open, only its own
  * controls are measured: the others lie under it. `near` lists every control measured within 2 px of its threshold.
+ * `measured` counts the controls probed and `inside` those among them that lie in an open overlay.
  */
 async function smallTargets(page: Page): Promise<TargetResult> {
   return page.evaluate(selector => {
     const failures: string[] = [];
     const near: string[] = [];
-    const shown = (e: Element) => { const r = e.getBoundingClientRect(); const v = getComputedStyle(e); return r.width > 0 && r.height > 0 && v.visibility !== 'hidden'; };
+    let measured = 0;
+    let inside = 0;
+    // An overlay counts when a person can see it: not hidden, inert, transparent or outside the viewport.
+    const shown = (e: Element) => {
+      const r = e.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0 || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) return false;
+      if (e.closest('[aria-hidden="true"], [inert]')) return false;
+      for (let n: Element | null = e; n; n = n.parentElement) if (getComputedStyle(n).opacity === '0') return false;
+      return getComputedStyle(e).visibility !== 'hidden';
+    };
     const overlays = [...document.querySelectorAll('[role=menu], [role=dialog], dialog[open]')].filter(shown);
     for (const el of [...document.querySelectorAll<HTMLElement>(selector)]) {
       if (!el.isConnected || (el as HTMLButtonElement).disabled || el.closest('[inert]')) continue;
@@ -197,15 +208,20 @@ async function smallTargets(page: Page): Promise<TargetResult> {
       let lo = 0, hi = need + 10;
       if (takes(0)) for (let i = 0; i < 8; i++) { const mid = (lo + hi) / 2; if (takes(mid)) lo = mid; else hi = mid; }
       const extent = takes(0) ? 2 * lo + 2 : 0;
+      measured++;
+      if (overlays.some(o => o.contains(el))) inside++;
       const description = window.__a11y.describe(el);
       if (!passes) failures.push(`${description} (${need} px)`);
       if (Math.abs(extent - need) <= 2) near.push(`${description}: ${passes ? 'passes' : 'fails'} at about ${extent.toFixed(1)} px, needs ${need}`);
     }
-    return { failures, near };
+    return { failures, near, measured, inside, overlayOpen: overlays.length > 0 };
   }, CONTROLS);
 }
 
 interface FocusResult { failures: string[]; ratios: string[] }
+
+/** The most Tab stops a walk may take before it counts as a trap. */
+const MAX_STOPS = 200;
 
 /**
  * Tab stops that show no mark of at least 3:1: an outline, box-shadow or border colour gained on focus.
@@ -243,15 +259,20 @@ async function unmarkedStops(page: Page): Promise<FocusResult> {
     w.__stops.push({ el, on: chain.map(e => ({ el: e, snap: window.__a11y.snap(e) })) });
     return 'stop';
   });
-  for (let i = 0; i < 200; i++) {
+  let ended = 'cap';
+  for (let i = 0; i < MAX_STOPS; i++) {
     await page.keyboard.press('Tab');
     const result = await record();
     if (i === 0 && startAtTop !== null) {
       const first = await page.evaluate(() => window.__a11y.describe(document.activeElement));
       expect(first, 'the first Tab stop is the first control of the page').toBe(startAtTop);
     }
-    if (result !== 'stop') break;
+    if (result !== 'stop') { ended = result; break; }
   }
+  expect(await page.evaluate(() => (window as unknown as { __stops: unknown[] }).__stops.length), 'Tab stops walked').toBeGreaterThan(0);
+  // The walk ends when the focus wraps to the first stop or leaves the page after the last one (Chromium moves it to the
+  // browser and the body). Both mean no stop traps it. Only the cap means a trap.
+  expect(['wrapped', 'end'], `the Tab walk hit the cap of ${MAX_STOPS} stops: a trap`).toContain(ended);
   return page.evaluate(async () => {
     (document.activeElement as HTMLElement | null)?.blur();
     await window.__a11y.settled();
@@ -297,7 +318,9 @@ for (const state of STATES) {
 
     test('targets', async ({ page }) => {
       await prepare(page, state.id);
-      const { failures, near } = await smallTargets(page);
+      const { failures, near, measured, inside, overlayOpen } = await smallTargets(page);
+      expect(measured, 'controls measured').toBeGreaterThan(0);
+      if (overlayOpen) expect(inside, 'measured controls inside the open overlay').toBeGreaterThan(0);
       if (process.env.A11Y_NEAR) for (const line of near) console.log(`NEAR ${state.id}: ${line}`);
       judge('targets', state.id, counted(failures));
     });
