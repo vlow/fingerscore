@@ -144,7 +144,7 @@ File, then Download PDF, makes a PDF of the sheet. The Scales page has a Downloa
 
 ### Loading
 
-The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The code that loads at start (the entry chunk and the chunks it loads with it) stays at 400,000 bytes or less and holds no PDF code; `npm run check:bundle` checks both after a build.
+The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The code that loads at start (the entry chunk and the chunks it loads with it) stays at 410,000 bytes or less and holds no PDF code; `npm run check:bundle` checks both after a build.
 
 The PDF code and fonts load on the first click of Download PDF (see "PDF"). The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
 
@@ -242,7 +242,7 @@ npm run dev        # dev server on http://localhost:5173
 npm test           # unit tests (Vitest)
 npm run test:e2e   # end-to-end tests (Playwright), including the two suites under "Checks"
 npm run build      # type-check and build to dist/
-npm run check:bundle  # after a build: code loaded at start at most 400,000 bytes, no PDF library in it
+npm run check:bundle  # after a build: code loaded at start at most 410,000 bytes, no PDF library in it
 npm run demo       # regenerate the sample MIDI file
 npm run notices    # write third-party-packages.json, the list of packages in the build; add -- --check to compare without writing
 npm run check:release  # before publishing: build, bundle budget, package list, and the owner's details (see "Hosting")

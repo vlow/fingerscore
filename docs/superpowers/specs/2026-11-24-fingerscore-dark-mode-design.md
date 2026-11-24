@@ -103,6 +103,7 @@ Players practise at night and read from a stand or on stage. A white page glares
 ## 5. Constraints
 
 - No new dependency.
+- The start bundle limit rises from 400,000 to 410,000 bytes (owner's decision, 2026-11-24). Dark mode adds 7,810 bytes that must load at start; the start set is 405,378 bytes.
 - No stored document format changes.
 - The README's checks section lists the new spec file.
 

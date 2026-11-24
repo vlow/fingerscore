@@ -4,7 +4,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 
-const LIMIT = 400_000;
+// Raised from 400,000 for dark mode (24 Nov 2026, the owner's decision): theme switch, paper choice and palette load at start.
+const LIMIT = 410_000;
 // Strings that survive minification: jsPDF's error texts and property names, and svg2pdf.js's error text. The built PDF chunk holds all of them.
 const PDF_MARKERS = ['jsPDF', 'svg2pdf', 'Unsupported image URL'];
 // jsPDF imports html2canvas, dompurify and canvg only for doc.html() and addSvgAsImage, which the app never calls.
