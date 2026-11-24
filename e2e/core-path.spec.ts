@@ -65,11 +65,11 @@ test('core path: sample → track → sheet → instruments → alternate → pl
   expect(errors).toEqual([]);
 });
 
-test('no third-party requests', async ({ page }) => {
+test('no third-party requests', async ({ page, baseURL }) => {
   const foreign: string[] = [];
   page.on('request', r => {
     const u = r.url();
-    if (!u.startsWith('http://localhost:5173') && !u.startsWith('data:') && !u.startsWith('blob:')) foreign.push(u);
+    if (!u.startsWith(baseURL!) && !u.startsWith('data:') && !u.startsWith('blob:')) foreign.push(u);
   });
   await page.goto('/');
   await page.getByRole('button', { name: /Try a sample/ }).click();

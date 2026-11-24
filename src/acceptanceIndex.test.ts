@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 
-const FILE = 'e2e/acceptance.spec.ts';
-const WANTED = [
-  ...Array.from({ length: 12 }, (_, i) => `A${String(i + 1).padStart(2, '0')}`),
-  ...Array.from({ length: 10 }, (_, i) => `V${String(i + 1).padStart(2, '0')}`),
+const numbers = (letter: string, count: number) => Array.from({ length: count }, (_, i) => `${letter}${String(i + 1).padStart(2, '0')}`);
+/** Each acceptance file and the numbers it must hold: the handoff's 12 checks and version 2's 10; dark mode's 6. */
+const SUITES = [
+  { file: 'e2e/acceptance.spec.ts', wanted: [...numbers('A', 12), ...numbers('V', 10)] },
+  { file: 'e2e/dark-mode.spec.ts', wanted: numbers('D', 6) },
 ];
 /** Numbers whose check fails on the real app and is kept as `test.fixme`. Each one is written down in the task report. */
 const OPEN_DEFECTS: string[] = [];
@@ -17,29 +18,31 @@ function titles(source: string): string[] {
 function switchedOff(source: string, open: string[]): string[] {
   const found: string[] = [];
   for (const m of source.matchAll(/^\s*test(?:\.describe)?\.(skip|only|fixme)\(\s*(?:(['"`])((?:\\.|(?!\2).)*)\2)?/gm)) {
-    const number = /^([AV]\d{2}) /.exec(m[3] ?? '')?.[1];
+    const number = /^([ADV]\d{2}) /.exec(m[3] ?? '')?.[1];
     if (m[1] === 'fixme' && number !== undefined && open.includes(number)) continue;
     found.push(m[0].trim());
   }
   return found;
 }
 
-describe('acceptance suite numbering', () => {
-  const source = readFileSync(FILE, 'utf8');
+describe.each(SUITES)('acceptance suite numbering: $file', ({ file, wanted }) => {
+  const source = readFileSync(file, 'utf8');
   const found = titles(source);
 
-  it('has one test for each of A01–A12 and V01–V10, and no other test', () => {
-    expect(found.map(t => /^([AV]\d{2}) /.exec(t)?.[1] ?? `unnumbered: ${t}`).sort()).toEqual([...WANTED].sort());
+  it('has one test for each wanted number, and no other test', () => {
+    expect(found.map(t => /^([ADV]\d{2}) /.exec(t)?.[1] ?? `unnumbered: ${t}`).sort()).toEqual([...wanted].sort());
   });
 
   it('starts every title with its number and a space', () => {
-    for (const number of WANTED) expect(found.filter(t => t.startsWith(`${number} `)), number).toHaveLength(1);
+    for (const number of wanted) expect(found.filter(t => t.startsWith(`${number} `)), number).toHaveLength(1);
   });
 
   it('has no test.skip, test.only or test.fixme outside OPEN_DEFECTS', () => {
     expect(switchedOff(source, OPEN_DEFECTS)).toEqual([]);
   });
+});
 
+describe('acceptance suite numbering: the readers', () => {
   it('reads titles from test( calls, also from test.fixme(', () => {
     expect(titles("test('A01 one', async () => {});\n  test.fixme(\"V02 two\", () => {});\n// test('A03 no')")).toEqual(['A01 one', 'V02 two']);
   });

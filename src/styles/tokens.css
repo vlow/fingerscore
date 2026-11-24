@@ -119,6 +119,7 @@
 /*
  * Sheet paper themes (dark mode only). Dimmed is a light island: every token takes its light value, so the meta text,
  * borders, badges and the controls inside the paper stay readable on it.
+ * Its muted text is a step darker than the light theme's, which has 4.46:1 on this paper (AA asks for 4.5:1).
  */
 :root[data-theme="dark"] [data-paper="night"] {
   --c-paper: #1B1E23;
@@ -140,7 +141,7 @@
   --c-border-strong: #D5D8DE;
   --c-text: #15171C;
   --c-text-2: #2A2D33;
-  --c-muted: #5B616E;
+  --c-muted: #4A505C;
   --c-subtle: #9AA0AA;
   --c-accent: #0E6E68;
   --c-accent-hover: #0A4F4A;
@@ -196,7 +197,7 @@
     --c-border-strong: #D5D8DE;
     --c-text: #15171C;
     --c-text-2: #2A2D33;
-    --c-muted: #5B616E;
+    --c-muted: #4A505C;
     --c-subtle: #9AA0AA;
     --c-accent: #0E6E68;
     --c-accent-hover: #0A4F4A;
