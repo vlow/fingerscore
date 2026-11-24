@@ -46,6 +46,24 @@ export function stepZoom(zoom: number, dir: 1 | -1): number {
   return Math.max(ZOOM.min, Math.min(ZOOM.max, zoom + dir * ZOOM.step));
 }
 
+/** Space left and right of the paper in play mode, in CSS pixels (both sides together). */
+const SIDE_PAD = 24;
+
+/** The largest zoom (percent) at which the paper fits a scroller this wide; no limit while the width is unknown. */
+export function fitZoom(clientWidth: number): number {
+  return clientWidth > 0 ? ((clientWidth - SIDE_PAD) / SHEET.width) * 100 : Infinity;
+}
+
+/** The zoom on screen: the chosen one, or less when the screen is narrower than the paper at that size. */
+export function shownZoom(zoom: number, fit: number): number {
+  return Math.min(zoom, fit);
+}
+
+/** A− from the size on screen: the next size below it on the 25-step grid, never under the minimum. */
+export function zoomBelow(shown: number): number {
+  return Math.max(ZOOM.min, (Math.ceil(shown / ZOOM.step - 1e-9) - 1) * ZOOM.step);
+}
+
 function inRange(v: unknown, r: { min: number; max: number; initial: number }): number {
   return typeof v === 'number' && Number.isFinite(v) && v >= r.min && v <= r.max ? v : r.initial;
 }

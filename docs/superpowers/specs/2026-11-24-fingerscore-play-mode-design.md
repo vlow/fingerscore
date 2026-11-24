@@ -63,6 +63,7 @@ A player reads the sheet from a tablet on a music stand or from a laptop while p
 ### 4.5 Size, wake lock, preferences
 
 - **A−** / **A+** and keys **−** / **+** (also **=**) change the zoom by 25 points between 75% and 200%. Default 125%.
+- **Fit to width (deviation from §11a, the owner's decision):** the paper is never wider than the screen. The zoom on screen is the chosen zoom or `(scroller width − 24) / 940`, whichever is smaller; the chosen zoom stays stored. A+ is off at that limit; A− steps from the size on screen to the next size on the 25-step grid.
 - The Screen Wake Lock is requested on entry where the browser has it, requested again when the page becomes visible, and released on exit.
 - Zoom and speed factor are stored in `localStorage` under `fingerscore.playmode`. They are not part of the document or the undo history. Values outside the ranges fall back to the defaults.
 

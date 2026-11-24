@@ -1,6 +1,6 @@
 import { mkDoc, type BarSpec } from '../test/helpers';
 import {
-  beatsPerLine, clampSpeed, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget,
+  beatsPerLine, clampSpeed, fitZoom, shownZoom, zoomBelow, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget,
 } from './playMode';
 
 const bars = (n: number, ticks: number): BarSpec[] => Array.from({ length: n }, () => ({ ev: [[67, ticks]] }));
@@ -43,6 +43,23 @@ describe('play mode maths', () => {
     expect(stepZoom(125, 1)).toBe(150);
     expect(stepZoom(200, 1)).toBe(200);
     expect(stepZoom(75, -1)).toBe(75);
+  });
+
+  it('caps the zoom at the width of the screen', () => {
+    expect(fitZoom(964)).toBeCloseTo(100);        // 940 px of paper + 24 px of padding
+    expect(fitZoom(1024)).toBeCloseTo(106.38, 1);
+    expect(fitZoom(0)).toBe(Infinity);            // not measured yet: no cap
+    expect(shownZoom(125, fitZoom(1024))).toBeCloseTo(106.38, 1);
+    expect(shownZoom(100, fitZoom(1024))).toBe(100);
+    expect(shownZoom(125, Infinity)).toBe(125);
+  });
+
+  it('steps down from the size on screen to the next size on the grid', () => {
+    expect(zoomBelow(125)).toBe(100);
+    expect(zoomBelow(106.4)).toBe(100);
+    expect(zoomBelow(100)).toBe(75);
+    expect(zoomBelow(75)).toBe(75);
+    expect(zoomBelow(40)).toBe(75);
   });
 
   it('falls back to the defaults for stored values it cannot use', () => {

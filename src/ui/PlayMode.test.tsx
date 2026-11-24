@@ -184,6 +184,28 @@ describe('PlayMode', () => {
     expect(onExit).toHaveBeenCalledTimes(1);
   });
 
+  it('never shows the paper wider than the screen', async () => {
+    const user = userEvent.setup();
+    const { scroller, region } = open();
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 1024 });
+    fireEvent(window, new Event('resize'));
+    expect(Number(zoomOf())).toBeCloseTo(1000 / 940, 3);
+    const larger = screen.getByRole('button', { name: 'Larger' });
+    expect(larger).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.keyDown(region, { key: '+' });
+    expect(stored()).toBeNull();
+    // Smaller steps from what is on screen, to the next size on the grid.
+    await user.click(screen.getByRole('button', { name: 'Smaller' }));
+    expect(zoomOf()).toBe('1');
+    expect(stored()).toEqual({ zoom: 100, speed: 100 });
+    expect(larger).toHaveAttribute('aria-disabled', 'false');
+    // A wider screen shows the chosen size again.
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 1600 });
+    fireEvent(window, new Event('resize'));
+    fireEvent.keyDown(region, { key: '+' });
+    expect(zoomOf()).toBe('1.25');
+  });
+
   it('opens with the stored size and speed', () => {
     window.localStorage.setItem(KEY, JSON.stringify({ zoom: 175, speed: 60 }));
     open();

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.use({ viewport: { width: 1280, height: 800 } });
+test.use({ viewport: { width: 1600, height: 800 } });
 
 // SPEC §14 acceptance check 8 (play mode, §11a).
 test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ page }) => {
@@ -59,7 +59,7 @@ test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ p
 
   // The wheel scrolls the sheet at the screen edge too, and a click on the toolbar leaves the keys with play mode.
   await scroller.evaluate(el => { el.scrollTop = 0; });
-  await page.mouse.move(1240, 300);
+  await page.mouse.move(1560, 300);
   await page.mouse.wheel(0, 200);
   await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBe(200);
   await region.getByRole('button', { name: 'Previous page' }).click();
@@ -77,8 +77,18 @@ test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ p
   await page.getByRole('button', { name: 'Play mode' }).click();
   await expect(page.getByTestId('play-zoom')).toHaveCSS('zoom', '1.5');
 
+  // On a narrower screen the paper shrinks to fit: nothing is cut off at the right.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect.poll(async () => (await region.getByTestId('paper').boundingBox())!.width).toBeLessThanOrEqual(1024);
+  const box = (await region.getByTestId('paper').boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(1024);
+  expect(await scroller.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.setViewportSize({ width: 1600, height: 800 });
+  await expect(page.getByTestId('play-zoom')).toHaveCSS('zoom', '1.5');
+
   // A tap on the right edge turns the page.
-  await page.mouse.click(1240, 300);
+  await page.mouse.click(1560, 300);
   await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
   await region.getByRole('button', { name: 'Exit play mode (Esc)' }).click();
   await expect(region).toHaveCount(0);

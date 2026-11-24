@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { Derived } from '../domain/derive';
-import { SPEED, ZOOM, beatsPerLine, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget } from '../domain/playMode';
+import {
+  SPEED, ZOOM, beatsPerLine, fitZoom, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom, turnTarget, zoomBelow,
+} from '../domain/playMode';
 import type { Doc } from '../domain/types';
 import type { SheetLayout } from '../render/layout';
 import { Paper } from '../render/Paper';
@@ -65,13 +67,18 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   const [prefs, setPrefs] = useState(readPlayModePrefs);
   const [auto, setAuto] = useState(false);
   const [page, setPage] = useState({ n: 1, of: 1 });
+  // The paper is never wider than the screen: the chosen zoom is kept, a narrow screen shows less of it.
+  const [fit, setFit] = useState(Infinity);
+  const zoom = shownZoom(prefs.zoom, fit);
+  const canGrow = prefs.zoom < ZOOM.max && prefs.zoom < fit;
+  const canShrink = zoom > ZOOM.min;
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const beats = beatsPerLine(doc, layout.systems.length);
   // The running scroll reads its speed here, so the slider, the zoom and the tempo apply without a restart.
   const speedRef = useRef(0);
-  speedRef.current = scrollSpeed(beats, doc.tempo, prefs.speed, prefs.zoom);
+  speedRef.current = scrollSpeed(beats, doc.tempo, prefs.speed, zoom);
 
   useWakeLock();
 
@@ -85,12 +92,13 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   const measure = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
+    setFit(fitZoom(el.clientWidth));
     const next = { n: pageNumber(el.scrollTop, el.scrollHeight, el.clientHeight), of: pageCount(el.scrollHeight, el.clientHeight) };
     setPage(prev => (prev.n === next.n && prev.of === next.of ? prev : next));
   }, []);
 
   // The page count depends on the zoom, the sheet and the window.
-  useLayoutEffect(measure, [measure, prefs.zoom, layout]);
+  useLayoutEffect(measure, [measure, zoom, layout]);
   useEffect(() => {
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
@@ -168,6 +176,9 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     if (e.detail > 0) regionRef.current?.focus();
   }
 
+  function larger() { if (canGrow) change({ zoom: stepZoom(prefs.zoom, 1) }); }
+  function smaller() { if (canShrink) change({ zoom: zoomBelow(zoom) }); }
+
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === 'Escape') { e.preventDefault(); onExit(); return; }
     if (e.altKey || e.ctrlKey || e.metaKey) return;
@@ -188,8 +199,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
       case 'ArrowRight': case 'ArrowDown': case 'PageDown': turn(1); break;
       case 'ArrowLeft': case 'ArrowUp': case 'PageUp': turn(-1); break;
       case 'a': case 'A': setAuto(on => !on); break;
-      case '+': case '=': change({ zoom: stepZoom(prefs.zoom, 1) }); break;
-      case '-': case '−': change({ zoom: stepZoom(prefs.zoom, -1) }); break;
+      case '+': case '=': larger(); break;
+      case '-': case '−': smaller(); break;
       default: return;
     }
     e.preventDefault();
@@ -200,7 +211,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
       <div ref={scrollerRef} data-testid="play-scroller" className={s.scroller} onScroll={onScroll}
         onWheel={() => { goingTo.current = null; }} onTouchMove={() => { goingTo.current = null; }} onClick={onTap}>
         <div className={s.pad}>
-          <div data-testid="play-zoom" className={s.zoomed} style={{ zoom: prefs.zoom / 100 }}>
+          <div data-testid="play-zoom" className={s.zoomed} style={{ zoom: zoom / 100 }}>
             <Paper doc={doc} derived={derived} layout={layout} playingId={null} readOnly />
           </div>
         </div>
@@ -231,10 +242,10 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
           <span className={s.readout}>{speedLabel(beats, doc.tempo, prefs.speed)}</span>
         </label>
         <span aria-hidden="true" className={s.rule} />
-        <button type="button" className={s.btn} aria-label="Smaller" title="Smaller (−)" aria-disabled={prefs.zoom <= ZOOM.min}
-          onClick={() => change({ zoom: stepZoom(prefs.zoom, -1) })}>A−</button>
-        <button type="button" className={s.btn} aria-label="Larger" title="Larger (+)" aria-disabled={prefs.zoom >= ZOOM.max}
-          onClick={() => change({ zoom: stepZoom(prefs.zoom, 1) })}>A+</button>
+        <button type="button" className={s.btn} aria-label="Smaller" title="Smaller (−)" aria-disabled={!canShrink}
+          onClick={smaller}>A−</button>
+        <button type="button" className={s.btn} aria-label="Larger" title="Larger (+)" aria-disabled={!canGrow}
+          onClick={larger}>A+</button>
       </div>
     </div>,
     document.body,
