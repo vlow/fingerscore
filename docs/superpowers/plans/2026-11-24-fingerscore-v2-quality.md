@@ -21,6 +21,7 @@
 - Scan rule sets: axe tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`. End state: zero findings. An exclusion covers one rule on one selector and carries a written reason.
 - Target sizes: 36 × 36 px for every control, 44 × 44 px for primary actions and the header navigation, measured on the area that takes the click. A link inside a sentence is exempt. A note on the paper: at least 24 px high.
 - Every new test is shown failing once (on the defect it guards or on a deliberate break) and the report holds that output.
+- The CI pipeline (`.github/workflows/ci.yml`) runs on Ubuntu with Node 24 for every pushed branch: `npm ci --ignore-scripts`, build, `check:bundle`, `notices -- --check`, `npm test`, `npm test -- --coverage`, both end-to-end suites, then Trivy (HIGH and CRITICAL vulnerabilities fail) and the SonarCloud quality gate. Therefore: a new dependency must install without lifecycle scripts and have no known HIGH or CRITICAL vulnerability; no test may depend on macOS font rendering or on a screenshot comparison; a unit test with a wall-clock budget skips the budget when `instrumented` (`src/test/timing.ts`) is true; code added under `src` comes with unit tests, because the quality gate measures coverage of new code; pictures and reports are never written into the repository.
 - Chromium only. TypeScript: no `Array.prototype.at`. Do not stop a server on port 5173. Commit messages end with `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`.
 
 ## Review Focus
