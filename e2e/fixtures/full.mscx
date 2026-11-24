@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<museScore version="4.00">
+<Score>
+<metaTag name="workTitle">Morning Steps</metaTag>
+<Part><Staff id="1"><StaffType group="pitched"/></Staff><trackName>Flute</trackName><Instrument id="flute"><longName>Flute</longName><trackName>Flute</trackName></Instrument></Part>
+<Staff id="1">
+<Measure><voice><KeySig><concertKey>2</concertKey></KeySig><TimeSig><sigN>3</sigN><sigD>4</sigD></TimeSig><Tempo><tempo>1.5</tempo></Tempo><Harmony><harmonyInfo><root>16</root></harmonyInfo></Harmony><Chord><durationType>quarter</durationType><Lyrics><text>Sun</text></Lyrics><Note><pitch>62</pitch></Note></Chord><Chord><durationType>quarter</durationType><Lyrics><syllabic>begin</syllabic><text>ris</text></Lyrics><Note><pitch>66</pitch></Note></Chord><Chord><durationType>quarter</durationType><Lyrics><syllabic>end</syllabic><text>ing</text></Lyrics><Note><pitch>69</pitch></Note></Chord></voice></Measure>
+<Measure><voice><Chord><durationType>quarter</durationType><Note><pitch>69</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>67</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>66</pitch></Note></Chord></voice></Measure>
+<Measure><voice><Harmony><harmonyInfo><root>15</root></harmonyInfo></Harmony><Chord><durationType>quarter</durationType><Lyrics><text>gold</text></Lyrics><Note><pitch>64</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>67</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>71</pitch></Note></Chord></voice></Measure>
+<Measure><voice><Chord><dots>1</dots><durationType>half</durationType><Note><pitch>69</pitch></Note></Chord></voice></Measure>
+<Measure><voice><Chord><durationType>quarter</durationType><Note><pitch>66</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>69</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>74</pitch></Note></Chord></voice></Measure>
+<Measure><voice><Harmony><harmonyInfo><root>17</root><name>7</name></harmonyInfo></Harmony><Chord><durationType>quarter</durationType><Note><pitch>73</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>71</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>69</pitch></Note></Chord></voice></Measure>
+<Measure><voice><Chord><durationType>quarter</durationType><Note><pitch>71</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>67</pitch></Note></Chord><Chord><durationType>quarter</durationType><Note><pitch>64</pitch></Note></Chord></voice></Measure>
+<Measure><voice><Chord><dots>1</dots><durationType>half</durationType><Note><pitch>62</pitch></Note></Chord></voice></Measure>
+</Staff>
+</Score>
+</museScore>
