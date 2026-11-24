@@ -366,6 +366,7 @@ describe('save and the File menu', () => {
       open('asax');
       await openMenu();
       expect(pdfItem().className).toMatch(/primary/);
+      expect(pdfItem()).toHaveAttribute('data-primary');
       await user.click(pdfItem());
       expect(requestSheetPdf).toHaveBeenCalledTimes(1);
       expect(vi.mocked(requestSheetPdf).mock.calls[0][0]).toEqual(doc);

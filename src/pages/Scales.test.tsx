@@ -381,6 +381,8 @@ describe('Download PDF', () => {
     renderScales();
     expect(pdfButton()).toHaveTextContent('Download PDF');
     expect(pdfButton().className).toMatch(/primary/);
+    expect(pdfButton()).toHaveAttribute('data-primary');
+    expect(screen.getByRole('button', { name: 'Print' })).not.toHaveAttribute('data-primary');
     expect(screen.getByRole('button', { name: 'Print' }).className).not.toMatch(/primary/);
     expect(screen.queryByRole('alert')).toBeNull();
   });

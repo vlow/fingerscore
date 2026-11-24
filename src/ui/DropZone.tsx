@@ -153,7 +153,7 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
           </div>
           <p className={s.result} role="status">{state.file} — Ready — next you pick the part to play.</p>
           <div className={s.actions}>
-            <button type="button" className={s.primary} onClick={onContinue}>Continue →</button>
+            <button type="button" className={s.primary} data-primary="" onClick={onContinue}>Continue →</button>
             <button type="button" className={s.secondary} onClick={reset}>Choose another file</button>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
         <div className={s.content}>
           <p className={s.result} role="status">✓ "{state.entry.title}" added to your sheets</p>
           <div className={s.actions}>
-            <Link to={`/sheet?id=${encodeURIComponent(state.entry.id)}`} className={s.primary}>Open sheet →</Link>
+            <Link to={`/sheet?id=${encodeURIComponent(state.entry.id)}`} className={s.primary} data-primary="">Open sheet →</Link>
             <button type="button" className={s.secondary} onClick={reset}>Add another</button>
           </div>
         </div>
@@ -171,7 +171,7 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
         <div className={s.content}>
           <p className={s.result} role="status">✓ {state.message}</p>
           <div className={s.actions}>
-            <button type="button" className={s.primary} onClick={() => { reset(); onShowLibrary?.(); }}>Show library</button>
+            <button type="button" className={s.primary} data-primary="" onClick={() => { reset(); onShowLibrary?.(); }}>Show library</button>
             <button type="button" className={s.secondary} onClick={reset}>Add another</button>
           </div>
         </div>
@@ -180,7 +180,7 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
         <div className={s.content}>
           <p className={s.result} role="status">✓ "{state.title}" opened — it could not be saved in this browser.</p>
           <div className={s.actions}>
-            <Link to="/sheet" className={s.primary}>Open sheet →</Link>
+            <Link to="/sheet" className={s.primary} data-primary="">Open sheet →</Link>
             <button type="button" className={s.secondary} onClick={reset}>Add another</button>
           </div>
           <p className={s.error} role="alert">{state.message}</p>

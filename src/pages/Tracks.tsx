@@ -245,7 +245,7 @@ function TrackChooser({ song }: { song: ParsedSong }) {
 
             {error && <p role="alert" className={s.error}>{error}</p>}
 
-            <button type="button" className={s.cta} onClick={make} disabled={!selected.usable}>
+            <button type="button" className={s.cta} data-primary="" onClick={make} disabled={!selected.usable}>
               Make the sheet from {selected.track.name}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 12h14" /><path d="M13 6l6 6-6 6" />

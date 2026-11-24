@@ -127,7 +127,7 @@ export default function FileMenu(p: Props) {
       {open && (
         <div ref={menuRef} id={menuId} role="menu" aria-label="File" tabIndex={-1} className={s.menu} onKeyDown={onMenuKey}>
           <div role="group" aria-label="File actions" className={s.actions}>
-            <button type="button" role="menuitem" tabIndex={-1} className={`${s.action} ${s.primary}`} disabled={p.pdfBusy} onClick={choose(p.onPdf)}>
+            <button type="button" role="menuitem" tabIndex={-1} className={`${s.action} ${s.primary}`} data-primary="" disabled={p.pdfBusy} onClick={choose(p.onPdf)}>
               <Icon d={DOWN} />{p.pdfBusy ? 'Preparing PDF…' : 'Download PDF'}
             </button>
             <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(p.onPrint)}>

@@ -34,7 +34,7 @@ export default function BulkCard({ doc, selectedId, onEdit }: Props) {
       <label htmlFor={fieldId} className={s.label}>Type or paste a verse</label>
       <textarea ref={verseRef} id={fieldId} rows={4} className={s.verse} value={verse} data-native-undo="" onChange={e => setVerse(e.target.value)} />
       <div className={s.row}>
-        <button type="button" className={s.primary} disabled={verse.trim() === ''}
+        <button type="button" className={s.primary} data-primary="" disabled={verse.trim() === ''}
           onClick={() => onEdit(fillLyrics(doc, verse, selectedId))}>Fill lyrics</button>
         <button type="button" className={s.button} disabled={clearLyrics(doc) === null} onClick={() => run(clearLyrics(doc))}>
           Clear lyrics
