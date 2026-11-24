@@ -17,6 +17,9 @@
 }
 
 .textButton {
+  composes: square from '../styles/hit.module.css';
+  /* "All 1" is 31 px wide: the click area reaches 3 px past the box on each side. */
+  --hit-inset: 0 -3px;
   min-height: 36px;
   padding: 0 4px;
   border: none;
@@ -184,6 +187,7 @@
 }
 
 .bin {
+  composes: square from '../styles/hit.module.css';
   display: flex;
   flex: none;
   align-items: center;
@@ -322,6 +326,8 @@
 }
 
 .chip {
+  composes: square from '../styles/hit.module.css';
+  --hit-inset: -1px;
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid var(--border-2);

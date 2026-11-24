@@ -1,16 +1,22 @@
 /** The width of an alternate-fingering pill in px. */
 export const PILL_WIDTH = 26;
 
+/**
+ * The room one pill takes along the staff: its 36 px click area (see AltPill.module.css). The pill is drawn 26 px wide;
+ * pills closer than 36 px would let the later one take the clicks on the earlier one's edge.
+ */
+export const PILL_SPACING = 36;
+
 /** A note draws a pill when it has more than one fingering. The pill and the spacing of pills share this. */
 export const hasPill = (ev: { options: readonly unknown[] }): boolean => ev.options.length >= 2;
 
 /**
  * Whole-pixel centres for the pills under the charts at `xs` (ascending), no closer than `gap`, none outside 0..`width`.
- * Notes can sit 20 px apart and a pill is 26 px wide, so neighbouring pills would cover each other and their click areas
- * overlap. A run of pills that are too close moves apart around the middle of its notes, so no pill drifts further than
+ * Notes can sit 20 px apart and a pill takes 36 px of click area, so neighbouring pills would overlap.
+ * A run of pills that are too close moves apart around the middle of its notes, so no pill drifts further than
  * the run needs; at an edge the run stops at the edge and spreads the other way.
  */
-export function spreadPills(xs: readonly number[], width: number, gap: number = PILL_WIDTH): number[] {
+export function spreadPills(xs: readonly number[], width: number, gap: number = PILL_SPACING): number[] {
   const lo = gap / 2;
   const hi = width - gap / 2;
   // Too many pills for the room: they share it evenly, closer than the gap, in order and inside the bounds.

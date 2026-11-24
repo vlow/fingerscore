@@ -82,8 +82,9 @@
   content: attr(data-glyph);
 }
 
+/* The light mint of the buttons has 1.6:1 against this grey. */
 .scroller:focus-visible {
-  outline: 3px solid #5fd3c6;
+  outline: 3px solid var(--teal);
   outline-offset: -3px;
 }
 
@@ -124,6 +125,8 @@
 
 .slider {
   width: 110px;
+  /* The native control is 16 px high; its click area is 36 px. */
+  height: 36px;
   accent-color: #5fd3c6;
 }
 

@@ -112,17 +112,26 @@ body {
 .footer-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  /* 20 px between rows: each link takes a click area 36 px high around its 16 px of text. */
+  gap: 20px 16px;
   margin-left: auto;
 }
 
 .footer-links a {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   white-space: nowrap;
   color: var(--muted);
   text-decoration: underline;
+}
+
+/* The click area: 36 px high, 8 px wider than the text on each side (the gap between links is 16 px). */
+.footer-links a::after {
+  content: '';
+  position: absolute;
+  inset: -10px -8px;
 }
 
 .footer-links svg {

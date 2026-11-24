@@ -53,7 +53,7 @@ export function useSelection(doc: Doc, derived: Derived) {
     scrollToSelection.current = byKeyboard && id !== null;
     if (id === null) { setAnnouncement('Selection cleared'); return; }
     const ev = derived.byId[id];
-    setAnnouncement(`Selected: ${ev.rest ? 'rest' : ev.spelled.name}, ${barLabel(ev)}`);
+    setAnnouncement(`Selected: ${ev.rest ? 'rest' : ev.spelled.name}, ${lengthName(ev.d)}, ${barLabel(ev)}`);
   }
 
   useEffect(() => {

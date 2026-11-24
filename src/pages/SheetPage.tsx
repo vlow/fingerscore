@@ -29,6 +29,7 @@ import Toggle from './sheet/Toggle';
 import { useAltFingering } from './sheet/useAltFingering';
 import { preloadPanel, useEditPanelSlot } from './sheet/useEditPanelSlot';
 import { useFileActions } from './sheet/useFileActions';
+import { paperDescription } from './sheet/paperDescription';
 import { usePlayback } from './sheet/usePlayback';
 import { useSelection } from './sheet/useSelection';
 import { useSheetKeys } from './sheet/useSheetKeys';
@@ -209,7 +210,7 @@ function Sheet({ doc }: { doc: Doc }) {
             {doc.source.simplified && <p className={s.notice}>{SIMPLIFIED}</p>}
           </Card>
 
-          <Card heading={<label htmlFor="inst" className={s.cardTitle}>Fingerings for</label>}>
+          <Card heading={<label htmlFor="inst" className={`${s.cardTitle} ${s.cardLabel}`}>Fingerings for</label>}>
             <select id="inst" className={s.select} value={doc.inst} onChange={e => setInstrument(e.target.value as Doc['inst'])}>
               {FAMILIES.map(f => (
                 <optgroup key={f} label={f}>
@@ -274,8 +275,9 @@ function Sheet({ doc }: { doc: Doc }) {
           </div>
           {/* Focusable on purpose: a scrolling area must be reachable by keyboard, and the sheet keys act from here. */}
           <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL} // NOSONAR typescript:S6845
-            onKeyDown={onSheetKey}>
-            <p className={s.srOnly} aria-live="polite">{announcement}</p>
+            aria-describedby="sheet-description" onKeyDown={onSheetKey}>
+            <p id="sheet-description" className={s.srOnly}>{paperDescription(doc, derived)}</p>
+            <p role="status" className={s.srOnly} aria-live="polite">{announcement}</p>
             <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}
               selectedId={selectedId} onSelect={id => select(id)}
               onTitle={title => patchDoc({ title }, 'title')} onSubtitle={subtitle => patchDoc({ subtitle }, 'subtitle')}

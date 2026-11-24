@@ -1,0 +1,15 @@
+/*
+ * Squares off the click area of a rounded control without changing what is drawn. The corners of a 36 px box with a
+ * rounded border take no click; an invisible square layer over the box does. The layer sits inside the border, so a
+ * control with a 1 px border sets `--hit-inset: -1px`. A larger negative value reaches into the space around the
+ * control: use it only where the neighbours leave that room.
+ */
+.square {
+  position: relative;
+}
+
+.square::after {
+  content: '';
+  position: absolute;
+  inset: var(--hit-inset, 0);
+}

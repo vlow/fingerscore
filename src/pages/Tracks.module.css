@@ -193,6 +193,8 @@
 }
 
 .play {
+  composes: square from '../styles/hit.module.css';
+  --hit-inset: -1px;
   display: flex;
   flex: none;
   align-items: center;

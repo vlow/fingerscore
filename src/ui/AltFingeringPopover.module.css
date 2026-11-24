@@ -2,6 +2,8 @@
 .pop {
   position: absolute;
   z-index: 20;
+  /* Never wider than the screen: a popover of 4 options is 360 px wide and its options wrap into rows on 320 px. */
+  max-width: calc(100vw - 16px);
   padding: 10px 12px 12px;
   border: 1px solid var(--border-2);
   border-radius: 12px;
@@ -27,8 +29,10 @@
   font-weight: 500;
 }
 
+/* A popover with many options is wider than a 320 px screen: the options wrap into rows. */
 .options {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

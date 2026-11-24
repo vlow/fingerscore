@@ -39,6 +39,8 @@
 }
 
 .symb {
+  composes: square from '../styles/hit.module.css';
+  --hit-inset: -1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

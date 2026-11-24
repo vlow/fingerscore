@@ -37,6 +37,9 @@
 }
 
 .chipLink {
+  composes: square from '../styles/hit.module.css';
+  /* The link is 24 px high; its click area is 36 px high, inside the chip's padding. */
+  --hit-inset: -6px 0;
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -118,6 +121,13 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* The label of the instrument select: its click area is as wide as the card and reaches down over the card's 12 px gap to the select. */
+.cardLabel {
+  flex: 1;
+  padding-bottom: 12px;
+  margin-bottom: -12px;
 }
 
 .badge {

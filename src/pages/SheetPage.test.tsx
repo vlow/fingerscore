@@ -7,7 +7,7 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
-import { addBarAfter, locate, setLength, shiftPitch, toggleRest, toggleTriplet } from '../domain/edit';
+import { addBarAfter, lengthName, locate, setLength, shiftPitch, toggleRest, toggleTriplet } from '../domain/edit';
 import { setChord } from '../domain/editText';
 import { inst } from '../domain/instruments';
 import { mod12, signatureLetters } from '../domain/keys';
@@ -763,6 +763,7 @@ describe('playback', () => {
 describe('select a note and play from there', () => {
   const doc = sampleDoc('asax');
   const name = (id: string) => derive(doc, DEFAULT_PREFS).byId[id].spelled.name;
+  const length = (id: string) => lengthName(derive(doc, DEFAULT_PREFS).byId[id].d);
   const hit = (id: string) => document.querySelector(`[data-hit="${id}"]`)!;
   const selected = () => document.querySelector('[data-selected="true"]')?.getAttribute('data-ev') ?? null;
   const sheet = () => screen.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter listens from it.' });
@@ -781,17 +782,26 @@ describe('select a note and play from there', () => {
     await user.click(hit(afterChain));
     expect(selected()).toBe(afterChain);
     expect(screen.getByRole('button', { name: 'Listen from selected' })).toBeInTheDocument();
-    expect(live()).toHaveTextContent(`Selected: ${name(afterChain)}, bar 2`);
+    expect(live()).toHaveTextContent(`Selected: ${name(afterChain)}, ${length(afterChain)}, bar 2`);
     await user.click(hit(afterChain));
     expect(selected()).toBeNull();
     expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
     expect(live()).toHaveTextContent('Selection cleared');
   });
 
+  it('a selected rest is announced with its length', async () => {
+    const restDoc = toggleRest(doc, afterChain)!;
+    open('asax', { score: restDoc.score });
+    await user.click(hit(afterChain));
+    const rest = derive(restDoc, DEFAULT_PREFS).byId[afterChain];
+    expect(rest.rest).toBe(true);
+    expect(live()).toHaveTextContent(`Selected: rest, ${lengthName(rest.d)}, bar 2`);
+  });
+
   it('the pickup is announced as the pickup bar', async () => {
     open('asax');
     await user.click(hit(doc.score[0].ev[0].id));
-    expect(live()).toHaveTextContent(`Selected: ${name(doc.score[0].ev[0].id)}, pickup bar`);
+    expect(live()).toHaveTextContent(`Selected: ${name(doc.score[0].ev[0].id)}, ${length(doc.score[0].ev[0].id)}, pickup bar`);
   });
 
   it('Play from selected plays a sliced schedule; the selection stays after Stop', async () => {

@@ -1,38 +1,24 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
-import { BASELINE_FILE, beyondBaseline, keyOf, staleBaseline, type AxeFinding, type Found, type Kind } from './a11yBaseline';
-import { STATES } from './states';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openState, STATES } from './states';
 
 /**
- * Accessibility scan and two measured checks (target size, visible focus) over the named states.
- * While the app has findings, they are listed in a11y-baseline.json and the tests fail only on a finding beyond it
- * or on an entry that no longer applies. A11Y_WRITE_BASELINE=1 rewrites the file from the current findings.
- * A11Y_SHOTS=<folder> saves a full-page picture of each state as <folder>/<id>.png.
+ * Accessibility scan and two measured checks (target size, visible focus) over the named states; each requires zero
+ * findings beyond EXCLUSIONS. A11Y_SHOTS=<folder> saves a full-page picture of each state as <folder>/<id>.png.
  */
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
-const WRITE = process.env.A11Y_WRITE_BASELINE === '1';
 const SHOTS = process.env.A11Y_SHOTS;
 
 /** An exclusion covers one rule on one element of one state and carries its reason. src/a11yExclusions.test.ts pins the count. None is in use. */
 export const EXCLUSIONS: { state: string; rule: string; target: string; reason: string }[] = [];
 
-const written: Record<Kind, Record<string, Found[]>> = { axe: {}, targets: {}, focus: {} };
+interface AxeFinding { rule: string; target: string }
 
-test.afterAll(() => {
-  if (!WRITE) return;
-  const sorted = (list: Found[]) => [...new Map(list.map(f => [keyOf(f), f])).entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, f]) => f);
-  const out = Object.fromEntries((Object.keys(written) as Kind[]).map(kind => [kind,
-    Object.fromEntries(Object.entries(written[kind]).filter(([, list]) => list.length > 0).map(([id, list]) => [id, sorted(list)]))]));
-  writeFileSync(BASELINE_FILE, JSON.stringify(out, null, 2) + '\n');
-});
-
-/** Compares the findings with the baseline, or records them in write mode. */
-function judge(kind: Kind, stateId: string, found: Found[]) {
-  if (WRITE) { written[kind][stateId] = found; return; }
-  expect(beyondBaseline(kind, stateId, found), `${kind} findings beyond the baseline in ${stateId}`).toEqual([]);
-  expect(staleBaseline(kind, stateId, found), `${kind} baseline entries no longer found in ${stateId}`).toEqual([]);
+/** The findings of one check in one state; none is allowed. */
+function judge(kind: 'axe' | 'targets' | 'focus', stateId: string, found: (AxeFinding | string)[]) {
+  expect(found, `${kind} findings in ${stateId}`).toEqual([]);
 }
 
 /** Page-side helpers, plain JavaScript so no compiler adds helpers to it. Descriptions use role, name and text only. */
@@ -192,7 +178,8 @@ async function smallTargets(page: Page): Promise<TargetResult> {
       if (boxes().length === 0 || el.getBoundingClientRect().width === 0) continue;
       const outside = () => boxes().some(r => r.bottom < 0 || r.top < 0 || r.bottom > innerHeight || r.right < 0 || r.left < 0 || r.right > innerWidth);
       if (outside()) {
-        el.scrollIntoView({ block: 'center', inline: 'center' });
+        // Centre it vertically; scroll sideways only as far as needed, so that a scrolled container does not clip its neighbours.
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
         if (!el.isConnected) continue;
       }
       const rects = boxes();
@@ -333,3 +320,316 @@ for (const state of STATES) {
     });
   });
 }
+
+const SHEET_LABEL = 'Sheet music. Arrow keys select a note, Enter listens from it.';
+const sheetGroup = (page: Page) => page.getByRole('group', { name: SHEET_LABEL });
+const modeRadio = (page: Page, name: 'View' | 'Edit notes' | 'Lyrics' | 'Chords') =>
+  page.getByRole('radiogroup', { name: 'Mode' }).getByRole('radio', { name });
+const polite = (page: Page) => sheetGroup(page).locator('[aria-live=polite]');
+
+/** The most Tab presses `tabTo` makes before it gives up. */
+const MAX_PRESSES = 200;
+
+/** Presses Tab (or Shift+Tab) until `target` has the focus, so the test also proves that the keyboard reaches it. */
+async function tabTo(page: Page, target: Locator, key: 'Tab' | 'Shift+Tab' = 'Tab') {
+  const here = () => target.first().evaluate(el => el === document.activeElement, undefined, { timeout: 500 }).catch(() => false);
+  for (let i = 0; i < MAX_PRESSES && !(await here()); i++) await page.keyboard.press(key);
+  await expect(target.first(), `${key} reaches the control`).toBeFocused();
+}
+
+/** The notes and lengths of the sheet as the drawing shows them: the pitch height of each head, the head, dots, flags and rest. */
+async function notesAndLengths(page: Page): Promise<string[]> {
+  return page.locator('[data-ev]').evaluateAll(groups => groups.map(g => {
+    const head = g.querySelector('[data-head]');
+    return [g.getAttribute('data-ev'), head ? `${head.getAttribute('data-head')}@${head.getAttribute('cy')}` : `rest:${g.querySelector('[data-rest]')?.getAttribute('data-rest')}`,
+      `dots:${g.querySelectorAll('[data-dot]').length}`, `flags:${g.querySelectorAll('[data-flag]').length}`, `tied:${g.hasAttribute('data-tied')}`].join(' ');
+  }));
+}
+
+test('keyboard only: from the instrument to play mode without a mouse', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/');
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+  await page.goto('/');
+
+  // Choose an instrument, open the sample, make the sheet.
+  const tenor = page.getByRole('radio', { name: /^Tenor/ });
+  await tabTo(page, tenor);
+  await page.keyboard.press('Space');
+  await expect(tenor).toHaveAttribute('aria-checked', 'true');
+  await tabTo(page, page.getByRole('button', { name: /Try a sample/ }));
+  await page.keyboard.press('Enter');
+  await tabTo(page, page.getByRole('button', { name: /Make the sheet from/ }));
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('system').first()).toBeVisible();
+
+  // Edit notes: select the first note with the arrow keys and raise it by a semitone.
+  await tabTo(page, modeRadio(page, 'View'));
+  await page.keyboard.press('ArrowRight');
+  await expect(modeRadio(page, 'Edit notes')).toHaveAttribute('aria-checked', 'true');
+  await tabTo(page, sheetGroup(page));
+  await page.keyboard.press('ArrowRight');
+  await expect(polite(page)).toHaveText(/^Selected: /);
+  const before = await polite(page).textContent();
+  await page.keyboard.press('ArrowUp');
+  await expect(polite(page)).not.toHaveText(before!);
+  const edited = await notesAndLengths(page);
+
+  // Lyrics: Tab from the sheet enters the Lyric field; the letters go into the field and edit no note.
+  await tabTo(page, modeRadio(page, 'Edit notes'), 'Shift+Tab');
+  await page.keyboard.press('ArrowRight');
+  await expect(modeRadio(page, 'Lyrics')).toHaveAttribute('aria-checked', 'true');
+  await tabTo(page, sheetGroup(page));
+  await page.keyboard.press('Tab');
+  const lyric = page.getByRole('textbox', { name: 'Lyric' });
+  await expect(lyric).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('Bag ace');
+  await expect(lyric).toHaveValue('Bag ace');
+
+  // Chords.
+  await tabTo(page, modeRadio(page, 'Lyrics'), 'Shift+Tab');
+  await page.keyboard.press('ArrowRight');
+  await expect(modeRadio(page, 'Chords')).toHaveAttribute('aria-checked', 'true');
+  await tabTo(page, sheetGroup(page));
+  await page.keyboard.press('Tab');
+  const chord = page.getByRole('textbox', { name: 'Chord' });
+  await expect(chord).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('Cage');
+  await expect(chord).toHaveValue('Cage');
+  expect(await notesAndLengths(page), 'typing in the fields changed no note or length').toEqual(edited);
+
+  // Shift+Tab leaves the field for the sheet and Esc clears the selection, so Tab goes on to the pills under the charts.
+  await page.keyboard.press('Shift+Tab');
+  await expect(sheetGroup(page)).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(polite(page)).toHaveText('Selection cleared');
+
+  // Esc on the alternate-fingering popover returns the focus to its pill.
+  const pill = page.getByRole('button', { name: /^⇅ \d+ alternate fingerings for / }).first();
+  await tabTo(page, pill);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(pill).toBeFocused();
+
+  // Save, then the File menu: Esc returns the focus to File; Download JSON starts a download.
+  await tabTo(page, page.getByRole('button', { name: 'Save', exact: true }), 'Shift+Tab');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
+  const file = page.getByRole('button', { name: /^File/ });
+  await tabTo(page, file);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menu', { name: 'File' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu', { name: 'File' })).toHaveCount(0);
+  await expect(file).toBeFocused();
+  await page.keyboard.press('Enter');
+  const json = page.getByRole('menuitem', { name: 'Download JSON' });
+  for (let i = 0; i < 6 && !(await json.evaluate(el => el === document.activeElement)); i++) await page.keyboard.press('ArrowDown');
+  await expect(json).toBeFocused();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
+  expect(download.suggestedFilename()).toMatch(/\.json$/);
+
+  // Play mode and back.
+  const play = page.getByRole('button', { name: 'Play mode' });
+  await tabTo(page, play);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('region', { name: 'Play mode' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('region', { name: 'Play mode' })).toHaveCount(0);
+  await expect(play).toBeFocused();
+});
+
+test('announcements: refusals are alerts, save status and the live line are status regions', async ({ page }) => {
+  await openState(page, 'start-refusal');
+  await expect(page.getByRole('alert').filter({ hasText: 'is not a format fingerscore reads' })).toBeVisible();
+
+  await openState(page, 'sheet-view');
+  await expect(page.getByRole('status').filter({ hasText: /^Not saved yet$/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
+  // The live line of the paper carries the selection and PDF progress; it is a status region.
+  await expect(polite(page)).toHaveAttribute('role', 'status');
+
+  // A PDF that cannot show a character is an error: an alert, not a status.
+  await openState(page, 'sheet-pdf-message');
+  await expect(page.getByRole('alert').filter({ hasText: "The PDF can't show these characters" })).toBeVisible();
+});
+
+test('announcements: selecting a note says its pitch, length and bar', async ({ page }) => {
+  await openState(page, 'sheet-view');
+  await modeRadio(page, 'Edit notes').click();
+  const panel = page.getByRole('group', { name: 'Edit notes panel' });
+  const hits = page.locator('[data-hit]');
+  // The length in the words of the note panel: its pressed length button, "Dotted" in front when that is pressed.
+  for (const k of [1, 6, 11]) {
+    await hits.nth(k).click();
+    const line = (await polite(page).textContent())!;
+    const length = ['Sixteenth', 'Eighth', 'Quarter', 'Half', 'Whole'];
+    let base = '';
+    for (const name of length) if ((await panel.getByRole('button', { name, exact: true }).getAttribute('aria-pressed')) === 'true') base = name.toLowerCase();
+    const dotted = (await panel.getByRole('button', { name: 'Dotted' }).getAttribute('aria-pressed')) === 'true';
+    expect(base, 'one length button is pressed').not.toBe('');
+    expect(line).toMatch(new RegExp(`^Selected: (rest|[A-G][♭♯]?\\d), ${dotted ? 'dotted ' : ''}${base}, (bar \\d+|pickup bar)$`));
+  }
+});
+
+test('paper description: the name stays, the description names the title, instrument and key and follows the title', async ({ page }) => {
+  await openState(page, 'sheet-view');
+  const paper = sheetGroup(page);
+  await expect(paper).toHaveAccessibleName(SHEET_LABEL);
+  const title = page.getByRole('textbox', { name: 'Sheet title' });
+  const selected = (select: Locator) => select.evaluate(el => (el as HTMLSelectElement).selectedOptions[0].text);
+  const instrument = await selected(page.locator('#inst'));
+  const key = await selected(page.getByRole('combobox', { name: /^You read/ }));
+  const written = await title.inputValue();
+  await expect(paper).toHaveAccessibleDescription(new RegExp(`${written.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  await expect(paper).toHaveAccessibleDescription(new RegExp(instrument.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  await expect(paper).toHaveAccessibleDescription(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  await title.fill('A new title');
+  await expect(paper).toHaveAccessibleDescription(/^A new title\./);
+  await expect(paper).toHaveAccessibleName(SHEET_LABEL);
+});
+
+test.describe('reduced motion', () => {
+  /** Presses PageDown in play mode and reports how far the scroller moved after one frame, and the whole distance of the turn. */
+  async function turn(page: Page) {
+    await openState(page, 'play-mode');
+    const scroller = page.getByTestId('play-scroller');
+    expect(await scroller.evaluate(el => el.scrollHeight > el.clientHeight + 10), 'the sample has more than one page').toBe(true);
+    await page.getByRole('region', { name: 'Play mode' }).focus();
+    await scroller.evaluate(el => { el.scrollTop = 0; });
+    await page.keyboard.press('PageDown');
+    return scroller.evaluate(el => new Promise<{ afterFrame: number; later: number }>(resolve => {
+      requestAnimationFrame(() => {
+        const afterFrame = el.scrollTop;
+        setTimeout(() => resolve({ afterFrame, later: el.scrollTop }), 1500);
+      });
+    }));
+  }
+
+  test('a page turn jumps within one frame', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const { afterFrame, later } = await turn(page);
+    expect(afterFrame, 'the turn has happened after one frame').toBeGreaterThan(100);
+    expect(afterFrame).toBe(later);
+  });
+
+  test('without the setting the turn glides', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const { afterFrame, later } = await turn(page);
+    expect(later, 'the turn goes on after the first frame').toBeGreaterThan(afterFrame + 100);
+  });
+});
+
+test.describe('narrow screens', () => {
+  for (const [width, height] of [[320, 640], [768, 1024], [1024, 768]]) {
+    test(`no state scrolls sideways at ${width} × ${height}`, async ({ page }) => {
+      test.setTimeout(180_000);
+      await page.setViewportSize({ width, height });
+      const wide: string[] = [];
+      for (const state of STATES) {
+        await state.open(page);
+        const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        if (over > 0) wide.push(`${state.id}: ${over} px too wide`);
+      }
+      expect(wide).toEqual([]);
+    });
+  }
+});
+
+test.describe('click areas on the paper', () => {
+  /** Centre of an element's first notehead (or of the whole element) in page coordinates after scrolling it into view. */
+  async function centreOf(page: Page, selector: string): Promise<{ x: number; y: number }> {
+    const target = page.locator(selector).first();
+    await target.evaluate(el => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    const box = (await target.boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  }
+  const selectedNote = (page: Page) => page.locator('[data-selected="true"]').first().getAttribute('data-ev');
+
+  /** Event ids with a notehead, per system, in order, with the x of the head in the system. */
+  async function heads(page: Page): Promise<{ id: string; system: number; x: number }[]> {
+    return page.getByTestId('system').evaluateAll(systems => systems.flatMap((system, k) =>
+      [...system.querySelectorAll('[data-ev]')].flatMap(g => {
+        const head = g.querySelector('[data-head]');
+        return head ? [{ id: g.getAttribute('data-ev')!, system: k, x: head.getBoundingClientRect().left + head.getBoundingClientRect().width / 2 }] : [];
+      })));
+  }
+
+  test('a click on each note of the densest stretch selects that note', async ({ page }) => {
+    await openState(page, 'sheet-view');
+    await modeRadio(page, 'Edit notes').click();
+    const all = await heads(page);
+    // The closest pair of heads in one system and the notes around it.
+    let at = 0;
+    let gap = Infinity;
+    all.forEach((n, i) => { const next = all[i + 1]; if (next && next.system === n.system && next.x - n.x < gap) { gap = next.x - n.x; at = i; } });
+    const run = all.slice(Math.max(0, at - 1), at + 3).filter(n => n.system === all[at]!.system);
+    expect(run.length).toBeGreaterThanOrEqual(3);
+    for (const note of run) {
+      const { x, y } = await centreOf(page, `[data-ev="${note.id}"] [data-head]`);
+      await page.mouse.click(x, y);
+      expect(await selectedNote(page), `the click on the head of ${note.id}, ${gap.toFixed(0)} px from its neighbour`).toBe(note.id);
+      await page.mouse.click(x, y);   // the same click again clears the selection
+    }
+  });
+
+  test('a click on a note in the last bar of a system selects it and no note of the next system', async ({ page }) => {
+    await openState(page, 'sheet-view');
+    await modeRadio(page, 'Edit notes').click();
+    const all = await heads(page);
+    const systems = new Set(all.map(n => n.system));
+    expect(systems.size).toBeGreaterThan(1);
+    for (const k of [...systems].slice(0, -1)) {
+      const last = [...all].reverse().find(n => n.system === k)!;
+      const hit = page.locator(`[data-hit="${last.id}"]`);
+      await hit.evaluate(el => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+      const box = (await hit.boundingBox())!;
+      // The foot of the column is the point nearest the next system; a pill under the chart, if there is one, takes the last 8 px.
+      const foot = { x: box.x + box.width / 2, y: box.y + box.height - 12 };
+      await page.mouse.click(foot.x, foot.y);
+      expect(await selectedNote(page), `a click at the foot of the last column of system ${k + 1}`).toBe(last.id);
+      await page.mouse.click(foot.x, foot.y);
+    }
+  });
+
+  test('a click on the edge of an alternate-fingering pill opens its own popover', async ({ page }) => {
+    // Two octaves up, the sample has runs of pills that sit as close as the spacing allows.
+    await openState(page, 'sheet-out-of-range');
+    const pills = page.getByRole('button', { name: /^⇅ \d+ alternate fingerings for / });
+    const names = await pills.evaluateAll(els => els.map(e => e.getAttribute('aria-label')!));
+    expect(names.length).toBeGreaterThan(10);
+    // The pill is drawn 26 px wide and takes clicks 36 px wide: 16 px right of its centre is still this pill, never its neighbour.
+    for (const [k, name] of names.entries()) {
+      const pill = pills.nth(k);
+      await pill.evaluate(el => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+      const box = (await pill.boundingBox())!;
+      await page.mouse.click(box.x + box.width / 2 + 16, box.y + box.height / 2);
+      const note = name.replace(/^.* for /, '');
+      await expect(page.getByRole('dialog', { name: new RegExp(`^Alternate fingerings for ${note}`) }), `pill ${k + 1} of ${names.length}`).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+    }
+  });
+
+  test('the smallest note click area', async ({ page }) => {
+    await openState(page, 'sheet-view');
+    // Width of the area that takes the click, walking across each column at half its height one pixel at a time.
+    const widths = await page.locator('[data-hit]').evaluateAll(columns => columns.map(c => {
+      c.scrollIntoView({ block: 'center', inline: 'nearest' });
+      const r = c.getBoundingClientRect();
+      const y = r.top + r.height / 2;
+      let taken = 0;
+      for (let x = Math.floor(r.left) - 40; x < r.right + 40; x++) if (document.elementFromPoint(x + 0.5, y) === c) taken++;
+      return { id: c.getAttribute('data-hit')!, drawn: Math.round(r.width * 10) / 10, taken, height: Math.round(r.height) };
+    }));
+    const smallest = widths.reduce((a, b) => (b.taken < a.taken ? b : a));
+    console.log(`SMALLEST NOTE CLICK AREA: ${smallest.taken} px wide (drawn ${smallest.drawn} px), ${smallest.height} px high, of ${widths.length} columns`);
+    expect(Math.min(...widths.map(w => w.height)), 'every column is at least 24 px high').toBeGreaterThanOrEqual(24);
+    expect(smallest.taken, 'the narrowest column takes at least 16 px').toBeGreaterThanOrEqual(16);
+  });
+});

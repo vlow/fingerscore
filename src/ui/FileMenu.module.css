@@ -88,6 +88,8 @@
 }
 
 .primary {
+  /* A primary action takes 44 px. */
+  min-height: 44px;
   border-color: var(--teal);
   background: var(--teal);
   color: #ffffff;

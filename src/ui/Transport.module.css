@@ -58,5 +58,7 @@
 
 .slider {
   width: 110px;
+  /* The native control is 16 px high; its click area is 36 px. */
+  height: 36px;
   accent-color: var(--teal);
 }
