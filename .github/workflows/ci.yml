@@ -82,6 +82,9 @@ jobs:
       # Scans the repository: the packages in package-lock.json, committed secrets, and configuration files.
       # A HIGH or CRITICAL finding fails the job. Findings without a fixed version are listed in no report.
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          # Trivy skips dev dependencies by default. They run on the build machine, so they are scanned too.
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
         with:
           scan-type: fs
           scan-ref: .
