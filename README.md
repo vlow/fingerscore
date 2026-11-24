@@ -12,7 +12,8 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Flags notes outside the range.
 - Draws the sheet and a fingering chart under every note, in compact or full key map style. Recorders come in baroque and German systems.
 - Offers alternate fingerings where published charts list them. You pick one per note.
-- Plays the sheet: Play and Stop, tempo slider, repeats, first and second endings, highlight on the current note.
+- Plays the sheet aloud: Listen and Stop, tempo slider, repeats, first and second endings, highlight on the current note.
+- Play mode for playing from the screen: only the sheet, full screen. Pages turn with the arrow keys, Space, Page Up/Down (a Bluetooth pedal sends these), the toolbar or a tap on the screen edge. Auto-scroll (A) follows the tempo, at 50–200 % speed. A− and A+ set the size. The screen stays awake. Esc exits.
 - Downloads the sheet as a PDF (File, then Download PDF). See "PDF" below.
 - Prints the sheet (A4, paper only) through the browser's print dialog.
 - Shows scales with fingerings on a Scales page, linked from the header. Pick an instrument and one of eight scales (major, natural, harmonic and melodic minor, major and minor pentatonic, blues, chromatic) in any of twelve keys; the key with six accidentals comes in both spellings (F♯ and G♭ major, D♯ and E♭ minor). Choose one octave, two octaves or the whole range, up or up and down. Letters follow the scale degrees, except that a double sharp or double flat is written as the plain neighbouring note (A♮ instead of B𝄫). On transposing instruments you name keys by what you read or by what sounds. Notes with more than one fingering get the same "⇅" pill as on a sheet: pick another fingering and the neighbouring notes adapt; "Reset all to auto" undoes your picks, and a change of instrument, scale, key, range, direction or recorder system clears them. Optional: alternate fingerings under each note, note names. Download the scale as a PDF (A4 or Letter, by browser region, like the sheet PDF) or print it (A4, the scale only, with your picks). The page remembers your settings and picks in this browser.
@@ -76,7 +77,7 @@ A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chord
 | Ctrl/⌘+Shift+Z, Ctrl+Y | Sheet page | Redo |
 | ← / → | Every mode, sheet focused | Previous or next note or rest (View and Lyrics skip tied notes; Lyrics also skips rests) |
 | Home / End | Every mode, sheet focused | First or last note or rest |
-| Enter, Space | Every mode, sheet focused | Play from the selection, or stop playback |
+| Enter, Space | Every mode, sheet focused | Listen from the selection, or stop playback |
 | Esc | Every mode | Clear the selection |
 | ↑ / ↓ | Edit notes, sheet focused | Semitone up or down |
 | Ctrl/⌘+↑ / ↓ | Edit notes | Octave up or down |
