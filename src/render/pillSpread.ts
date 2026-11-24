@@ -13,6 +13,11 @@ export const hasPill = (ev: { options: readonly unknown[] }): boolean => ev.opti
 export function spreadPills(xs: readonly number[], width: number, gap: number = PILL_WIDTH): number[] {
   const lo = gap / 2;
   const hi = width - gap / 2;
+  // Too many pills for the room: they share it evenly, closer than the gap, in order and inside the bounds.
+  if ((xs.length - 1) * gap > hi - lo) {
+    const step = hi > lo ? (hi - lo) / (xs.length - 1) : 0;
+    return xs.map((_, i) => Math.round(hi > lo ? lo + i * step : width / 2));
+  }
   // A block is a run of pills laid out `gap` apart from `start`; it sits where it is closest to its notes, inside the bounds.
   const blocks: { first: number; count: number; start: number }[] = [];
   const block = (first: number, count: number) => {
@@ -30,4 +35,10 @@ export function spreadPills(xs: readonly number[], width: number, gap: number = 
     }
   });
   return blocks.flatMap(b => Array.from({ length: b.count }, (_, k) => b.start + k * gap));
+}
+
+/** Where the pills go: the centre of each note that draws one, by event id. Notes without a pill take no room. */
+export function pillCentres(notes: readonly { id: string; x: number; options: readonly unknown[] }[], width: number): Map<string, number> {
+  const withPill = notes.filter(hasPill);
+  return new Map(spreadPills(withPill.map(n => n.x), width).map((x, i) => [withPill[i]!.id, x]));
 }

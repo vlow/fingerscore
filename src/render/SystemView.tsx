@@ -8,7 +8,7 @@ import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type S
 import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, INK, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
-import { hasPill, spreadPills } from './pillSpread';
+import { pillCentres } from './pillSpread';
 import { beamGeometry, Tuplet, type Placed } from './TupletMark';
 
 export const STAFF = '#2A2D33';
@@ -222,9 +222,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
       </svg>
       {under && (() => {
         const charts = placed.filter(n => charted(n.ev));
-        // Only notes that draw a pill take room for one.
-        const withPill = charts.filter(n => hasPill(n.ev));
-        const pillXs = new Map(spreadPills(withPill.map(n => n.x), SHEET.systemWidth).map((x, i) => [withPill[i]!.ev.id, x]));
+        const pillXs = pillCentres(charts.map(n => ({ id: n.ev.id, x: n.x, options: n.ev.options })), SHEET.systemWidth);
         return charts.map(n => (
           <Fragment key={n.ev.id}>{under(n.ev, n.x, SHEET.chartY + SHEET.altButtonDy, system.index, p.lastSystem, pillXs.get(n.ev.id) ?? n.x)}</Fragment>
         ));
