@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
+import { initTheme } from '../state/theme';
 import { Paper } from './Paper';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
@@ -46,6 +47,18 @@ describe('Paper', () => {
     expect(screen.getByText(/you read G major · sounds B♭ major/)).toBeInTheDocument();
     expect(screen.getByText(/fingering data: draft/)).toBeInTheDocument();
     expect(screen.getByText('fingerscore.eu')).toBeInTheDocument();
+  });
+
+  it('carries the paper of dark mode, Night unless another is chosen', () => {
+    window.localStorage.clear();
+    initTheme();
+    setup('asax');
+    expect(screen.getByTestId('paper')).toHaveAttribute('data-paper', 'night');
+    window.localStorage.setItem('fingerscore.paper', 'dimmed');
+    act(() => initTheme());
+    expect(screen.getByTestId('paper')).toHaveAttribute('data-paper', 'dimmed');
+    window.localStorage.clear();
+    act(() => initTheme());
   });
 
   it('is an article of 940px with one 860 × 290 svg per system', () => {

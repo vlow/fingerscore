@@ -13,6 +13,7 @@ import { useApp } from '../state/store';
 import { Segmented } from '../ui/Segmented';
 import { usePdfJob } from '../ui/usePdfJob';
 import { useScaleAlternatives } from './scales/useScaleAlternatives';
+import { usePaper } from '../state/theme';
 import '../styles/print.css';
 import s from './Scales.module.css';
 
@@ -80,6 +81,7 @@ function load(preferred: InstId): Settings {
 
 /** The Scales page (design 4.4): one control card, the notice, and the scale on paper. */
 export default function Scales() {
+  const { paper } = usePaper();
   const [st, setSt] = useState<Settings>(() => load(useApp.getState().instId));
   const set = (patch: Partial<Settings>) => {
     if (SEQUENCE.some(k => k in patch)) closeAlt(false);
@@ -250,7 +252,7 @@ export default function Scales() {
       </div>
 
       <div className={s.scroll}>
-        <section aria-label="Scale" className={s.paper} data-print-scale="">
+        <section aria-label="Scale" className={s.paper} data-print-scale="" data-paper={paper}>
           <h2 className={s.caption}>{caption}</h2>
           <ScaleStaff inst={st.inst} scale={scale} chartStyle={st.chartStyle} recorderSystem={st.recorderSystem}
             showNames={st.showNames} showAlternates={st.showAlternates} overrides={st.overrides} renderUnderChart={renderUnderChart} />

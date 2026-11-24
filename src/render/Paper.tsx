@@ -1,6 +1,7 @@
 import { Fragment, useMemo, type ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import type { Doc } from '../domain/types';
+import { usePaper } from '../state/theme';
 import type { SheetLayout } from './layout';
 import styles from './Paper.module.css';
 import { SystemView, tieSegments, type UnderChart } from './SystemView';
@@ -23,6 +24,7 @@ export interface PaperProps {
 /** The printed sheet: editable heading, tempo and key line, systems, legend. */
 export function Paper(p: PaperProps): JSX.Element {
   const { doc, derived, layout } = p;
+  const { paper } = usePaper();
   const ties = useMemo(() => tieSegments(derived, layout), [derived, layout]);
   const last = layout.systems.length - 1;
   const forcedLyrics = !!p.forceShow?.lyrics && !doc.show.lyrics;
@@ -32,7 +34,7 @@ export function Paper(p: PaperProps): JSX.Element {
     [doc.show, forcedLyrics, forcedChords],
   );
   return (
-    <article className={`paper ${styles.paper}`} data-testid="paper"
+    <article className={`paper ${styles.paper}`} data-testid="paper" data-paper={paper}
       data-forced-lyrics={forcedLyrics ? '' : undefined} data-forced-chords={forcedChords ? '' : undefined}>
       {p.readOnly ? (
         <header className={styles.heading}>

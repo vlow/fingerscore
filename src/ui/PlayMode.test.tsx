@@ -5,6 +5,7 @@ import { sampleDoc } from '../domain/fixture';
 import { fullLineBeats, scrollSpeed, speedLabel, systemBeats } from '../domain/playMode';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { layoutSheet } from '../render/layout';
+import { initTheme } from '../state/theme';
 import PlayMode from './PlayMode';
 
 const KEY = 'fingerscore.playmode';
@@ -456,5 +457,52 @@ describe('PlayMode', () => {
     unmount();
     expect(release).toHaveBeenCalledTimes(1);
     expect(frames.size).toBe(0);
+  });
+});
+
+describe('PlayMode paper', () => {
+  function openIn(theme: 'light' | 'dark') {
+    window.localStorage.setItem('fingerscore.theme', theme);
+    initTheme();
+    return open();
+  }
+  const paper = () => screen.getByTestId('paper');
+
+  it('shows no paper choice in light mode', () => {
+    openIn('light');
+    expect(screen.queryByRole('button', { name: /^Paper:/ })).toBeNull();
+  });
+
+  it('draws on Night paper in dark mode and changes it from the toolbar', async () => {
+    const user = userEvent.setup();
+    openIn('dark');
+    expect(paper()).toHaveAttribute('data-paper', 'night');
+    await user.click(screen.getByRole('button', { name: 'Paper: Night' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'Sepia' }));
+    expect(paper()).toHaveAttribute('data-paper', 'sepia');
+    expect(screen.getByRole('button', { name: 'Paper: Sepia' })).toBeInTheDocument();
+    expect(window.localStorage.getItem('fingerscore.paper')).toBe('sepia');
+  });
+
+  it('keeps the keys of the open paper menu: arrows turn no page and Escape closes the menu, not play mode', async () => {
+    const user = userEvent.setup();
+    const { scroller, scrollTo, onExit } = openIn('dark');
+    size(scroller, 3000, 800);
+    await user.click(screen.getByRole('button', { name: 'Paper: Night' }));
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowUp}');
+    expect(scrollTo).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(onExit).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(onExit).toHaveBeenCalledTimes(1);
+  });
+
+  it('hands the keyboard back to play mode after a choice by mouse', async () => {
+    const user = userEvent.setup();
+    const { region } = openIn('dark');
+    await user.click(screen.getByRole('button', { name: 'Paper: Night' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'Dimmed' }));
+    expect(region).toHaveFocus();
   });
 });

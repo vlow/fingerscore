@@ -129,3 +129,11 @@
   min-width: 116px;
   color: var(--c-muted);
 }
+
+/*
+ * Night paper is a step darker in play mode (dark mode design 4.3). The paper token itself changes, so the open holes
+ * of the charts, which are filled with it, match. The doubled class outranks the paper rules of tokens.css.
+ */
+.overlay.overlay :global(.paper[data-paper='night']) {
+  --c-paper: var(--c-playmode-paper);
+}

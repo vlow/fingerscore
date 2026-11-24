@@ -9,6 +9,7 @@ import type { Doc } from '../domain/types';
 import { SHEET, type SheetLayout } from '../render/layout';
 import { Paper } from '../render/Paper';
 import { readPlayModePrefs, writePlayModePrefs } from '../state/playModePrefs';
+import PaperChoice from './PaperChoice';
 import s from './PlayMode.module.css';
 
 interface Props { doc: Doc; derived: Derived; layout: SheetLayout; onExit(): void }
@@ -284,6 +285,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
           onClick={smaller}>A−</button>
         <button type="button" className={s.btn} aria-label="A+ Larger" title="Larger (+)" aria-disabled={!canGrow}
           onClick={larger}>A+</button>
+        <PaperChoice variant="toolbar" buttonClassName={s.btn} />
       </div>
     </div>,
     document.body,

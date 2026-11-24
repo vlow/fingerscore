@@ -19,6 +19,7 @@ import PageBar from '../ui/PageBar';
 import PlayMode from '../ui/PlayMode';
 import RangeMeter from '../ui/RangeMeter';
 import SaveControls from '../ui/SaveControls';
+import PaperChoice from '../ui/PaperChoice';
 import ShowToggles from '../ui/ShowToggles';
 import Steps from '../ui/Steps';
 import Transport from '../ui/Transport';
@@ -258,6 +259,7 @@ function Sheet({ doc }: { doc: Doc }) {
 
           <Card heading={<h2 id="show-h" className={s.cardTitle}>Show on sheet</h2>} labelledBy="show-h">
             <ShowToggles show={doc.show} onChange={show => patchDoc({ show })} />
+            <PaperChoice variant="card" />
           </Card>
         </aside>
 
