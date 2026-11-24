@@ -12,7 +12,8 @@
 .scroller {
   position: absolute;
   inset: 0;
-  overflow-y: auto;
+  /* Always a scrollbar: the width the paper is fitted to must not depend on the paper's own height. */
+  overflow-y: scroll;
   overscroll-behavior: contain;
 }
 

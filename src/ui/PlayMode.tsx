@@ -92,16 +92,24 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   const measure = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    setFit(fitZoom(el.clientWidth));
     const next = { n: pageNumber(el.scrollTop, el.scrollHeight, el.clientHeight), of: pageCount(el.scrollHeight, el.clientHeight) };
     setPage(prev => (prev.n === next.n && prev.of === next.of ? prev : next));
   }, []);
 
   // The page count depends on the zoom, the sheet and the window.
   useLayoutEffect(measure, [measure, zoom, layout]);
-  useEffect(() => {
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+  // The width to fit depends on the window alone, and is read only when the window changes: the zoom it leads to
+  // must never be a reason to read it again. (The scroller always shows its scrollbar, so the zoom cannot change
+  // the width either; a width that followed the zoom would flip between two sizes without end.)
+  useLayoutEffect(() => {
+    const onResize = () => {
+      const el = scrollerRef.current;
+      if (el) setFit(fitZoom(el.clientWidth));
+      measure();
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, [measure]);
 
   // The keys work from the first moment, and everything else on the page is out of reach while play mode is open.

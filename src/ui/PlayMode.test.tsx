@@ -206,6 +206,20 @@ describe('PlayMode', () => {
     expect(zoomOf()).toBe('1.25');
   });
 
+  it('settles on one size when a scrollbar comes and goes with the zoom', () => {
+    // A classic scrollbar takes 15 px of width when the sheet is taller than the screen. If the fit followed that
+    // width, a window at the tipping point would flip between two sizes for ever.
+    const { scroller } = open();
+    Object.defineProperty(scroller, 'clientWidth', {
+      configurable: true,
+      get: () => (Number(zoomOf()) >= 1.05 ? 1000 : 1015),
+    });
+    fireEvent(window, new Event('resize'));
+    fireEvent(window, new Event('resize'));
+    expect(screen.getByRole('region', { name: 'Play mode' })).toBeInTheDocument();
+    expect(Number(zoomOf())).toBeGreaterThan(1);
+  });
+
   it('opens with the stored size and speed', () => {
     window.localStorage.setItem(KEY, JSON.stringify({ zoom: 175, speed: 60 }));
     open();
