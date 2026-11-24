@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogoMark } from './icons';
+import { LogoMark, Wordmark } from './icons';
 
 /** Routes that belong to the "Songs" section. */
 const SONG_PATHS = ['/', '/tracks', '/sheet'];
@@ -10,8 +10,8 @@ export default function Header() {
   return (
     <header className="site-header">
       <Link to="/" className="brand">
-        <LogoMark size={28} />
-        <span className="brand-name">fingerscore</span>
+        <LogoMark size={30} />
+        <Wordmark className="brand-name" />
       </Link>
       <div className="header-spacer" />
       <nav aria-label="Main" className="main-nav">
