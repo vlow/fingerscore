@@ -54,6 +54,22 @@
   font-weight: 400;
 }
 
+/* Play mode: the headings as plain text. */
+.plain {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+.plainSubtitle {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text);
+}
+
 .title {
   font-size: 26px;
   font-weight: 700;

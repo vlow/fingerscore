@@ -19,9 +19,25 @@ function renderDoc(doc: Doc, playingId: string | null = null, extra: Partial<Par
   );
 }
 
-const setup = (id: InstId, patch: Partial<Doc> = {}) => renderDoc({ ...sampleDoc(id), ...patch });
+const setup = (id: InstId, patch: Partial<Doc> = {}, extra: Partial<Parameters<typeof Paper>[0]> = {}) =>
+  renderDoc({ ...sampleDoc(id), ...patch }, null, extra);
 
 describe('Paper', () => {
+  it('readOnly draws plain headings and nothing to click', () => {
+    let underCalls = 0;
+    const { container } = setup('asax', { subtitle: '' }, { readOnly: true, renderUnderChart: () => { underCalls += 1; return null; } });
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('The Water Is Wide');
+    expect(container.querySelectorAll('[data-hit]')).toHaveLength(0);
+    expect(container.querySelector('[data-subtitle]')).toBeNull();
+    expect(underCalls).toBe(0);
+  });
+
+  it('readOnly shows a subtitle as text', () => {
+    const { container } = setup('asax', { subtitle: 'Traditional' }, { readOnly: true });
+    expect(container.querySelector('[data-subtitle]')).toHaveTextContent('Traditional');
+  });
+
   it('renders title, tempo, header keys, legend', () => {
     setup('asax');
     expect(screen.getByDisplayValue('The Water Is Wide')).toBeInTheDocument();

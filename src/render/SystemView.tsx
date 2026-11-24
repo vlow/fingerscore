@@ -149,7 +149,9 @@ export interface SystemViewProps {
   /** What to draw; defaults to doc.show (Paper widens it in Lyrics and Chords mode). */
   show?: Doc['show'];
   playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
-  selectedId: string | null; onSelect(id: string | null): void;
+  selectedId: string | null; onSelect?(id: string | null): void;
+  /** Play mode: no hit areas. */
+  readOnly?: boolean;
 }
 
 /** One system: staff, header, bars, notes, beams, ties, and the slot under each chart. */
@@ -208,9 +210,9 @@ export function SystemView(p: SystemViewProps): JSX.Element {
           ));
         })}
         {p.ties.map((t, i) => <Tie key={i} {...t} />)}
-        {columns.map(c => (
+        {!p.readOnly && columns.map(c => (
           <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={SHEET.chordY} width={c.width} height={COLUMN_BOTTOM - SHEET.chordY}
-            fill="transparent" onClick={() => p.onSelect(p.selectedId === c.id ? null : c.id)} />
+            fill="transparent" onClick={() => p.onSelect?.(p.selectedId === c.id ? null : c.id)} />
         ))}
       </svg>
       {under && placed.filter(n => charted(n.ev)).map(n => (
