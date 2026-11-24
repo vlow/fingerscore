@@ -4,9 +4,11 @@
  *
  * The script runs Vite's build in memory (nothing reaches dist/) with one extra plugin. The plugin reads which modules
  * each chunk holds, maps every module under node_modules to its package and reads name, version and licence from
- * that package's package.json. The two fonts are assets, not code, so they come from a fixed list.
+ * that package's package.json. Two kinds of package are not visible to the plugin and come from fixed lists: the two
+ * fonts (assets, not code) and the packages embedded in JSZip's prebuilt file.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { build, type Plugin } from 'vite';
 
@@ -14,6 +16,13 @@ interface Entry { name: string; version: string; license: string }
 
 const LIST_FILE = 'third-party-packages.json';
 const FONT_PACKAGES = ['@fontsource/atkinson-hyperlegible', '@fontsource/bravura'];
+// The build loads JSZip as one prebuilt file (node_modules/jszip/dist/jszip.min.js), a browserify bundle that holds
+// these packages inside it. Their module ids do not appear in the build, so the plugin cannot see them.
+// Evidence, from node_modules/jszip/dist/jszip.js (the same bundle, unminified): it contains the modules of lie and
+// immediate (lie requires immediate), of pako 1.x (lib/zlib/*), and of setimmediate (`require("setimmediate")`).
+// readable-stream is not inside: the bundle maps it to `stream`, which is undefined in the browser.
+// Each is read from the copy that jszip resolves to, which may differ from the copy another package uses (pako).
+const EMBEDDED_IN_JSZIP = ['immediate', 'lie', 'pako', 'setimmediate'];
 
 /** The package directory of a module id under node_modules, or null (own code, virtual modules). */
 function packageDir(id: string): string | null {
@@ -40,8 +49,23 @@ function readEntry(dir: string): Entry {
   return { name: pkg.name, version: pkg.version, license };
 }
 
+/** The directory of the package `name` as `from` resolves it. */
+function resolvedFrom(from: string, name: string): string {
+  let dir = dirname(createRequire(join(from, 'package.json')).resolve(name));
+  while (!(existsSync(join(dir, 'package.json')) && (JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as { name?: string }).name === name)) {
+    const up = dirname(dir);
+    if (up === dir) throw new Error(`no package.json for ${name} above ${from}`);
+    dir = up;
+  }
+  return dir;
+}
+
 async function packagesInBuild(): Promise<Entry[]> {
-  const dirs = new Set<string>(FONT_PACKAGES.map(name => join(process.cwd(), 'node_modules', name)));
+  const jszipDir = join(process.cwd(), 'node_modules', 'jszip');
+  const dirs = new Set<string>([
+    ...FONT_PACKAGES.map(name => join(process.cwd(), 'node_modules', name)),
+    ...EMBEDDED_IN_JSZIP.map(name => resolvedFrom(jszipDir, name)),
+  ]);
   const collect: Plugin = {
     name: 'collect-packages',
     generateBundle(_options, bundle) {
