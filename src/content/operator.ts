@@ -33,7 +33,7 @@ export const operator: Operator = {
   hostName: 'TODO: name of the hosting provider',
   hostAddress: 'TODO: address of the hosting provider',
   logRetention: 'TODO: how long the host keeps server logs',
-  repositoryUrl,
+  repositoryUrl, // optional: edit src/content/repository.ts, not this line
   aboutLead: 'TODO: one or two sentences that open the About page',
   authorBio: 'TODO: short bio of the author',
   story: ['TODO: story paragraph'],

@@ -111,7 +111,7 @@ Eyebrow "About", `h1` "Why I made fingerscore", lead paragraph, author line, sec
 
 ### 5.8 The owner's details and the release check
 
-- One file, `src/content/operator.ts`, holds: name, address lines, e-mail, phone, optional represented-by / register / VAT ID, person responsible for content, hosting provider name and address, log retention period, optional repository address, About lead, author bio, story paragraphs, optional pull quote.
+- Two files hold the details. `src/content/operator.ts` holds: name, address lines, e-mail, phone, optional represented-by / register / VAT ID, person responsible for content, hosting provider name and address, log retention period, optional repository address (re-used from `repository.ts`), About lead, author bio, story paragraphs, optional pull quote. `src/content/repository.ts` holds the repository address alone, so the footer, which loads at start, does not load the other details.
 - A value that still starts with `TODO:` is a placeholder. The pages draw it as is.
 - `npm run check:release` runs the build, `check:bundle`, the package-list comparison of 5.9, and a check that fails and lists every field that is still a placeholder. `npm run build` itself keeps working with placeholders, so tests and the preview run.
 - The README's hosting section says: fill in `operator.ts`, have a lawyer read the four texts, run `npm run check:release`.
@@ -120,7 +120,7 @@ Eyebrow "About", `h1` "Why I made fingerscore", lead paragraph, author line, sec
 
 - jsPDF contains optional imports of html2canvas, dompurify and canvg (which brings core-js). The app never calls the features that need them, yet the build ships three chunks for them. The build replaces these imports with an empty stub, so the chunks are not shipped. `check:bundle` looks at every file in `dist/assets`, not only the start set, and fails if one of them is such a chunk or contains these libraries. The builder first confirms that the app calls neither `doc.html()` nor `addSvgAsImage`.
 - `THIRD-PARTY-NOTICES.md` and its served copy gain a section for every package whose code is in the build, direct or indirect (about 10 to 20 new sections).
-- `npm run notices` runs the build, reads which packages the built files contain, and writes the list to a committed file. The two font packages are assets, not code; the script adds them from a fixed list. A unit test fails when the notices and the committed list disagree. `npm run check:release` produces the list again and fails when it differs from the committed one.
+- `npm run notices` runs the build, reads which packages the built files contain, and writes the list to a committed file. The two font packages are assets, not code, and the packages embedded in JSZip's prebuilt file (immediate, lie, pako, setimmediate) leave no module ids in the build; the script adds both groups from fixed lists. A unit test fails when the notices and the committed list disagree. `npm run check:release` produces the list again and fails when it differs from the committed one.
 - A package without a licence file gets its licence name and the standard text of that licence.
 
 ### 5.10 Tests
