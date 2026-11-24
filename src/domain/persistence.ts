@@ -282,7 +282,16 @@ const ACCIDENTAL_WORDS: Record<string, string> = { '♯': '-sharp', '#': '-sharp
 export function slug(text: string): string {
   const named = text.replace(/([A-Ga-g])(♯|#|♭|𝄪|𝄫)/gu, (_, letter: string, sign: string) => `${letter}${ACCIDENTAL_WORDS[sign]}`);
   const plain = named.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[łŁøØßæÆœŒđĐıðÐþÞħĦŧŦŋŊ]/g, c => LETTERS[c]);
-  return plain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, MAX_SLUG).replace(/-+$/, '');
+  return trimHyphens(trimHyphens(plain.toLowerCase().replace(/[^a-z0-9]+/g, '-')).slice(0, MAX_SLUG));
+}
+
+/** Without the hyphens at both ends. */
+function trimHyphens(s: string): string {
+  let from = 0;
+  let to = s.length;
+  while (from < to && s[from] === '-') from++;
+  while (to > from && s[to - 1] === '-') to--;
+  return s.slice(from, to);
 }
 
 export function fileName(title: string): string {

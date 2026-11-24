@@ -2,7 +2,7 @@ import data from '../data/scales.json';
 import { chooseFingerings } from './chooser';
 import { optionsFor, type FingeringOption, type RecorderSystem } from './fingerings';
 import { inst, isTransposing, noteNameFlat, rangeState } from './instruments';
-import { accidentalName, keySignature, mod12, signatureAlter, spell, spelledName, tonicName, type AccidentalName, type Alter, type Spelled } from './keys';
+import { accidentalName, keySignature, mod12, signatureAlter, spell, spelledName, tonicName, withoutOctave, type AccidentalName, type Alter, type Spelled } from './keys';
 import type { InstId, Mode } from './types';
 
 export type ScaleId = 'maj' | 'nmin' | 'hmin' | 'mmin' | 'pmaj' | 'pmin' | 'blues' | 'chrom';
@@ -48,7 +48,7 @@ export function hasSharpSpelling(scale: ScaleId, tonicPc: number): boolean {
 }
 
 /** The sharp name of a black-key tonic: F♯ for G♭, D♯ for E♭. */
-const sharpTonicName = (pc: number) => spell(pc, 1).name.replace(/-?\d+$/, '');
+const sharpTonicName = (pc: number) => withoutOctave(spell(pc, 1).name);
 
 const SEMITONES_ALL = Array.from({ length: 12 }, (_, i) => i);
 const semitones = (id: ScaleId): number[] => DEFS[id].deg?.map(([s]) => s) ?? SEMITONES_ALL;

@@ -603,6 +603,7 @@ test.describe('images for review (set PDF_OUT to run)', () => {
       await page.locator('#pdf-screen [data-testid="paper"]').screenshot({ path: join(OUT!, `sheet-${name}-screen.png`) });
     }
     const nine = await makePdf(page, repeated(36));
+    expect(nine.bytes.length).toBeGreaterThan(0);
     console.log(`one page (12 bars): ${(await makePdf(page, repeated(12))).bytes.length} bytes; nine systems: ${nine.bytes.length} bytes`);
   });
 });

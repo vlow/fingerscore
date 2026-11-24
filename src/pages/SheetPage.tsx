@@ -263,7 +263,8 @@ function Sheet({ doc }: { doc: Doc }) {
           <div data-print-hide="" className={s.banners}>
             <Banners doc={doc} derived={derived} onShift={setShift} />
           </div>
-          <div className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
+          {/* The handler catches keys that bubble up from the controls inside; the div itself is not a control. */}
+          <div role="presentation" className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
             <ModeSwitch mode={mode} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
             <div className={s.toolbarEnd}>
               {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
@@ -271,7 +272,8 @@ function Sheet({ doc }: { doc: Doc }) {
                 onPlayMode={enterPlayMode} playModeRef={playModeButton} />
             </div>
           </div>
-          <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL}
+          {/* Focusable on purpose: a scrolling area must be reachable by keyboard, and the sheet keys act from here. */}
+          <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL} // NOSONAR typescript:S6845
             onKeyDown={onSheetKey}>
             <p className={s.srOnly} aria-live="polite">{announcement}</p>
             <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}

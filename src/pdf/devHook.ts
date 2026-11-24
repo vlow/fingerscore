@@ -210,13 +210,13 @@ export async function scalePlan(input: ScalePdfInput, o: { language: string; det
       try {
         const svg = off.host.querySelector('svg[data-testid="scale-line"]')!;
         const notes = Array.from(svg.querySelectorAll('g[data-note]'), g => ({
-          x: Number(g.querySelector('[data-name]')?.getAttribute('x') ?? g.querySelector('[data-option-name]')?.getAttribute('x') ?? NaN),
+          x: Number(g.querySelector('[data-name]')?.getAttribute('x') ?? g.querySelector('[data-option-name]')?.getAttribute('x') ?? Number.NaN),
           name: g.querySelector('[data-name]')?.textContent ?? '',
           options: Array.from(g.querySelectorAll('g[data-option]'), og => {
             const t = og.querySelector('text[data-option-name]');
             return {
               option: Number(og.getAttribute('data-option')),
-              labelY: Number(t?.getAttribute('y') ?? NaN),
+              labelY: Number(t?.getAttribute('y') ?? Number.NaN),
               lines: t ? Array.from(t.querySelectorAll('tspan'), x => x.textContent ?? '') : [],
             };
           }),

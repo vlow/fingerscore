@@ -29,7 +29,7 @@ export async function parseMuseScore(file: string, bytes: Uint8Array): Promise<P
   const root = doc.documentElement;
   if (!root || doc.getElementsByTagName('parsererror').length > 0 || root.localName !== 'museScore') throw unreadable(file);
   const declared = root.getAttribute('version')?.trim() ?? '';
-  const version = declared === '' ? NaN : Number(declared);
+  const version = declared === '' ? Number.NaN : Number(declared);
   if (!Number.isFinite(version)) throw unreadable(file);
   if (version < 2) throw tooOld(file);
   const score = Array.from(root.children).find(c => c.localName === 'Score');

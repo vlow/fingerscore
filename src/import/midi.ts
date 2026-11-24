@@ -14,7 +14,9 @@ interface TextLists { lyrics: Lyric[]; texts: Lyric[] }
 /** Karaoke conventions: `@` starts a header, a leading `/` or `\` marks a new line or verse. Null: not a syllable. */
 function cleanLyric(raw: string): string | null {
   if (raw.startsWith('@')) return null;
-  const text = raw.replace(/[\r\n]+$/, '').replace(/^[/\\]+/, '').trim();
+  let end = raw.length;
+  while (end > 0 && (raw[end - 1] === '\r' || raw[end - 1] === '\n')) end--;
+  const text = raw.slice(0, end).replace(/^[/\\]+/, '').trim();
   return text === '' ? null : text;
 }
 

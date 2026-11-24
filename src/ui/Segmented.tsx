@@ -32,7 +32,8 @@ export function Segmented<T extends string | number>(p: {
   }
 
   return (
-    <div role="radiogroup" aria-label={p.label} className={`${s.group} ${s[size]}`}
+    // Roving tabindex: the checked radio is the one Tab stop, so the group itself takes no focus.
+    <div role="radiogroup" aria-label={p.label} className={`${s.group} ${s[size]}`} // NOSONAR typescript:S6852
       style={size === 'wide' ? { gridTemplateColumns: `repeat(${p.options.length}, minmax(0, 1fr))` } : undefined} onKeyDown={onKey}>
       {p.options.map((o, k) => {
         const on = k === at || (at < 0 && k === 0);

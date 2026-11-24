@@ -497,6 +497,7 @@ test.describe('images for review (set PDF_OUT to run)', () => {
       });
       const input = await inputOf(page, { inst: s.inst, range: s.range as 'one', direction: s.direction as 'up', showAlternates: s.showAlternates, caption: caption! });
       const { bytes } = await makePdf(page, input);
+      expect(bytes.length).toBeGreaterThan(0);
       writeFileSync(join(OUT!, `${name}.pdf`), bytes);
       writeFileSync(join(OUT!, `${name}-p1.png`), await renderPdfPage(bytes, 1, 150));
       await screenshotOf(page, s, `${name}-screen.png`);

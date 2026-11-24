@@ -33,8 +33,12 @@ const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0
 function embeddedFontNames(bytes: Uint8Array): string[] {
   const raw = Buffer.from(bytes).toString('latin1');
   const names = new Set<string>();
-  for (const m of raw.matchAll(/\/FontName\s*\/([^\s/<>[\]()]+)[^>]*?\/FontFile2/g)) {
-    names.add(m[1].replace(/#([0-9a-fA-F]{2})/g, (_, h: string) => String.fromCharCode(parseInt(h, 16))));
+  for (const m of raw.matchAll(/\/FontName\s*\/([^\s/<>[\]()]+)/g)) {
+    // Only a descriptor with an embedded TrueType file counts: /FontFile2 before the dictionary closes.
+    const after = m.index + m[0].length;
+    const close = raw.indexOf('>', after);
+    if (!raw.slice(after, close < 0 ? undefined : close).includes('/FontFile2')) continue;
+    names.add(m[1].replace(/#([0-9a-fA-F]{2})/g, (_, h: string) => String.fromCharCode(Number.parseInt(h, 16))));
   }
   return [...names].sort(byCodeUnit);
 }

@@ -25,19 +25,21 @@ function barOrder(doc: Doc): number[] {
   const taken = new Set<number>();
   let start = 0;
   let pass = 1;
-  for (let i = 0; i < bars.length && order.length < cap; i++) {
+  let i = 0;
+  while (i < bars.length && order.length < cap) {
     const bar = bars[i];
-    if ((bar.volta === '1' && pass > 1) || (bar.volta === '2' && pass > 2)) continue;
+    if ((bar.volta === '1' && pass > 1) || (bar.volta === '2' && pass > 2)) { i++; continue; }
     if (bar.rs && i !== start) { start = i; pass = 1; }
     order.push(i);
     if (bar.re && !taken.has(i)) {
       taken.add(i);
       pass += 1;
-      i = start - 1;
+      i = start;
       continue;
     }
     const endsEndings = pass > 1 && bar.volta !== '' && (bars[i + 1]?.volta ?? '') === '';
     if (bar.re || endsEndings) { start = i + 1; pass = 1; }
+    i++;
   }
   return order;
 }
