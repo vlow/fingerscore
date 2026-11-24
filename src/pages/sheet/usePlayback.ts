@@ -16,12 +16,16 @@ export function usePlayback(doc: Doc, selectedId: string | null) {
     + b.ev.map(e => `${e.m},${e.d}${e.r ? 'r' : ''}${e.tie ? 't' : ''}`).join(';')).join('|'), [doc.score]);
   useEffect(() => () => playerRef.current?.stop(), [audible, doc.shift, doc.inst, doc.tempo]);
 
+  function stopPlay() {
+    playerRef.current?.stop();
+    setPlaying(false);
+    setPlayingId(null);
+  }
+
   function togglePlay() {
     const current = playerRef.current;
     if (playing && current) {
-      current.stop();
-      setPlaying(false);
-      setPlayingId(null);
+      stopPlay();
       return;
     }
     try {
@@ -42,5 +46,5 @@ export function usePlayback(doc: Doc, selectedId: string | null) {
     }
   }
 
-  return { playerRef, playing, playingId, playError, togglePlay };
+  return { playerRef, playing, playingId, playError, togglePlay, stopPlay };
 }

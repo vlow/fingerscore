@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { derive } from '../domain/derive';
 import { locate } from '../domain/edit';
@@ -16,6 +16,7 @@ import KeyBridge from '../ui/KeyBridge';
 import { LoadBoundary } from '../ui/LoadBoundary';
 import { ModeSwitch } from '../ui/ModeSwitch';
 import PageBar from '../ui/PageBar';
+import PlayMode from '../ui/PlayMode';
 import RangeMeter from '../ui/RangeMeter';
 import SaveControls from '../ui/SaveControls';
 import ShowToggles from '../ui/ShowToggles';
@@ -81,7 +82,7 @@ function Sheet({ doc }: { doc: Doc }) {
     mode, selection, setSelection, selectedId, fieldFocus, focusField, announcement, setAnnouncement, paperRef, firstBar,
     select, applyNoteEdit, changeMode, stops,
   } = useSelection(doc, derived);
-  const { playerRef, playing, playingId, playError, togglePlay } = usePlayback(doc, selectedId);
+  const { playerRef, playing, playingId, playError, togglePlay, stopPlay } = usePlayback(doc, selectedId);
   const { openAlt, closeAlt, renderUnderChart } = useAltFingering(doc, firstBar, i.kind);
   const { onSheetKey, onToolbarKey } = useSheetKeys({
     doc, derived, mode, selectedId, openAlt, stops, paperRef, select, applyNoteEdit, togglePlay,
@@ -104,7 +105,27 @@ function Sheet({ doc }: { doc: Doc }) {
     if (selection !== null && (!now || locate(now, selection) === null)) setSelection(null);
   }
 
-  useSheetShortcuts({ onSave: save, onUndo: () => travel('undo'), onRedo: () => travel('redo') });
+  // Play mode (SPEC §11a) covers the page: no audio, no edit mode, no selection, and nothing that changes the document.
+  const [performing, setPerforming] = useState(false);
+  const playModeButton = useRef<HTMLButtonElement>(null);
+  function enterPlayMode() {
+    stopPlay();
+    closeAlt(false);
+    changeMode('view', false);
+    select(null);
+    setPerforming(true);
+  }
+  const wasPerforming = useRef(false);
+  useEffect(() => {
+    if (wasPerforming.current && !performing) playModeButton.current?.focus();
+    wasPerforming.current = performing;
+  }, [performing]);
+
+  useSheetShortcuts({
+    onSave: () => { if (!performing) save(); },
+    onUndo: () => { if (!performing) travel('undo'); },
+    onRedo: () => { if (!performing) travel('redo'); },
+  });
 
   const applyTextEdit = (next: Doc | null, coalesceKey?: string) => { useApp.getState().applyEdit(next, coalesceKey); };
 
@@ -121,6 +142,7 @@ function Sheet({ doc }: { doc: Doc }) {
 
   return (
     <div className={s.page}>
+      {performing && <PlayMode doc={doc} derived={derived} layout={layout} onExit={() => setPerforming(false)} />}
       <div data-print-hide="">
         <PageBar
           left={
@@ -236,7 +258,8 @@ function Sheet({ doc }: { doc: Doc }) {
             <ModeSwitch mode={mode} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
             <div className={s.toolbarEnd}>
               {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
-              <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')} />
+              <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')}
+                onPlayMode={enterPlayMode} playModeRef={playModeButton} />
             </div>
           </div>
           <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL}

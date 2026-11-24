@@ -86,18 +86,47 @@ describe('PlayMode', () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
   });
 
+  it('counts a second quick turn from where the first one is going, not from where the scroll is', () => {
+    const { region, scroller, scrollTo } = open();
+    size(scroller, 5000, 1000);
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    size(scroller, 5000, 1000, 300);   // the smooth scroll is on its way
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'smooth' });
+    fireEvent.keyDown(region, { key: 'ArrowLeft' });
+    fireEvent.keyDown(region, { key: 'ArrowLeft' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
+  });
+
+  it('counts from the scroll position again once the turn has arrived, or the player scrolls by hand', () => {
+    const { region, scroller, scrollTo } = open();
+    size(scroller, 5000, 1000);
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    size(scroller, 5000, 1000, 880);   // arrived
+    size(scroller, 5000, 1000, 1000);  // then scrolled on by hand
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1880, behavior: 'smooth' });
+    size(scroller, 5000, 1000, 1500);  // on its way to 1880
+    fireEvent.wheel(scroller);
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 2380, behavior: 'smooth' });
+  });
+
   it('turns with the toolbar buttons and the tap zones', async () => {
     const user = userEvent.setup();
     const { region, scroller, scrollTo } = open();
     size(scroller, 2760, 1000, 880);
     await user.click(screen.getByRole('button', { name: 'Next page' }));
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'smooth' });
+    size(scroller, 2760, 1000, 1760);
     await user.click(screen.getByRole('button', { name: 'Previous page' }));
-    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
-    await user.click(region.querySelector('[data-turn="next"]')!);
-    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'smooth' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 880, behavior: 'smooth' });
+    size(scroller, 2760, 1000, 880);
     await user.click(region.querySelector('[data-turn="prev"]')!);
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
+    size(scroller, 2760, 1000, 0);
+    await user.click(region.querySelector('[data-turn="next"]')!);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 880, behavior: 'smooth' });
   });
 
   it('does nothing on a turn when the sheet fits the screen', () => {

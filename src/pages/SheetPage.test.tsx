@@ -2137,3 +2137,53 @@ it('redirects without a doc', () => {
   renderSheet();
   expect(currentPath()).toBe('/');
 });
+
+describe('play mode', () => {
+  const region = () => screen.queryByRole('region', { name: 'Play mode' });
+
+  it('opens with the Play mode button and closes with Esc, back on the button', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    expect(region()).toBeInTheDocument();
+    expect(within(region()!).getByRole('heading', { level: 1 })).toHaveTextContent('The Water Is Wide');
+    expect(screen.getByRole('textbox', { name: 'Sheet title' }).closest('[inert]')).not.toBeNull();
+    await user.keyboard('{Escape}');
+    expect(region()).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Sheet title' }).closest('[inert]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Play mode' })).toHaveFocus();
+  });
+
+  it('stops the audio on the way in', async () => {
+    open('asax');
+    fakePlayer.play.mockImplementation(() => { fakePlayer.playing = true; });
+    fakePlayer.stop.mockImplementation(() => { fakePlayer.playing = false; });
+    await user.click(screen.getByRole('button', { name: 'Listen' }));
+    fakePlayer.stop.mockClear();
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    expect(fakePlayer.stop).toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
+  });
+
+  it('leaves the edit mode and the selection behind', async () => {
+    const { container } = open('asax');
+    await user.click(screen.getByRole('radio', { name: /Edit notes/ }));
+    await user.click(container.querySelector('[data-hit]')!);
+    expect(screen.getByRole('button', { name: 'Listen from selected' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('radio', { name: /View/ })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
+  });
+
+  it('changes nothing in the document: undo, redo and save shortcuts are off', async () => {
+    open('asax');
+    act(() => useApp.getState().patchDoc({ tempo: 120 }));
+    const before = useApp.getState().doc;
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    await user.keyboard('{Control>}z{/Control}');
+    await user.keyboard('{Control>}s{/Control}');
+    expect(useApp.getState().doc).toBe(before);
+    expect(listEntries()).toHaveLength(0);
+  });
+});

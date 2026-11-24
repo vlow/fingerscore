@@ -22,6 +22,26 @@
   cursor: pointer;
 }
 
+.playMode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid var(--teal);
+  border-radius: var(--radius);
+  background: var(--teal-light);
+  color: var(--teal-hover);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.playMode:hover {
+  background: var(--teal-tint);
+}
+
 .play:hover {
   background: var(--text);
 }

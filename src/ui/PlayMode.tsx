@@ -12,6 +12,8 @@ interface Props { doc: Doc; derived: Derived; layout: SheetLayout; onExit(): voi
 
 /** The scroll has reached the end when less than this many pixels are left. */
 const END_SLACK = 2;
+/** A smooth page turn is over after this long at the latest, whatever became of it. */
+const TURN_MS = 1000;
 
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -119,11 +121,24 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     return () => cancelAnimationFrame(id);
   }, [auto]);
 
+  // Where a page turn is scrolling to. A second turn before it arrives (a pedal pressed twice) counts from there,
+  // not from wherever the smooth scroll happens to be.
+  const goingTo = useRef<{ top: number; since: number } | null>(null);
+
+  function onScroll() {
+    const el = scrollerRef.current;
+    if (el && goingTo.current && Math.abs(el.scrollTop - goingTo.current.top) < 1) goingTo.current = null;
+    measure();
+  }
+
   function turn(dir: 1 | -1) {
     const el = scrollerRef.current;
     if (!el) return;
-    const top = turnTarget(el.scrollTop, el.scrollHeight, el.clientHeight, dir);
-    if (top === el.scrollTop) return;
+    const pending = goingTo.current;
+    const from = pending && !auto && performance.now() - pending.since < TURN_MS ? pending.top : el.scrollTop;
+    const top = turnTarget(from, el.scrollHeight, el.clientHeight, dir);
+    if (top === from) return;
+    goingTo.current = { top, since: performance.now() };
     el.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }
 
@@ -153,7 +168,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
 
   return createPortal(
     <div ref={regionRef} role="region" aria-label="Play mode" tabIndex={-1} className={s.overlay} data-print-hide="" onKeyDown={onKey}>
-      <div ref={scrollerRef} data-testid="play-scroller" className={s.scroller} onScroll={measure}>
+      <div ref={scrollerRef} data-testid="play-scroller" className={s.scroller} onScroll={onScroll}
+        onWheel={() => { goingTo.current = null; }} onTouchMove={() => { goingTo.current = null; }}>
         <div className={s.pad}>
           <div data-testid="play-zoom" className={s.zoomed} style={{ zoom: prefs.zoom / 100 }}>
             <Paper doc={doc} derived={derived} layout={layout} playingId={null} readOnly />
