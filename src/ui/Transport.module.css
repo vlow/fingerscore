@@ -14,8 +14,8 @@
   padding: 0 16px;
   border: none;
   border-radius: var(--radius);
-  background: var(--ink);
-  color: #ffffff;
+  background: var(--c-selected-bg);
+  color: var(--c-selected-fg);
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -28,10 +28,10 @@
   gap: 8px;
   min-height: 44px;
   padding: 0 16px;
-  border: 1.5px solid var(--teal);
+  border: 1.5px solid var(--c-accent);
   border-radius: var(--radius);
-  background: var(--teal-light);
-  color: var(--teal-hover);
+  background: var(--c-accent-tint-2);
+  color: var(--c-accent-hover);
   font-family: inherit;
   font-size: 14px;
   font-weight: 700;
@@ -39,11 +39,11 @@
 }
 
 .playMode:hover {
-  background: var(--teal-tint);
+  background: var(--c-accent-tint);
 }
 
 .play:hover {
-  background: var(--text);
+  background: var(--c-text-2);
 }
 
 .tempo {
@@ -51,7 +51,7 @@
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  color: var(--text);
+  color: var(--c-text-2);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -60,5 +60,5 @@
   width: 110px;
   /* The native control is 16 px high; its click area is 36 px. */
   height: 36px;
-  accent-color: var(--teal);
+  accent-color: var(--c-accent);
 }

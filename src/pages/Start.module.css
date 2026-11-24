@@ -23,7 +23,7 @@
 .lead {
   max-width: 620px;
   margin: 0;
-  color: var(--muted-2);
+  color: var(--c-muted);
   font-size: 17px;
   line-height: 1.5;
 }
@@ -34,14 +34,14 @@
   gap: 10px;
   margin: 0;
   padding: 18px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--c-border);
   border-radius: var(--radius-card);
-  background: var(--card);
+  background: var(--c-surface);
 }
 
 .legend {
   padding: 0 6px;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -61,7 +61,7 @@
   width: 18px;
   height: 18px;
   margin: 0;
-  accent-color: var(--teal);
+  accent-color: var(--c-accent);
 }
 
 .sample {
@@ -77,10 +77,10 @@
   gap: 8px;
   min-height: 44px;
   padding: 0 18px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font-family: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -88,7 +88,7 @@
 }
 
 .sampleButton:hover {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 /* A /sheet?id= link to a sheet that is gone (design 4.4). */
@@ -97,8 +97,8 @@
   margin: 0;
   padding: 10px 14px;
   border-radius: var(--radius);
-  background: var(--red-bg);
-  color: var(--red);
+  background: var(--c-error-bg);
+  color: var(--c-error);
   font-weight: 600;
 }
 
@@ -111,13 +111,13 @@
 
 .step {
   padding: 20px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--c-border);
   border-radius: var(--radius-card);
-  background: var(--card);
+  background: var(--c-surface);
 }
 
 .stepNum {
-  color: var(--teal);
+  color: var(--c-accent);
   font-size: 28px;
   font-weight: 700;
 }
@@ -129,7 +129,7 @@
 
 .stepText {
   margin: 0;
-  color: var(--muted-2);
+  color: var(--c-muted);
   font-size: 14px;
   line-height: 1.5;
 }

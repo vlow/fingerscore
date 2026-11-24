@@ -19,7 +19,7 @@
 }
 
 .fileLine {
-  color: var(--muted-2);
+  color: var(--c-muted);
   font-size: 15px;
   overflow-wrap: anywhere;
 }
@@ -30,14 +30,14 @@
   gap: 8px;
   padding: 8px 12px;
   border-radius: var(--radius);
-  background: var(--teal-tint);
-  color: var(--teal-hover);
+  background: var(--c-accent-tint);
+  color: var(--c-accent-hover);
   font-size: 13px;
 }
 
 .picked svg {
   flex: none;
-  color: var(--teal);
+  color: var(--c-accent);
 }
 
 .body {
@@ -73,20 +73,20 @@
   align-items: center;
   gap: 16px;
   padding: 16px 18px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--c-border);
   border-radius: var(--radius-card);
-  background: var(--card);
+  background: var(--c-surface);
 }
 
 /* 2px teal frame without shifting the layout: border plus a 1px inset ring. */
 .row[data-selected] {
-  border-color: var(--teal);
-  box-shadow: inset 0 0 0 1px var(--teal);
-  background: var(--teal-light);
+  border-color: var(--c-accent);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+  background: var(--c-accent-tint-2);
 }
 
 .row[data-disabled] {
-  background: var(--pagebar);
+  background: var(--c-pagebar);
   opacity: 0.6;
 }
 
@@ -108,7 +108,7 @@
   width: 20px;
   height: 20px;
   margin: 0;
-  accent-color: var(--teal);
+  accent-color: var(--c-accent);
   cursor: inherit;
 }
 
@@ -139,8 +139,8 @@
 }
 
 .recommended {
-  background: var(--teal);
-  color: #ffffff;
+  background: var(--c-primary-bg);
+  color: var(--c-on-accent);
   font-weight: 700;
 }
 
@@ -149,22 +149,22 @@
 }
 
 .tagTeal {
-  background: var(--teal-tint);
-  color: var(--teal-hover);
+  background: var(--c-accent-tint);
+  color: var(--c-accent-hover);
 }
 
 .tagGrey {
-  background: var(--page);
-  color: var(--muted-2);
+  background: var(--c-bg);
+  color: var(--c-muted);
 }
 
 .tagAmber {
-  background: var(--amber-bg);
-  color: var(--amber);
+  background: var(--c-warning-bg);
+  color: var(--c-warning);
 }
 
 .instrument {
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 13px;
 }
 
@@ -176,7 +176,7 @@
 }
 
 .statLabel {
-  color: var(--muted);
+  color: var(--c-muted);
 }
 
 .preview {
@@ -201,15 +201,15 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: 50%;
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   cursor: pointer;
 }
 
 .play:hover {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 .legend {
@@ -217,7 +217,7 @@
   align-items: center;
   gap: 8px;
   padding-left: 4px;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
 }
 
@@ -225,9 +225,9 @@
   flex: none;
   width: 14px;
   height: 10px;
-  border: 1px solid #c8e6e1;
+  border: 1px solid color-mix(in srgb, var(--c-accent) 30%, transparent);
   border-radius: 2px;
-  background: var(--teal-tint);
+  background: var(--c-accent-tint);
 }
 
 .side {
@@ -243,14 +243,14 @@
   flex-direction: column;
   gap: 12px;
   padding: 18px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--c-border);
   border-radius: var(--radius-card);
-  background: var(--card);
+  background: var(--c-surface);
 }
 
 .cardTitle {
   margin: 0;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -272,13 +272,13 @@
 }
 
 .hintTeal {
-  background: var(--teal-tint);
-  color: var(--teal-hover);
+  background: var(--c-accent-tint);
+  color: var(--c-accent-hover);
 }
 
 .hintAmber {
-  background: var(--amber-bg);
-  color: var(--amber);
+  background: var(--c-warning-bg);
+  color: var(--c-warning);
 }
 
 .hintIcon {
@@ -296,10 +296,10 @@
 .select {
   min-height: 44px;
   padding: 0 10px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -309,8 +309,8 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: var(--radius);
-  background: var(--red-bg);
-  color: var(--red);
+  background: var(--c-error-bg);
+  color: var(--c-error);
   font-size: 13px;
   font-weight: 600;
 }
@@ -324,8 +324,8 @@
   padding: 0 16px;
   border: none;
   border-radius: 12px;
-  background: var(--teal);
-  color: #ffffff;
+  background: var(--c-primary-bg);
+  color: var(--c-on-accent);
   font-family: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -333,12 +333,12 @@
 }
 
 .cta:hover:not(:disabled) {
-  background: var(--teal-hover);
+  background: var(--c-accent-hover);
 }
 
 .cta:disabled {
-  background: var(--ghost);
-  color: var(--ink);
+  background: var(--c-ghost-key);
+  color: var(--c-text);
   cursor: not-allowed;
 }
 
@@ -347,22 +347,22 @@
   align-items: center;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
 }
 
 .secondary:hover {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 .note {
   margin: 0;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
 }
 

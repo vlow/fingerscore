@@ -10,7 +10,7 @@
   }
 
   body:has([data-print-paper]) {
-    background: #ffffff;
+    background: var(--c-paper);
   }
 
   body:has([data-print-paper]) .app {
@@ -79,7 +79,7 @@
  */
 @media print {
   body:has([data-print-scale]) {
-    background: #ffffff;
+    background: var(--c-paper);
   }
 
   body:has([data-print-scale]) .app {

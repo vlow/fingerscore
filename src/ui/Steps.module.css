@@ -16,12 +16,12 @@
 }
 
 .done {
-  color: var(--muted);
+  color: var(--c-muted);
   text-decoration: none;
 }
 
 .done:hover {
-  color: var(--ink);
+  color: var(--c-text);
   text-decoration: underline;
 }
 
@@ -30,7 +30,7 @@
 }
 
 .todo {
-  color: var(--muted);
+  color: var(--c-muted);
 }
 
 .doneMark,
@@ -47,20 +47,20 @@
 }
 
 .doneMark {
-  background: var(--teal-tint);
-  color: var(--teal-hover);
+  background: var(--c-accent-tint);
+  color: var(--c-accent-hover);
 }
 
 .currentMark {
-  background: var(--teal);
-  color: #ffffff;
+  background: var(--c-primary-bg);
+  color: var(--c-on-accent);
 }
 
 .todoMark {
-  border: 1.5px solid var(--ghost);
+  border: 1.5px solid var(--c-ghost-key);
   font-weight: 400;
 }
 
 .dash {
-  color: var(--ghost);
+  color: var(--c-ghost-key);
 }
