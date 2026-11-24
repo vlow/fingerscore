@@ -40,7 +40,15 @@ export const operator: Operator = {
   pullQuote: '',
 };
 
-const OPTIONAL: ReadonlySet<string> = new Set(['representedBy', 'register', 'vatId', 'repositoryUrl', 'pullQuote']);
+/** Every field of Operator and its shape: 'text' is a string, 'lines' is an array of strings. */
+export const FIELDS: Record<keyof Operator, 'text' | 'lines'> = {
+  name: 'text', address: 'lines', email: 'text', phone: 'text', representedBy: 'text', register: 'text', vatId: 'text',
+  responsibleForContent: 'text', hostName: 'text', hostAddress: 'text', logRetention: 'text', repositoryUrl: 'text',
+  aboutLead: 'text', authorBio: 'text', story: 'lines', pullQuote: 'text',
+};
+
+/** Fields that may stay ''. */
+export const OPTIONAL: ReadonlySet<string> = new Set(['representedBy', 'register', 'vatId', 'repositoryUrl', 'pullQuote']);
 
 export function isPlaceholder(value: string): boolean {
   return value.startsWith('TODO:');

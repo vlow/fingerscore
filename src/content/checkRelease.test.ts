@@ -9,8 +9,8 @@ const dir = mkdtempSync(join(tmpdir(), 'check-release-'));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 /** A self-contained details module: the script reads its `operator` export. */
-function details(name: string): string {
-  const file = join(dir, `${name.replace(/\W/g, '')}.mts`);
+function details(name: string, override = ''): string {
+  const file = join(dir, `${name.replace(/\W/g, '')}${override.replace(/\W/g, '')}.mts`);
   writeFileSync(
     file,
     `export const operator = {
@@ -30,6 +30,7 @@ function details(name: string): string {
   authorBio: 'A test bio.',
   story: ['A test paragraph.'],
   pullQuote: '',
+  ...{ ${override} },
 };
 `,
   );
@@ -59,5 +60,41 @@ describe('scripts/check-release.ts', { timeout: 30_000 }, () => {
     const r = run();
     expect(r.code).toBe(1);
     expect(r.out).toContain('check:release: still a placeholder: name');
+  });
+
+  it('reports a field the module leaves out', () => {
+    const file = join(dir, 'partial.mts');
+    writeFileSync(file, "export const operator = { name: 'Test Person' };\n");
+    const r = run(file);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain('check:release: missing or empty: email');
+  });
+
+  it('reports a required field that is empty or blank, and an empty list', () => {
+    const r = run(details('Test Person', "name: '', email: '   ', story: []"));
+    expect(r.code).toBe(1);
+    expect(r.out).toContain('check:release: missing or empty: name');
+    expect(r.out).toContain('check:release: missing or empty: email');
+    expect(r.out).toContain('check:release: missing or empty: story');
+  });
+
+  it('reports a field of the wrong type', () => {
+    const r = run(details('Test Person', 'phone: 5, address: "1 Test Street"'));
+    expect(r.code).toBe(1);
+    expect(r.out).toContain('check:release: wrong type: phone');
+    expect(r.out).toContain('check:release: wrong type: address');
+  });
+
+  it('accepts an empty optional field', () => {
+    expect(run(details('Test Person', "pullQuote: ''")).code).toBe(0);
+  });
+
+  it('reports a module without an operator export', () => {
+    const file = join(dir, 'none.mts');
+    writeFileSync(file, 'export const other = 1;\n');
+    const r = run(file);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain(`check:release: ${file} exports no operator.`);
+    expect(r.out).not.toContain('TypeError');
   });
 });
