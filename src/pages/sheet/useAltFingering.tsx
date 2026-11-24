@@ -5,6 +5,7 @@ import type { Doc } from '../../domain/types';
 import { SHEET } from '../../render/layout';
 import { useApp } from '../../state/store';
 import AltFingeringPopover, { popoverWidth } from '../../ui/AltFingeringPopover';
+import { hasPill } from '../../render/pillSpread';
 import AltPill, { PILL_HALF } from '../../ui/AltPill';
 
 /** The pill under a chart with alternate fingerings, and its popover. */
@@ -21,7 +22,7 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
   useEffect(() => setOpenAlt(null), [doc.shift, doc.inst]);
 
   const renderUnderChart = (ev: DerivedEvent, x: number, y: number, _system: number, lastSystem: boolean, pillX: number) => {
-    if (ev.options.length < 2) return null;
+    if (!hasPill(ev)) return null;
     const open = openAlt === ev.id;
     const width = popoverWidth(ev.options.length);
     return (

@@ -74,6 +74,14 @@ describe('FileMenu', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
+  it.each([['Enter', '{Enter}'], ['Space', ' ']])('follows the link and closes the menu on %s', async (_name, key) => {
+    renderMenu();
+    const menu = await openMenu();
+    within(menu).getByRole('menuitem', { name: 'Terms of Use' }).focus();
+    await userEvent.keyboard(key);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
   it('closes the menu when the link is clicked', async () => {
     renderMenu();
     const menu = await openMenu();

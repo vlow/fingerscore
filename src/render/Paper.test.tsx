@@ -5,7 +5,7 @@ import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { SHEET, layoutSheet } from './layout';
 import { pathBox } from './pathBox';
-import { PILL_WIDTH } from './pillSpread';
+import { hasPill, spreadPills } from './pillSpread';
 import { missingType } from './NoteView';
 import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
 import { mkDoc, type BarSpec, type EvSpec } from '../test/helpers';
@@ -205,16 +205,19 @@ describe('Paper', () => {
     expect(calls.every(([, , y]) => y === 166 + 90)).toBe(true);
   });
 
-  it('renderUnderChart gets pill centres at least one pill apart in each system', () => {
-    const calls: [number, number, number][] = [];
-    renderDoc(sampleDoc('xc'), null, {
-      renderUnderChart: (_ev, x, _y, system, _last, pillX) => { calls.push([system, x, pillX]); return null; },
+  it('renderUnderChart gets pill centres that leave out the notes without a pill', () => {
+    const calls: { system: number; x: number; pillX: number; pill: boolean }[] = [];
+    renderDoc(sampleDoc('asax'), null, {
+      renderUnderChart: (ev, x, _y, system, _last, pillX) => { calls.push({ system, x, pillX, pill: hasPill(ev) }); return null; },
     });
-    expect(calls.length).toBeGreaterThan(1);
-    calls.forEach(([system, , pillX], i) => {
-      const prev = calls[i - 1];
-      if (prev && prev[0] === system) expect(pillX - prev[2]).toBeGreaterThanOrEqual(PILL_WIDTH);
-    });
+    // The sample has charts with one fingering between charts with several.
+    expect(calls.some(c => !c.pill)).toBe(true);
+    expect(calls.filter(c => c.pill).length).toBeGreaterThan(1);
+    for (const system of new Set(calls.map(c => c.system))) {
+      const pills = calls.filter(c => c.system === system && c.pill);
+      expect(pills.map(c => c.pillX)).toEqual(spreadPills(pills.map(c => c.x), SHEET.systemWidth));
+    }
+    for (const c of calls.filter(c => !c.pill)) expect(c.pillX).toBe(c.x);
   });
 
   it('invalid chords are red', () => {

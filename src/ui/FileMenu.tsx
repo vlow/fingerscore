@@ -85,6 +85,14 @@ export default function FileMenu(p: Props) {
       case 'End': focus(-1); break;
       case 'Escape': e.preventDefault(); close(true); break;
       case 'Tab': close(true); break;
+      // A button takes Space itself; the link of the notice needs it to follow the link, as Enter does.
+      case ' ': {
+        const here = document.activeElement;
+        if (!(here instanceof HTMLAnchorElement)) return;
+        e.preventDefault();
+        here.click();
+        break;
+      }
       default: return;
     }
     e.stopPropagation();
