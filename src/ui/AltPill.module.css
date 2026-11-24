@@ -37,6 +37,14 @@
   inset: -6px -5px;
 }
 
+/*
+ * On the paper a pill stays under its note and neighbouring pills are 26 px apart, so the click area is the pill's own
+ * 26 px width (24 px is the rule there, as for notes) and 36 px high: it never reaches the next pill.
+ */
+:global([data-print-paper]) .pill::before {
+  inset: -6px 0;
+}
+
 .pill:hover::after {
   border-color: var(--muted);
 }

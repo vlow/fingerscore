@@ -31,7 +31,7 @@ test('triplets: import, make, change, undo, save, reload, download and open', as
   const first = await pitchText(page);
   await page.keyboard.press('p');
   await expect(marks(page)).toHaveCount(2);
-  await expect(panel(page).getByRole('button', { name: 'Triplet' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(panel(page).getByRole('button', { name: '3 Triplet', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
   // Second member: its note name changes with the arrow key.
   await page.keyboard.press('ArrowRight');
@@ -46,7 +46,7 @@ test('triplets: import, make, change, undo, save, reload, download and open', as
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('p');
   await expect(marks(page)).toHaveCount(1);
-  await expect(panel(page).getByRole('button', { name: 'Triplet' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(panel(page).getByRole('button', { name: '3 Triplet', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await page.keyboard.press('p');
   await expect(marks(page)).toHaveCount(2);
 

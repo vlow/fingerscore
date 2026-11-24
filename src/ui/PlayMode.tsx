@@ -280,10 +280,10 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
           <span className={s.readout}>{speedLabel(fullLineBeats(beats), doc.tempo, prefs.speed, startsIn)}</span>
         </label>
         <span aria-hidden="true" className={s.rule} />
-        <button type="button" className={s.btn} aria-label="Smaller" title="Smaller (−)" aria-disabled={!canShrink}
-          onClick={smaller}><span className={s.glyph} data-glyph="A−" aria-hidden="true" /></button>
-        <button type="button" className={s.btn} aria-label="Larger" title="Larger (+)" aria-disabled={!canGrow}
-          onClick={larger}><span className={s.glyph} data-glyph="A+" aria-hidden="true" /></button>
+        <button type="button" className={s.btn} aria-label="A− Smaller" title="Smaller (−)" aria-disabled={!canShrink}
+          onClick={smaller}>A−</button>
+        <button type="button" className={s.btn} aria-label="A+ Larger" title="Larger (+)" aria-disabled={!canGrow}
+          onClick={larger}>A+</button>
       </div>
     </div>,
     document.body,

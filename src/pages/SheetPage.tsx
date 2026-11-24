@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { derive } from '../domain/derive';
 import { locate } from '../domain/edit';
@@ -117,6 +117,7 @@ function Sheet({ doc }: { doc: Doc }) {
   useEffect(() => {
     if (startsInPlayMode) navigate(location.pathname, { replace: true, state: null });
   }, [startsInPlayMode, location.pathname, navigate]);
+  const descriptionId = useId();
   const playModeButton = useRef<HTMLButtonElement>(null);
   function enterPlayMode() {
     stopPlay();
@@ -273,10 +274,11 @@ function Sheet({ doc }: { doc: Doc }) {
                 onPlayMode={enterPlayMode} playModeRef={playModeButton} />
             </div>
           </div>
+          {/* Outside the group it describes: a description inside its own element is read twice. */}
+          <p id={descriptionId} className={s.srOnly}>{paperDescription(doc, derived)}</p>
           {/* Focusable on purpose: a scrolling area must be reachable by keyboard, and the sheet keys act from here. */}
           <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL} // NOSONAR typescript:S6845
-            aria-describedby="sheet-description" onKeyDown={onSheetKey}>
-            <p id="sheet-description" className={s.srOnly}>{paperDescription(doc, derived)}</p>
+            aria-describedby={descriptionId} onKeyDown={onSheetKey}>
             <p role="status" className={s.srOnly} aria-live="polite">{announcement}</p>
             <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}
               selectedId={selectedId} onSelect={id => select(id)}

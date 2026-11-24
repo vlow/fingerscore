@@ -1,15 +1,18 @@
 import { mkdirSync } from 'node:fs';
+import { isAbsolute } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openState, STATES } from './states';
 
 /**
  * Accessibility scan and two measured checks (target size, visible focus) over the named states; each requires zero
- * findings beyond EXCLUSIONS. A11Y_SHOTS=<folder> saves a full-page picture of each state as <folder>/<id>.png.
+ * findings beyond EXCLUSIONS. A11Y_SHOTS=<absolute folder> saves a full-page picture of each state as <folder>/<id>.png.
  */
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const SHOTS = process.env.A11Y_SHOTS;
+// A relative folder would land in the repository, where pictures never belong.
+if (SHOTS && !isAbsolute(SHOTS)) throw new Error(`A11Y_SHOTS must be an absolute folder path (it is "${SHOTS}"): pictures are never written into the repository.`);
 
 /** An exclusion covers one rule on one element of one state and carries its reason. src/a11yExclusions.test.ts pins the count. None is in use. */
 export const EXCLUSIONS: { state: string; rule: string; target: string; reason: string }[] = [];
@@ -110,7 +113,21 @@ window.__a11y = (() => {
   };
   // An animation that never ends cannot be waited for.
   const settled = () => Promise.all(document.getAnimations().filter(a => a.effect && a.effect.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => undefined)));
-  return { describe, roleOf, nameOf, snap, markRatio, settled };
+  // A control or overlay counts when a person can see it: not empty, outside the viewport, hidden, inert or transparent.
+  const shown = e => {
+    const r = e.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0 || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) return false;
+    if (e.closest('[aria-hidden="true"], [inert]')) return false;
+    for (let n = e; n; n = n.parentElement) if (getComputedStyle(n).opacity === '0') return false;
+    return getComputedStyle(e).visibility !== 'hidden';
+  };
+  const overlays = () => [...document.querySelectorAll('[role=menu], [role=dialog], dialog[open]')].filter(shown);
+  // The controls the Tab key reaches, in document order (no state uses a positive tabindex).
+  const tabbables = selector => [...document.querySelectorAll(selector)].filter(e => {
+    const r = e.getBoundingClientRect();
+    return !e.disabled && e.tabIndex >= 0 && !e.closest('[inert]') && r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden';
+  });
+  return { describe, snap, markRatio, settled, shown, overlays, tabbables };
 })();
 `;
 
@@ -156,21 +173,13 @@ async function smallTargets(page: Page): Promise<TargetResult> {
     const near: string[] = [];
     let measured = 0;
     let inside = 0;
-    // An overlay counts when a person can see it: not hidden, inert, transparent or outside the viewport.
-    const shown = (e: Element) => {
-      const r = e.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0 || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) return false;
-      if (e.closest('[aria-hidden="true"], [inert]')) return false;
-      for (let n: Element | null = e; n; n = n.parentElement) if (getComputedStyle(n).opacity === '0') return false;
-      return getComputedStyle(e).visibility !== 'hidden';
-    };
-    const overlays = [...document.querySelectorAll('[role=menu], [role=dialog], dialog[open]')].filter(shown);
+    const overlays = window.__a11y.overlays();
     for (const el of [...document.querySelectorAll<HTMLElement>(selector)]) {
       if (!el.isConnected || (el as HTMLButtonElement).disabled || el.closest('[inert]')) continue;
       if (overlays.length > 0 && !overlays.some(o => o.contains(el))) continue;
-      // A link inside a sentence is exempt: its nearest paragraph or list item holds other text.
+      // A link inside a sentence is exempt: its nearest paragraph or list item holds other text. A menu item is not a link in a sentence.
       const block = el.closest('p, li');
-      if (el.tagName === 'A' && block && (block.textContent || '').trim() !== (el.textContent || '').trim()) continue;
+      if (el.tagName === 'A' && el.getAttribute('role') !== 'menuitem' && block && (block.textContent || '').trim() !== (el.textContent || '').trim()) continue;
       const look = getComputedStyle(el);
       if (look.visibility === 'hidden' || look.opacity === '0') continue;
       const labels = (el as HTMLInputElement).labels ? [...(el as HTMLInputElement).labels!] : [];
@@ -189,7 +198,9 @@ async function smallTargets(page: Page): Promise<TargetResult> {
       const clamp = (v: number, max: number) => Math.min(Math.max(v, 0), max - 1);
       const takes = (d: number) => [[-d, -d], [d, -d], [-d, d], [d, d]]
         .every(([dx, dy]) => handled(document.elementFromPoint(clamp(cx + dx, innerWidth), clamp(cy + dy, innerHeight))));
-      const need = el.hasAttribute('data-primary') || el.closest('header nav') ? 44 : 36;
+      // A pill on the paper must stay under its note, so it is held to 24 px like a note; every other control to 36 px.
+      const onPaper = el.matches('[aria-haspopup=dialog]') && !!el.closest('[data-print-paper]');
+      const need = el.hasAttribute('data-primary') || el.closest('header nav') ? 44 : onPaper ? 24 : 36;
       const passes = takes(need / 2 - 1);
       // The measured extent: the largest square around the centre that the control takes whole.
       let lo = 0, hi = need + 10;
@@ -211,16 +222,21 @@ interface FocusResult { failures: string[]; ratios: string[] }
 const MAX_STOPS = 200;
 
 /**
- * Tab stops that show no mark of at least 3:1: an outline, box-shadow or border colour gained on focus.
- * Outside a menu or dialog the walk starts at the top of the page and its first stop must be the page's first control.
+ * Stops that show no mark of at least 3:1: an outline, box-shadow or border colour gained on focus.
+ * Outside a menu or dialog the walk uses Tab, starts at the top of the page, its first stop must be the page's first
+ * control, and when it ends by leaving the page its last stop must be the page's last control. In a menu the walk uses
+ * ArrowDown from the focused item until the focus returns to it, and it must visit every item.
  * Returns the unmarked stops and, for the report, each stop's best ratio.
  */
 async function unmarkedStops(page: Page): Promise<FocusResult> {
-  const startAtTop = await page.evaluate(selector => {
-    const overlay = [...document.querySelectorAll('[role=menu], [role=dialog], dialog[open]')].some(e => e.getBoundingClientRect().width > 0);
-    const w = window as unknown as { __stops: unknown[] };
+  const start = await page.evaluate(selector => {
+    const overlays = window.__a11y.overlays();
+    const w = window as unknown as { __stops: unknown[]; __last: Element | null };
     w.__stops = [];
-    if (overlay) return null;
+    w.__last = null;
+    const menu = overlays.find(o => o.getAttribute('role') === 'menu');
+    if (menu) return { first: null, menuItems: menu.querySelectorAll('[role=menuitem]:not([aria-disabled=true])').length, menuHasFocus: menu.contains(document.activeElement) };
+    if (overlays.length > 0) return { first: null, menuItems: 0, menuHasFocus: false };
     scrollTo(0, 0);
     (document.activeElement as HTMLElement | null)?.blur();
     // A removed node leaves the sequential focus start where it stood: before everything else.
@@ -229,12 +245,12 @@ async function unmarkedStops(page: Page): Promise<FocusResult> {
     document.body.prepend(marker);
     marker.focus();
     marker.remove();
-    const first = [...document.querySelectorAll<HTMLElement>(selector)].find(e => {
-      const r = e.getBoundingClientRect();
-      return !(e as HTMLButtonElement).disabled && e.tabIndex >= 0 && !e.closest('[inert]') && r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden';
-    });
-    return first ? window.__a11y.describe(first) : '';
+    const all = window.__a11y.tabbables(selector);
+    w.__last = all[all.length - 1] ?? null;
+    return { first: all[0] ? window.__a11y.describe(all[0]) : '', menuItems: 0, menuHasFocus: false };
   }, CONTROLS);
+  const inMenu = start.menuItems > 0;
+  if (inMenu) expect(start.menuHasFocus, 'the menu has the focus when it is open').toBe(true);
   const record = () => page.evaluate(async () => {
     await window.__a11y.settled();
     const el = document.activeElement as HTMLElement | null;
@@ -248,18 +264,34 @@ async function unmarkedStops(page: Page): Promise<FocusResult> {
   });
   let ended = 'cap';
   for (let i = 0; i < MAX_STOPS; i++) {
-    await page.keyboard.press('Tab');
+    // A menu starts on its first item: that item is the first stop. Home puts the focus there again by keyboard, as it is for a
+    // person who opened the menu with Enter; the menu opened by a click shows no focus ring until a key is pressed.
+    if (inMenu && i === 0) await page.keyboard.press('Home');
+    else await page.keyboard.press(inMenu ? 'ArrowDown' : 'Tab');
     const result = await record();
-    if (i === 0 && startAtTop !== null) {
+    if (i === 0 && start.first !== null) {
       const first = await page.evaluate(() => window.__a11y.describe(document.activeElement));
-      expect(first, 'the first Tab stop is the first control of the page').toBe(startAtTop);
+      expect(first, 'the first Tab stop is the first control of the page').toBe(start.first);
     }
     if (result !== 'stop') { ended = result; break; }
   }
-  expect(await page.evaluate(() => (window as unknown as { __stops: unknown[] }).__stops.length), 'Tab stops walked').toBeGreaterThan(0);
+  const stops = await page.evaluate(() => (window as unknown as { __stops: unknown[] }).__stops.length);
+  expect(stops, 'stops walked').toBeGreaterThan(0);
   // The walk ends when the focus wraps to the first stop or leaves the page after the last one (Chromium moves it to the
   // browser and the body). Both mean no stop traps it. Only the cap means a trap.
-  expect(['wrapped', 'end'], `the Tab walk hit the cap of ${MAX_STOPS} stops: a trap`).toContain(ended);
+  expect(['wrapped', 'end'], `the walk hit the cap of ${MAX_STOPS} stops: a trap`).toContain(ended);
+  if (inMenu) {
+    expect(ended, 'ArrowDown comes back to the first item').toBe('wrapped');
+    expect(stops, 'the walk visited every menu item').toBe(start.menuItems);
+  } else if (start.first !== null && ended === 'end') {
+    // Leaving the page after the last stop only counts when that stop is the page's last control: a walk cannot pass by stopping early.
+    const last = await page.evaluate(() => {
+      const w = window as unknown as { __stops: { el: HTMLElement }[]; __last: Element | null };
+      return { same: w.__stops[w.__stops.length - 1]!.el === w.__last, stop: window.__a11y.describe(w.__stops[w.__stops.length - 1]!.el), expected: w.__last ? window.__a11y.describe(w.__last) : '' };
+    });
+    expect(last.stop, 'the last Tab stop is the last control of the page').toBe(last.expected);
+    expect(last.same, 'the last Tab stop is the last control of the page (same element)').toBe(true);
+  }
   return page.evaluate(async () => {
     (document.activeElement as HTMLElement | null)?.blur();
     await window.__a11y.settled();
@@ -283,6 +315,9 @@ declare global {
       snap(el: Element): unknown;
       markRatio(on: unknown, off: unknown): number;
       settled(): Promise<unknown>;
+      shown(el: Element): boolean;
+      overlays(): Element[];
+      tabbables(selector: string): HTMLElement[];
     };
   }
 }
@@ -332,6 +367,8 @@ const MAX_PRESSES = 200;
 
 /** Presses Tab (or Shift+Tab) until `target` has the focus, so the test also proves that the keyboard reaches it. */
 async function tabTo(page: Page, target: Locator, key: 'Tab' | 'Shift+Tab' = 'Tab') {
+  // Tab is not pressed while the page still loads: the target must be on the screen first.
+  await expect(target.first()).toBeVisible();
   const here = () => target.first().evaluate(el => el === document.activeElement, undefined, { timeout: 500 }).catch(() => false);
   for (let i = 0; i < MAX_PRESSES && !(await here()); i++) await page.keyboard.press(key);
   await expect(target.first(), `${key} reaches the control`).toBeFocused();
@@ -495,7 +532,7 @@ test('paper description: the name stays, the description names the title, instru
 });
 
 test.describe('reduced motion', () => {
-  /** Presses PageDown in play mode and reports how far the scroller moved after one frame, and the whole distance of the turn. */
+  /** Presses PageDown in play mode and reports the scroller's position in each of the next 10 frames, and where it rests 1.5 s later. */
   async function turn(page: Page) {
     await openState(page, 'play-mode');
     const scroller = page.getByTestId('play-scroller');
@@ -503,25 +540,29 @@ test.describe('reduced motion', () => {
     await page.getByRole('region', { name: 'Play mode' }).focus();
     await scroller.evaluate(el => { el.scrollTop = 0; });
     await page.keyboard.press('PageDown');
-    return scroller.evaluate(el => new Promise<{ afterFrame: number; later: number }>(resolve => {
-      requestAnimationFrame(() => {
-        const afterFrame = el.scrollTop;
-        setTimeout(() => resolve({ afterFrame, later: el.scrollTop }), 1500);
-      });
+    return scroller.evaluate(el => new Promise<{ start: number; samples: number[]; final: number }>(resolve => {
+      const samples: number[] = [];
+      const frame = () => {
+        samples.push(el.scrollTop);
+        if (samples.length < 10) requestAnimationFrame(frame);
+        else setTimeout(() => resolve({ start: 0, samples, final: el.scrollTop }), 1500);
+      };
+      requestAnimationFrame(frame);
     }));
   }
 
   test('a page turn jumps within one frame', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    const { afterFrame, later } = await turn(page);
-    expect(afterFrame, 'the turn has happened after one frame').toBeGreaterThan(100);
-    expect(afterFrame).toBe(later);
+    const { samples, final } = await turn(page);
+    expect(samples[0], 'the turn has happened after one frame').toBeGreaterThan(100);
+    expect(samples, 'every frame shows the final position').toEqual(samples.map(() => final));
   });
 
   test('without the setting the turn glides', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    const { afterFrame, later } = await turn(page);
-    expect(later, 'the turn goes on after the first frame').toBeGreaterThan(afterFrame + 100);
+    const { start, samples, final } = await turn(page);
+    expect(final, 'the turn moved the page').toBeGreaterThan(start + 100);
+    expect(samples.some(v => v > start && v < final), `a frame lies between ${start} and ${final}: ${samples.join(', ')}`).toBe(true);
   });
 });
 
@@ -576,6 +617,27 @@ test.describe('click areas on the paper', () => {
       expect(await selectedNote(page), `the click on the head of ${note.id}, ${gap.toFixed(0)} px from its neighbour`).toBe(note.id);
       await page.mouse.click(x, y);   // the same click again clears the selection
     }
+
+    // Four eighth notes and a half in one bar, two octaves up: every note has a pill and the heads sit 21 px apart. The i-th
+    // pill belongs to the i-th head, and a pill's centre must be nearer to its own head than to any other: a pill that
+    // drifted under its neighbour would mark the wrong note.
+    await openState(page, 'start-empty');
+    await page.getByTestId('drop-zone').locator('input[type=file]').setInputFiles('e2e/fixtures/eighths.abc');
+    await page.getByRole('button', { name: /Continue/ }).click();
+    await expect(page.getByTestId('system').first()).toBeVisible();
+    for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Octave up', exact: true }).click();
+    const { notes, pills } = await page.getByTestId('system').first().evaluate(svg => {
+      const centre = (e: Element) => e.getBoundingClientRect().left + e.getBoundingClientRect().width / 2;
+      return { notes: [...svg.querySelectorAll('[data-head]')].map(centre), pills: [...svg.parentElement!.querySelectorAll('[aria-haspopup=dialog]')].map(centre) };
+    });
+    expect(notes, 'five notes').toHaveLength(5);
+    expect(pills, 'a pill under each of them').toHaveLength(5);
+    expect(notes[1]! - notes[0]!, 'the first four notes are about 21 px apart').toBeLessThan(22);
+    pills.forEach((pill, i) => {
+      notes.forEach((note, j) => {
+        if (j !== i) expect(Math.abs(pill - notes[i]!), `pill ${i + 1} is nearer to its own note than to note ${j + 1}`).toBeLessThan(Math.abs(pill - note));
+      });
+    });
   });
 
   test('a click on a note in the last bar of a system selects it and no note of the next system', async ({ page }) => {
@@ -603,12 +665,12 @@ test.describe('click areas on the paper', () => {
     const pills = page.getByRole('button', { name: /^⇅ \d+ alternate fingerings for / });
     const names = await pills.evaluateAll(els => els.map(e => e.getAttribute('aria-label')!));
     expect(names.length).toBeGreaterThan(10);
-    // The pill is drawn 26 px wide and takes clicks 36 px wide: 16 px right of its centre is still this pill, never its neighbour.
+    // The pill is drawn 26 px wide and takes clicks 26 px wide on the paper: 12 px right of its centre is still this pill, never its neighbour 26 px away.
     for (const [k, name] of names.entries()) {
       const pill = pills.nth(k);
       await pill.evaluate(el => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
       const box = (await pill.boundingBox())!;
-      await page.mouse.click(box.x + box.width / 2 + 16, box.y + box.height / 2);
+      await page.mouse.click(box.x + box.width / 2 + 12, box.y + box.height / 2);
       const note = name.replace(/^.* for /, '');
       await expect(page.getByRole('dialog', { name: new RegExp(`^Alternate fingerings for ${note}`) }), `pill ${k + 1} of ${names.length}`).toBeVisible();
       await page.keyboard.press('Escape');

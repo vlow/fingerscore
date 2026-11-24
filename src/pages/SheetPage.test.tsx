@@ -777,6 +777,16 @@ describe('select a note and play from there', () => {
     expect(live()).toHaveTextContent('');
   });
 
+  it('the description of the paper sits beside the group, not inside it, and the group points to it by id', () => {
+    open('asax');
+    const id = sheet().getAttribute('aria-describedby')!;
+    const description = document.getElementById(id)!;
+    expect(description).toHaveTextContent(/\S/);
+    expect(sheet().contains(description)).toBe(false);
+    expect(description.nextElementSibling).toBe(sheet());
+    expect(sheet()).toHaveAccessibleDescription(description.textContent!);
+  });
+
   it('clicking a note selects it and renames Play; clicking it again clears', async () => {
     open('asax');
     await user.click(hit(afterChain));
@@ -1316,18 +1326,18 @@ describe('Edit notes panel and keys', () => {
     await screen.findByRole('group', { name: 'Edit notes panel' });
     expect(within(panel()).getByText(name())).toBeInTheDocument();
     const before = name();
-    await user.click(button('Semitone up'));
+    await user.click(button('+1 Semitone up'));
     expect(ev(n.id).m).toBe(n.m + 1);
     expect(name()).not.toBe(before);
     expect(within(panel()).getByText(name())).toBeInTheDocument();
-    await user.click(button('Semitone down'));
+    await user.click(button('−1 Semitone down'));
     expect(ev(n.id).m).toBe(n.m);
-    await user.click(button('Octave up'));
+    await user.click(button('+8 Octave up'));
     expect(ev(n.id).m).toBe(n.m + 12);
-    await user.click(button('Octave down'));
+    await user.click(button('−8 Octave down'));
     expect(ev(n.id).m).toBe(n.m);
     await user.click(button('Turn into rest'));
-    for (const b of ['Octave down', 'Semitone down', 'Semitone up', 'Octave up']) expect(button(b)).toBeDisabled();
+    for (const b of ['−8 Octave down', '−1 Semitone down', '+1 Semitone up', '+8 Octave up']) expect(button(b)).toBeDisabled();
     expect(within(panel()).getByText('rest')).toBeInTheDocument();
   });
 
@@ -1338,10 +1348,10 @@ describe('Edit notes panel and keys', () => {
     await edit('asax', { score });
     await clickEvent(n.id);
     await screen.findByRole('group', { name: 'Edit notes panel' });
-    expect(button('Semitone up')).toBeDisabled();
-    expect(button('Octave up')).toBeDisabled();
-    expect(button('Semitone down')).toBeEnabled();
-    expect(button('Octave down')).toBeEnabled();
+    expect(button('+1 Semitone up')).toBeDisabled();
+    expect(button('+8 Octave up')).toBeDisabled();
+    expect(button('−1 Semitone down')).toBeEnabled();
+    expect(button('−8 Octave down')).toBeEnabled();
   });
 
   it('dotted, tie, rest toggles', async () => {
@@ -1514,7 +1524,7 @@ describe('Edit notes panel and keys', () => {
     const n = current().score[2].ev[1];
     await clickEvent(n.id);
     await screen.findByRole('group', { name: 'Edit notes panel' });
-    await user.click(button('Semitone up'));
+    await user.click(button('+1 Semitone up'));
     expect(ev(n.id).m).toBe(n.m + 1);
     expect(sheet()).toHaveFocus();
     await user.keyboard('{ArrowUp}');
@@ -1532,10 +1542,10 @@ describe('Edit notes panel and keys', () => {
     const n = current().score[2].ev[1];
     await clickEvent(n.id);
     await screen.findByRole('group', { name: 'Edit notes panel' });
-    button('Semitone up').focus();
+    button('+1 Semitone up').focus();
     await user.keyboard('{Enter}');
     expect(ev(n.id).m).toBe(n.m + 1);
-    expect(button('Semitone up')).toHaveFocus();
+    expect(button('+1 Semitone up')).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(selectedId()).toBeNull();
     expect(sheet()).toHaveFocus();
@@ -1560,9 +1570,9 @@ describe('Edit notes panel and keys', () => {
     await clickEvent(current().score[2].ev[1].id);
     const keys = (name: string) => button(name).getAttribute('aria-keyshortcuts');
     await screen.findByRole('group', { name: 'Edit notes panel' });
-    expect(['Octave down', 'Semitone down', 'Semitone up', 'Octave up'].map(keys))
+    expect(['−8 Octave down', '−1 Semitone down', '+1 Semitone up', '+8 Octave up'].map(keys))
       .toEqual(['Control+ArrowDown Meta+ArrowDown', 'ArrowDown', 'ArrowUp', 'Control+ArrowUp Meta+ArrowUp']);
-    expect(['Sixteenth', 'Eighth', 'Quarter', 'Half', 'Whole', 'Dotted', 'Triplet', 'Tie', 'Turn into rest'].map(keys))
+    expect(['Sixteenth', 'Eighth', 'Quarter', 'Half', 'Whole', 'Dotted', '3 Triplet', 'Tie', 'Turn into rest'].map(keys))
       .toEqual(['2', '3', '4', '5', '6', '.', 'P', 'T', 'R']);
     expect(within(panel()).getAllByRole('button').filter(b => b.hasAttribute('title'))).toEqual([]);
     expect(within(panel()).getByText('Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · P triplet · R rest · T tie')).toBeInTheDocument();
@@ -1604,7 +1614,7 @@ describe('Edit notes panel and keys', () => {
     expect(fakePlayer.play).toHaveBeenCalledTimes(1);
     fakePlayer.stop.mockClear();
     await screen.findByRole('group', { name: 'Edit notes panel' });
-    await user.click(button('Semitone up'));
+    await user.click(button('+1 Semitone up'));
     expect(fakePlayer.stop).toHaveBeenCalled();
     expect(selectedId()).toBe(n.id);
     expect(ev(n.id).m).toBe(n.m + 1);
@@ -1641,9 +1651,9 @@ describe('Triplet button and key', () => {
     await start();
     await pick('t1');
     const names = within(panel()).getAllByRole('button').map(b => b.getAttribute('aria-label') ?? b.textContent);
-    expect(names.indexOf('Triplet')).toBe(names.indexOf('Dotted') + 1);
-    expect(button('Triplet')).toHaveAttribute('aria-keyshortcuts', 'P');
-    expect(button('Triplet')).toHaveAttribute('aria-pressed', 'false');
+    expect(names.indexOf('3 Triplet')).toBe(names.indexOf('Dotted') + 1);
+    expect(button('3 Triplet')).toHaveAttribute('aria-keyshortcuts', 'P');
+    expect(button('3 Triplet')).toHaveAttribute('aria-pressed', 'false');
     expect(within(panel()).getByText('Keys: ↑ ↓ pitch · A–G note · 2–6 length · . dot · P triplet · R rest · T tie')).toBeInTheDocument();
   });
 
@@ -1651,20 +1661,20 @@ describe('Triplet button and key', () => {
     await start(d => setLength(d, 't1', 48)!);
     await pick('t1');
     expect(button('Whole')).toHaveAttribute('aria-pressed', 'true');
-    expect(button('Triplet')).toBeDisabled();
+    expect(button('3 Triplet')).toBeDisabled();
     await user.click(button('Sixteenth'));
-    expect(button('Triplet')).toBeDisabled();
+    expect(button('3 Triplet')).toBeDisabled();
   });
 
   it('a click on a quarter makes three events and keeps the selection on the first; one undo restores the quarter and its lyric', async () => {
     await start();
     const before = current();
     await pick('t1');
-    await user.click(button('Triplet'));
+    await user.click(button('3 Triplet'));
     expect(events().length).toBe(before.score.flatMap(b => b.ev).length + 2);
     expect(events().slice(0, 3).map(e => e.d)).toEqual([4, 4, 4]);
     expect(selectedId()).toBe('t1');
-    expect(button('Triplet')).toHaveAttribute('aria-pressed', 'true');
+    expect(button('3 Triplet')).toHaveAttribute('aria-pressed', 'true');
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(useApp.getState().doc).toBe(before);
     expect(events()[0]).toMatchObject({ id: 't1', d: 12, l: 'la' });
@@ -1675,13 +1685,13 @@ describe('Triplet button and key', () => {
     const member = events()[1];
     expect(member.d).toBe(4);
     await pick(member.id);
-    expect(button('Triplet')).toHaveAttribute('aria-pressed', 'true');
-    await user.click(button('Triplet'));
+    expect(button('3 Triplet')).toHaveAttribute('aria-pressed', 'true');
+    await user.click(button('3 Triplet'));
     expect(events().filter(e => e.d === 4 || e.d === 2 || e.d === 8)).toEqual([]);
     expect(events()).toHaveLength(6);
     expect(sheet()).toHaveFocus();
     expect(selectedId()).toBe('t1');
-    expect(button('Triplet')).toHaveAttribute('aria-pressed', 'false');
+    expect(button('3 Triplet')).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('inside an eighth triplet the Length buttons show what fits and Dotted is off', async () => {

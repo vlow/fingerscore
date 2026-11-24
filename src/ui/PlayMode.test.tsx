@@ -83,12 +83,12 @@ describe('PlayMode', () => {
     expect(region).toContainElement(sheet);
   });
 
-  it('draws A− and A+ as generated content: the buttons keep their names and hold no text', () => {
+  it('shows A− and A+ as text and names each button after its visible text, then what it does', () => {
     open();
-    for (const [name, glyph] of [['Smaller', 'A−'], ['Larger', 'A+']]) {
+    for (const [name, text] of [['A− Smaller', 'A−'], ['A+ Larger', 'A+']]) {
       const button = screen.getByRole('button', { name });
-      expect(button).toHaveTextContent('');
-      expect(button.querySelector('[aria-hidden="true"]')).toHaveAttribute('data-glyph', glyph);
+      expect(button).toHaveTextContent(text);
+      expect(name.startsWith(button.textContent!)).toBe(true);
     }
   });
 
@@ -193,9 +193,9 @@ describe('PlayMode', () => {
     fireEvent.keyDown(region, { key: '-' });
     fireEvent.keyDown(region, { key: '-' });
     expect(zoomOf()).toBe('1');
-    await user.click(screen.getByRole('button', { name: 'Larger' }));
+    await user.click(screen.getByRole('button', { name: 'A+ Larger' }));
     expect(zoomOf()).toBe('1.25');
-    await user.click(screen.getByRole('button', { name: 'Smaller' }));
+    await user.click(screen.getByRole('button', { name: 'A− Smaller' }));
     expect(stored()).toEqual({ zoom: 100, speed: 100 });
   });
 
@@ -203,7 +203,7 @@ describe('PlayMode', () => {
     const user = userEvent.setup();
     window.localStorage.setItem(KEY, JSON.stringify({ zoom: 175, speed: 100 }));
     const { onExit } = open();
-    const larger = screen.getByRole('button', { name: 'Larger' });
+    const larger = screen.getByRole('button', { name: 'A+ Larger' });
     await user.click(larger);
     expect(zoomOf()).toBe('2');
     expect(larger).toHaveAttribute('aria-disabled', 'true');
@@ -220,12 +220,12 @@ describe('PlayMode', () => {
     Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 1024 });
     fireEvent(window, new Event('resize'));
     expect(Number(zoomOf())).toBeCloseTo(1000 / 940, 3);
-    const larger = screen.getByRole('button', { name: 'Larger' });
+    const larger = screen.getByRole('button', { name: 'A+ Larger' });
     expect(larger).toHaveAttribute('aria-disabled', 'true');
     fireEvent.keyDown(region, { key: '+' });
     expect(stored()).toBeNull();
     // Smaller steps from what is on screen, to the next size on the grid.
-    await user.click(screen.getByRole('button', { name: 'Smaller' }));
+    await user.click(screen.getByRole('button', { name: 'A− Smaller' }));
     expect(zoomOf()).toBe('1');
     expect(stored()).toEqual({ zoom: 100, speed: 100 });
     expect(larger).toHaveAttribute('aria-disabled', 'false');
@@ -371,7 +371,7 @@ describe('PlayMode', () => {
     const { scroller, scrollTo } = open();
     size(scroller, 2760, 1000);
     fireEvent.keyDown(screen.getByRole('slider', { name: 'Auto-scroll speed' }), { key: 'ArrowRight' });
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Larger' }), { key: ' ' });
+    fireEvent.keyDown(screen.getByRole('button', { name: 'A+ Larger' }), { key: ' ' });
     expect(scrollTo).not.toHaveBeenCalled();
   });
 

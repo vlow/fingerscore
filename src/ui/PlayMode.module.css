@@ -77,11 +77,6 @@
   cursor: default;
 }
 
-/* The glyph of A− and A+: generated content, so the button's name is the only text it has. */
-.glyph::before {
-  content: attr(data-glyph);
-}
-
 /* The light mint of the buttons has 1.6:1 against this grey. */
 .scroller:focus-visible {
   outline: 3px solid var(--teal);

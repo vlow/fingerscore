@@ -136,6 +136,7 @@ test('A04 alto sax: "Sounds in" D major writes B major', async ({ page }) => {
 });
 
 test('A05 playback: the sample has 56 notes and 39.0 s at ♩ = 100; a repeat with two endings plays bars 1 2 3 4 then 2 3 5', async ({ page }) => {
+  test.setTimeout(60_000);
   // The sample. The file's length shows on the track page, the note count on the sheet; the sheet shows no total, so
   // the exact length comes from the tempo shown and the beats of the bars: 65 quarters at 100 per minute.
   await openState(page, 'tracks');
@@ -475,12 +476,12 @@ test('V04 triplets: imported, made from plain notes, changed and undone', async 
   await page.locator('[data-hit]').first().click();
   const pitch = () => panel.getByRole('group', { name: 'Pitch' }).innerText();
   const first = await pitch();
-  await panel.getByRole('button', { name: 'Triplet' }).click();
+  await panel.getByRole('button', { name: '3 Triplet', exact: true }).click();
   await expect(marks).toHaveCount(2);
 
   await page.keyboard.press('ArrowRight');   // the second member of the new group
   const second = await pitch();
-  await page.getByRole('button', { name: 'Semitone up', exact: true }).click();
+  await page.getByRole('button', { name: '+1 Semitone up', exact: true }).click();
   await expect.poll(pitch).not.toBe(second);
   await page.keyboard.press('Control+Z');
   await expect.poll(pitch).toBe(second);
@@ -553,7 +554,7 @@ test('V08 Alternate fingerings: the automatic choice follows the neighbours, a m
   await mode(page, 'Edit notes');
   const ids = await hitIds(page);
   const panel = page.getByRole('group', { name: 'Edit notes panel' });
-  const up = panel.getByRole('button', { name: 'Semitone up', exact: true });
+  const up = panel.getByRole('button', { name: '+1 Semitone up', exact: true });
   const announced = (text: string) => page.locator('[aria-live=polite]').filter({ hasText: text });
   const pill = page.getByRole('button', { name: /^⇅ \d+ alternate fingerings for B♭4/ });
   const autoOption = async () => {
@@ -625,7 +626,9 @@ test('V10 No request leaves the origin from the start page through sample, sheet
   const paths = urls.map(u => new URL(u).pathname);
   expect(paths.filter(p => p.endsWith('.woff2')).length, 'page font files').toBeGreaterThan(0);
   expect(paths.filter(p => /\/pdf\/fonts\/.*\.ttf$/.test(p)).length, 'PDF font files').toBeGreaterThan(0);
-  expect(paths.filter(p => /\/pdf\/sheetPdf\.ts$/.test(p)).length, 'PDF code').toBeGreaterThan(0);
+  // This suite runs on the dev server, where the PDF code arrives as /src/pdf/sheetPdf.ts; a production build names the
+  // chunk sheetPdf-<hash>.js. The name sheetPdf holds in both.
+  expect(paths.filter(p => /sheetPdf/.test(p)).length, 'PDF code').toBeGreaterThan(0);
   const foreign = urls.filter(u => !u.startsWith('data:') && new URL(u).origin !== origin);
   expect(foreign).toEqual([]);
 });

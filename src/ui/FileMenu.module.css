@@ -210,3 +210,14 @@
   padding: 2px 12px 6px;
   font-size: 12px;
 }
+
+/*
+ * The Terms of Use link is a menu item: its click area is 36 px high (the text is 12 px). The negative margins give the
+ * extra height back, 8 px above and 10 px below, so the row grows by 4 px and the area stays clear of the buttons.
+ */
+.rights a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin: -8px 0 -10px;
+}
