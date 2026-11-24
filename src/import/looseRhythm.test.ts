@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isTripletLength } from '../domain/time';
 import { DEFAULT_PREFS } from '../domain/transpose';
+import { instrumented } from '../test/timing';
 import { expectValidBars } from '../test/validBars';
 import { buildDoc } from './buildDoc';
 import type { ParsedSong, RawNote } from './types';
@@ -57,6 +58,6 @@ describe('loosely played plain rhythm', () => {
     const doc = buildLoose(notes);
     const ms = performance.now() - t0;
     expect(doc.score.length).toBeGreaterThanOrEqual(1990);
-    expect(ms).toBeLessThan(600);
+    if (!instrumented) expect(ms).toBeLessThan(600);
   });
 });

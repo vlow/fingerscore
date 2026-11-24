@@ -27,6 +27,8 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test-setup.ts'],
+    // Tells src/test/timing.ts that the code is instrumented, so tests skip their wall-clock budgets.
+    env: process.argv.includes('--coverage') ? { COVERAGE: '1' } : {},
     // Only with `npm test -- --coverage`. CI hands coverage/lcov.info to SonarCloud.
     coverage: {
       provider: 'v8',

@@ -37,6 +37,10 @@ jobs:
       - name: Package list matches the build
         run: npm run notices -- --check
 
+      # Two runs: the plain one enforces the wall-clock budgets in the tests; the instrumented one is about three
+      # times slower, skips those budgets and writes coverage/lcov.info.
+      - name: Unit tests
+        run: npm test
       - name: Unit tests with coverage
         run: npm test -- --coverage
 
