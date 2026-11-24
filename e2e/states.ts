@@ -56,8 +56,11 @@ async function altPopover(page: Page) {
 const RAW: AppState[] = [
   {
     id: 'start-empty',
-    landmark: heading(/.+/),
-    open: page => clean(page),
+    landmark: page => page.getByTestId('drop-zone'),
+    open: async page => {
+      await clean(page);
+      await expect(page.getByRole('navigation', { name: 'Site' })).toBeVisible();
+    },
   },
   {
     id: 'start-strip',
@@ -94,7 +97,7 @@ const RAW: AppState[] = [
   },
   {
     id: 'sheet-edit-selected',
-    landmark: page => page.getByRole('group', { name: 'Edit notes panel' }).getByRole('button', { name: 'Quarter' }),
+    landmark: page => page.locator('[aria-live=polite]').filter({ hasText: /^Selected: / }),
     open: async page => {
       await sheet(page);
       await mode(page, 'Edit notes');

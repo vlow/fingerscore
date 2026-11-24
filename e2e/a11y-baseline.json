@@ -2,8 +2,6 @@
   "axe": {},
   "targets": {
     "start-empty": [
-      "checkbox \"Prefer keys with few sharps or flats\" (36 px)",
-      "checkbox \"Prefer the easy register (no octave key or overblo\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Imprint\" (36 px)",
       "link \"Privacy\" (36 px)",
@@ -12,8 +10,6 @@
     "start-strip": [
       "button \"All 1\" (36 px)",
       "button \"Delete Auld Lang Syne\" (36 px)",
-      "checkbox \"Prefer keys with few sharps or flats\" (36 px)",
-      "checkbox \"Prefer the easy register (no octave key or overblo\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Imprint\" (36 px)",
       "link \"Privacy\" (36 px)",
@@ -23,16 +19,12 @@
       "button \"All 1\" (36 px)",
       "button \"Close\" (36 px)",
       "button \"Delete Auld Lang Syne\" (36 px)",
-      "checkbox \"Prefer keys with few sharps or flats\" (36 px)",
-      "checkbox \"Prefer the easy register (no octave key or overblo\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Imprint\" (36 px)",
       "link \"Privacy\" (36 px)",
       "link \"Terms\" (36 px)"
     ],
     "start-refusal": [
-      "checkbox \"Prefer keys with few sharps or flats\" (36 px)",
-      "checkbox \"Prefer the easy register (no octave key or overblo\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Imprint\" (36 px)",
       "link \"Privacy\" (36 px)",
@@ -45,16 +37,12 @@
       "link \"About\" (36 px)",
       "link \"Imprint\" (36 px)",
       "link \"Privacy\" (36 px)",
-      "link \"Terms\" (36 px)",
-      "radio \"1 · Melody\" (36 px)",
-      "radio \"2 · Chords\" (36 px)",
-      "radio \"3 · Bass\" (36 px)"
+      "link \"Terms\" (36 px)"
     ],
     "sheet-view": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
-      "checkbox \"Chord symbols (transposed)\" (36 px)",
-      "checkbox \"Fingering charts\" (36 px)",
-      "checkbox \"Lyrics\" (36 px)",
+      "combobox \"Fingerings for\" (36 px)",
+      "combobox \"Sounds in · concert pitch\" (36 px)",
+      "combobox \"You read · written pitch\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Change track\" (36 px)",
       "link \"Imprint\" (36 px)",
@@ -62,7 +50,6 @@
       "link \"Terms\" (36 px)"
     ],
     "sheet-edit-selected": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
       "button \"Dotted\" (36 px)",
       "button \"Eighth\" (36 px)",
       "button \"Half\" (36 px)",
@@ -74,9 +61,9 @@
       "button \"Sixteenth\" (36 px)",
       "button \"Tie\" (36 px)",
       "button \"Whole\" (36 px)",
-      "checkbox \"Chord symbols (transposed)\" (36 px)",
-      "checkbox \"Fingering charts\" (36 px)",
-      "checkbox \"Lyrics\" (36 px)",
+      "combobox \"Fingerings for\" (36 px)",
+      "combobox \"Sounds in · concert pitch\" (36 px)",
+      "combobox \"You read · written pitch\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Change track\" (36 px)",
       "link \"Imprint\" (36 px)",
@@ -84,16 +71,15 @@
       "link \"Terms\" (36 px)"
     ],
     "sheet-lyrics": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
       "button \"Insert -\" (36 px)",
       "button \"Insert …\" (36 px)",
       "button \"Insert ’\" (36 px)",
       "button \"Insert “\" (36 px)",
       "button \"Insert „\" (36 px)",
       "button \"Insert ‿\" (36 px)",
-      "checkbox \"Chord symbols (transposed)\" (36 px)",
-      "checkbox \"Fingering charts\" (36 px)",
-      "checkbox \"Lyrics\" (36 px)",
+      "combobox \"Fingerings for\" (36 px)",
+      "combobox \"Sounds in · concert pitch\" (36 px)",
+      "combobox \"You read · written pitch\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Change track\" (36 px)",
       "link \"Imprint\" (36 px)",
@@ -101,7 +87,6 @@
       "link \"Terms\" (36 px)"
     ],
     "sheet-chords": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
       "button \"Insert ( )\" (36 px)",
       "button \"Insert /\" (36 px)",
       "button \"Insert °\" (36 px)",
@@ -112,9 +97,9 @@
       "button \"Insert m\" (36 px)",
       "button \"Insert ø\" (36 px)",
       "button \"Insert Δ7\" (36 px)",
-      "checkbox \"Chord symbols (transposed)\" (36 px)",
-      "checkbox \"Fingering charts\" (36 px)",
-      "checkbox \"Lyrics\" (36 px)",
+      "combobox \"Fingerings for\" (36 px)",
+      "combobox \"Sounds in · concert pitch\" (36 px)",
+      "combobox \"You read · written pitch\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Change track\" (36 px)",
       "link \"Imprint\" (36 px)",
@@ -122,25 +107,11 @@
       "link \"Terms\" (36 px)"
     ],
     "sheet-out-of-range": [
-      "button \"⇅ 2 alternate fingerings for C6\" (36 px)",
-      "button \"⇅ 7 alternate fingerings for A6\" (36 px)",
-      "button \"⇅ 7 alternate fingerings for C7\" (36 px)",
-      "button \"⇅ 7 alternate fingerings for F6\" (36 px)",
-      "button \"⇅ 8 alternate fingerings for G6\" (36 px)",
-      "checkbox \"Chord symbols (transposed)\" (36 px)",
-      "checkbox \"Fingering charts\" (36 px)",
-      "checkbox \"Lyrics\" (36 px)",
-      "link \"About\" (36 px)",
-      "link \"Change track\" (36 px)",
-      "link \"Imprint\" (36 px)",
-      "link \"Privacy\" (36 px)",
-      "link \"Terms\" (36 px)"
-    ],
-    "sheet-alt-popover": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
-      "checkbox \"Chord symbols (transposed)\" (36 px)",
-      "checkbox \"Fingering charts\" (36 px)",
-      "checkbox \"Lyrics\" (36 px)",
+      "button \"⇅ 7 alternate fingerings for A6\" (36 px) ×4",
+      "button \"⇅ 7 alternate fingerings for F6\" (36 px) ×6",
+      "combobox \"Fingerings for\" (36 px)",
+      "combobox \"Sounds in · concert pitch\" (36 px)",
+      "combobox \"You read · written pitch\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Change track\" (36 px)",
       "link \"Imprint\" (36 px)",
@@ -148,31 +119,18 @@
       "link \"Terms\" (36 px)"
     ],
     "sheet-file-menu": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
-      "button \"Listen\" (36 px)",
-      "button \"Play mode\" (36 px)",
-      "checkbox \"Chord symbols (transposed)\" (36 px)",
-      "checkbox \"Fingering charts\" (36 px)",
-      "checkbox \"Lyrics\" (36 px)",
-      "link \"About\" (36 px)",
-      "link \"Change track\" (36 px)",
-      "link \"Imprint\" (36 px)",
-      "link \"Privacy\" (36 px)",
-      "link \"Terms\" (36 px)",
-      "menuitem \"Download PDF\" (44 px)",
-      "slider \"♩ = 100\" (36 px)"
+      "menuitem \"Download PDF\" (44 px)"
     ],
     "sheet-pdf-message": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
       "button \"Insert -\" (36 px)",
       "button \"Insert …\" (36 px)",
       "button \"Insert ’\" (36 px)",
       "button \"Insert “\" (36 px)",
       "button \"Insert „\" (36 px)",
       "button \"Insert ‿\" (36 px)",
-      "checkbox \"Chord symbols (transposed)\" (36 px)",
-      "checkbox \"Fingering charts\" (36 px)",
-      "checkbox \"Lyrics\" (36 px)",
+      "combobox \"Fingerings for\" (36 px)",
+      "combobox \"Sounds in · concert pitch\" (36 px)",
+      "combobox \"You read · written pitch\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Change track\" (36 px)",
       "link \"Imprint\" (36 px)",
@@ -183,19 +141,8 @@
       "slider \"Auto-scroll speed\" (36 px)"
     ],
     "scales": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
-      "checkbox \"Note names\" (36 px)",
-      "checkbox \"Show alternate fingerings\" (36 px)",
-      "link \"About\" (36 px)",
-      "link \"Imprint\" (36 px)",
-      "link \"Privacy\" (36 px)",
-      "link \"Terms\" (36 px)"
-    ],
-    "scales-alt-popover": [
-      "button \"⇅ 2 alternate fingerings for C5\" (36 px)",
-      "button \"⇅ 4 alternate fingerings for B♭4\" (36 px)",
-      "checkbox \"Note names\" (36 px)",
-      "checkbox \"Show alternate fingerings\" (36 px)",
+      "combobox \"Instrument\" (36 px)",
+      "combobox \"Scale\" (36 px)",
       "link \"About\" (36 px)",
       "link \"Imprint\" (36 px)",
       "link \"Privacy\" (36 px)",
@@ -227,17 +174,8 @@
     ]
   },
   "focus": {
-    "sheet-view": [
-      "textbox \"Sheet subtitle\"",
-      "textbox \"Sheet title\""
-    ],
-    "sheet-out-of-range": [
-      "textbox \"Sheet subtitle\"",
-      "textbox \"Sheet title\""
-    ],
-    "sheet-file-menu": [
-      "textbox \"Sheet subtitle\"",
-      "textbox \"Sheet title\""
+    "play-mode": [
+      "region \"Sheet music\""
     ]
   }
 }

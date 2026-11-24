@@ -63,14 +63,67 @@ window.__a11y = (() => {
     return '';
   };
   const describe = el => {
-    if (!el) return 'unknown';
+    if (!el) throw new Error('describe: the element does not resolve');
     const name = nameOf(el);
     const base = roleOf(el) + (name ? ' "' + name + '"' : stable(el));
     if (name || stable(el)) return base;
     const up = el.parentElement && el.parentElement.closest('[role],[data-testid],[aria-label],section,nav,header,footer,main');
     return base + (up ? ' in ' + roleOf(up) + (nameOf(up) && up.getAttribute('aria-label') ? ' "' + nameOf(up) + '"' : '') : '');
   };
-  return { describe, roleOf, nameOf };
+
+  // Colours: computed values are rgb() or rgba().
+  const parse = text => {
+    const m = /^rgba?\\(([^)]+)\\)$/.exec(text.trim());
+    if (!m) throw new Error('colour not understood: ' + text);
+    const n = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number);
+    return { r: n[0], g: n[1], b: n[2], a: n.length > 3 ? n[3] : 1 };
+  };
+  const over = (top, under) => ({ r: top.r * top.a + under.r * (1 - top.a), g: top.g * top.a + under.g * (1 - top.a), b: top.b * top.a + under.b * (1 - top.a), a: 1 });
+  const lum = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+  const ratio = (x, y) => { const a = lum(x), b = lum(y); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
+  /** The background behind an element: the ancestors' backgrounds over white. */
+  const behind = el => {
+    const chain = [];
+    for (let e = el.parentElement; e; e = e.parentElement) chain.unshift(e);
+    let bg = { r: 255, g: 255, b: 255, a: 1 };
+    for (const e of chain) { const c = parse(getComputedStyle(e).backgroundColor); if (c.a > 0) bg = over(c, bg); }
+    return bg;
+  };
+  const snap = el => {
+    const cs = getComputedStyle(el);
+    const outer = behind(el);
+    const own = over(parse(cs.backgroundColor), outer);
+    return {
+      outline: cs.outlineStyle === 'none' || parseFloat(cs.outlineWidth) === 0 ? null : cs.outlineColor,
+      shadow: cs.boxShadow,
+      border: ['Top', 'Right', 'Bottom', 'Left'].map(s => parseFloat(cs['border' + s + 'Width']) > 0 && cs['border' + s + 'Style'] !== 'none' ? cs['border' + s + 'Color'] : null),
+      outer, own,
+    };
+  };
+  const NONE = { outline: null, shadow: 'none', border: [null, null, null, null] };
+  /** The best contrast of a mark gained on focus; 0 when there is none. Background change alone does not count. */
+  const markRatio = (on, off) => {
+    off = off || NONE;
+    let best = 0;
+    const against = (colour, ground) => {
+      const c = parse(colour);
+      if (c.a === 0) return;
+      best = Math.max(best, ratio(over(c, ground), ground));
+    };
+    if (on.outline && on.outline !== off.outline) against(on.outline, on.outer);
+    if (on.shadow !== 'none' && on.shadow !== off.shadow) {
+      for (const layer of on.shadow.match(/rgba?\\([^)]*\\)[^,]*(?:\\([^)]*\\)[^,]*)*/g) || []) {
+        const colour = /rgba?\\([^)]*\\)/.exec(layer)[0];
+        const sizes = layer.replace(colour, '').replace('inset', '').match(/-?[0-9.]+px/g) || [];
+        if (!sizes.some(v => parseFloat(v) !== 0)) continue;
+        against(colour, layer.includes('inset') ? on.own : on.outer);
+      }
+    }
+    on.border.forEach((colour, i) => { if (colour && colour !== off.border[i]) against(colour, on.own); });
+    return best;
+  };
+  const settled = () => Promise.all(document.getAnimations().map(a => a.finished.catch(() => undefined)));
+  return { describe, roleOf, nameOf, snap, markRatio, settled };
 })();
 `;
 
@@ -95,83 +148,135 @@ async function axeFindings(page: Page, stateId: string): Promise<AxeFinding[]> {
   return found.filter(f => !EXCLUSIONS.some(e => e.state === stateId && e.rule === f.rule && e.target === f.target));
 }
 
-/** Controls whose click area is smaller than the size they need. Returns "role name (need px)". */
-async function smallTargets(page: Page): Promise<string[]> {
+/** Identical descriptions stay visible as "name ×2", so a second identical control cannot hide behind the first. */
+function counted(list: string[]): string[] {
+  const counts = new Map<string, number>();
+  for (const item of list) counts.set(item, (counts.get(item) ?? 0) + 1);
+  return [...counts].map(([item, n]) => (n > 1 ? `${item} ×${n}` : item));
+}
+
+interface TargetResult { failures: string[]; near: string[] }
+
+/**
+ * Controls whose click area is smaller than the size they need; "role name (need px)".
+ * The area is the union of the control's box and its labels' boxes. While a menu or dialog is open, only its own
+ * controls are measured: the others lie under it. `near` lists every control measured within 2 px of its threshold.
+ */
+async function smallTargets(page: Page): Promise<TargetResult> {
   return page.evaluate(selector => {
     const failures: string[] = [];
-    const controls = [...document.querySelectorAll<HTMLElement>(selector)];
-    for (const el of controls) {
+    const near: string[] = [];
+    const shown = (e: Element) => { const r = e.getBoundingClientRect(); const v = getComputedStyle(e); return r.width > 0 && r.height > 0 && v.visibility !== 'hidden'; };
+    const overlays = [...document.querySelectorAll('[role=menu], [role=dialog], dialog[open]')].filter(shown);
+    for (const el of [...document.querySelectorAll<HTMLElement>(selector)]) {
       if (!el.isConnected || (el as HTMLButtonElement).disabled || el.closest('[inert]')) continue;
-      const parent = el.parentElement;
-      // A link inside a sentence is exempt.
-      if (el.tagName === 'A' && parent && ['P', 'LI', 'SPAN'].includes(parent.tagName)
-        && (parent.textContent || '').trim() !== (el.textContent || '').trim()) continue;
+      if (overlays.length > 0 && !overlays.some(o => o.contains(el))) continue;
+      // A link inside a sentence is exempt: its nearest paragraph or list item holds other text.
+      const block = el.closest('p, li');
+      if (el.tagName === 'A' && block && (block.textContent || '').trim() !== (el.textContent || '').trim()) continue;
       const look = getComputedStyle(el);
       if (look.visibility === 'hidden' || look.opacity === '0') continue;
-      let box = el.getBoundingClientRect();
-      if (box.width === 0 || box.height === 0) continue;
-      if (box.bottom < 0 || box.top > innerHeight || box.right < 0 || box.left > innerWidth) {
+      const labels = (el as HTMLInputElement).labels ? [...(el as HTMLInputElement).labels!] : [];
+      const boxes = () => [el, ...labels].map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
+      if (boxes().length === 0 || el.getBoundingClientRect().width === 0) continue;
+      const outside = () => boxes().some(r => r.bottom < 0 || r.top < 0 || r.bottom > innerHeight || r.right < 0 || r.left < 0 || r.right > innerWidth);
+      if (outside()) {
         el.scrollIntoView({ block: 'center', inline: 'center' });
         if (!el.isConnected) continue;
-        box = el.getBoundingClientRect();
       }
-      const need = el.hasAttribute('data-primary') || el.closest('header nav') ? 44 : 36;
-      const d = need / 2 - 1;
-      const cx = box.left + box.width / 2;
-      const cy = box.top + box.height / 2;
-      const labels = (el as HTMLInputElement).labels ? [...(el as HTMLInputElement).labels!] : [];
+      const rects = boxes();
+      const cx = (Math.min(...rects.map(r => r.left)) + Math.max(...rects.map(r => r.right))) / 2;
+      const cy = (Math.min(...rects.map(r => r.top)) + Math.max(...rects.map(r => r.bottom))) / 2;
       const handled = (hit: Element | null) => !!hit && (el.contains(hit) || labels.some(l => l.contains(hit)));
       const clamp = (v: number, max: number) => Math.min(Math.max(v, 0), max - 1);
-      const points = [[-d, -d], [d, -d], [-d, d], [d, d]].map(([dx, dy]) => [clamp(cx + dx, innerWidth), clamp(cy + dy, innerHeight)]);
-      if (!points.every(([x, y]) => handled(document.elementFromPoint(x, y)))) {
-        failures.push(`${window.__a11y.describe(el)} (${need} px)`);
-      }
+      const takes = (d: number) => [[-d, -d], [d, -d], [-d, d], [d, d]]
+        .every(([dx, dy]) => handled(document.elementFromPoint(clamp(cx + dx, innerWidth), clamp(cy + dy, innerHeight))));
+      const need = el.hasAttribute('data-primary') || el.closest('header nav') ? 44 : 36;
+      const passes = takes(need / 2 - 1);
+      // The measured extent: the largest square around the centre that the control takes whole.
+      let lo = 0, hi = need + 10;
+      if (takes(0)) for (let i = 0; i < 8; i++) { const mid = (lo + hi) / 2; if (takes(mid)) lo = mid; else hi = mid; }
+      const extent = takes(0) ? 2 * lo + 2 : 0;
+      const description = window.__a11y.describe(el);
+      if (!passes) failures.push(`${description} (${need} px)`);
+      if (Math.abs(extent - need) <= 2) near.push(`${description}: ${passes ? 'passes' : 'fails'} at about ${extent.toFixed(1)} px, needs ${need}`);
     }
-    return failures;
+    return { failures, near };
   }, CONTROLS);
 }
 
-/** Tab stops that show no focus mark. Returns the descriptions of those stops. */
-async function unmarkedStops(page: Page): Promise<string[]> {
-  await page.evaluate(() => {
+interface FocusResult { failures: string[]; ratios: string[] }
+
+/**
+ * Tab stops that show no mark of at least 3:1: an outline, box-shadow or border colour gained on focus.
+ * Outside a menu or dialog the walk starts at the top of the page and its first stop must be the page's first control.
+ * Returns the unmarked stops and, for the report, each stop's best ratio.
+ */
+async function unmarkedStops(page: Page): Promise<FocusResult> {
+  const startAtTop = await page.evaluate(selector => {
+    const overlay = [...document.querySelectorAll('[role=menu], [role=dialog], dialog[open]')].some(e => e.getBoundingClientRect().width > 0);
+    const w = window as unknown as { __stops: unknown[] };
+    w.__stops = [];
+    if (overlay) return null;
+    scrollTo(0, 0);
     (document.activeElement as HTMLElement | null)?.blur();
-    (window as unknown as { __stops: unknown[] }).__stops = [];
-  });
-  const mark = () => page.evaluate(() => {
-    const el = document.activeElement as HTMLElement | null;
-    if (!el || el === document.body) return null;
-    const style = getComputedStyle(el);
-    const w = window as unknown as { __stops: { el: HTMLElement; outline: string; shadow: string }[] };
-    w.__stops.push({
-      el,
-      outline: style.outlineStyle === 'none' || parseFloat(style.outlineWidth) === 0 ? 'none' : `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`,
-      shadow: style.boxShadow,
+    // A removed node leaves the sequential focus start where it stood: before everything else.
+    const marker = document.createElement('span');
+    marker.tabIndex = -1;
+    document.body.prepend(marker);
+    marker.focus();
+    marker.remove();
+    const first = [...document.querySelectorAll<HTMLElement>(selector)].find(e => {
+      const r = e.getBoundingClientRect();
+      return !(e as HTMLButtonElement).disabled && e.tabIndex >= 0 && !e.closest('[inert]') && r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden';
     });
-    return el === w.__stops[0].el && w.__stops.length > 1 ? 'again' : 'stop';
+    return first ? window.__a11y.describe(first) : '';
+  }, CONTROLS);
+  const record = () => page.evaluate(async () => {
+    await window.__a11y.settled();
+    const el = document.activeElement as HTMLElement | null;
+    if (!el || el === document.body) return 'end';
+    const w = window as unknown as { __stops: { el: HTMLElement; on: unknown }[] };
+    if (w.__stops.length > 0 && el === w.__stops[0].el) return 'wrapped';
+    // The mark may sit on the control or, as with :focus-within, on one of its two nearest ancestors.
+    const chain = [el, el.parentElement, el.parentElement?.parentElement].filter((e): e is HTMLElement => !!e && e !== document.body);
+    w.__stops.push({ el, on: chain.map(e => ({ el: e, snap: window.__a11y.snap(e) })) });
+    return 'stop';
   });
   for (let i = 0; i < 200; i++) {
     await page.keyboard.press('Tab');
-    const result = await mark();
-    if (result === null || result === 'again') break;
-  }
-  return page.evaluate(() => {
-    const w = window as unknown as { __stops: { el: HTMLElement; outline: string; shadow: string }[] };
-    const stops = w.__stops;
-    if (stops.length > 1 && stops[stops.length - 1].el === stops[0].el) stops.pop();
-    (document.activeElement as HTMLElement | null)?.blur();
-    const failures: string[] = [];
-    for (const stop of stops) {
-      const rest = stop.el.isConnected ? getComputedStyle(stop.el) : null;
-      const outlineShown = stop.outline !== 'none' && (!rest || stop.outline !== (rest.outlineStyle === 'none' || parseFloat(rest.outlineWidth) === 0 ? 'none' : `${rest.outlineStyle} ${rest.outlineWidth} ${rest.outlineColor}`));
-      const shadowShown = stop.shadow !== 'none' && (!rest || stop.shadow !== rest.boxShadow);
-      if (!outlineShown && !shadowShown) failures.push(window.__a11y.describe(stop.el));
+    const result = await record();
+    if (i === 0 && startAtTop !== null) {
+      const first = await page.evaluate(() => window.__a11y.describe(document.activeElement));
+      expect(first, 'the first Tab stop is the first control of the page').toBe(startAtTop);
     }
-    return failures;
+    if (result !== 'stop') break;
+  }
+  return page.evaluate(async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    await window.__a11y.settled();
+    const w = window as unknown as { __stops: { el: HTMLElement; on: { el: HTMLElement; snap: unknown }[] }[] };
+    const failures: string[] = [];
+    const ratios: string[] = [];
+    for (const stop of w.__stops) {
+      const r = Math.max(...stop.on.map(({ el, snap }) => window.__a11y.markRatio(snap, el.isConnected ? window.__a11y.snap(el) : null)));
+      const description = window.__a11y.describe(stop.el);
+      ratios.push(`${description}: ${r.toFixed(2)}:1`);
+      if (r < 3) failures.push(description);
+    }
+    return { failures, ratios };
   });
 }
 
 declare global {
-  interface Window { __a11y: { describe(el: Element | null): string } }
+  interface Window {
+    __a11y: {
+      describe(el: Element | null): string;
+      snap(el: Element): unknown;
+      markRatio(on: unknown, off: unknown): number;
+      settled(): Promise<unknown>;
+    };
+  }
 }
 
 for (const state of STATES) {
@@ -192,12 +297,16 @@ for (const state of STATES) {
 
     test('targets', async ({ page }) => {
       await prepare(page, state.id);
-      judge('targets', state.id, await smallTargets(page));
+      const { failures, near } = await smallTargets(page);
+      if (process.env.A11Y_NEAR) for (const line of near) console.log(`NEAR ${state.id}: ${line}`);
+      judge('targets', state.id, counted(failures));
     });
 
     test('focus', async ({ page }) => {
       await prepare(page, state.id);
-      judge('focus', state.id, await unmarkedStops(page));
+      const { failures, ratios } = await unmarkedStops(page);
+      if (process.env.A11Y_NEAR) for (const line of ratios) console.log(`FOCUS ${state.id}: ${line}`);
+      judge('focus', state.id, counted(failures));
     });
   });
 }
