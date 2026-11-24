@@ -95,7 +95,11 @@ With any problem, playback ignores the jump and plays straight. The sheet page s
 ### 5.4 Import
 
 - **MusicXML:** the `sound` element, which stands in a direction or directly in a measure, with its attributes `segno`, `coda`, `tocoda`, `fine`, `dacapo`, `dalsegno`; the `segno` and `coda` elements of a direction or a barline; and the direction words ("D.C. al Fine", "D.S. al Coda", "To Coda", "Fine"). The attributes do not say "al Fine" or "al Coda": the words decide, and without words a Fine or a "To Coda" in the file decides.
-- **MuseScore 2, 3, 4:** `Marker` elements (segno, coda sign, fine, to coda) and `Jump` elements with their jump-to, play-until and continue-at labels. Where these elements sit differs between the versions; the readers are written against real files of each version (section 7).
+- **MuseScore 2, 3, 4:** checked on the owner's files of 2026-11-24 (formats 2.06, 3.02 and 4.70): all three versions write the same structure. `Marker` and `Jump` are direct children of the measure, outside the voices.
+  - A `Marker` is told apart by its `label`: `segno` is the Segno, `fine` is Fine, `coda` is "To Coda", and `codab` is the Coda sign. The text is not used (the signs are written as `<sym>segno</sym>` and `<sym>coda</sym>`).
+  - A `Jump` is told apart by three labels: `jumpTo` (`start` or `segno`), `playUntil` (`end`, `fine` or `coda`) and `continueAt` (empty or `codab`). `start` with `fine` is D.C. al Fine; `start` with `coda` and `codab` is D.C. al Coda; `start` with `end` is D.C.; the three with `segno` are the D.S. forms. Any other combination of labels is a form outside the six.
+  - Version 2 adds `playRepeats`, version 4 adds `eid` and `markerType`; the reader ignores all three.
+  - The files hold no D.S. jump. `segno` as the `jumpTo` value follows from the marker's label and is the one value not seen in a file.
 - **ABC:** the decorations the parser knows: `!segno!`, `!coda!`, `!fine!`, `!D.C.!`, `!D.S.!`, `!dacapo!`, `!D.C.alfine!`, `!D.C.alcoda!`, `!D.S.alfine!`, `!D.S.alcoda!`, and `!dacoda!`, which is a "To Coda". A decoration on a bar line gives a Segno or Coda to the next bar and every other mark to the bar before. Quoted text such as "D.S. al Coda" above a note is not read.
 - A mark in the middle of a bar moves to the bar's edge: Segno and Coda to its start, the others to its end.
 - A form outside the six, or a second sign of a kind, is dropped. So is a mark behind the last note. The import result names what was dropped, and the sheet keeps the list with its source and shows it in the notice of 5.3.
@@ -164,7 +168,6 @@ If the two steps do not free at least 9,000 bytes, the builder stops and reports
 
 ## 7. Open, for the owner
 
-- Real MuseScore files with these marks, one per version (2, 3, 4), in `samples/`. The readers for versions 2 and 3 were corrected against your files in part 4a; the same risk exists here.
 - Whether repeat signs and ending brackets should become editable too, later.
 - Whether play mode's auto-scroll should follow repeats and jumps, later.
 
