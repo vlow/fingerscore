@@ -196,16 +196,16 @@ npx playwright test e2e/acceptance.spec.ts -g "A05"
 
 ### Dark mode: `e2e/dark-mode.spec.ts`
 
-6 tests, about 12 s on a laptop (test times add up to 12.0 s in one run). D01 to D06 are the six checks of the dark mode handoff (DARKMODE.md section 8), in its order:
+6 tests, about 15 s on a laptop (one run took 14.8 s). `src/noFlash.test.ts` runs the inline script of `index.html` that sets a chosen theme before the first paint. D01 to D06 are the six checks of the dark mode handoff (DARKMODE.md section 8), in its order:
 
 | Test | Covers |
 |---|---|
 | D01 | A first visit on a dark system is dark when the page has loaded; the page follows the system live; on a light system the sheet is white |
 | D02 | Light and Dark from the header survive a reload and override the system; System follows it again |
 | D03 | In dark mode none of the 20 states shows a colour that only the light theme has |
-| D04 | The sheet is on Night paper; Dimmed and Sepia apply at once and survive a reload; a paper change is no edit; Play mode uses the same paper |
+| D04 | The sheet is on Night paper; Dimmed and Sepia apply at once and survive a reload; a paper change is no edit; Play mode and Scales use the same paper |
 | D05 | The PDF made in dark mode has the colours of the one made in light mode; print shows white paper and dark notes on all three papers, also under System on a dark system |
-| D06 | The accessibility scan passes on the sheet with out-of-range notes on Night, Dimmed and Sepia paper |
+| D06 | The accessibility scan passes on the sheet with out-of-range notes on Night, Dimmed and Sepia paper, and on Play mode and Scales on Dimmed and Sepia |
 
 The theme is System, Light or Dark. System is the default and follows the device. The choice is kept in the browser under `fingerscore.theme`, the paper under `fingerscore.paper`. Every colour is a token in `src/styles/tokens.css`; `src/colourLiterals.test.ts` fails on a colour written anywhere else under `src`, except the PDF's light palette (`src/render/palette.tsx`) and the PDF development page.
 

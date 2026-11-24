@@ -182,6 +182,14 @@ test('D04 the sheet in dark mode is on Night paper; Dimmed and Sepia switch at o
   await page.getByRole('menuitemradio', { name: 'Night' }).click();
   // Night is a step darker in play mode.
   expect(await playPaper.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(20, 23, 27)');
+
+  for (const [name, colour] of [['dimmed', PAPER.dimmed], ['sepia', PAPER.sepia], ['night', PAPER.night]] as const) {
+    await page.evaluate(p => localStorage.setItem('fingerscore.paper', p), name);
+    await page.goto('/scales');
+    const scale = page.getByRole('region', { name: 'Scale' });
+    await expect(scale).toHaveAttribute('data-paper', name);
+    expect(await scale.evaluate(el => getComputedStyle(el).backgroundColor), `Scales on ${name} paper`).toBe(colour);
+  }
 });
 
 test('D05 print and PDF from dark mode are light: white paper, dark notation', async ({ page }, testInfo) => {
@@ -214,12 +222,27 @@ test('D05 print and PDF from dark mode are light: white paper, dark notation', a
   expect(await headFill(page)).toBe(LIGHT_INK);
 });
 
-test('D06 the accessibility scan passes on the sheet in dark mode on Night, Dimmed and Sepia paper', async ({ page }) => {
+test('D06 the accessibility scan passes in dark mode on Night, Dimmed and Sepia paper: sheet, Scales and Play mode', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
+  const scan = async (where: string) => {
+    const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    expect(violations.flatMap(v => v.nodes.map(n => `${v.id}: ${n.target.join(' ')}`)), `axe findings: ${where}`).toEqual([]);
+  };
   await openState(page, 'sheet-out-of-range');
   for (const choice of ['Night', 'Dimmed', 'Sepia'] as const) {
     await paperChoice(page, choice).click();
-    const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-    expect(violations.flatMap(v => v.nodes.map(n => `${v.id}: ${n.target.join(' ')}`)), `axe findings on ${choice} paper`).toEqual([]);
+    await scan(`sheet on ${choice} paper`);
+  }
+  for (const choice of ['Dimmed', 'Sepia'] as const) {
+    await paperChoice(page, choice).click();
+    await page.getByRole('button', { name: 'Play mode' }).click();
+    await expect(page.getByRole('button', { name: `Paper: ${choice}` })).toBeVisible();
+    await scan(`Play mode on ${choice} paper`);
+    await page.keyboard.press('Escape');
+    await page.goto('/scales');
+    await expect(page.getByRole('region', { name: 'Scale' })).toHaveAttribute('data-paper', choice.toLowerCase());
+    await scan(`Scales on ${choice} paper`);
+    await page.goBack();
+    await expect(paper(page)).toBeVisible();
   }
 });
