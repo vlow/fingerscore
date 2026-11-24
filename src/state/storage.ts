@@ -24,6 +24,25 @@ export function writeJSON(a: Area, key: string, value: unknown): boolean {
   }
 }
 
+/** A value stored as it is, without JSON. Returns null when the key is missing or storage is blocked. */
+export function readText(a: Area, key: string): string | null {
+  try {
+    return area(a).getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Returns false when storage is blocked or full. */
+export function writeText(a: Area, key: string, value: string): boolean {
+  try {
+    area(a).setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function remove(a: Area, key: string): void {
   try {
     area(a).removeItem(key);
