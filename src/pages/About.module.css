@@ -1,0 +1,47 @@
+.lead {
+  margin: 0 0 24px;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+.author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 8px;
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.name {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.bio {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.quote {
+  margin: 24px 0;
+  padding: 4px 0 4px 20px;
+  border-left: 3px solid var(--teal);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.5;
+}

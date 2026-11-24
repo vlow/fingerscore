@@ -14,6 +14,8 @@ const Tracks = lazy(() => import('./pages/Tracks'));
 const Scales = lazy(() => import('./pages/Scales'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Imprint = lazy(() => import('./pages/Imprint'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const About = lazy(() => import('./pages/About'));
 const pageFallback = <div aria-busy="true" />;
 
 // Dev-only renderer preview; the import is dropped from production builds.
@@ -31,6 +33,8 @@ export default function App() {
           <Route path="/scales" element={<LoadBoundary key="scales"><Suspense fallback={pageFallback}><Scales /></Suspense></LoadBoundary>} />
           <Route path="/terms" element={<LoadBoundary key="terms"><Suspense fallback={pageFallback}><Terms /></Suspense></LoadBoundary>} />
           <Route path="/imprint" element={<LoadBoundary key="imprint"><Suspense fallback={pageFallback}><Imprint /></Suspense></LoadBoundary>} />
+          <Route path="/privacy" element={<LoadBoundary key="privacy"><Suspense fallback={pageFallback}><Privacy /></Suspense></LoadBoundary>} />
+          <Route path="/about" element={<LoadBoundary key="about"><Suspense fallback={pageFallback}><About /></Suspense></LoadBoundary>} />
           {DevSheet && <Route path="/dev/sheet" element={<LoadBoundary key="dev-sheet"><Suspense fallback={null}><DevSheet /></Suspense></LoadBoundary>} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

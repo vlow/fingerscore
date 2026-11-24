@@ -1,8 +1,11 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 import { operator, type Operator } from '../content/operator';
+import { STORAGE_ITEMS } from '../content/storageItems';
+import About from './About';
 import Imprint from './Imprint';
+import Privacy from './Privacy';
 import Terms from './Terms';
 
 const filled: Operator = {
@@ -100,9 +103,110 @@ describe('Imprint', () => {
   });
 });
 
+describe('Privacy', () => {
+  const host: Operator = { ...filled, hostName: 'Example Hosting Ltd', hostAddress: 'Host Road 2, 99999 Hostville', logRetention: '14 days' };
+
+  it('has the heading, title and date', () => {
+    const { unmount } = inRouter(<Privacy details={host} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy' })).toBeInTheDocument();
+    expect(document.title).toBe('Privacy – fingerscore');
+    expect(bodyText()).toContain('Last changed: 24 November 2026');
+    unmount();
+    expect(document.title).toBe('fingerscore');
+  });
+
+  it('shows the hosting details it is given and the legal bases', () => {
+    inRouter(<Privacy details={host} />);
+    for (const s of ['Example Hosting Ltd', 'Host Road 2, 99999 Hostville', '14 days', 'Art. 6 (1) (f) GDPR', '§ 25 (2) TDDDG']) {
+      expect(bodyText()).toContain(s);
+    }
+  });
+
+  it('lists local items under local storage and session items under session storage', () => {
+    inRouter(<Privacy details={host} />);
+    const lists = screen.getAllByRole('list');
+    const listOf = (where: 'local' | 'session') => lists.find(l => l.getAttribute('data-storage') === where)!;
+    for (const where of ['local', 'session'] as const) {
+      const list = listOf(where);
+      expect(list.previousElementSibling?.textContent).toMatch(new RegExp(`${where} storage`, 'i'));
+      expect(within(list).getAllByRole('listitem').map(li => li.textContent)).toEqual(
+        STORAGE_ITEMS.filter(i => i.where === where).map(i => i.label),
+      );
+    }
+  });
+
+  it('carries the fixed sentences, the six rights and the links', () => {
+    inRouter(<Privacy details={host} />);
+    for (const s of [
+      'fingerscore sets no cookies.',
+      'fingerscore does not track you.',
+      'A song file is read in your browser and is never uploaded.',
+      'Delete a sheet in "Your sheets".',
+      'clear the site data',
+    ]) expect(bodyText()).toContain(s);
+    for (const r of ['access', 'correction', 'deletion', 'restriction', 'objection', 'complaint to a supervisory authority']) {
+      expect(bodyText()).toContain(r);
+    }
+    expect(screen.getByRole('link', { name: 'Imprint' })).toHaveAttribute('href', '/imprint');
+  });
+});
+
+describe('About', () => {
+  const story = ['First paragraph of the story.', 'Second paragraph of the story.'];
+  const owner: Operator = { ...filled, aboutLead: 'The lead words.', authorBio: 'Plays the flute.', story };
+
+  it('shows the owner\'s words under the fixed headings', () => {
+    inRouter(<About details={owner} />);
+    expect(screen.getByText('About')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Why I made fingerscore' })).toBeInTheDocument();
+    expect(document.title).toBe('About – fingerscore');
+    for (const s of ['The lead words.', 'Ada Example', 'Plays the flute.', ...story]) expect(bodyText()).toContain(s);
+    expect(screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent)).toEqual(['The story', 'Under the hood', 'Thanks & credits']);
+    expect(bodyText()).not.toContain('Last changed');
+  });
+
+  it('draws the pull quote only when there is one', () => {
+    const { unmount } = inRouter(<About details={owner} />);
+    expect(document.querySelector('blockquote')).toBeNull();
+    unmount();
+    inRouter(<About details={{ ...owner, pullQuote: 'A quote.' }} />);
+    expect(document.querySelector('blockquote')?.textContent).toBe('A quote.');
+  });
+
+  it('draws the GitHub link only when there is a repository', () => {
+    const { unmount } = inRouter(<About details={owner} />);
+    expect(screen.queryByRole('link', { name: 'GitHub' })).not.toBeInTheDocument();
+    unmount();
+    inRouter(<About details={{ ...owner, repositoryUrl: 'https://example.org/repo' }} />);
+    expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://example.org/repo');
+  });
+
+  it('credits the sources, not FreeSerif, and links the notices with a plain anchor', () => {
+    inRouter(<About details={owner} />);
+    for (const s of ['The Woodwind Fingering Guide', 'Bravura', 'Atkinson Hyperlegible']) expect(bodyText()).toContain(s);
+    expect(bodyText()).not.toContain('FreeSerif');
+    const link = screen.getByRole('link', { name: 'third-party notices' });
+    expect(link).toHaveAttribute('href', import.meta.env.BASE_URL + 'third-party-notices.txt');
+    // The listener stops jsdom from trying to navigate. A router link would have set the router location to the href.
+    const stop = (e: Event) => e.preventDefault();
+    document.addEventListener('click', stop);
+    fireEvent.click(link);
+    document.removeEventListener('click', stop);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Why I made fingerscore');
+  });
+
+  it('draws initials from a real name and no avatar for a placeholder', () => {
+    const { unmount } = inRouter(<About details={owner} />);
+    expect(screen.getByText('AE')).toBeInTheDocument();
+    unmount();
+    inRouter(<About />);
+    expect(document.querySelector('[data-avatar]')).toBeNull();
+  });
+});
+
 describe('routes', () => {
   afterEach(cleanup);
-  it.each([['/terms', 'Terms of Use'], ['/imprint', 'Imprint']])('%s shows its page', async (path, title) => {
+  it.each([['/terms', 'Terms of Use'], ['/imprint', 'Imprint'], ['/privacy', 'Privacy'], ['/about', 'Why I made fingerscore']])('%s shows its page', async (path, title) => {
     inRouter(<App />, path);
     expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument();
   });
