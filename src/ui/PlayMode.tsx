@@ -245,8 +245,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
 
   return createPortal(
     <div ref={regionRef} role="region" aria-label="Play mode" tabIndex={-1} className={s.overlay} data-print-hide="" onKeyDown={onKey}>
-      {/* A tap is a pointer shortcut; the keys on the region above do the same. The scroller takes focus so a keyboard user can scroll it. */}
-      <div ref={scrollerRef} data-testid="play-scroller" role="region" aria-label="Sheet music" tabIndex={0} className={s.scroller} onScroll={onScroll}
+      {/* A tap is a pointer shortcut; the keys on the region above do the same. Focusable on purpose: a scrolling area must be reachable by keyboard. */}
+      <div ref={scrollerRef} data-testid="play-scroller" role="region" aria-label="Sheet music" tabIndex={0} className={s.scroller} onScroll={onScroll} // NOSONAR typescript:S6845
         onWheel={() => { goingTo.current = null; }} onTouchMove={() => { goingTo.current = null; }} onClick={onTap}>
         <div className={s.pad}>
           <div data-testid="play-zoom" className={s.zoomed} style={{ zoom: zoom / 100 }}>
