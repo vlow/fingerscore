@@ -241,10 +241,13 @@ export function validateDoc(value: unknown): Doc | null {
   };
 }
 
+/** The order of a plain sort(): by UTF-16 code unit, the same in every locale. */
+const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
 function sortKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(sortKeys);
   if (isObject(v)) {
-    return Object.fromEntries(Object.keys(v).sort().map(k => [k, sortKeys(v[k])]));
+    return Object.fromEntries(Object.keys(v).sort(byCodeUnit).map(k => [k, sortKeys(v[k])]));
   }
   return v;
 }

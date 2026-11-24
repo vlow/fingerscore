@@ -178,7 +178,7 @@ npm run check:bundle  # after a build: code loaded at start at most 400,000 byte
 npm run demo       # regenerate the sample MIDI file
 npm run notices    # write third-party-packages.json, the list of packages in the build; add -- --check to compare without writing
 npm run check:release  # before publishing: build, bundle budget, package list, and the owner's details (see "Hosting")
-npm run icons      # regenerate favicon.ico and the app icons in public/ from fingerscore-handoff/brand/
+npm run icons      # regenerate favicon.ico and the app icons in public/ from brand/
 ```
 
 `npm run test:e2e` attaches to a dev server on port 5173 or starts its own. If Playwright reports a missing browser, run `npx playwright install chromium` once.

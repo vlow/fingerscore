@@ -1,6 +1,6 @@
 type LogoMarkProps = { size?: number };
 
-/** The f-mark (fingerscore-handoff/brand/mark.svg): a lowercase f whose crossbar is one closed and one open hole. */
+/** The f-mark (brand/mark.svg): a lowercase f whose crossbar is one closed and one open hole. */
 export function LogoMark({ size = 30 }: LogoMarkProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">

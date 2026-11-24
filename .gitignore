@@ -2,8 +2,8 @@ node_modules/
 dist/
 .DS_Store
 *.zip
-# internal reference only, not for publication (see handoff README)
-fingerscore-handoff/reference/
+# the former design handoff: removed from the repository; a local copy may hold reference files that are not for publication
+fingerscore-handoff/
 test-results/
 coverage/
 playwright-report/

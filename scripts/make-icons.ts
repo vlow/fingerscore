@@ -1,6 +1,6 @@
 /**
- * Writes the icon files in public/ from the SVGs in fingerscore-handoff/brand/. Run with `npm run icons`.
- *   favicon.svg            copy of fingerscore-handoff/brand/favicon.svg (switches colours with prefers-color-scheme)
+ * Writes the icon files in public/ from the SVGs in brand/. Run with `npm run icons`.
+ *   favicon.svg            copy of brand/favicon.svg (switches colours with prefers-color-scheme)
  *   favicon.ico            16, 32 and 48 px, light-scheme colours on a transparent background
  *   apple-touch-icon.png   180 px, square: iOS rounds the corners itself and shows transparency as black
  *   icon-192.png, icon-512.png   web manifest icons, rounded square on a transparent background
@@ -42,12 +42,12 @@ function ico(images: { size: number; data: Buffer }[]): Buffer {
   return Buffer.concat([header, dir, ...images.map(i => i.data)]);
 }
 
-const favicon = readFileSync('fingerscore-handoff/brand/favicon.svg', 'utf8');
-const appIcon = readFileSync('fingerscore-handoff/brand/app-icon.svg', 'utf8');
+const favicon = readFileSync('brand/favicon.svg', 'utf8');
+const appIcon = readFileSync('brand/app-icon.svg', 'utf8');
 
 const browser = await chromium.launch();
 try {
-  copyFileSync('fingerscore-handoff/brand/favicon.svg', 'public/favicon.svg');
+  copyFileSync('brand/favicon.svg', 'public/favicon.svg');
   const sizes = [16, 32, 48];
   const images = await Promise.all(sizes.map(async size => ({ size, data: await png(browser, favicon, size) })));
   writeFileSync('public/favicon.ico', ico(images));

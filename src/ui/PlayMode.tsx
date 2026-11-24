@@ -35,16 +35,17 @@ function useWakeLock(): void {
     let gone = false;
     const request = () => {
       if (!('wakeLock' in navigator) || lock !== null) return;
-      try {
-        navigator.wakeLock.request('screen').then(got => {
+      void (async () => {
+        try {
+          const got = await navigator.wakeLock.request('screen');
           if (gone) { void got.release().catch(() => {}); return; }
           lock = got;
           // The browser lets go of the lock when the tab is hidden; ask again when it is back.
           got.addEventListener?.('release', () => { if (lock === got) lock = null; });
-        }, () => {});
-      } catch {
-        // an old or locked-down browser: the screen dims as usual
-      }
+        } catch {
+          // a refusal, or an old or locked-down browser: the screen dims as usual
+        }
+      })();
     };
     const onVisible = () => { if (document.visibilityState === 'visible') request(); };
     request();
