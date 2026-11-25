@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { repositoryUrl as ownerRepositoryUrl } from '../content/repository';
 import { LogoMark, Wordmark } from './icons';
+import { routeIntent } from './routes';
 
 const LINKS = [['/about', 'About'], ['/terms', 'Terms'], ['/privacy', 'Privacy'], ['/imprint', 'Imprint']];
 
@@ -24,7 +25,7 @@ export default function Footer({ repositoryUrl = ownerRepositoryUrl }: { reposit
                   GitHub
                 </a>
               )}
-              <Link to={to}>{label}</Link>
+              <Link to={to} {...routeIntent(to)}>{label}</Link>
             </Fragment>
           ))}
         </nav>
