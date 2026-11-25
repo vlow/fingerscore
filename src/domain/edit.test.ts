@@ -554,6 +554,21 @@ describe('jump marks', () => {
     expect(setJump(a, 2, null)).toEqual(tune());
   });
 
+  it('a change of the marks or of the bars clears the import\'s list of dropped marks; other edits keep it', () => {
+    const d = tune();
+    d.source = { ...d.source, dropped: ['The Segno in bar 7 is behind the last note.'] };
+    for (const changed of [
+      setBarMark(d, 1, 'segno', true), setBarMark(d, 1, 'segno', false), setJump(d, 1, 'dc'), setJump(d, 1, null),
+      addBarAfter(d, 1)!.doc, removeBar(d, 1)!.doc,
+    ]) {
+      expect('dropped' in changed.source).toBe(false);
+      expect(changed.source.file).toBe(d.source.file);
+    }
+    expect(d.source.dropped).toHaveLength(1);                       // the original document is not touched, so undo brings it back
+    expect(shiftPitch(d, d.score[0].ev[0].id, 1)!.source.dropped).toHaveLength(1);
+    expect(setBarMark(d, 9, 'segno', true)).toBe(d);
+  });
+
   it('an unknown bar index returns the document unchanged', () => {
     const d = tune();
     for (const k of [-1, 3, 1.5, Number.NaN]) {

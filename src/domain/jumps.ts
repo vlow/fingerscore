@@ -85,8 +85,12 @@ export function jumpProblems(doc: Doc): JumpProblem[] {
   if (jump.endsWith('Coda')) {
     if (toCoda === undefined) out.push(problem(at, `${name} needs a To Coda.`));
     if (coda === undefined) out.push(problem(at, `${name} needs a Coda.`));
-    if (toCoda !== undefined && coda !== undefined && coda <= toCoda) {
+    if (toCoda !== undefined && coda !== undefined && coda === toCoda) {
+      out.push(problem(at, `The Coda and the To Coda cannot share bar ${label(coda)}.`));
+    } else if (toCoda !== undefined && coda !== undefined && coda < toCoda) {
       out.push(problem(at, `${name} needs the Coda after the To Coda, but the Coda is in bar ${label(coda)} and the To Coda in bar ${label(toCoda)}.`));
+    } else if (coda !== undefined && coda <= at) {
+      out.push(problem(coda, `The Coda in bar ${label(coda)} must come after ${name}.`));
     }
   }
   if (jump.endsWith('Fine') && fine === undefined) out.push(problem(at, `${name} needs a Fine.`));
@@ -108,14 +112,19 @@ export function jumpProblems(doc: Doc): JumpProblem[] {
     if (jump === 'dsCoda') before('toCoda', toCoda);
   }
   const skipped = skippedEndings(bars);
-  for (const [m, i] of placed) {
+  for (const [m, i] of [...placed, ['coda', coda] as [BarMark, number | undefined]]) {
     if (i !== undefined && skipped[i]) {
       out.push(problem(i, `The ${MARK_NAME[m]} in bar ${label(i)} stands in an ending that is skipped after the jump.`));
     }
   }
-  if (out.length === 0 && !walkRepeats(doc, at).fired) {
+  if (out.length > 0) return out;
+  const walk = walkRepeats(doc, at);
+  if (!walk.fired) {
     const place = { '1': 'a first ending', '2': 'a second ending', '': 'a repeated section' }[bars[at].volta];
-    out.push(problem(at, `${name} stands in ${place} and is never reached.`));
+    out.push(problem(at, `${name} stands in ${place} and is never taken.`));
+    return out;
   }
+  const open = walkRepeats(doc, -1).repeats.find(r => r.end > at && r.start <= at);
+  if (open) out.push(problem(at, `${name} stands inside a repeated section, before its end in bar ${label(open.end)}.`));
   return out;
 }

@@ -97,6 +97,44 @@ test('crowded bars: in a narrow bar (Coda, Fine) and in a bar with an ending, a 
   if (OUT) { mkdirSync(OUT, { recursive: true }); await page.getByTestId('system').nth(crowded[0].system).screenshot({ path: join(OUT, 'crowded-bar.png') }); }
 });
 
+test('a sheet without chords and lyrics lowers the marks into the empty bands: they sit above the ending bracket and touch no ending, triplet mark or note, also with notes on ledger lines', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1300, height: 1500 });
+  await openMarks(page, 'e2e/fixtures/crowded-bare.abc');
+  const found = await page.evaluate(() => {
+    const rect = (e: Element) => { const r = e.getBoundingClientRect(); return { x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }; };
+    return Array.from(document.querySelectorAll('svg[data-testid="system"]')).map(svg => {
+      const all = (sel: string, what: string) => Array.from(svg.querySelectorAll(sel)).map(e => ({ what, r: rect(e) }));
+      return {
+        box: rect(svg),
+        marks: Array.from(svg.querySelectorAll('[data-jump]')).filter(e => !e.parentElement?.closest('[data-jump]')).map(e => ({ kind: e.getAttribute('data-jump')!, r: rect(e) })),
+        others: [...all('[data-volta]', 'volta'), ...all('[data-tuplet]', 'tuplet'), ...all('[data-ev]', 'note'), ...all('[data-chord], [data-lyric]', 'chord or lyric')],
+        staff: rect(svg.querySelector('[data-bar]')!),
+      };
+    });
+  });
+  const crowded = found.filter(f => f.marks.length > 0);
+  expect(crowded).toHaveLength(1);
+  const [{ marks, others, box }] = crowded;
+  expect(marks.map(m => m.kind).sort()).toEqual(['coda', 'fine', 'jump', 'segno', 'toCoda']);
+  for (const what of ['volta', 'tuplet', 'note']) expect(others.some(o => o.what === what), `the system has a ${what}`).toBe(true);
+  expect(others.some(o => o.what === 'chord or lyric')).toBe(false);
+  type R = { x1: number; y1: number; x2: number; y2: number };
+  const meets = (a: R, b: R) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+  const volta = others.filter(o => o.what === 'volta');
+  const lowest = Math.max(...marks.map(m => m.r.y2));
+  // lowered: the marks end just above the ending brackets, about 30 px above the staff (75 px + the 30 px row below the system's top)
+  expect(Math.min(...marks.map(m => m.r.y1)) - box.y1).toBeGreaterThan(40);
+  expect(Math.min(...volta.map(o => o.r.y1)) - lowest).toBeGreaterThanOrEqual(0);
+  marks.forEach((m, i) => {
+    expect(m.r.y1).toBeGreaterThanOrEqual(box.y1);
+    expect(m.r.x1).toBeGreaterThanOrEqual(box.x1);
+    expect(m.r.x2).toBeLessThanOrEqual(box.x2);
+    for (const o of others) expect(meets(m.r, o.r), `${m.kind} meets a ${o.what}`).toBe(false);
+    marks.slice(i + 1).forEach(n => expect(meets(m.r, n.r), `${m.kind} meets ${n.kind}`).toBe(false));
+  });
+  await page.getByTestId('system').nth(0).screenshot({ path: testInfo.outputPath('row-without-chords.png') });
+});
+
 test('print shows the marks, in the light ink, and prints the same drawing', async ({ page }) => {
   await openMarks(page);
   const before = await marksOnScreen(page);
@@ -123,6 +161,17 @@ test('on a dark paper the marks take the paper\'s ink, not the light one', async
 test.describe('pictures (set JUMPS_OUT to run)', () => {
   test.skip(!OUT, 'JUMPS_OUT is not set');
   test.use({ deviceScaleFactor: 2 });
+
+  test('the row of a bar with chords and lyrics, and of a bar without', async ({ page }) => {
+    mkdirSync(OUT!, { recursive: true });
+    await page.setViewportSize({ width: 1300, height: 1500 });
+    await page.emulateMedia({ colorScheme: 'light' });
+    for (const [file, name] of [['crowded.abc', 'row-with-chords.png'], ['crowded-bare.abc', 'row-without-chords.png']]) {
+      await openMarks(page, `e2e/fixtures/${file}`);
+      const marked = page.getByTestId('system').filter({ has: page.locator('[data-jump]') }).first();
+      await marked.screenshot({ path: join(OUT!, name) });
+    }
+  });
 
   test('the sheet on the light paper and on Night, Dimmed and Sepia', async ({ page }) => {
     mkdirSync(OUT!, { recursive: true });

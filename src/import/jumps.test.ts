@@ -150,6 +150,18 @@ describe('MusicXML', () => {
     expect(jumpMarksOf(await xml(dc))[1]).toEqual({ bar: 3, jump: 'dcFine' });
   });
 
+  it('words that end in a symbol still match: "To Coda 𝄌" and "D.S. al Coda 𝄌"', async () => {
+    const s = await xml(fourBars({ 2: ['', dir('<words>To Coda 𝄌</words>')], 4: ['', dir('<words>D.S. al Coda 𝄌</words>')] }));
+    expect(jumpMarksOf(s)).toEqual([{ bar: 1, toCoda: true }, { bar: 3, jump: 'dsCoda' }]);
+    expect(s.dropped).toEqual([]);
+  });
+
+  it('a bare dalsegno in a file with both a Fine and a To Coda is a plain D.S.', async () => {
+    const s = await xml(fourBars({ 2: ['', '<sound fine="yes"/>'], 3: ['', '<sound tocoda="c1"/>'], 4: ['', '<sound dalsegno="s1"/>'] }));
+    expect(jumpMarksOf(s)).toEqual([{ bar: 1, fine: true }, { bar: 2, toCoda: true }, { bar: 3, jump: 'ds' }]);
+    expect(s.dropped).toEqual([]);
+  });
+
   it('a mark in the middle of a bar goes to its edge', async () => {
     const half = (inner: string) => `<measure number="2">${q('C')}${q('D')}${inner}${q('E')}${q('F')}</measure>`;
     const s = await xml([xmlMeasure(1), half(dir('<segno/>')), xmlMeasure(3), xmlMeasure(4)]);

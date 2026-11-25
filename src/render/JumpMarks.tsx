@@ -1,3 +1,4 @@
+import { useEffect, useSyncExternalStore } from 'react';
 import { JUMP_TEXT } from '../domain/jumps';
 import type { Bar } from '../domain/types';
 import { Glyph, GLYPH_SCALE, glyphInk } from './Glyph';
@@ -19,6 +20,39 @@ const GAP = 8;            // between two marks of one bar
 const MIN_GAP = 4;
 const SIGN_TEXT_GAP = 5;  // between "To Coda" and its sign
 const LAST_RESORT = { px: 6, gap: 2 };
+
+/** The face of the texts, with the family name of the stylesheet (global.css imports it as 'Atkinson Hyperlegible'). */
+const MARK_FACE = 'italic 700 13px "Atkinson Hyperlegible"';
+
+// Texts are measured in the face, so the face must be there: it is requested at first use, and the marks are drawn
+// again once it has arrived (until then the browser measures in its fallback face).
+let faceRequested = false;
+let faceVersion = 0;
+const faceListeners = new Set<() => void>();
+
+/** Test hook: forget that the face was requested. */
+export function resetMarkFace(): void { faceRequested = false; faceVersion = 0; }
+
+function requestFace(): void {
+  if (faceRequested) return;
+  faceRequested = true;
+  const fonts = typeof document === 'undefined' ? undefined : document.fonts;   // jsdom has none
+  if (!fonts || typeof fonts.load !== 'function') return;
+  try {
+    if (typeof fonts.check === 'function' && fonts.check(MARK_FACE)) return;
+    fonts.load(MARK_FACE).then(() => { faceVersion++; faceListeners.forEach(f => f()); }, () => undefined);
+  } catch { /* no font loading API: the marks keep their first measure */ }
+}
+
+/** Requests the face at first use; the number changes when it has loaded, so a component that reads it draws again. */
+export function useMarkFace(): number {
+  useEffect(requestFace, []);
+  return useSyncExternalStore(
+    on => { faceListeners.add(on); return () => { faceListeners.delete(on); }; },
+    () => faceVersion,
+    () => 0,
+  );
+}
 
 let context: CanvasRenderingContext2D | null | undefined;
 /** A canvas to measure text with: only in a browser (jsdom has none). */
@@ -115,21 +149,26 @@ export function planMarks(system: SystemLayout, score: Bar[]): PlacedMark[] {
 
 /**
  * The jump marks of one system, in the row above it (y from 0 to the row's height, see `markRow`), placed by `planMarks`.
+ * `drop` moves the marks down (see `markDrop`).
  * Every element carries `data-jump` (the PDF keeps it; `data-mark` would be deleted from the PDF and hidden in print).
  */
-export function JumpMarks(p: { system: SystemLayout; score: Bar[] }): JSX.Element {
+export function JumpMarks(p: { system: SystemLayout; score: Bar[]; drop?: number }): JSX.Element {
   const pal = usePalette();
+  useMarkFace();
+  const drop = p.drop ?? 0;
+  const textY = TEXT_Y + drop;
+  const signY = SIGN_BASELINE + drop;
   return (
     <>
       {planMarks(p.system, p.score).map(m => {
         const key = `${m.bar}-${m.kind}`;
         const text = (s: string, x: number) => (
-          <text x={x} y={TEXT_Y} textAnchor="end" fontSize={m.px} fontWeight={700} fontStyle="italic" fontFamily={FONT} fill={pal.ink}>{s}</text>
+          <text x={x} y={textY} textAnchor="end" fontSize={m.px} fontWeight={700} fontStyle="italic" fontFamily={FONT} fill={pal.ink}>{s}</text>
         );
         if (m.kind === 'segno' || m.kind === 'coda') {
           return (
             <g key={key} data-jump={m.kind}>
-              <Glyph name={m.kind} x={signOrigin(m.kind, m.x1)} y={SIGN_BASELINE} scale={SIGN_SCALE} fill={pal.ink} />
+              <Glyph name={m.kind} x={signOrigin(m.kind, m.x1)} y={signY} scale={SIGN_SCALE} fill={pal.ink} />
             </g>
           );
         }
@@ -137,12 +176,12 @@ export function JumpMarks(p: { system: SystemLayout; score: Bar[] }): JSX.Elemen
           return (
             <g key={key} data-jump="toCoda">
               {text('To Coda', m.x2 - signWidth('coda') - SIGN_TEXT_GAP)}
-              <Glyph name="coda" x={signOrigin('coda', m.x2 - signWidth('coda'))} y={SIGN_BASELINE} scale={SIGN_SCALE} fill={pal.ink} />
+              <Glyph name="coda" x={signOrigin('coda', m.x2 - signWidth('coda'))} y={signY} scale={SIGN_SCALE} fill={pal.ink} />
             </g>
           );
         }
         const s = textOf(m.kind, p.score[m.bar]);
-        return <text key={key} data-jump={m.kind} x={m.x2} y={TEXT_Y} textAnchor="end" fontSize={m.px} fontWeight={700} fontStyle="italic" fontFamily={FONT} fill={pal.ink}>{s}</text>;
+        return <text key={key} data-jump={m.kind} x={m.x2} y={textY} textAnchor="end" fontSize={m.px} fontWeight={700} fontStyle="italic" fontFamily={FONT} fill={pal.ink}>{s}</text>;
       })}
     </>
   );

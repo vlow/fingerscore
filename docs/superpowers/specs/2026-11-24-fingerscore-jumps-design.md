@@ -71,11 +71,11 @@ Everything that copies or compares bars carries the new fields: saving and loadi
 - Until the jump the song plays as today: repeats and endings are followed, and Fine and "To Coda" are passed over.
 - The jump is taken at the end of its bar, once. If that bar also ends a repeat, the repeat is played first and the jump is taken when the bar is reached the last time.
 - Playback continues at the first bar (D.C.), which includes a pickup bar, or at the Segno bar (D.S.).
-- After the jump no repeat is taken. Of a group of endings only the last one present is played (ending 2 where the song has endings 1 and 2).
+- After the jump no repeat is taken in the music already played, and of a group of endings only the last one present is played (ending 2 where the song has endings 1 and 2). The Coda and anything after the jump bar are played with their repeats and endings.
 - "al Fine", and a plain D.C. or D.S. when the song has a Fine: playback stops at the end of the Fine bar.
 - "al Coda": at the end of the "To Coda" bar, playback continues at the Coda bar and runs to the end.
 - A plain D.C. or D.S. without a Fine runs to the end of the song.
-- A tie does not carry across the jump or across the step from "To Coda" to the Coda, also when the Coda bar is the next bar.
+- A tie does not carry across the jump or across the step from "To Coda" to the Coda.
 
 ### 5.3 Marks that do not add up
 
@@ -88,10 +88,14 @@ One function lists the problems of a document:
 - A Segno after the jump bar; a Fine or a "To Coda" after the jump bar; a Fine before the Segno of a D.S.
 - A Fine or a "To Coda" in the jump bar itself.
 - A "To Coda" before the Segno of a "D.S. al Coda".
-- A Segno, a Fine or a "To Coda" in a bar that belongs to an ending which is skipped after the jump.
+- The Coda and the "To Coda" in one bar; the Coda at or before the jump bar, because the jump never reaches it.
+- A Segno, a Fine, a "To Coda" or a Coda in a bar that belongs to an ending which is skipped after the jump.
 - A jump that stands in an ending or in a repeated section and is never taken.
+- A jump inside a repeated section, before the section's end: it would fire on the first pass and the section's repeat would never be taken.
 
-The list is made only when the document has a jump. Marks without a jump play nothing, so nothing is ignored and no notice appears.
+The list is made only when the document has a jump. Marks without a jump play nothing, so nothing is ignored and no notice appears. The same holds for a mark the jump does not use, such as a Fine in an "al Coda" song or a Segno in a D.C. song: it is drawn, not played, and gives no notice.
+
+The sentences about marks the import left out (5.4) are listed in the notice also when the song has no jump. They stay until the first edit of a mark or of the bars, because their bar numbers are those of the import; that edit clears them, and undo brings them back.
 
 Bar numbers in the notice are the ones printed on the sheet (a pickup bar is bar 0).
 
@@ -106,7 +110,7 @@ With any problem, playback ignores the jump and plays straight. The sheet page s
   - Version 2 adds `playRepeats`, version 4 adds `eid` and `markerType`; the reader ignores all three.
   - The files hold no D.S. jump. `segno` as the `jumpTo` value follows from the marker's label and is the one value not seen in a file.
 - **ABC:** the decorations the parser knows: `!segno!`, `!coda!`, `!fine!`, `!D.C.!`, `!D.S.!`, `!dacapo!`, `!D.C.alfine!`, `!D.C.alcoda!`, `!D.S.alfine!`, `!D.S.alcoda!`, and `!dacoda!`, which is a "To Coda". A decoration on a bar line gives a Segno or Coda to the next bar and every other mark to the bar before. Quoted text such as "D.S. al Coda" above a note is not read.
-- In MusicXML a mark belongs to the measure it is written in, wherever it stands in the measure: Segno and Coda to the measure's start, Fine, "To Coda" and the jump to its end. Only a segno or coda in a right barline belongs to the next measure. A bare `dalsegno` in a file that has both a Fine and a "To Coda" becomes a plain D.S.
+- In MusicXML a mark belongs to the measure it is written in, wherever it stands in the measure: Segno and Coda to the measure's start, Fine, "To Coda" and the jump to its end. Only a segno or coda in a right barline belongs to the next measure. A bare `dalsegno` is a plain D.S. unless the file has exactly one of Fine and "To Coda" (a Fine alone makes it D.S. al Fine, a "To Coda" alone D.S. al Coda); with both or neither it is plain. The words of a direction are matched by their letters only: "To Coda 𝄌" is a "To Coda".
 - In ABC a mark in the middle of a bar moves to the bar's edge: Segno and Coda to its start, the others to its end.
 - A form outside the six, or a second sign of a kind, is dropped. So is a mark behind the last note. The import result names what the importer dropped, and the sheet keeps the list with its source and shows it in the notice of 5.3. A sentence that depends on the chosen track (marks behind that track's last note) appears only in the sheet's notice, not in the import message.
 - A mark stays with its music when the importer splits, merges or realigns bars, as repeat marks do.
@@ -116,9 +120,11 @@ With any problem, playback ignores the jump and plays straight. The sheet page s
 - Segno and Coda signs: above the staff at the left edge of their bar.
 - "Fine", "To Coda" followed by the Coda sign, and the jump text ("D.C. al Fine"): above the staff at the right edge of their bar, right-aligned, in bold italic.
 - The band above the staff is full today: chord symbols, lyrics, ending brackets and triplet marks leave gaps of 8 and 15 px, and the signs are 31 and 42 px high at full size. So a sheet that has at least one of these marks gets one more row in every system, and all its systems stay the same height. The row is 30 px high and stands at the top of each system, above the chord band. The whole existing drawing of the system moves down by 30 px. A sheet without marks keeps today's layout to the pixel. The signs are drawn at 0.57 of the staff scale.
+- The row has two places. A sheet that draws a chord symbol or a lyric (the renderer's own test: the content exists and its switch in "Show on sheet" is on) keeps the marks in the top 30 px of the system. A sheet that draws neither has empty chord and lyric bands, so the marks move 44 px lower, directly above the ending brackets: about 30 px above the staff instead of about 75. The row's height and the system's height stay the same, and the choice is made for the whole sheet, so all systems alike.
+- Text widths are measured in the bold italic face. The face is requested at first use, and the marks are drawn again once it has loaded.
 - When the marks of one bar do not fit side by side, the gap between them shrinks from 8 to 4 px, then the text from 13 to 10 px. Then the marks of the bar form one run that may reach left past the barline, but never into the clef or into another bar's marks. In a bar with four or five marks the text can shrink further, down to 6 px.
 - Text widths are measured in the browser and estimated in tests.
-- The marks never overlap chord symbols, lyrics, ending brackets or triplet marks. This is tested on a bar that has all of them.
+- The marks never overlap chord symbols, lyrics, ending brackets or triplet marks. This is tested on a bar that has all of them, and, in the lower place, on a bar with an ending bracket, a triplet and notes up to D6 on ledger lines. A note at E6 or higher under a mark reaches the lower row.
 - The taller system changes how many systems fit on a PDF page and how far play mode turns; both read the height from the layout.
 - The two signs are extracted from Bravura into `src/data/glyphs.json` with the existing script.
 - Print uses the same drawing. In the PDF the signs are outlines and the texts are searchable text.
@@ -131,7 +137,7 @@ In "Edit notes", the panel for the selected note gains a section "Bar" for the b
 - Two toggles for the end of the bar, labelled "End": Fine, To Coda.
 - One select, "Jump at the end of the bar": None, or one of the six.
 
-Each change is one undo step. Setting a second jump, Segno, Coda, Fine or "To Coda" moves it: the earlier one is removed in the same step, so the document never holds two. The notice of 5.3 is a standing status region. It is empty when the marks add up, and it is not rendered in play mode. It appears and disappears as the marks change. Removing a bar removes its marks. The live region announces the change: "Bar 16: D.S. al Coda", "Bar 6: To Coda removed", "Bar 4: Fine moved from bar 2".
+Each toggle is one undo step. Changes of the jump select on one bar are one undo step (typing through "D.C." to "D.C. al Fine" is one step); a change on another bar, a toggle or any other edit starts a new step. Setting a second jump, Segno, Coda, Fine or "To Coda" moves it: the earlier one is removed in the same step, so the document never holds two. The notice of 5.3 is a standing status region. It is empty when the marks add up, and it is not rendered in play mode. It appears and disappears as the marks change. Removing a bar removes its marks. An edit of a mark or of the bars clears the import's list of dropped marks (5.3). The live region announces the change: "Bar 16: D.S. al Coda", "Bar 6: To Coda removed", "Bar 4: Fine moved from bar 2".
 
 ### 5.7 What follows on its own
 

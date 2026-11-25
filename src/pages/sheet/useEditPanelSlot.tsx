@@ -35,7 +35,7 @@ interface PanelSlot {
   paperRef: RefObject<HTMLDivElement | null>;
   select(picked: string | null, byKeyboard?: boolean): void;
   focusField(id: string): void;
-  applyNoteEdit(next: Doc | null, selectId?: string): void;
+  applyNoteEdit(next: Doc | null, selectId?: string, coalesceKey?: string): void;
   applyTextEdit(next: Doc | null, coalesceKey?: string): void;
 }
 

@@ -16,7 +16,7 @@ const jump = (page: Page) => panel(page).getByLabel('Jump at the end of the bar'
 const notice = (page: Page) => page.getByRole('status', { name: 'Jump marks' }).filter({ hasText: /\S/ });
 const live = (page: Page) => page.locator('[aria-live=polite]').filter({ hasText: /^Bar / });
 
-test('letters and arrow keys act on the select, not on the note', async ({ page }) => {
+test('letters act on the select, not on the note', async ({ page }) => {
   await openSample(page);
   await page.locator('[data-hit]').nth(1).click();
   const note = page.locator('[data-selected="true"]');
@@ -26,7 +26,10 @@ test('letters and arrow keys act on the select, not on the note', async ({ page 
   await page.keyboard.press('d');   // in a select the letter picks the option "D.C."; the sheet's D key stays out
   await expect(jump(page)).toHaveValue('dc');
   await expect(notice(page)).toHaveCount(0);   // D.C. adds up
-  await page.keyboard.press('ArrowRight');   // the sheet's arrow keys (next note) stay out too
+  // R is the sheet's rest key and no option starts with R: the select keeps its value, and the note stays a note.
+  // (Arrow keys would move a closed select to the next option in Chromium on Linux and Windows, not on macOS.)
+  await page.keyboard.press('r');
+  await expect(jump(page)).toHaveValue('dc');
   expect(await note.getAttribute('data-ev')).toBe(before);
   expect(await page.locator('[data-selected="true"] text').allTextContents()).toEqual(pitch);
   await page.getByRole('button', { name: 'Undo' }).click();

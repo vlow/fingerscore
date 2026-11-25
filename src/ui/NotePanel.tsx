@@ -28,8 +28,8 @@ const KEY_OF_LENGTH: Record<number, string> = { 3: '2', 6: '3', 12: '4', 24: '5'
 
 interface Props {
   doc: Doc; derived: Derived; id: string;
-  /** Every change goes through here; selectId moves the selection (new and removed bars). */
-  onEdit(next: Doc | null, selectId?: string): void;
+  /** Every change goes through here; selectId moves the selection (new and removed bars); changes with one key form one undo step. */
+  onEdit(next: Doc | null, selectId?: string, coalesceKey?: string): void;
 }
 
 /** The Edit notes panel (design 4.3): pitch, length, dot, tie, rest, and bars. Keyboard editing lives on the sheet. */
@@ -102,7 +102,7 @@ export default function NotePanel(p: Props): JSX.Element | null {
         <div className={s.row}>
           <label htmlFor={jumpId} className={s.fieldLabel}>Jump at the end of the bar</label>
           <select id={jumpId} className={s.select} value={bar.jump ?? ''}
-            onChange={e => onEdit(setJump(doc, at.bar, isJump(e.target.value) ? e.target.value : null))}>
+            onChange={e => onEdit(setJump(doc, at.bar, isJump(e.target.value) ? e.target.value : null), undefined, `jump:${at.bar}`)}>
             <option value="">None</option>
             {JUMPS.map(j => <option key={j} value={j}>{JUMP_TEXT[j]}</option>)}
           </select>

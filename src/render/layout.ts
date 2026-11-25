@@ -13,6 +13,18 @@ export const SHEET = { width: 940, pad: 40, systemWidth: 860, systemHeight: 290,
  */
 export const MARK_ROW = 30;
 
+/**
+ * How far (px) the marks of the row move down on a sheet that draws no chord symbol and no lyric: they then stand
+ * in the empty chord and lyric bands, directly above the ending brackets, about 30 px above the staff instead of 75.
+ */
+export const MARK_DROP = 44;
+
+/** MARK_DROP, or 0 when the sheet draws a chord symbol or a lyric: the renderer's own test, by the flags of `show`. */
+export function markDrop(events: DerivedEvent[], show: Doc['show']): number {
+  const draws = events.some(ev => (show.chords && ev.chord !== null) || (show.lyrics && !ev.rest && ev.lyric !== ''));
+  return draws ? 0 : MARK_DROP;
+}
+
 /** 0 for a sheet without jump marks, else the row's height; every system of the sheet has it. */
 export function markRow(doc: Doc): number {
   return hasJumpMarks(doc) ? MARK_ROW : 0;

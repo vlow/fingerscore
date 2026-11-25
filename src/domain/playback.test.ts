@@ -259,6 +259,16 @@ describe('playOrder with jumps', () => {
     expect(order(tune({ rs: true }, { re: true, jump: 'dc' }))).toBe('ABABAB');
   });
 
+  it('plays the repeat of a Coda after D.C. al Coda, and its endings', () => {
+    expect(order(tune({ segno: true }, { toCoda: true }, { jump: 'dsCoda' }, { rs: true, coda: true }, { re: true }, {}))).toBe('ABCABDEDEF');
+    expect(order(tune({ segno: true }, { toCoda: true }, { jump: 'dsCoda' }, { rs: true, coda: true }, { volta: '1', re: true }, { volta: '2' }))).toBe('ABCABDEDF');
+  });
+
+  it('plays the repeat of the bars after a plain jump bar, and not those before it', () => {
+    expect(order(tune({}, { jump: 'dc' }, { rs: true }, { re: true }))).toBe('ABABCDCD');
+    expect(order(tune({ rs: true }, { re: true }, { jump: 'dc' }, {}))).toBe('ABABCABCD');
+  });
+
   it('D.C. goes back to a pickup bar', () => {
     const d = mkDoc([{ ev: [[60, 24]] }, { ev: [[62, 48]] }, { ev: [[64, 48]], jump: 'dc' }]);
     expect(order(d)).toBe('ABCABC');
@@ -268,14 +278,15 @@ describe('playOrder with jumps', () => {
     expect(order(tune({ segno: true, jump: 'ds' }))).toBe('AA');
   });
 
-  it('cuts a tie at the jump and at the step from To Coda to the Coda, also when the Coda is the next bar', () => {
+  it('cuts a tie at the jump and at the step from To Coda to the Coda', () => {
     const d = mkDoc([
       { ev: [[60, 48]] },
       { ev: [[62, 48, { tie: true }]], toCoda: true },
-      { ev: [[62, 48]], coda: true, jump: 'dcCoda' },
+      { ev: [[62, 48]], jump: 'dcCoda' },
+      { ev: [[62, 48]], coda: true },
     ]);
-    expect(order(d)).toBe('ABCABC');
-    // first pass: A, B tied into C; second pass: A, B, C apart
+    expect(order(d)).toBe('ABCABD');
+    // first pass: A, B tied into C; second pass: A, then B and the Coda D apart although both are 62
     expect(buildSchedule(d).notes.map(n => n.dur)).toEqual([48, 96, 48, 48, 48]);
   });
 

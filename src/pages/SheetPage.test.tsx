@@ -2303,8 +2303,8 @@ describe('jump marks: the Bar section and the notice', () => {
   });
 
   it('the notice names a jump without a Segno, and goes when the marks add up', async () => {
-    await openMarked(d => setJump(d, 3, 'ds'));
-    expect(notice()).toHaveTextContent(`D.S. in bar ${label(3)} needs a Segno.`);
+    await openMarked(d => setJump(d, 17, 'ds'));     // the last bar: bars 2 to 17 are a repeated section
+    expect(notice()).toHaveTextContent(`D.S. in bar ${label(17)} needs a Segno.`);
     expect(notice()).toHaveTextContent(IGNORED);
     await selectBar(1);
     await user.click(within(bar()).getByRole('button', { name: 'Segno' }));
@@ -2314,7 +2314,7 @@ describe('jump marks: the Bar section and the notice', () => {
   });
 
   it('removing the Segno bar of a D.S. song shows the notice; Undo removes it', async () => {
-    await openMarked(d => setJump(setBarMark(d, 1, 'segno', true), 3, 'ds'));
+    await openMarked(d => setJump(setBarMark(d, 1, 'segno', true), 17, 'ds'));
     expect(notice()).toBeNull();
     await selectBar(1);
     await user.click(within(panel()).getByRole('button', { name: 'Remove bar' }));
@@ -2369,7 +2369,7 @@ describe('jump marks: the Bar section and the notice', () => {
   });
 
   it('the status region that exists before a problem receives its text, and is empty again after Undo', async () => {
-    await openMarked(d => setJump(setBarMark(d, 1, 'segno', true), 3, 'ds'));
+    await openMarked(d => setJump(setBarMark(d, 1, 'segno', true), 17, 'ds'));
     const before = region()!;
     expect(before).toBeEmptyDOMElement();
     await selectBar(1);
@@ -2399,6 +2399,29 @@ describe('jump marks: the Bar section and the notice', () => {
     expect(useApp.getState().past).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(useApp.getState().doc).toBe(before);
+  });
+
+  it('changing the jump select again on the same bar is one undo step; another bar, a toggle or another edit starts a new one', async () => {
+    await openMarked();
+    await selectBar(3);
+    const before = current();
+    const select = () => within(bar()).getByLabelText('Jump at the end of the bar');
+    await user.selectOptions(select(), 'D.C.');
+    await user.selectOptions(select(), 'D.C. al Fine');
+    expect(current().score[3].jump).toBe('dcFine');
+    expect(useApp.getState().past).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(useApp.getState().doc).toBe(before);
+
+    await user.selectOptions(select(), 'D.C.');
+    await user.click(within(bar()).getByRole('button', { name: 'Fine' }));     // a toggle in between
+    await user.selectOptions(select(), 'D.C. al Fine');
+    expect(useApp.getState().past).toHaveLength(3);
+    await selectBar(1);
+    await user.selectOptions(select(), 'D.S.');                                  // another bar
+    expect(useApp.getState().past).toHaveLength(4);
+    await user.selectOptions(select(), 'D.S. al Fine');
+    expect(useApp.getState().past).toHaveLength(4);
   });
 
   it('with a rest selected the Bar section acts on the bar of the rest', async () => {

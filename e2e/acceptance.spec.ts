@@ -636,7 +636,7 @@ test('V10 No request leaves the origin from the start page through sample, sheet
 });
 
 test('V11 Jump marks: ds-coda.abc shows its four marks, plays 1 2 3 4 5 6 2 3 4 7 8, takes a D.C. al Fine and a Fine by keyboard, undoes them, and its PDF holds "D.S. al Coda"', async ({ page }, testInfo) => {
-  test.setTimeout(60_000);
+  test.setTimeout(30_000);
   await importFixture(page, 'e2e/fixtures/ds-coda.abc');
   const bars = (await storedDoc(page)).score;
   const marksOf = (score: StoredDoc['score']) => score.map(b => ({ segno: !!b.segno, coda: !!b.coda, fine: !!b.fine, toCoda: !!b.toCoda, jump: b.jump ?? '' }));
@@ -704,7 +704,7 @@ test('V11 Jump marks: ds-coda.abc shows its four marks, plays 1 2 3 4 5 6 2 3 4 
   await expect(drawn('fine')).toHaveText('Fine');
 
   // Undo by keyboard until the imported marks are back. Typing "D.C. al F" into the select changes it twice (to "D.C.",
-  // then to "D.C. al Fine"), and each change is one step; with the Fine that makes three.
+  // then to "D.C. al Fine"); both changes are on one bar, so they are one step; with the Fine that makes two.
   const undo = page.getByRole('button', { name: 'Undo' });
   const current = async () => JSON.stringify(marksOf((await storedDoc(page)).score));
   let steps = 0;
@@ -714,7 +714,7 @@ test('V11 Jump marks: ds-coda.abc shows its four marks, plays 1 2 3 4 5 6 2 3 4 
     await expect.poll(current).not.toBe(before);
     before = await current();
   }
-  expect(steps).toBe(3);
+  expect(steps).toBe(2);
   await expect(drawn('jump')).toHaveText('D.S. al Coda');
   await expect(drawn('fine')).toHaveCount(0);
 

@@ -5,7 +5,7 @@ import { notatedLength } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
 import { JumpMarks } from './JumpMarks';
-import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
+import { HEADER, markDrop, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
 import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
@@ -233,7 +233,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
     <div className={styles.system} style={row > 0 ? { height } : undefined}>
       <svg data-testid="system" width={SHEET.systemWidth} height={height}
         viewBox={`0 0 ${SHEET.systemWidth} ${height}`} aria-hidden="true">
-        {row > 0 && <JumpMarks system={system} score={doc.score} />}
+        {row > 0 && <JumpMarks system={system} score={doc.score} drop={markDrop(derived.events, show)} />}
         {row > 0 ? <g transform={`translate(0 ${row})`}>{drawing}</g> : drawing}
       </svg>
       {under && (() => {

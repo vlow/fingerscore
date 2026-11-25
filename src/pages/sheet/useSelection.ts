@@ -76,8 +76,8 @@ export function useSelection(doc: Doc, derived: Derived) {
     if (ev) setAnnouncement(`${ev.rest ? 'rest' : ev.spelled.name}, ${lengthName(ev.d)}, ${barLabel(ev)}`);
   }, [derived]);
 
-  function applyNoteEdit(next: Doc | null, selectId?: string) {
-    if (selectedId === null || !useApp.getState().applyEdit(next)) return;
+  function applyNoteEdit(next: Doc | null, selectId?: string, coalesceKey?: string) {
+    if (selectedId === null || !useApp.getState().applyEdit(next, coalesceKey)) return;
     // A change of marks is announced by the bar and the mark; the note's own message would not say it.
     const said = next === null ? null : barAnnouncement(doc, next);
     if (said !== null) setAnnouncement(prev => (prev === said ? `${said}\u200B` : said));

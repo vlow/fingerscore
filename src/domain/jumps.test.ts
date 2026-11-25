@@ -55,19 +55,27 @@ describe('jumpProblems', () => {
     expect(texts(tune({ rs: true }, { volta: '1', re: true }, { volta: '2' }, { jump: 'dc' }))).toEqual([]);
   });
 
-  it('a jump in the first ending that carries the repeat is never reached and is named', () => {
+  it('a jump in the first ending that carries the repeat is never taken and is named', () => {
     const d = tune({ rs: true }, { volta: '1', re: true, jump: 'dc' }, { volta: '2' });
-    expect(texts(d)).toEqual(['D.C. in bar 2 stands in a first ending and is never reached.' + IGNORED]);
+    expect(texts(d)).toEqual(['D.C. in bar 2 stands in a first ending and is never taken.' + IGNORED]);
     expect(playOrder(d)).toEqual(playOrder(withoutJump(d)));
   });
 
-  it('a jump in an ending that repeats again, past its last pass, is never reached', () => {
+  it('a jump in an ending that repeats again, past its last pass, is never taken', () => {
     const d = tune({ volta: '1', re: true }, { volta: '2', re: true, jump: 'dc' });
-    expect(texts(d)).toEqual(['D.C. in bar 2 stands in a second ending and is never reached.' + IGNORED]);
+    expect(texts(d)).toEqual(['D.C. in bar 2 stands in a second ending and is never taken.' + IGNORED]);
   });
 
   it('a mark in the last ending, or in a bar that plays again, is no problem', () => {
     expect(texts(tune({ rs: true }, { volta: '1', re: true }, { volta: '2', fine: true }, { jump: 'dcFine' }))).toEqual([]);
+  });
+
+  it('a jump inside a repeated section, before its end, is named; the section\'s repeat is not a problem after the jump', () => {
+    const inside = tune({ rs: true }, { jump: 'dc' }, { re: true });
+    expect(texts(inside)).toEqual(['D.C. in bar 2 stands inside a repeated section, before its end in bar 3.' + IGNORED]);
+    expect(playOrder(inside)).toEqual(playOrder(withoutJump(inside)));
+    expect(texts(tune({}, { jump: 'dc' }, { rs: true }, { re: true }))).toEqual([]);
+    expect(texts(tune({ rs: true }, { re: true, jump: 'dc' }))).toEqual([]);
   });
 
   const cases: [string, Mark[], string][] = [
@@ -78,6 +86,12 @@ describe('jumpProblems', () => {
     ['the Coda before the To Coda',
       [{ coda: true }, { toCoda: true }, { jump: 'dcCoda' }],
       'D.C. al Coda in bar 3 needs the Coda after the To Coda, but the Coda is in bar 1 and the To Coda in bar 2.'],
+    ['the Coda and the To Coda in one bar', [{ toCoda: true, coda: true }, { jump: 'dcCoda' }], 'The Coda and the To Coda cannot share bar 1.'],
+    ['the Coda before the jump bar', [{ toCoda: true }, { coda: true }, { jump: 'dcCoda' }], 'The Coda in bar 2 must come after D.C. al Coda in bar 3.'],
+    ['the Coda in the jump bar', [{ toCoda: true }, { coda: true, jump: 'dcCoda' }], 'The Coda in bar 2 must come after D.C. al Coda in bar 2.'],
+    ['the Coda in an ending that is skipped after the jump',
+      [{ toCoda: true }, { jump: 'dcCoda' }, { rs: true }, { volta: '1', re: true, coda: true }, { volta: '2' }],
+      'The Coda in bar 4 stands in an ending that is skipped after the jump.'],
     ['al Fine without a Fine', [{}, {}, { jump: 'dcFine' }], 'D.C. al Fine in bar 3 needs a Fine.'],
     ['D.S. al Fine without a Fine', [{ segno: true }, { jump: 'dsFine' }], 'D.S. al Fine in bar 2 needs a Fine.'],
     ['more than one jump', [{ jump: 'dc' }, {}, { jump: 'dc' }], 'There is more than one jump, in bars 1 and 3.'],

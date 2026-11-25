@@ -398,6 +398,16 @@ export function canAddBar(doc: Doc): boolean {
 }
 
 /**
+ * The import's list of dropped marks names bar numbers as they stood at import. After an edit of the marks or of the
+ * bars it would be wrong, so the edit clears it (undo brings it back with the document).
+ */
+function unlisted(doc: Doc): Doc {
+  if (doc.source.dropped === undefined) return doc;
+  const { dropped: _dropped, ...source } = doc.source;
+  return { ...doc, source };
+}
+
+/**
  * Inserts a bar of the song's meter holding one whole-bar rest after the given bar, and selects that rest;
  * null at the bar limit.
  */
@@ -409,7 +419,7 @@ export function addBarAfter(doc: Doc, barIndex: number): { doc: Doc; selectId: s
   const cap = barCap(doc.timeSig);
   const rest: Ev = { id: newId(), m: lastId ? rememberedPitch(doc, lastId) : 60, d: cap, r: true, tie: false, l: '' };
   const score = [...doc.score.slice(0, barIndex + 1), { cap, rs: false, re: false, volta: '' as const, ev: [rest] }, ...doc.score.slice(barIndex + 1)];
-  return { doc: fixTies({ ...doc, score }, [lastId]), selectId: rest.id };
+  return { doc: unlisted(fixTies({ ...doc, score }, [lastId])), selectId: rest.id };
 }
 
 /** Removes a bar and selects the first event of the following bar, or of the previous one; null when one bar is left. */
@@ -420,7 +430,7 @@ export function removeBar(doc: Doc, barIndex: number): { doc: Doc; selectId: str
   const before = barIndex > 0 ? doc.score[barIndex - 1].ev : [];
   const lastBefore = before.length > 0 ? before[before.length - 1].id : undefined;
   const select = score[barIndex] ?? score[barIndex - 1];
-  return { doc: fixTies(forget({ ...doc, score }, removed), [lastBefore]), selectId: select.ev[0].id };
+  return { doc: unlisted(fixTies(forget({ ...doc, score }, removed), [lastBefore])), selectId: select.ev[0].id };
 }
 
 /** Puts a field on one bar and takes it off every other: a document never holds two of a mark. */
@@ -431,7 +441,7 @@ function placeField(doc: Doc, bar: number, key: BarMark | 'jump', value: true | 
     const { [key]: _gone, ...rest } = b;
     return k === bar && value !== undefined ? { ...rest, [key]: value } as Bar : rest;
   });
-  return { ...doc, score };
+  return unlisted({ ...doc, score });
 }
 
 /** Sets or clears a mark of a bar; a mark that stands on another bar moves here. An unknown bar changes nothing. */

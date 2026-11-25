@@ -241,7 +241,8 @@ function measureJumpReader(measureStart: number, measureEnd: number, grid: Grid,
     if (has('dacapo')) soundJumps.push('dc');
     if (has('dalsegno')) soundJumps.push('ds');
   };
-  const squeeze = (words: string) => words.toLowerCase().replace(/[\s.]/g, '');
+  /** The words without anything but letters: dots, spaces and symbols such as the Coda sign are no part of the match. */
+  const squeeze = (words: string) => words.toLowerCase().replace(/[^\p{L}]/gu, '');
   return {
     read(el: Element): void {
       if (el.localName === 'barline') {

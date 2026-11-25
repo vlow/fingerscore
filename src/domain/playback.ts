@@ -12,39 +12,42 @@ export function ticksToSeconds(ticks: number, tempo: number): number {
   return (ticks * 60) / (tempo * 12);
 }
 
-/** The bars after a jump: no repeat is taken, and of a group of endings only the last one present is played. */
-function playAfterJump(doc: Doc, jumpBar: number, order: number[], cuts: Set<number>, cap: number): void {
+/**
+ * The bars after a jump. The music already played (up to the jump bar) is replayed without repeats
+ * and with the last ending of each group only. Past the jump bar, or in the Coda, repeats and endings count again.
+ */
+function playAfterJump(doc: Doc, jumpBar: number, order: number[], cuts: Set<number>): void {
   const bars = doc.score;
   const jump = bars[jumpBar].jump as Jump;
   const skipped = skippedEndings(bars);
-  const stopAtFine = !jump.endsWith('Coda') && bars.some(b => b.fine);
-  const coda = bars.findIndex(b => b.coda);
   const viaCoda = jump.endsWith('Coda');
-  let i = jump.startsWith('ds') ? bars.findIndex(b => b.segno) : 0;
+  const stopAtFine = !viaCoda && bars.some(b => b.fine);
   cuts.add(order.length); // the first bar after a jump starts fresh
-  while (i >= 0 && i < bars.length && order.length < cap) {
-    if (skipped[i]) { i++; continue; }
+  for (let i = jump.startsWith('ds') ? bars.findIndex(b => b.segno) : 0; i >= 0 && i <= jumpBar; i++) {
+    if (skipped[i]) continue;
     order.push(i);
     if (stopAtFine && bars[i].fine) return;
     if (viaCoda && bars[i].toCoda) {
-      cuts.add(order.length); // a tie does not carry from the To Coda into the Coda, also when the Coda is the next bar
-      i = coda;
-      continue;
+      cuts.add(order.length); // a tie does not carry from the To Coda into the Coda
+      order.push(...walkRepeats(doc, -1, bars.findIndex(b => b.coda)).order);
+      return;
     }
-    i++;
   }
+  if (!viaCoda && jumpBar + 1 < bars.length) order.push(...walkRepeats(doc, -1, jumpBar + 1).order);
 }
 
 /**
  * Bar indices in play order, and the positions in that order where a jump starts (a tie does not carry across).
  * A jump mark (D.C., D.S.) is taken once, at the end of its bar, after that bar's repeat is played out;
+ * after it no repeat is taken in the music already played;
  * a document whose marks do not add up plays without it (see `jumpProblems`).
  */
 function playPlan(doc: Doc): { order: number[]; cuts: Set<number> } {
   const jumpBar = jumpProblems(doc).length === 0 ? doc.score.findIndex(b => b.jump) : -1;
   const { order, fired } = walkRepeats(doc, jumpBar);
   const cuts = new Set<number>();
-  if (fired) playAfterJump(doc, jumpBar, order, cuts, 4 * doc.score.length);
+  if (fired) playAfterJump(doc, jumpBar, order, cuts);
+  order.length = Math.min(order.length, 4 * doc.score.length);
   return { order, cuts };
 }
 

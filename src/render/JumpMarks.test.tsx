@@ -1,12 +1,14 @@
-import { render } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { act, render } from '@testing-library/react';
+import { vi } from 'vitest';
 import { parseChord } from '../domain/chords';
 import { derive } from '../domain/derive';
 import { JUMP_TEXT } from '../domain/jumps';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
 import { mkDoc, type BarSpec } from '../test/helpers';
-import { layoutSheet, markRow, SHEET } from './layout';
-import { planMarks } from './JumpMarks';
+import { layoutSheet, MARK_DROP, MARK_ROW, markDrop, markRow, SHEET } from './layout';
+import { planMarks, resetMarkFace, useMarkFace } from './JumpMarks';
 import { TEXT_EM_PER_CHAR } from './lyrics';
 import { LIGHT, PaletteProvider, SCREEN } from './palette';
 import { Paper } from './Paper';
@@ -152,6 +154,84 @@ describe('jump marks on the sheet', () => {
     // the marks of one bar do not touch each other
     const rights = markBoxes.slice().sort((a, b) => a.x1 - b.x1);
     for (let i = 1; i < rights.length; i++) expect(rights[i].x1).toBeGreaterThanOrEqual(rights[i - 1].x2);
+  });
+
+  it('a sheet that draws no chord and no lyric lowers the marks by 44 px, into the empty bands; the row and the system stay as they are', () => {
+    const marked = (): Doc => mkDoc([bar({ segno: true }), bar({ toCoda: true, fine: true, jump: 'dc' })]);
+    /** Baseline of the first text and bottom of the first sign, in the system's coordinates. */
+    const inkTop = (doc: Doc) => {
+      const { container } = draw(doc);
+      const svg = container.querySelector('svg[data-testid="system"]')!;
+      const boxes = Array.from(container.querySelectorAll('[data-jump]')).filter(e => !e.parentElement?.closest('[data-jump]')).map(inkOf);
+      return { top: Math.min(...boxes.map(b => b.y1)), bottom: Math.max(...boxes.map(b => b.y2)), height: num(svg, 'height'), shift: shiftOf(svg) };
+    };
+    const base = inkTop(marked());                                    // nothing to draw in the bands: lowered
+    const withChord = marked();
+    withChord.chords[withChord.score[0].ev[1].id] = parseChord('Am7', 0);
+    const withLyric = marked();
+    withLyric.score[1].ev[0].l = 'one';
+    const chordHidden = marked();
+    chordHidden.chords[chordHidden.score[0].ev[1].id] = parseChord('Am7', 0);
+    chordHidden.show = { ...chordHidden.show, chords: false };
+    const bothOff = marked();
+    bothOff.chords[bothOff.score[0].ev[1].id] = parseChord('Am7', 0);
+    bothOff.score[1].ev[0].l = 'one';
+    bothOff.show = { ...bothOff.show, chords: false, lyrics: false };
+    const lyricOnRest = marked();
+    lyricOnRest.score[0].ev[0] = { ...lyricOnRest.score[0].ev[0], r: true, l: 'x' };
+
+    const up = inkTop(withChord);
+    expect(base.top - up.top).toBeCloseTo(MARK_DROP, 6);
+    expect(base.bottom - up.bottom).toBeCloseTo(MARK_DROP, 6);
+    expect(up.bottom).toBeLessThanOrEqual(MARK_ROW);           // the row of 30 px, as before
+    expect(inkTop(withLyric).top).toBeCloseTo(up.top, 6);
+    for (const lowered of [chordHidden, bothOff, lyricOnRest]) expect(inkTop(lowered).top).toBeCloseTo(base.top, 6);
+    expect(base.height).toBe(up.height);
+    expect(base.height).toBe(SHEET.systemHeight + markRow(marked()));
+    expect(base.shift).toBe(up.shift);
+    // about 30 px above the staff instead of about 75 (the staff starts at the row plus staffTop)
+    expect(base.shift + SHEET.staffTop - base.bottom).toBeGreaterThan(25);
+    expect(base.shift + SHEET.staffTop - base.bottom).toBeLessThan(40);
+    expect(up.shift + SHEET.staffTop - up.bottom).toBeGreaterThan(70);
+  });
+
+  it('markDrop reads the same flags as the renderer: a chord needs show.chords, a lyric needs show.lyrics and a note', () => {
+    const doc = mkDoc([bar()]);
+    const events = () => derive(doc, DEFAULT_PREFS).events;
+    expect(markDrop(events(), doc.show)).toBe(MARK_DROP);
+    doc.chords[doc.score[0].ev[0].id] = parseChord('C', 0);
+    expect(markDrop(events(), doc.show)).toBe(0);
+    expect(markDrop(events(), { ...doc.show, chords: false })).toBe(MARK_DROP);
+    doc.score[0].ev[1].l = 'la';
+    expect(markDrop(events(), { ...doc.show, chords: false })).toBe(0);
+    expect(markDrop(events(), { ...doc.show, chords: false, lyrics: false })).toBe(MARK_DROP);
+  });
+
+  it('lowered marks overlap no ending bracket, triplet mark or note, also with high notes on ledger lines', () => {
+    const high: BarSpec = { ev: [[81, 12], [84, 12], [86, 12], [84, 12]], rs: true, segno: true };
+    const tripletBar: BarSpec = { ev: [[84, 4], [86, 4], [83, 4], [72, 12], [74, 12], [76, 12]], volta: '1', fine: true, toCoda: true, jump: 'dsCoda' };
+    const doc = mkDoc([high, tripletBar, bar({ volta: '2', coda: true })]);
+    const { container, layout } = draw(doc);
+    const svg = container.querySelector('svg[data-testid="system"]')!;
+    const shift = shiftOf(svg);
+    expect(container.querySelectorAll('[data-chord], [data-lyric]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-volta]').length).toBe(2);
+    expect(container.querySelectorAll('[data-tuplet]').length).toBe(1);
+    const drawn = Array.from(container.querySelectorAll('[data-jump]')).filter(e => !e.parentElement?.closest('[data-jump]'));
+    expect(drawn.map(e => e.getAttribute('data-jump')).sort()).toEqual(['coda', 'fine', 'jump', 'segno', 'toCoda']);
+    const others: Box[] = [];
+    for (const v of container.querySelectorAll('[data-volta]')) for (const p of v.querySelectorAll('path')) others.push(pathBox(p.getAttribute('d')!));
+    for (const m of container.querySelectorAll('[data-tuplet]')) {
+      const t = m.querySelector('text')!;
+      others.push({ x1: num(t, 'x') - 5, x2: num(t, 'x') + 5, y1: num(t, 'y') - 9, y2: num(t, 'y') });
+      for (const p of m.querySelectorAll('[data-tuplet-bracket]')) others.push(pathBox(p.getAttribute('d')!));
+    }
+    // the notes (up to D6, three ledger lines; a head at E6 or higher reaches the lowered row): a head and, above the staff, its ledger lines, 10 px either side of the event
+    const notes = layout.systems[0].bars.flatMap(b => b.events).map(e => ({ x1: e.x - 10, x2: e.x + 10, y1: e.y - 5 }));
+    for (const m of drawn.map(inkOf)) {
+      for (const o of others) expect(m.y2, 'a mark ends above an ending bracket or a triplet mark').toBeLessThan(o.y1 + shift);
+      for (const n of notes) if (m.x1 < n.x2 && n.x1 < m.x2) expect(m.y2, 'a mark ends above a note').toBeLessThan(n.y1 + shift);
+    }
   });
 
   it('a long text in a short bar stays inside the system', () => {
@@ -300,5 +380,57 @@ describe('the marks of one bar stay in the bar', () => {
     while (!fits(w)) w += 1;
     expect(w).toBe(212);                      // narrower bars (the narrowest is 178 px) use the overflow rule
     expect(w).toBeGreaterThan(Math.min(...s.bars.map(b => b.width)));
+  });
+});
+
+describe('the bold italic face of the texts', () => {
+  const FACE = 'italic 700 13px "Atkinson Hyperlegible"';
+  const stub = (fonts: unknown) => Object.defineProperty(document, 'fonts', { value: fonts, configurable: true });
+  beforeEach(resetMarkFace);
+  afterEach(() => { Reflect.deleteProperty(document, 'fonts'); resetMarkFace(); });
+
+  function Probe({ onRender }: { onRender(n: number): void }) { onRender(useMarkFace()); return null; }
+  const probe = () => {
+    const seen: number[] = [];
+    render(<Probe onRender={n => seen.push(n)} />);
+    return seen;
+  };
+
+  it('is requested once, at first use, and the marks are drawn again when it has loaded', async () => {
+    let done!: () => void;
+    const load = vi.fn(() => new Promise<unknown[]>(res => { done = () => res([]); }));
+    stub({ load, check: vi.fn(() => false) });
+    const seen = probe();
+    probe();
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(load).toHaveBeenCalledWith(FACE);
+    expect(new Set(seen)).toEqual(new Set([0]));
+    await act(async () => { done(); await Promise.resolve(); });
+    expect(seen[seen.length - 1]).toBe(1);
+  });
+
+  it('asks for the face by the family name the stylesheet imports', () => {
+    expect(readFileSync('src/styles/global.css', 'utf8')).toContain("@fontsource/atkinson-hyperlegible/700-italic.css");
+    expect(readFileSync('node_modules/@fontsource/atkinson-hyperlegible/700-italic.css', 'utf8')).toContain("font-family: 'Atkinson Hyperlegible'");
+  });
+
+  it('does not draw again when the face is already loaded', async () => {
+    const load = vi.fn(() => Promise.resolve([]));
+    stub({ load, check: vi.fn(() => true) });
+    const seen = probe();
+    await act(async () => { await Promise.resolve(); });
+    expect(load).not.toHaveBeenCalled();
+    expect(new Set(seen)).toEqual(new Set([0]));
+  });
+
+  it('survives a load that fails, and a document without fonts', async () => {
+    stub({ load: vi.fn(() => Promise.reject(new Error('no'))), check: () => false });
+    const seen = probe();
+    await act(async () => { await Promise.resolve(); });
+    expect(new Set(seen)).toEqual(new Set([0]));
+    resetMarkFace();
+    Reflect.deleteProperty(document, 'fonts');
+    expect(() => probe()).not.toThrow();
+    expect(() => draw(mkDoc([bar({ jump: 'dc' })]))).not.toThrow();
   });
 });
