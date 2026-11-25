@@ -66,10 +66,17 @@ async function recordHighlights(page: Page): Promise<void> {
   await page.evaluate(() => {
     const w = window as unknown as { __seq: { id: string; t: number }[] };
     w.__seq = [];
-    new MutationObserver(() => {
-      const id = document.querySelector('[data-playing="true"]')?.getAttribute('data-ev');
+    const push = (id: string | null | undefined) => {
       if (id && (w.__seq.length === 0 || w.__seq[w.__seq.length - 1].id !== id)) w.__seq.push({ id, t: performance.now() });
-    }).observe(document.body, { subtree: true, attributes: true, childList: true });
+    };
+    // The callback runs after the DOM changed, so a highlight that came and went before it ran is no longer in the
+    // DOM. The records still tell: an attribute change whose old value was "true" means that event was highlighted.
+    new MutationObserver(records => {
+      for (const r of records) {
+        if (r.type === 'attributes' && r.attributeName === 'data-playing' && r.oldValue === 'true') push((r.target as Element).getAttribute('data-ev'));
+      }
+      push(document.querySelector('[data-playing="true"]')?.getAttribute('data-ev'));
+    }).observe(document.body, { subtree: true, attributes: true, attributeOldValue: true, childList: true });
   });
 }
 const highlighted = (page: Page) => page.evaluate(() => (window as unknown as { __seq: { id: string; t: number }[] }).__seq);

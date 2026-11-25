@@ -89,7 +89,7 @@ One function lists the problems of a document:
 - A Fine or a "To Coda" in the jump bar itself.
 - A "To Coda" before the Segno of a "D.S. al Coda".
 - The Coda and the "To Coda" in one bar; the Coda at or before the jump bar, because the jump never reaches it.
-- A Segno, a Fine, a "To Coda" or a Coda in a bar that belongs to an ending which is skipped after the jump.
+- A Segno, a Fine or a "To Coda" in a bar that belongs to an ending which the replay after the jump skips. Endings after the jump bar play as written, so a Coda in one is no problem.
 - A jump that stands in an ending or in a repeated section and is never taken.
 - A jump inside a repeated section, before the section's end: it would fire on the first pass and the section's repeat would never be taken.
 
@@ -120,11 +120,11 @@ With any problem, playback ignores the jump and plays straight. The sheet page s
 - Segno and Coda signs: above the staff at the left edge of their bar.
 - "Fine", "To Coda" followed by the Coda sign, and the jump text ("D.C. al Fine"): above the staff at the right edge of their bar, right-aligned, in bold italic.
 - The band above the staff is full today: chord symbols, lyrics, ending brackets and triplet marks leave gaps of 8 and 15 px, and the signs are 31 and 42 px high at full size. So a sheet that has at least one of these marks gets one more row in every system, and all its systems stay the same height. The row is 30 px high and stands at the top of each system, above the chord band. The whole existing drawing of the system moves down by 30 px. A sheet without marks keeps today's layout to the pixel. The signs are drawn at 0.57 of the staff scale.
-- The row has two places. A sheet that draws a chord symbol or a lyric (the renderer's own test: the content exists and its switch in "Show on sheet" is on) keeps the marks in the top 30 px of the system. A sheet that draws neither has empty chord and lyric bands, so the marks move 44 px lower, directly above the ending brackets: about 30 px above the staff instead of about 75. The row's height and the system's height stay the same, and the choice is made for the whole sheet, so all systems alike.
+- The row has two places. A sheet that draws a chord symbol or a lyric (the renderer's own test: the content exists and its switch in "Show on sheet" is on) keeps the marks in the top 30 px of the system. A sheet that draws neither has empty chord and lyric bands, so the marks move 44 px lower, directly above the ending brackets: about 30 px above the staff instead of about 75. That holds only if no note of the sheet reaches into the lowered row plus a 4 px margin: the highest note decides for the whole sheet, by the layout's y positions (a head, or an accidental, whose top lies at or above 78 px from the system's top). That is a head at D6 or higher (C6 is still lowered); such a sheet keeps the top row. The row's height and the system's height stay the same, and the choice is made for the whole sheet, so all systems alike.
 - Text widths are measured in the bold italic face. The face is requested at first use, and the marks are drawn again once it has loaded.
 - When the marks of one bar do not fit side by side, the gap between them shrinks from 8 to 4 px, then the text from 13 to 10 px. Then the marks of the bar form one run that may reach left past the barline, but never into the clef or into another bar's marks. In a bar with four or five marks the text can shrink further, down to 6 px.
 - Text widths are measured in the browser and estimated in tests.
-- The marks never overlap chord symbols, lyrics, ending brackets or triplet marks. This is tested on a bar that has all of them, and, in the lower place, on a bar with an ending bracket, a triplet and notes up to D6 on ledger lines. A note at E6 or higher under a mark reaches the lower row.
+- The marks never overlap chord symbols, lyrics, ending brackets or triplet marks. This is tested on a bar that has all of them, and, in the lower place, on a bar with an ending bracket, a triplet and notes up to C6 on ledger lines.
 - The taller system changes how many systems fit on a PDF page and how far play mode turns; both read the height from the layout.
 - The two signs are extracted from Bravura into `src/data/glyphs.json` with the existing script.
 - Print uses the same drawing. In the PDF the signs are outlines and the texts are searchable text.

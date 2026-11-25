@@ -97,9 +97,13 @@ test('crowded bars: in a narrow bar (Coda, Fine) and in a bar with an ending, a 
   if (OUT) { mkdirSync(OUT, { recursive: true }); await page.getByTestId('system').nth(crowded[0].system).screenshot({ path: join(OUT, 'crowded-bar.png') }); }
 });
 
-test('a sheet without chords and lyrics lowers the marks into the empty bands: they sit above the ending bracket and touch no ending, triplet mark or note, also with notes on ledger lines', async ({ page }, testInfo) => {
+/** Without chords and lyrics the marks stand lowered above the ending brackets, unless a note reaches the lowered row: then they keep the top row. */
+for (const [file, lowered, note] of [
+  ['crowded-bare.abc', true, 'the highest note stands on ledger lines, below the lowered row'],
+  ['crowded-high.abc', false, 'the highest note is one step higher and reaches the lowered row'],
+] as const) test(`a sheet without chords and lyrics, ${note}: the marks ${lowered ? 'are lowered above the ending bracket' : 'keep the top row'} and touch no ending, triplet mark or note`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1300, height: 1500 });
-  await openMarks(page, 'e2e/fixtures/crowded-bare.abc');
+  await openMarks(page, `e2e/fixtures/${file}`);
   const found = await page.evaluate(() => {
     const rect = (e: Element) => { const r = e.getBoundingClientRect(); return { x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }; };
     return Array.from(document.querySelectorAll('svg[data-testid="system"]')).map(svg => {
@@ -123,8 +127,12 @@ test('a sheet without chords and lyrics lowers the marks into the empty bands: t
   const volta = others.filter(o => o.what === 'volta');
   const lowest = Math.max(...marks.map(m => m.r.y2));
   // lowered: the marks end just above the ending brackets, about 30 px above the staff (75 px + the 30 px row below the system's top)
-  expect(Math.min(...marks.map(m => m.r.y1)) - box.y1).toBeGreaterThan(40);
-  expect(Math.min(...volta.map(o => o.r.y1)) - lowest).toBeGreaterThanOrEqual(0);
+  if (lowered) {
+    expect(Math.min(...marks.map(m => m.r.y1)) - box.y1).toBeGreaterThan(40);
+    expect(Math.min(...volta.map(o => o.r.y1)) - lowest).toBeGreaterThanOrEqual(0);
+  } else {
+    expect(lowest - box.y1).toBeLessThanOrEqual(30);
+  }
   marks.forEach((m, i) => {
     expect(m.r.y1).toBeGreaterThanOrEqual(box.y1);
     expect(m.r.x1).toBeGreaterThanOrEqual(box.x1);
@@ -132,7 +140,7 @@ test('a sheet without chords and lyrics lowers the marks into the empty bands: t
     for (const o of others) expect(meets(m.r, o.r), `${m.kind} meets a ${o.what}`).toBe(false);
     marks.slice(i + 1).forEach(n => expect(meets(m.r, n.r), `${m.kind} meets ${n.kind}`).toBe(false));
   });
-  await page.getByTestId('system').nth(0).screenshot({ path: testInfo.outputPath('row-without-chords.png') });
+  await page.getByTestId('system').nth(0).screenshot({ path: testInfo.outputPath(`row-without-chords-${lowered ? 'lowered' : 'top'}.png`) });
 });
 
 test('print shows the marks, in the light ink, and prints the same drawing', async ({ page }) => {

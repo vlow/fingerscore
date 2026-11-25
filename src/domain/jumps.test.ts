@@ -78,6 +78,12 @@ describe('jumpProblems', () => {
     expect(texts(tune({ rs: true }, { re: true, jump: 'dc' }))).toEqual([]);
   });
 
+  it('a Coda in a first ending after the jump bar is played with the endings as written and is no problem', () => {
+    const d = tune({ toCoda: true }, { jump: 'dcCoda' }, { rs: true }, { volta: '1', re: true, coda: true }, { volta: '2' });
+    expect(texts(d)).toEqual([]);
+    expect(playOrder(d).map(i => String.fromCharCode(65 + i)).join('')).toBe('ABADE');
+  });
+
   const cases: [string, Mark[], string][] = [
     ['D.S. without a Segno', [{}, {}, { jump: 'ds' }], 'D.S. in bar 3 needs a Segno.'],
     ['D.S. al Coda without a Segno', [{ toCoda: true }, { jump: 'dsCoda' }, { coda: true }], 'D.S. al Coda in bar 2 needs a Segno.'],
@@ -89,9 +95,9 @@ describe('jumpProblems', () => {
     ['the Coda and the To Coda in one bar', [{ toCoda: true, coda: true }, { jump: 'dcCoda' }], 'The Coda and the To Coda cannot share bar 1.'],
     ['the Coda before the jump bar', [{ toCoda: true }, { coda: true }, { jump: 'dcCoda' }], 'The Coda in bar 2 must come after D.C. al Coda in bar 3.'],
     ['the Coda in the jump bar', [{ toCoda: true }, { coda: true, jump: 'dcCoda' }], 'The Coda in bar 2 must come after D.C. al Coda in bar 2.'],
-    ['the Coda in an ending that is skipped after the jump',
-      [{ toCoda: true }, { jump: 'dcCoda' }, { rs: true }, { volta: '1', re: true, coda: true }, { volta: '2' }],
-      'The Coda in bar 4 stands in an ending that is skipped after the jump.'],
+    ['the Coda in a first ending before the jump bar',
+      [{ toCoda: true }, { rs: true }, { volta: '1', re: true, coda: true }, { volta: '2' }, { jump: 'dcCoda' }],
+      'The Coda in bar 3 must come after D.C. al Coda in bar 5.'],
     ['al Fine without a Fine', [{}, {}, { jump: 'dcFine' }], 'D.C. al Fine in bar 3 needs a Fine.'],
     ['D.S. al Fine without a Fine', [{ segno: true }, { jump: 'dsFine' }], 'D.S. al Fine in bar 2 needs a Fine.'],
     ['more than one jump', [{ jump: 'dc' }, {}, { jump: 'dc' }], 'There is more than one jump, in bars 1 and 3.'],

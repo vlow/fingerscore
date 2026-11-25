@@ -207,9 +207,33 @@ describe('jump marks on the sheet', () => {
     expect(markDrop(events(), { ...doc.show, chords: false, lyrics: false })).toBe(MARK_DROP);
   });
 
+  it('the highest note decides for the sheet: a head just below the lowered row lowers the marks, one that reaches the row keeps the top row', () => {
+    const at = (midi: number, accidental = false) => {
+      const doc = mkDoc([bar({ segno: true, jump: 'dc' }), { ev: [[midi, 12], [60, 12], [60, 12], [60, 12]] }]);
+      const events = derive(doc, DEFAULT_PREFS).events;
+      const top = events.find(e => !e.rest && e.pos === Math.max(...events.map(x => x.pos)))!;
+      const out = draw(doc);
+      const text = out.container.querySelector('text[data-jump="jump"]')!;
+      return { drop: markDrop(events, doc.show), y: num(text, 'y'), pos: top.pos, acc: !!top.accidental && accidental };
+    };
+    const c6 = at(84);
+    const d6 = at(86);
+    expect(c6.pos).toBe(12);
+    expect(d6.pos).toBe(13);
+    expect(c6.drop).toBe(MARK_DROP);
+    expect(d6.drop).toBe(0);
+    expect(c6.y - d6.y).toBe(MARK_DROP);
+    // the layout's own numbers: a head at C6 has its top at row + staffBottom - 5 * 12 - 5 = 80, and the lowered row
+    // plus margin ends at 30 + 44 + 4 = 78; at D6 the top is at 75
+    expect(MARK_ROW + SHEET.staffBottom - 5 * c6.pos - 5).toBeGreaterThan(MARK_ROW + MARK_DROP + 4);
+    expect(MARK_ROW + SHEET.staffBottom - 5 * d6.pos - 5).toBeLessThanOrEqual(MARK_ROW + MARK_DROP + 4);
+    // an accidental rises 10 px above its note, so C#6 (still position 12) keeps the top row
+    expect(at(85).drop).toBe(0);
+  });
+
   it('lowered marks overlap no ending bracket, triplet mark or note, also with high notes on ledger lines', () => {
-    const high: BarSpec = { ev: [[81, 12], [84, 12], [86, 12], [84, 12]], rs: true, segno: true };
-    const tripletBar: BarSpec = { ev: [[84, 4], [86, 4], [83, 4], [72, 12], [74, 12], [76, 12]], volta: '1', fine: true, toCoda: true, jump: 'dsCoda' };
+    const high: BarSpec = { ev: [[81, 12], [84, 12], [83, 12], [84, 12]], rs: true, segno: true };
+    const tripletBar: BarSpec = { ev: [[84, 4], [82, 4], [83, 4], [72, 12], [74, 12], [76, 12]], volta: '1', fine: true, toCoda: true, jump: 'dsCoda' };
     const doc = mkDoc([high, tripletBar, bar({ volta: '2', coda: true })]);
     const { container, layout } = draw(doc);
     const svg = container.querySelector('svg[data-testid="system"]')!;
@@ -226,7 +250,7 @@ describe('jump marks on the sheet', () => {
       others.push({ x1: num(t, 'x') - 5, x2: num(t, 'x') + 5, y1: num(t, 'y') - 9, y2: num(t, 'y') });
       for (const p of m.querySelectorAll('[data-tuplet-bracket]')) others.push(pathBox(p.getAttribute('d')!));
     }
-    // the notes (up to D6, three ledger lines; a head at E6 or higher reaches the lowered row): a head and, above the staff, its ledger lines, 10 px either side of the event
+    // the notes (up to C6, three ledger lines; a head higher than that keeps the marks in the top row): a head and, above the staff, its ledger lines, 10 px either side of the event
     const notes = layout.systems[0].bars.flatMap(b => b.events).map(e => ({ x1: e.x - 10, x2: e.x + 10, y1: e.y - 5 }));
     for (const m of drawn.map(inkOf)) {
       for (const o of others) expect(m.y2, 'a mark ends above an ending bracket or a triplet mark').toBeLessThan(o.y1 + shift);

@@ -112,8 +112,10 @@ export function jumpProblems(doc: Doc): JumpProblem[] {
     if (jump === 'dsCoda') before('toCoda', toCoda);
   }
   const skipped = skippedEndings(bars);
-  for (const [m, i] of [...placed, ['coda', coda] as [BarMark, number | undefined]]) {
-    if (i !== undefined && skipped[i]) {
+  // Only the bars up to the jump bar are replayed with the last ending alone; after it endings play as written.
+  // A Coda before the jump bar is named above ("must come after"), so it is not named again here.
+  for (const [m, i] of placed) {
+    if (i !== undefined && i <= at && skipped[i]) {
       out.push(problem(i, `The ${MARK_NAME[m]} in bar ${label(i)} stands in an ending that is skipped after the jump.`));
     }
   }
