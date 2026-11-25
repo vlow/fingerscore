@@ -283,7 +283,7 @@ function Sheet({ doc }: { doc: Doc }) {
                 onPlayMode={enterPlayMode} playModeRef={playModeButton} />
             </div>
           </div>
-          <JumpNotice problems={problems} dropped={doc.source.dropped ?? []} />
+          {!performing && <JumpNotice problems={problems} dropped={doc.source.dropped ?? []} />}
           {/* Outside the group it describes: a description inside its own element is read twice. */}
           <p id={descriptionId} className={s.srOnly}>{paperDescription(doc, derived)}</p>
           {/* Focusable on purpose: a scrolling area must be reachable by keyboard, and the sheet keys act from here. */}

@@ -44,4 +44,18 @@ describe('NotePanel', () => {
     await userEvent.selectOptions(within(bar).getByLabelText('Jump at the end of the bar'), 'None');
     expect(edits).toEqual([setBarMark(doc, 0, 'fine', false), setJump(doc, 0, null)]);
   });
+
+  it('survives a render with an id that has no event, before and after a valid one', () => {
+    const doc = sampleDoc('asax');
+    const derived = derive(doc, DEFAULT_PREFS);
+    const valid = doc.score[0].ev[0].id;
+    const node = (id: string) => <NotePanel doc={doc} derived={derived} id={id} onEdit={() => {}} />;
+    const { rerender, container } = render(node(valid));
+    expect(() => rerender(node('missing'))).not.toThrow();
+    expect(container).toBeEmptyDOMElement();
+    expect(() => rerender(node(valid))).not.toThrow();
+    expect(screen.getByRole('group', { name: 'Bar' })).toBeInTheDocument();
+    const again = render(node('missing'));
+    expect(() => again.rerender(node(valid))).not.toThrow();
+  });
 });

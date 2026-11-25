@@ -15,3 +15,14 @@
 .line + .line {
   margin-top: 4px;
 }
+
+/* Empty: still in the page for screen readers, out of the layout (no border, no gap in the column). */
+.notice:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}

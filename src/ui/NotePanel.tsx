@@ -34,13 +34,13 @@ interface Props {
 
 /** The Edit notes panel (design 4.3): pitch, length, dot, tie, rest, and bars. Keyboard editing lives on the sheet. */
 export default function NotePanel(p: Props): JSX.Element | null {
+  const jumpId = useId();   // before the early return: a hook may not follow it
   const { doc, id, onEdit } = p;
   const at = locate(doc, id);
   const shown = p.derived.byId[id];
   if (!at || !shown) return null;
   const ev = at.ev;
   const bar = doc.score[at.bar];
-  const jumpId = useId();
   const member = inTriplet(doc, id);
   const { base, dotted } = splitLength(ev.d);
   const longer = dottedOf(base);

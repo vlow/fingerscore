@@ -4,9 +4,25 @@ import JumpNotice from './JumpNotice';
 const IGNORED = 'Playback ignores the jump.';
 
 describe('JumpNotice', () => {
-  it('shows nothing without a problem or a dropped sentence', () => {
-    const { container } = render(<JumpNotice problems={[]} dropped={[]} />);
-    expect(container).toBeEmptyDOMElement();
+  it('keeps an empty status region without a problem or a dropped sentence', () => {
+    render(<JumpNotice problems={[]} dropped={[]} />);
+    expect(screen.getByRole('status', { name: 'Jump marks' })).toBeEmptyDOMElement();
+  });
+
+  it('the region it keeps receives the text later, as the same element', () => {
+    const { rerender } = render(<JumpNotice problems={[]} dropped={[]} />);
+    const region = screen.getByRole('status');
+    rerender(<JumpNotice problems={[{ bar: 1, text: `A. ${IGNORED}` }]} dropped={[]} />);
+    expect(screen.getByRole('status')).toBe(region);
+    expect(region).toHaveTextContent('A.');
+  });
+
+  it('lists the same dropped sentence twice without a key warning', () => {
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<JumpNotice problems={[]} dropped={['Left out.', 'Left out.']} />);
+    expect(screen.getAllByText('Left out.')).toHaveLength(2);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('is a status region that lists each problem', () => {

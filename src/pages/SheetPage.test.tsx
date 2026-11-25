@@ -2239,7 +2239,9 @@ describe('jump marks: the Bar section and the notice', () => {
   const panel = () => screen.getByRole('group', { name: 'Edit notes panel' });
   const bar = () => within(panel()).getByRole('group', { name: 'Bar' });
   const current = () => useApp.getState().doc!;
-  const notice = () => screen.queryByRole('status', { name: 'Jump marks' });
+  const region = () => screen.queryByRole('status', { name: 'Jump marks' });
+  /** The notice as the player sees it: the region with something in it. */
+  const notice = () => (region()?.textContent ? region() : null);
   const IGNORED = 'Playback ignores the jump.';
   /** The sample, with `marks` applied; bar indices as in the document. */
   const openMarked = async (marks: (d: Doc) => Doc = d => d) => {
@@ -2364,5 +2366,61 @@ describe('jump marks: the Bar section and the notice', () => {
     await user.tab();
     await user.tab();
     expect(within(bar()).getByLabelText('Jump at the end of the bar')).toHaveFocus();   // the arrow keys are in e2e/jump-edit.spec.ts
+  });
+
+  it('the status region that exists before a problem receives its text, and is empty again after Undo', async () => {
+    await openMarked(d => setJump(setBarMark(d, 1, 'segno', true), 3, 'ds'));
+    const before = region()!;
+    expect(before).toBeEmptyDOMElement();
+    await selectBar(1);
+    await user.click(within(panel()).getByRole('button', { name: 'Remove bar' }));
+    expect(region()).toBe(before);
+    expect(before).toHaveTextContent('needs a Segno');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(region()).toBe(before);
+    expect(before).toBeEmptyDOMElement();
+  });
+
+  it('is not rendered while play mode is on', async () => {
+    open('asax', setJump(sampleDoc('asax'), 3, 'ds'));
+    expect(notice()).not.toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    await screen.findByRole('region', { name: 'Play mode' });
+    expect(region()).toBeNull();
+  });
+
+  it('moving the jump to another bar is one undo step, announced with its origin', async () => {
+    await openMarked(d => setJump(d, 1, 'dc'));
+    await selectBar(3);
+    const before = current();
+    await user.selectOptions(within(bar()).getByLabelText('Jump at the end of the bar'), 'D.C.');
+    expect(current().score.map(b => b.jump)).toEqual(current().score.map((_b, k) => (k === 3 ? 'dc' : undefined)));
+    expect(live()).toHaveTextContent(`Bar ${label(3)}: D.C. moved from bar ${label(1)}`);
+    expect(useApp.getState().past).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(useApp.getState().doc).toBe(before);
+  });
+
+  it('with a rest selected the Bar section acts on the bar of the rest', async () => {
+    const d = sampleDoc('asax');
+    const note = d.score[2].ev.find(e => !e.r)!;
+    await openMarked(x => toggleRest(x, note.id)!);
+    await user.click(hit(note.id));
+    await screen.findByRole('group', { name: 'Edit notes panel' });
+    await user.click(within(bar()).getByRole('button', { name: 'Segno' }));
+    expect(current().score.map(b => b.segno)).toEqual(current().score.map((_b, k) => (k === 2 ? true : undefined)));
+  });
+
+  it('with a note inside a triplet selected the Bar section acts on the bar of the triplet', async () => {
+    const d = sampleDoc('asax');
+    const k = 2;
+    const quarter = d.score[k].ev.find(e => !e.r && e.d === 12)!;
+    const made = toggleTriplet(d, quarter.id)!;
+    await openMarked(() => made.doc);
+    const second = made.doc.score[k].ev[made.doc.score[k].ev.findIndex(e => e.id === quarter.id) + 1];
+    await user.click(hit(second.id));
+    await screen.findByRole('group', { name: 'Edit notes panel' });
+    await user.click(within(bar()).getByRole('button', { name: 'Fine' }));
+    expect(current().score.map(b => b.fine)).toEqual(current().score.map((_b, i) => (i === k ? true : undefined)));
   });
 });
