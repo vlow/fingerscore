@@ -1,4 +1,4 @@
-import { createElement, lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { LoadBoundary } from '../ui/LoadBoundary';
 
 /**
@@ -70,12 +70,16 @@ export function lazyView<P extends object>(
   m: LazyModule<ComponentType<P>>,
   opts: { compact?: boolean; fallback?: ReactNode } = {},
 ): ComponentType<P> {
-  const Pending = lazy(() => m.load().then(c => ({ default: c })));
+  // JSX cannot spread a generic P onto a component typed by it; the props pass through unchanged.
+  const Pending = lazy(() => m.load().then(c => ({ default: c as ComponentType<object> })));
   return function LazyView(props: P) {
-    const Loaded = m.peek();
-    if (Loaded) return createElement(Loaded, props);
-    return createElement(LoadBoundary, { compact: opts.compact },
-      createElement(Suspense, { fallback: opts.fallback ?? null }, createElement(Pending, props)));
+    const Loaded = m.peek() as ComponentType<object> | null;
+    if (Loaded) return <Loaded {...props} />;
+    return (
+      <LoadBoundary compact={opts.compact}>
+        <Suspense fallback={opts.fallback ?? null}><Pending {...props} /></Suspense>
+      </LoadBoundary>
+    );
   };
 }
 
