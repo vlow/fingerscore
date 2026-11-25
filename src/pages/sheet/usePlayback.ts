@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createPlayer, type Player } from '../../audio/player';
 import { buildSchedule, firstTickOf, sliceSchedule } from '../../domain/playback';
 import type { Doc } from '../../domain/types';
@@ -34,8 +35,12 @@ export function usePlayback(doc: Doc, selectedId: string | null) {
       const from = selectedId === null ? null : firstTickOf(doc, selectedId);
       const full = buildSchedule(doc);
       player.play(from === null ? full : sliceSchedule(full, from), doc, id => {
-        setPlayingId(id);
-        setPlaying(player.playing);
+        // A mark comes from a timer. When the machine is busy two due timers run back to back, and React would draw
+        // only the last of their updates: the player would lose the earlier highlight (at the end of the song, the
+        // last note). So a mark is drawn at once. The end (null) may also come from an effect cleanup, where flushSync
+        // is not allowed, and nothing follows it, so it stays an ordinary update.
+        const show = () => { setPlayingId(id); setPlaying(player.playing); };
+        if (id === null) show(); else flushSync(show);
       });
       setPlayError(false);
       setPlaying(true);

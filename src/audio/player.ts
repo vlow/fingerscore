@@ -91,9 +91,11 @@ export function createPlayer(): Player {
 
     // Marks cover the whole timeline (every note chain and every rest), so the highlight moves
     // from one to the next without gaps; the song-end timer clears the last one.
-    function scheduleMark(m: Schedule['marks'][number]) {
+    let fired = 0;
+    function scheduleMark(m: Schedule['marks'][number], late = false) {
       const at = t0 + secs(m.start);
-      eventTimers.push(setTimeout(() => { if (playing) onEvent(m.evId); }, Math.max(0, (at - c.currentTime) * 1000)));
+      const wait = late ? 0 : Math.max(0, (at - c.currentTime) * 1000);
+      eventTimers.push(setTimeout(() => { fired++; if (playing) onEvent(m.evId); }, wait));
     }
 
     function pump() {
@@ -110,13 +112,22 @@ export function createPlayer(): Player {
 
     pump();
     timer = setInterval(pump, TICK_MS);
-    eventTimers.push(setTimeout(() => {
+    // The end clears every pending timer. On a busy machine this timer can run before the scheduler has queued the last
+    // marks (they are queued shortly before they are due), which would lose their highlights. So marks that have not
+    // fired yet are queued first, due at once, and the end follows them.
+    function end() {
       if (!playing) return;
+      if (fired < s.marks.length) {
+        while (nextMark < s.marks.length) scheduleMark(s.marks[nextMark++], true);
+        eventTimers.push(setTimeout(end, 0));
+        return;
+      }
       playing = false;
       clear();
       notify?.(null);
       notify = null;
-    }, Math.max(0, (endAt - c.currentTime) * 1000 + 100)));
+    }
+    eventTimers.push(setTimeout(end, Math.max(0, (endAt - c.currentTime) * 1000 + 100)));
   }
 
   return { play, stop, get playing() { return playing; } };

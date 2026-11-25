@@ -1,4 +1,5 @@
-import { previewTrack, stopPreview } from './player';
+import type { Doc } from '../domain/types';
+import { createPlayer, previewTrack, stopPreview } from './player';
 
 class FakeNode {
   stop = vi.fn();
@@ -19,6 +20,7 @@ class FakeAudioContext {
   resume = vi.fn(async () => undefined);
   createOscillator() { const o = new FakeNode(); oscillators.push(o); return o; }
   createGain() { return new FakeNode(); }
+  createBiquadFilter() { return new FakeNode(); }
 }
 
 beforeAll(() => vi.stubGlobal('AudioContext', FakeAudioContext));
@@ -56,6 +58,24 @@ it('previewTrack reports its natural end once, and not when it is stopped', () =
     stopPreview();
     vi.advanceTimersByTime(5000);
     expect(stopped).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('plays every highlight mark and then ends, also when the end timer runs before the scheduler queued the last marks', () => {
+  vi.useFakeTimers();
+  try {
+    // The audio clock stands still, as on a machine that is too busy to run the scheduler: it queues only the first
+    // mark, and the end timer is due before the others would have been queued.
+    const notes = [0, 24, 48].map((start, i) => ({ evId: `e${i}`, start, dur: 12, midi: 60 + i }));
+    const marks = [0, 24, 48].map((start, i) => ({ evId: `e${i}`, start }));
+    const seen: (string | null)[] = [];
+    const player = createPlayer();
+    player.play({ notes, marks, totalTicks: 60 }, { inst: 'asax', tempo: 100 } as Doc, id => seen.push(id));
+    vi.advanceTimersByTime(3500);       // past the end timer (3.0 s of music plus 100 ms)
+    expect(seen).toEqual(['e0', 'e1', 'e2', null]);
+    expect(player.playing).toBe(false);
   } finally {
     vi.useRealTimers();
   }
