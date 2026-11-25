@@ -1,6 +1,6 @@
 /**
  * Acceptance suite: one numbered test for each of the 12 checks of the handoff (SPEC section 16, A01 to A12) and for
- * each of 10 additions of version 2 (V01 to V10). `src/acceptanceIndex.test.ts` keeps the numbering whole.
+ * each of 11 additions of version 2 (V01 to V11). `src/acceptanceIndex.test.ts` keeps the numbering whole.
  *
  * The shipped sample is "Auld Lang Syne"; the handoff's numbers describe "The Water Is Wide". The A tests pin what the
  * sample gives. Unit tests pin the handoff's own numbers on the handoff song, by title:
@@ -23,7 +23,8 @@ import { readPdf } from './readPdf';
 
 /** The parts of the stored document these tests read. The session copy is written by the store on every change. */
 interface StoredDoc {
-  score: { cap: number; rs?: boolean; re?: boolean; volta: string; ev: { id: string; d: number; r: boolean }[] }[];
+  score: { cap: number; rs?: boolean; re?: boolean; volta: string; ev: { id: string; d: number; r: boolean }[];
+    segno?: true; coda?: true; fine?: true; toCoda?: true; jump?: string }[];
   timeSig: [number, number]; tempo: number; shift: number; originalTonicPc: number; originalMode: string;
   imported: { lyrics: Record<string, string>; chords: Record<string, string> };
   chords: Record<string, { raw: string; ok: boolean; pc: number; rest: string; bass: number | null; tk: number }>;
@@ -632,4 +633,93 @@ test('V10 No request leaves the origin from the start page through sample, sheet
   expect(paths.filter(p => /sheetPdf/.test(p)).length, 'PDF code').toBeGreaterThan(0);
   const foreign = urls.filter(u => !u.startsWith('data:') && new URL(u).origin !== origin);
   expect(foreign).toEqual([]);
+});
+
+test('V11 Jump marks: ds-coda.abc shows its four marks, plays 1 2 3 4 5 6 2 3 4 7 8, takes a D.C. al Fine and a Fine by keyboard, undoes them, and its PDF holds "D.S. al Coda"', async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  await importFixture(page, 'e2e/fixtures/ds-coda.abc');
+  const bars = (await storedDoc(page)).score;
+  const marksOf = (score: StoredDoc['score']) => score.map(b => ({ segno: !!b.segno, coda: !!b.coda, fine: !!b.fine, toCoda: !!b.toCoda, jump: b.jump ?? '' }));
+  const imported = marksOf(bars);
+  expect(bars).toHaveLength(8);
+  expect(imported.map((m, i) => ({ i, ...m })).filter(m => m.segno || m.coda || m.fine || m.toCoda || m.jump))
+    .toEqual([{ i: 1, segno: true, coda: false, fine: false, toCoda: false, jump: '' },
+      { i: 3, segno: false, coda: false, fine: false, toCoda: true, jump: '' },
+      { i: 5, segno: false, coda: false, fine: false, toCoda: false, jump: 'dsCoda' },
+      { i: 6, segno: false, coda: true, fine: false, toCoda: false, jump: '' }]);
+
+  // The sheet draws the four marks, each over its own bar: the first note of the bar lies at or right of a left-edge
+  // mark, and a right-edge mark ends before the first note of the next bar.
+  const drawn = (kind: string) => page.locator(`[data-jump="${kind}"]`);
+  await expect(drawn('segno')).toHaveCount(1);
+  await expect(drawn('coda')).toHaveCount(1);
+  await expect(drawn('toCoda')).toHaveText('To Coda');
+  await expect(drawn('jump')).toHaveText('D.S. al Coda');
+  const overBar = async (kind: string, bar: number, edge: 'left' | 'right') => {
+    const mark = await drawn(kind).first().boundingBox();
+    const first = await page.locator(`[data-ev="${bars[bar].ev[0].id}"]`).boundingBox();
+    const after = bar + 1 < bars.length ? await page.locator(`[data-ev="${bars[bar + 1].ev[0].id}"]`).boundingBox() : null;
+    expect(mark && first, kind).toBeTruthy();
+    const sameSystem = after !== null && Math.abs(after.y - first!.y) < 100;
+    if (edge === 'left') expect(Math.abs(mark!.x - first!.x), `${kind} at the start of bar ${bar + 1}`).toBeLessThan(60);
+    else if (sameSystem) expect(mark!.x + mark!.width, `${kind} before bar ${bar + 2}`).toBeLessThanOrEqual(after!.x);
+    if (edge === 'right') expect(mark!.x + mark!.width, `${kind} right of the notes of bar ${bar + 1}`).toBeGreaterThan(first!.x);
+  };
+  await overBar('segno', 1, 'left');
+  await overBar('toCoda', 3, 'right');
+  await overBar('jump', 5, 'right');
+  await overBar('coda', 6, 'left');
+
+  // Play at the fastest tempo: the bars come 1 2 3 4 5 6, then back to the Segno 2 3 4, then the Coda 7 8.
+  const slider = page.getByRole('group', { name: 'Playback' }).getByRole('slider');
+  await slider.fill(await slider.evaluate(el => (el as HTMLInputElement).max));
+  await recordHighlights(page);
+  await page.getByRole('button', { name: 'Listen', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Listen', exact: true })).toBeVisible({ timeout: 30_000 });
+  const order = [0, 1, 2, 3, 4, 5, 1, 2, 3, 6, 7];
+  expect((await highlighted(page)).map(h => h.id)).toEqual(order.flatMap(i => bars[i].ev.map(e => e.id)));
+
+  // Keyboard only: End selects the last note; "D.C. al Fine" takes the place of "D.S. al Coda".
+  const sheet = page.getByRole('group', { name: 'Sheet music. Arrow keys select a note, Enter listens from it.' });
+  const modes = page.getByRole('radiogroup', { name: 'Mode' });
+  await modes.getByRole('radio', { name: 'View' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(modes.getByRole('radio', { name: 'Edit notes' })).toHaveAttribute('aria-checked', 'true');
+  await sheet.focus();
+  await page.keyboard.press('End');
+  const panel = page.getByRole('group', { name: 'Edit notes panel' });
+  const jump = panel.getByLabel('Jump at the end of the bar');
+  await jump.focus();
+  await page.keyboard.type('D.C. al F');
+  await expect(jump).toHaveValue('dcFine');
+  await expect(drawn('jump')).toHaveText('D.C. al Fine');
+  // Home, then four steps right: the first note of bar 3. Its Fine goes on with Space.
+  await sheet.focus();
+  await page.keyboard.press('Home');
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
+  const fine = panel.getByRole('button', { name: 'Fine', exact: true });
+  await fine.focus();
+  await page.keyboard.press('Space');
+  await expect(fine).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawn('fine')).toHaveText('Fine');
+
+  // Undo by keyboard until the imported marks are back. Typing "D.C. al F" into the select changes it twice (to "D.C.",
+  // then to "D.C. al Fine"), and each change is one step; with the Fine that makes three.
+  const undo = page.getByRole('button', { name: 'Undo' });
+  const current = async () => JSON.stringify(marksOf((await storedDoc(page)).score));
+  let steps = 0;
+  for (let before = await current(); before !== JSON.stringify(imported) && steps < 5; steps++) {
+    await undo.focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(current).not.toBe(before);
+    before = await current();
+  }
+  expect(steps).toBe(3);
+  await expect(drawn('jump')).toHaveText('D.S. al Coda');
+  await expect(drawn('fine')).toHaveCount(0);
+
+  // The PDF has the jump as text.
+  const path = await download(page, 'Download PDF', name => testInfo.outputPath(name));
+  const { pages } = await readPdf(new Uint8Array(readFileSync(path)));
+  expect(pages.flatMap(p => p.text.map(t => t.str))).toContain('D.S. al Coda');
 });

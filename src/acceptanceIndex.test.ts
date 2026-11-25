@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 
 const numbers = (letter: string, count: number) => Array.from({ length: count }, (_, i) => `${letter}${String(i + 1).padStart(2, '0')}`);
-/** Each acceptance file and the numbers it must hold: the handoff's 12 checks and version 2's 10; dark mode's 6. */
+/** Each acceptance file and the numbers it must hold: the handoff's 12 checks and version 2's 11; dark mode's 6. */
 const SUITES = [
-  { file: 'e2e/acceptance.spec.ts', wanted: [...numbers('A', 12), ...numbers('V', 10)] },
+  { file: 'e2e/acceptance.spec.ts', wanted: [...numbers('A', 12), ...numbers('V', 11)] },
   { file: 'e2e/dark-mode.spec.ts', wanted: numbers('D', 6) },
 ];
 /** Numbers whose check fails on the real app and is kept as `test.fixme`. Each one is written down in the task report. */

@@ -87,7 +87,11 @@ One function lists the problems of a document:
 - More than one jump, Segno, Coda, Fine or "To Coda".
 - A Segno after the jump bar; a Fine or a "To Coda" after the jump bar; a Fine before the Segno of a D.S.
 - A Fine or a "To Coda" in the jump bar itself.
+- A "To Coda" before the Segno of a "D.S. al Coda".
 - A Segno, a Fine or a "To Coda" in a bar that belongs to an ending which is skipped after the jump.
+- A jump that stands in an ending or in a repeated section and is never taken.
+
+The list is made only when the document has a jump. Marks without a jump play nothing, so nothing is ignored and no notice appears.
 
 Bar numbers in the notice are the ones printed on the sheet (a pickup bar is bar 0).
 
@@ -102,16 +106,19 @@ With any problem, playback ignores the jump and plays straight. The sheet page s
   - Version 2 adds `playRepeats`, version 4 adds `eid` and `markerType`; the reader ignores all three.
   - The files hold no D.S. jump. `segno` as the `jumpTo` value follows from the marker's label and is the one value not seen in a file.
 - **ABC:** the decorations the parser knows: `!segno!`, `!coda!`, `!fine!`, `!D.C.!`, `!D.S.!`, `!dacapo!`, `!D.C.alfine!`, `!D.C.alcoda!`, `!D.S.alfine!`, `!D.S.alcoda!`, and `!dacoda!`, which is a "To Coda". A decoration on a bar line gives a Segno or Coda to the next bar and every other mark to the bar before. Quoted text such as "D.S. al Coda" above a note is not read.
-- A mark in the middle of a bar moves to the bar's edge: Segno and Coda to its start, the others to its end.
-- A form outside the six, or a second sign of a kind, is dropped. So is a mark behind the last note. The import result names what was dropped, and the sheet keeps the list with its source and shows it in the notice of 5.3.
+- In MusicXML a mark belongs to the measure it is written in, wherever it stands in the measure: Segno and Coda to the measure's start, Fine, "To Coda" and the jump to its end. Only a segno or coda in a right barline belongs to the next measure. A bare `dalsegno` in a file that has both a Fine and a "To Coda" becomes a plain D.S.
+- In ABC a mark in the middle of a bar moves to the bar's edge: Segno and Coda to its start, the others to its end.
+- A form outside the six, or a second sign of a kind, is dropped. So is a mark behind the last note. The import result names what the importer dropped, and the sheet keeps the list with its source and shows it in the notice of 5.3. A sentence that depends on the chosen track (marks behind that track's last note) appears only in the sheet's notice, not in the import message.
 - A mark stays with its music when the importer splits, merges or realigns bars, as repeat marks do.
 
 ### 5.5 Drawing
 
 - Segno and Coda signs: above the staff at the left edge of their bar.
 - "Fine", "To Coda" followed by the Coda sign, and the jump text ("D.C. al Fine"): above the staff at the right edge of their bar, right-aligned, in bold italic.
-- The band above the staff is full today: chord symbols, lyrics, ending brackets and triplet marks leave gaps of 8 and 15 px, and the signs are 31 and 42 px high at full size. So a sheet that has at least one of these marks gets one more row above the staff in every system, and all its systems stay the same height. A sheet without marks keeps today's layout to the pixel. The signs are drawn at the size that fits the row.
-- The marks never overlap chord symbols, lyrics, ending brackets or triplet marks. The builder fixes the row's height and order and tests it on a bar that has all of them.
+- The band above the staff is full today: chord symbols, lyrics, ending brackets and triplet marks leave gaps of 8 and 15 px, and the signs are 31 and 42 px high at full size. So a sheet that has at least one of these marks gets one more row in every system, and all its systems stay the same height. The row is 30 px high and stands at the top of each system, above the chord band. The whole existing drawing of the system moves down by 30 px. A sheet without marks keeps today's layout to the pixel. The signs are drawn at 0.57 of the staff scale.
+- When the marks of one bar do not fit side by side, the gap between them shrinks from 8 to 4 px, then the text from 13 to 10 px. Then the marks of the bar form one run that may reach left past the barline, but never into the clef or into another bar's marks. In a bar with four or five marks the text can shrink further, down to 6 px.
+- Text widths are measured in the browser and estimated in tests.
+- The marks never overlap chord symbols, lyrics, ending brackets or triplet marks. This is tested on a bar that has all of them.
 - The taller system changes how many systems fit on a PDF page and how far play mode turns; both read the height from the layout.
 - The two signs are extracted from Bravura into `src/data/glyphs.json` with the existing script.
 - Print uses the same drawing. In the PDF the signs are outlines and the texts are searchable text.
@@ -120,11 +127,11 @@ With any problem, playback ignores the jump and plays straight. The sheet page s
 
 In "Edit notes", the panel for the selected note gains a section "Bar" for the bar that note is in:
 
-- Two toggles for the start of the bar: Segno, Coda.
-- Two toggles for the end of the bar: Fine, To Coda.
-- One choice for the end of the bar: no jump, or one of the six.
+- Two toggles for the start of the bar, labelled "Start": Segno, Coda.
+- Two toggles for the end of the bar, labelled "End": Fine, To Coda.
+- One select, "Jump at the end of the bar": None, or one of the six.
 
-Each change is one undo step. Setting a second jump, Segno, Coda, Fine or "To Coda" moves it: the earlier one is removed in the same step, so the document never holds two. The notice of 5.3 appears and disappears as the marks change. Removing a bar removes its marks. The live region announces the change ("Bar 16: D.S. al Coda").
+Each change is one undo step. Setting a second jump, Segno, Coda, Fine or "To Coda" moves it: the earlier one is removed in the same step, so the document never holds two. The notice of 5.3 is a standing status region. It is empty when the marks add up, and it is not rendered in play mode. It appears and disappears as the marks change. Removing a bar removes its marks. The live region announces the change: "Bar 16: D.S. al Coda", "Bar 6: To Coda removed", "Bar 4: Fine moved from bar 2".
 
 ### 5.7 What follows on its own
 
@@ -137,10 +144,10 @@ What does not follow: play mode's auto-scroll moves down the page at a steady sp
 
 Two steps make room, and the builder measures each before the marks are built:
 
-- **Play mode** (the full-screen view) is loaded when it is first opened, from the sheet page or from "Play" in the library. That frees about 8,000 bytes. While the code is on its way the sheet stays as it is and usable; play mode starts when the code has arrived. If it cannot be loaded, a message says so and the sheet stays in its normal view.
+- **Play mode** (the full-screen view) is loaded when it is first opened, from the sheet page or from "Play" in the library. That frees about 8,000 bytes. A plain dynamic import in a hook loads it. While the code is on its way the sheet stays in its normal view and usable; play mode starts when the code has arrived. If it cannot be loaded, the message "Play mode could not be loaded. Reload the page and try again." shows and the sheet stays in its normal view.
 - **The glyph data** bundled with the app carries explanatory text beside the outlines. The text moves to the script's notes and the bundled file keeps the outlines only.
 
-If the two steps do not bring the start set to 397,000 bytes or less, the builder stops and reports before building the marks.
+The start set went from 405,390 to 394,870 bytes with the two steps and stands at 405,824 bytes with the feature. If the two steps had not brought it to 397,000 bytes or less, the builder would have stopped and reported before building the marks.
 
 ### 5.9 Tests
 
@@ -162,6 +169,10 @@ If the two steps do not bring the start set to 397,000 bytes or less, the builde
 - **Repeats and endings stay import-only.** Making them editable is a separate piece of work.
 - **Play mode leaves the start set** and the glyph data loses its prose, to make room.
 - **A sheet with marks gets one more row above the staff in every system.** Sheets without marks do not change.
+- **The row stands at the top of the system, above the chord band.** It is 30 px, and the whole drawing of the system moves down by it.
+- **In MusicXML a mark belongs to the measure it is written in**, wherever it stands, except a segno or coda in a right barline.
+- **A jump that is never taken is a problem** and gets a notice.
+- **Text below 10 px only in bars with four or five marks.**
 - **Play mode's auto-scroll stays as it is.** It does not follow repeats today.
 - **Quoted text in ABC is not read**; the decorations are.
 - **A jump in a bar that ends a repeat is taken after the repeat.**

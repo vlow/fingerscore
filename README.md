@@ -2,7 +2,7 @@
 
 Turns a song file into sheet music with a fingering chart under every note, for woodwinds. It runs in the browser only. Nothing leaves your machine.
 
-Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files, then editing with undo and redo, then a Scales page: any scale in any key with a fingering chart under every note, then MuseScore and ABC import, then a PDF download.
+Version 1 answered one question: does the path from a song file to a playable, printable sheet with correct fingerings work on real files? Version 2 adds saving and files, then editing with undo and redo, then a Scales page: any scale in any key with a fingering chart under every note, then MuseScore and ABC import, then a PDF download, then jump marks (D.C., D.S., Segno, Coda, Fine).
 
 ## What it does
 
@@ -12,8 +12,9 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Flags notes outside the range.
 - Draws the sheet and a fingering chart under every note, in compact or full key map style. Recorders come in baroque and German systems.
 - Offers alternate fingerings where published charts list them. You pick one per note.
-- Plays the sheet aloud: Listen and Stop, tempo slider, repeats, first and second endings, highlight on the current note.
+- Plays the sheet aloud: Listen and Stop, tempo slider, repeats, first and second endings, jump marks, highlight on the current note.
 - Play mode for playing from the screen: only the sheet, full screen. Pages turn with the arrow keys, Space, Page Up/Down (a Bluetooth pedal sends these), the toolbar or a tap on the screen edge. Auto-scroll (A) keeps the music about a third down the screen at the pace of the tempo; the speed slider goes from 25 % to 150 %. A− and A+ set the size; the sheet is never wider than the screen. The screen stays awake. Esc exits.
+- Shows jump marks: Segno, Coda, Fine, "To Coda" and the six jumps D.C., D.C. al Fine, D.C. al Coda, D.S., D.S. al Fine and D.S. al Coda. Reads them from MusicXML, MuseScore and ABC, plays the form they name, edits them with undo, and names marks that do not add up in a notice. See "Jump marks" below.
 - Downloads the sheet as a PDF (File, then Download PDF). See "PDF" below.
 - Prints the sheet (A4, paper only) through the browser's print dialog.
 - Shows scales with fingerings on a Scales page, linked from the header. Pick an instrument and one of eight scales (major, natural, harmonic and melodic minor, major and minor pentatonic, blues, chromatic) in any of twelve keys; the key with six accidentals comes in both spellings (F♯ and G♭ major, D♯ and E♭ minor). Choose one octave, two octaves or the whole range, up or up and down. Letters follow the scale degrees, except that a double sharp or double flat is written as the plain neighbouring note (A♮ instead of B𝄫). On transposing instruments you name keys by what you read or by what sounds. Notes with more than one fingering get the same "⇅" pill as on a sheet: pick another fingering and the neighbouring notes adapt; "Reset all to auto" undoes your picks, and a change of instrument, scale, key, range, direction or recorder system clears them. Optional: alternate fingerings under each note, note names. Download the scale as a PDF (A4 or Letter, by browser region, like the sheet PDF) or print it (A4, the scale only, with your picks). The page remembers your settings and picks in this browser.
@@ -25,10 +26,10 @@ Version 1 answered one question: does the path from a song file to a playable, p
 
 | Format | Extensions | Notes |
 |---|---|---|
-| MIDI | `.mid`, `.midi` | |
-| MusicXML | `.musicxml`, `.xml`, `.mxl` | |
-| MuseScore | `.mscz`, `.mscx` | Versions 2, 3 and 4. Reads lyrics, chord symbols, repeats and endings. |
-| ABC | `.abc` | First tune, first verse. Reads lyrics, chord symbols, repeats and endings. |
+| MIDI | `.mid`, `.midi` | Carries no jump marks. |
+| MusicXML | `.musicxml`, `.xml`, `.mxl` | Reads jump marks. |
+| MuseScore | `.mscz`, `.mscx` | Versions 2, 3 and 4. Reads lyrics, chord symbols, repeats, endings and jump marks. |
+| ABC | `.abc` | First tune, first verse. Reads lyrics, chord symbols, repeats, endings and jump marks. |
 
 Every voice of every part becomes a track:
 
@@ -53,7 +54,7 @@ MuseScore limits:
 ABC limits:
 
 - A key line with its own accidentals (`K:D exp ^f`) is refused. So is a key the ABC library cannot read and a key with more than seven sharps or flats.
-- Text in quotes counts as a chord symbol only when it looks like one. "D.C." and "A tempo" are ignored.
+- Text in quotes counts as a chord symbol only when it looks like one. "D.C." and "A tempo" are ignored. Jump marks are read from decorations only (see "Jump marks").
 - A shortened bar before a repeat sign or an ending keeps its notes at the start. A pickup inside the tune is placed at the end of its own bar. Two short bars that make one full bar, as at a repeat sign, and a short last bar stay as written.
 - A bar longer than the meter is taken as written.
 - Voice names come from the `V:` lines in order.
@@ -65,7 +66,7 @@ ABC limits:
 
 A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chords. Click a note or rest to select it. The panel for the mode opens under that system. Esc clears the selection.
 
-- **Edit notes:** change the pitch by semitone or octave. Set the length from sixteenth to whole, with a dot. Tie a note to the next note of the same pitch. Turn a note into a rest and back. Turn an eighth, quarter or half note or rest into a triplet and back. Add a bar after the selected one, or remove it. Every bar keeps its full length.
+- **Edit notes:** change the pitch by semitone or octave. Set the length from sixteenth to whole, with a dot. Tie a note to the next note of the same pitch. Turn a note into a rest and back. Turn an eighth, quarter or half note or rest into a triplet and back. Add a bar after the selected one, or remove it. Every bar keeps its full length. The section "Bar" sets the jump marks of the bar the note is in (see "Jump marks").
 - **Lyrics:** type one syllable per note. Enter moves to the next note that can carry a syllable. The card "Lyrics & chords" fills a pasted verse from the selected note: `wat-er` puts "wat-" and "er" on two notes, and a lone `_` leaves a note empty. "Clear lyrics" and "Clear chords" empty them.
 - **Chords:** type a chord such as Am7 or F♯m7♭5 on any note or rest. The app stores it relative to the original key, so it follows every transposition and instrument. Text that is not a chord stays, in red, and is not transposed.
 - **Restore from file:** the card shows how many lyric and chord edits you made. "Restore from file" returns lyrics and chords to what the file had.
@@ -115,6 +116,41 @@ Editing:
 
 Width: a 4/4 bar with eighth triplets needs about a third more width than a plain bar, so a line holds two or three bars. A bar with triplet sixteenths usually fills a line.
 
+### Jump marks
+
+Marks: Segno and Coda (signs at the start of a bar), Fine and "To Coda" (words at the end of a bar), and one jump at the end of a bar: D.C., D.C. al Fine, D.C. al Coda, D.S., D.S. al Fine or D.S. al Coda.
+
+Import:
+
+- MusicXML: the `sound` attributes, the `segno` and `coda` elements and the direction words. A mark belongs to the measure it is written in. Only a segno or coda in a right barline belongs to the next measure.
+- MuseScore 2, 3 and 4: the `Marker` and `Jump` elements.
+- ABC: the decorations `!segno!`, `!coda!`, `!fine!`, `!dacoda!` (the "To Coda"), `!D.C.!`, `!D.S.!`, `!dacapo!`, `!D.C.alfine!`, `!D.C.alcoda!`, `!D.S.alfine!` and `!D.S.alcoda!`. A decoration on a bar line gives a Segno or Coda to the next bar and any other mark to the bar before. Quoted text is not read.
+- A form outside the six, a second sign of a kind and a mark behind the last note are left out. The import message and the notice above the sheet say which.
+
+Play order:
+
+- Playback follows repeats and endings until the jump. It takes the jump once, at the end of its bar, after the repeat of that bar.
+- D.C. returns to the first bar (the pickup bar counts). D.S. returns to the Segno.
+- "al Fine", and a plain D.C. or D.S. in a song with a Fine, stop at the end of the Fine bar. "al Coda" continues at the Coda from the end of the "To Coda" bar and plays to the end. A plain jump without a Fine plays to the end.
+- After the jump no repeat is taken, and of a group of endings only the last is played.
+- A tie does not carry across the jump or from the "To Coda" to the Coda.
+- The highlight follows the same order.
+
+Editing: in Edit notes the section "Bar" has the toggles Segno and Coda ("Start"), Fine and To Coda ("End"), and the select "Jump at the end of the bar". A second mark of a kind moves the first. Each change is one undo step and is announced ("Bar 16: D.S. al Coda"). Typing into the select changes it at each letter that picks a new option, and each of those changes is a step.
+
+Notice: when marks do not add up, an amber notice above the sheet names the problem, for example "D.S. al Coda in bar 16 needs a Segno. Playback ignores the jump." The marks stay on the sheet and playback runs straight through. The notice names: a D.S. without a Segno; an "al Coda" without a "To Coda" or a Coda, or with the Coda before the "To Coda"; an "al Fine" without a Fine; more than one jump, Segno, Coda, Fine or "To Coda"; a Segno, Fine or "To Coda" after the jump bar; a Fine or "To Coda" in the jump bar; a Fine before the Segno of a D.S.; a "To Coda" before the Segno of a D.S. al Coda; a Segno, Fine or "To Coda" in an ending that the jump skips; and a jump in an ending or repeated section that is never taken. A song without a jump has no notice. It also lists marks the import left out.
+
+Drawing: a sheet with marks has a row of 30 px at the top of every system, above the chord band, and every system is 30 px taller. A sheet without marks looks as before. The PDF and print show the marks; in the PDF the texts are searchable and the signs are outlines.
+
+Not done:
+
+- Double Segno, double Coda and D.S.S.
+- Quoted text in ABC ("D.S. al Coda" above a note).
+- Jump marks from MIDI files.
+- Repeat signs and ending brackets are import-only; they cannot be edited.
+- Play mode's auto-scroll moves at a steady pace. It does not follow repeats or jumps.
+- The time shown on the Tracks page comes from the file and ignores repeats and jumps.
+
 ### Saving and files
 
 - Save keeps the sheet in your browser's local storage. Press the Save button or Ctrl/⌘+S. The sheet page shows "Not saved yet", "Unsaved changes" or "Saved".
@@ -137,7 +173,7 @@ File, then Download PDF, makes a PDF of the sheet. The Scales page has a Downloa
 - **Text:** the PDF embeds Atkinson Hyperlegible Regular, Bold and Bold Italic (SIL Open Font License, text in `src/pdf/fonts/OFL.txt`). Lyrics, chord symbols and titles can be searched and copied. The symbols ♭ ♯ ♮ 𝄫 𝄪 ♩ Δ ‿ ● ○ ◐ are drawn as shapes, not as text: a search for "Bm7" finds the chord, a search for "B♭" finds nothing, and copying "C♯m7♭5" gives "Cm75".
 - **Characters:** the PDF supports Latin and extended Latin letters (such as ł, ő, č, ř, š, ž) and the eleven symbols above. If a title, lyric or chord uses any other character, for example Cyrillic or Greek letters, no PDF is made. The red message line lists up to 12 of the characters and says "Use Print instead". Print draws them with the fonts of the browser.
 - **File name:** `{title}-{instrument}.pdf` for a sheet, `{key}-{scale}-{instrument}.pdf` for a scale, for example `auld-lang-syne-alto-sax.pdf` and `c-major-alto-sax.pdf`. Each part is lower case. Accented letters become plain letters (`Žluťoučký kůň` gives `zlutoucky-kun`). A sharp or flat sign after a letter A to G is written as a word (`F♯ major` gives `f-sharp-major`, `B♭ Blues` gives `b-flat-blues`), so that F♯ major and F major get different names. Other characters become `-`. A part is cut at 80 characters. An untitled sheet uses `sheet`. The JSON file name follows the same rule.
-- **Loading:** the PDF code and the six font files load when you first click Download PDF, not with the app. If they cannot load, the red message line shows the load message. Another failure shows "The PDF could not be made. Use Print instead." `npm run check:bundle` enforces a budget of 400,000 bytes for everything that loads at start, and fails when that code holds the PDF libraries.
+- **Loading:** the PDF code and the six font files load when you first click Download PDF, not with the app. If they cannot load, the red message line shows the load message. Another failure shows "The PDF could not be made. Use Print instead." `npm run check:bundle` enforces a budget of 410,000 bytes for everything that loads at start, and fails when that code holds the PDF libraries.
 - **Progress:** the File menu entry reads "Preparing PDF…" and is disabled while the PDF is made. For a PDF of more than 10 pages the page announces "Preparing PDF, page {n} of {N}" at every 10th page and at the last. A sheet of 2000 bars makes about 125 pages. Leaving the page or opening another sheet stops the work and nothing is downloaded.
 - **Print:** unchanged. It stays in the File menu and next to Download PDF on the Scales page.
 - **Phones:** a browser that shows a PDF in a tab instead of saving it does so for this file too.
@@ -146,7 +182,7 @@ File, then Download PDF, makes a PDF of the sheet. The Scales page has a Downloa
 
 The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The code that loads at start (the entry chunk and the chunks it loads with it) stays at 410,000 bytes or less and holds no PDF code; `npm run check:bundle` checks both after a build.
 
-The PDF code and fonts load on the first click of Download PDF (see "PDF"). The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
+The PDF code and fonts load on the first click of Download PDF (see "PDF"). Play mode loads when you first open it; until the code arrives the sheet stays in its normal view, and if it cannot load the page shows "Play mode could not be loaded. Reload the page and try again." The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
 
 ### Rhythm rules
 
@@ -161,7 +197,7 @@ The PDF code and fonts load on the first click of Download PDF (see "PDF"). The 
 
 Later versions plan these.
 
-Not planned yet: insert mode, copy and paste, selecting several notes, and more than one verse of lyrics.
+Not planned yet: insert mode, copy and paste, selecting several notes, and more than one verse of lyrics. What jump marks leave out is listed under "Jump marks".
 
 There is no sync between browsers or devices, and none is planned: the app has no server and sends no user data over the network. To move a sheet, use File, then Download JSON, and open the file on the other device.
 
@@ -171,7 +207,7 @@ Three end-to-end files test the finished app in Chromium. All run in CI on every
 
 ### Acceptance: `e2e/acceptance.spec.ts`
 
-22 tests, about 45 s on a laptop (test times add up to 44.9 s and 45.5 s in two runs). A01 to A12 are the 12 checks of the handoff (SPEC section 16), in its order. V01 to V10 are checks for version 2:
+23 tests, about 55 s on a laptop (test times add up to 54.2 s in one full run). A01 to A12 are the 12 checks of the handoff (SPEC section 16), in its order. V01 to V11 are checks for version 2:
 
 | Test | Covers |
 |---|---|
@@ -185,8 +221,9 @@ Three end-to-end files test the finished app in Chromium. All run in CI on every
 | V08 | Alternate fingerings: automatic choice, manual choice after a reload |
 | V09 | The four pages from the footer; the import notice links to the terms |
 | V10 | No request leaves the origin on the core path |
+| V11 | Jump marks: a tune with Segno, To Coda, Coda and D.S. al Coda is imported, drawn and played in the order 1 2 3 4 5 6 2 3 4 7 8; a D.C. al Fine and a Fine are set by keyboard and undone; the PDF holds the text "D.S. al Coda" |
 
-The shipped sample is "Auld Lang Syne"; the handoff's numbers describe "The Water Is Wide". So A01, A02, A03 and A05 pin the sample's values. Unit tests pin the handoff's own numbers for checks 1, 2, 3 and 5 on the handoff song: `src/domain/transpose.test.ts` (checks 1, 2, 3), `src/domain/playback.test.ts` (check 5) and `src/pages/SheetPage.test.tsx` (check 2). `src/acceptanceIndex.test.ts` fails unless each of the 22 numbers appears once; it guards D01 to D06 of the dark mode file in the same way.
+The shipped sample is "Auld Lang Syne"; the handoff's numbers describe "The Water Is Wide". So A01, A02, A03 and A05 pin the sample's values. Unit tests pin the handoff's own numbers for checks 1, 2, 3 and 5 on the handoff song: `src/domain/transpose.test.ts` (checks 1, 2, 3), `src/domain/playback.test.ts` (check 5) and `src/pages/SheetPage.test.tsx` (check 2). `src/acceptanceIndex.test.ts` fails unless each of the 23 numbers appears once; it guards D01 to D06 of the dark mode file in the same way.
 
 Run one check by its number:
 
@@ -202,7 +239,7 @@ npx playwright test e2e/acceptance.spec.ts -g "A05"
 |---|---|
 | D01 | A first visit on a dark system is dark when the page has loaded; the page follows the system live; on a light system the sheet is white |
 | D02 | Light and Dark from the header survive a reload and override the system; System follows it again |
-| D03 | In dark mode none of the 20 states shows a colour that only the light theme has |
+| D03 | In dark mode none of the 21 states shows a colour that only the light theme has |
 | D04 | The sheet is on Night paper; Dimmed and Sepia apply at once and survive a reload; a paper change is no edit; Play mode and Scales use the same paper |
 | D05 | The PDF made in dark mode has the colours of the one made in light mode; print shows white paper and dark notes on all three papers, also under System on a dark system |
 | D06 | The accessibility scan passes on the sheet with out-of-range notes on Night, Dimmed and Sepia paper, and on Play mode and Scales on Dimmed and Sepia |
@@ -211,7 +248,7 @@ The theme is System, Light or Dark. System is the default and follows the device
 
 ### Accessibility: `e2e/accessibility.spec.ts`
 
-The file has 113 tests and takes about 97 s on a laptop (test times add up to 97.2 s in one run). Each of 20 states is opened from empty storage: start (empty, one saved sheet, library, refusal), Tracks, the sheet in View, Edit notes with a note selected, Lyrics and Chords, the out-of-range banner, the alternate-fingering popover, the File menu and the PDF message, Play mode, Scales (default and popover), and the four text pages. Every state gets:
+The file has 118 tests and takes about 119 s on a laptop (test times add up to 118.9 s in one full run). Each of 21 states is opened from empty storage: start (empty, one saved sheet, library, refusal), Tracks, the sheet in View, Edit notes with a note selected, Edit notes with the jump notice (a D.S. without a Segno), Lyrics and Chords, the out-of-range banner, the alternate-fingering popover, the File menu and the PDF message, Play mode, Scales (default and popover), and the four text pages. Every state gets:
 
 - **Scan:** axe-core with the rule sets `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa`, once in light mode and once in dark mode. Zero findings are required.
 - **Target size:** 36 × 36 px for every control, 44 × 44 px for primary actions and the header navigation. The test measures the area that takes the click, by asking the browser which element sits at four points near the corners of the required box. A link inside a sentence is exempt; a menu item is not. On the paper, a note and an alternate-fingering pill are held to 24 px: a pill must stay under its note, and pills where notes sit close are 26 px apart, so a larger click area would reach the next pill. A note must be at least 24 px high. Its width follows the note spacing: it measured 31 px at the narrowest, once, on the sample, and the test asserts at least 16 px wide and 24 px high.
