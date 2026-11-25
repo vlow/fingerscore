@@ -55,6 +55,16 @@ describe('parseMidi', () => {
     expect(doc.source.simplified).toBe(false);
   });
 
+  it('reads the title from the name of a note-less first track', () => {
+    const named = midiBytes([track([meta('trackName', { text: 'Greensleeves' })]), track([meta('trackName', { text: 'Flute' })], note(0, 60))]);
+    expect(parseMidi('x.mid', named).title).toBe('Greensleeves');
+  });
+
+  it('a first track with notes names an instrument, not the song', () => {
+    expect(demo().title).toBe('');
+    expect(parseMidi('x.mid', bareMidi()).title).toBe('');
+  });
+
   it('garbage bytes give a readable error', () => {
     expect(() => parseMidi('notes.mid', new TextEncoder().encode('hello'))).toThrowError(ImportError);
     try { parseMidi('notes.mid', new TextEncoder().encode('hello')); } catch (e) {

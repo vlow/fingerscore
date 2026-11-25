@@ -7,6 +7,7 @@ import { jumpCollector, mergeMarks } from './jumpMarks';
 import { songTimeSig } from './meter';
 import { own } from './own';
 import { ImportError, type ParsedMark, type ParsedSong, type ParsedTrack, type RawNote } from './types';
+import { fileTitle } from './title';
 
 const DEFAULT_TEMPO = 120;
 const EPS = 1e-9;
@@ -480,7 +481,7 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
   const grid = { pickup, barLength };
   const jumps = readJumpMarks(first, grid);
   return {
-    file, format: 'ABC', timeSig, tempo: tempoOf(tune.metaText.tempo), pickup,
+    file, format: 'ABC', title: fileTitle(tune.metaText.title), timeSig, tempo: tempoOf(tune.metaText.tempo), pickup,
     key: { tonicPc: mod12(key.tonicPc + transpose), mode: key.mode },
     marks: mergeMarks(readMarks(first.bars, grid, end), jumps.marks), dropped: jumps.dropped, tracks,
   };

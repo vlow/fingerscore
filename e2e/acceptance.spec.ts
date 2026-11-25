@@ -428,8 +428,8 @@ test('A12 Scales: A harmonic minor has G♯, E blues is E G A B♭ B D, C chroma
 
 test('V01 MuseScore: full.mscx imports with its key, time signature, tempo, lyrics and chord symbols', async ({ page }) => {
   await importFixture(page, 'e2e/fixtures/full.mscx');
-  // The title comes from the file name: the importer does not read the file's own title.
-  await expect(page.getByRole('textbox', { name: 'Sheet title' })).toHaveValue('full');
+  // The title comes from the file's workTitle, not from the file name.
+  await expect(page.getByRole('textbox', { name: 'Sheet title' })).toHaveValue('Morning Steps');
   await expect(page.getByText('MuseScore · track Flute of 1 · 20 notes')).toBeVisible();
   await expect(page.getByText('Key (concert)').locator('..')).toContainText('D major');
   await expect(page.getByText('Time', { exact: true }).locator('..')).toContainText('3/4');

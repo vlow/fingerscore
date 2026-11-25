@@ -14,7 +14,7 @@ const n = (start: number, dur: number, midi = 60): RawNote => ({ start, dur, mid
 
 function mkSong(notes: RawNote[], extra: { file?: string; lyrics?: { at: number; text: string }[]; chords?: { at: number; text: string }[]; key?: ParsedSong['key'] } = {}): ParsedSong {
   return {
-    file: extra.file ?? 'song.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: extra.key ?? null, pickup: 0, marks: [], dropped: [],
+    file: extra.file ?? 'song.mid', format: 'MIDI', title: '', timeSig: [4, 4], tempo: 100, key: extra.key ?? null, pickup: 0, marks: [], dropped: [],
     tracks: [{ id: 't1', name: 'Melody', instrument: 'Flute', channel: 0, percussion: false, notes, lyrics: extra.lyrics ?? [], chords: extra.chords ?? [] }],
   };
 }
@@ -182,6 +182,11 @@ describe('buildDoc', () => {
     expect(doc.source.simplified).toBe(false);
     expect(doc).toMatchObject({ subtitle: '', chartStyle: 'compact', recorderSystem: 'baroque', tempo: 100, inst: 'fl', fingering: {} });
     expect(doc.source).toEqual({ file: 'My_Song.mid', format: 'MIDI', track: 'Melody', trackCount: 1, simplified: false });
+  });
+  it('takes the title the file states, else the file name', () => {
+    const song = mkSong([n(0, 4, 62)], { file: 'My_Song.mid' });
+    expect(buildDoc({ ...song, title: 'Morning Has Broken' }, opts()).title).toBe('Morning Has Broken');
+    expect(buildDoc({ ...song, title: '' }, opts()).title).toBe('My Song');
   });
   it('lyric snaps to the nearest note start within 3 ticks and ignores far ones', () => {
     const song = mkSong([n(0, 1, 62), n(1, 1, 64)], { lyrics: [{ at: 1.2, text: 'near' }, { at: 0.5, text: 'far' }] });

@@ -945,3 +945,22 @@ describe('hardening and limits', () => {
     await expect(parse(simple(...many(4000).slice(0, -1), bar('', chord('whole', [60]))))).resolves.toBeDefined();
   });
 });
+
+describe('title', () => {
+  const body = part() + staff(1, bar('', TS() + chord('whole', [72])));
+  const title = async (xml: string) => (await parseMuseScore('x.mscx', new TextEncoder().encode(xml))).title;
+
+  it('reads the workTitle meta tag', async () => {
+    expect(await title(mscx('4.00', '<metaTag name="workTitle">Morning Steps</metaTag>' + body))).toBe('Morning Steps');
+  });
+
+  it('falls back to the title text in the frame above the music', async () => {
+    const framed = part() + `<Staff id="1"><VBox><Text><style>Composer</style><text>Someone</text></Text>` +
+      `<Text><style>Title</style><text><b>Framed</b> Title</text></Text></VBox>${bar('', TS() + chord('whole', [72]))}</Staff>`;
+    expect(await title(mscx('3.02', '<metaTag name="workTitle"></metaTag>' + framed))).toBe('Framed Title');
+  });
+
+  it('is empty when the file names none', async () => {
+    expect(await title(mscx('3.02', body))).toBe('');
+  });
+});

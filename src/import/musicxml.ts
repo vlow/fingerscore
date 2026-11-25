@@ -4,6 +4,7 @@ import { barAt, barEndingAt, barStartingAt } from './grid';
 import { jumpCollector, mergeMarks } from './jumpMarks';
 import { songTimeSig } from './meter';
 import { own } from './own';
+import { fileTitle } from './title';
 import { MODE_BELOW_MAJOR } from '../domain/keys';
 import type { Jump, Mode, TimeSig } from '../domain/types';
 import { ImportError, type ParsedMark, type ParsedSong, type ParsedTrack, type RawNote } from './types';
@@ -36,6 +37,12 @@ const num = (s: string | undefined): number | null => {
   const v = Number(s);
   return Number.isFinite(v) ? v : null;
 };
+
+/** The work title, else the movement title, else the words of the first credit typed as title. */
+function readTitle(root: Element): string {
+  const credit = kids(root, 'credit').find(c => kids(c, 'credit-type').some(t => t.textContent?.trim() === 'title'));
+  return fileTitle(text(kid(root, 'work'), 'work-title'), text(root, 'movement-title'), credit && text(credit, 'credit-words'));
+}
 
 // ---- container and XML ----
 
@@ -424,7 +431,7 @@ export async function parseMusicXml(file: string, bytes: Uint8Array): Promise<Pa
   if (!tracks.some(t => !t.percussion)) throw new ImportError(`"${file}" has no melody track.`);
   const found = jumps.result(pickup);
   return {
-    file, format: 'MusicXML', timeSig, tempo: readTempo(root), key: concertKey(results), pickup,
+    file, format: 'MusicXML', title: readTitle(root), timeSig, tempo: readTempo(root), key: concertKey(results), pickup,
     marks: mergeMarks(Array.from(marks.values()), found.marks), dropped: found.dropped, tracks,
   };
 }

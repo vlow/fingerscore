@@ -2,6 +2,7 @@ import { barAt, barEndingAt, barStartingAt, type Grid } from '../grid';
 import { jumpCollector, mergeMarks } from '../jumpMarks';
 import { songTimeSig } from '../meter';
 import { own } from '../own';
+import { fileTitle } from '../title';
 import type { Jump } from '../../domain/types';
 import { ImportError, tooLong, type ParsedSong, type ParsedTrack, type RawNote } from '../types';
 import { harmonyOf, kid, kids, lyricText, majorTonicOfFifths, mod12, num, text } from './common';
@@ -212,6 +213,14 @@ function readKey(score: Element, version: number, first: Element[] | undefined, 
   return { tonicPc: concertPitch ? written : mod12(written + transpose), mode: null };
 }
 
+/** The workTitle meta tag, else the Title text of a frame (VBox) in the score. Markup inside the text is dropped. */
+function readTitle(score: Element): string {
+  const meta = kids(score, 'metaTag').find(m => m.getAttribute('name') === 'workTitle');
+  const framed = kids(score, 'Staff').flatMap(s => kids(s, 'VBox')).flatMap(v => kids(v, 'Text'))
+    .find(t => text(t, 'style') === 'Title');
+  return fileTitle(meta?.textContent, framed && kid(framed, 'text')?.textContent);
+}
+
 /** Reads the main score with the dialect of the file's version. */
 export function readScore(file: string, score: Element, version: number, dialect: Dialect): ParsedSong {
   const { items } = dialect;
@@ -266,7 +275,7 @@ export function readScore(file: string, score: Element, version: number, dialect
   const grid = { pickup, barLength: meter };
   const jumps = readJumpMarks(bars, grid);
   return {
-    file, format: 'MuseScore', timeSig, tempo: readTempo(staves.map(s => s.measures), items), key, pickup,
+    file, format: 'MuseScore', title: readTitle(score), timeSig, tempo: readTempo(staves.map(s => s.measures), items), key, pickup,
     marks: mergeMarks(dialect.readMarks(bars, grid), jumps.marks), dropped: jumps.dropped, tracks,
   };
 }
