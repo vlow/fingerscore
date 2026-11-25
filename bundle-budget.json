@@ -1,0 +1,7 @@
+{
+  "shell": 10000000,
+  "routeDefault": 10000000,
+  "featureDefault": 10000000,
+  "routes": {},
+  "features": {}
+}

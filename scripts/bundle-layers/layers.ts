@@ -82,7 +82,9 @@ export function computeLayers(chunks: ChunkNode[], routeModules: Record<string, 
   if (!entry) throw new Error('bundle-layers: the bundle has no entry chunk.');
   const shell = closure(entry);
   const shellModules = chunks.filter(c => shell.has(c.file)).flatMap(c => c.moduleIds);
-  const outside = shellModules.filter(id => !allowedInShell(id)).map(module => ({ module, chain: chainTo(module, importersOf) }));
+  // Only where a chain leaves the shell: what that module imports in turn follows from it and would only repeat it.
+  const outside = shellModules.filter(id => !allowedInShell(id)).map(module => ({ module, chain: chainTo(module, importersOf) }))
+    .filter(o => o.chain.length < 2 || allowedInShell(o.chain[o.chain.length - 2]));
 
   const routes: Record<string, LayerFiles> = {};
   const routeSets = new Map<string, Set<string>>();

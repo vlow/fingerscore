@@ -35,6 +35,14 @@ describe('computeLayers', () => {
     expect(r.shell.outside).toEqual([{ module: 'src/state/store.ts', chain: ['src/shell/main.tsx', 'src/shell/App.tsx', 'src/state/store.ts'] }]);
   });
 
+  it('names only the module where the chain leaves the shell, not what that module imports', () => {
+    const graph = GRAPH.map(c => (c.isEntry ? { ...c, moduleIds: [...c.moduleIds, 'src/state/store.ts', 'src/domain/persistence.ts'] } : c));
+    const importers: Record<string, string[]> = {
+      'src/domain/persistence.ts': ['src/state/store.ts'], 'src/state/store.ts': ['src/shell/Header.tsx'], 'src/shell/Header.tsx': ['src/shell/main.tsx'],
+    };
+    expect(computeLayers(graph, ROUTES, id => importers[id] ?? []).shell.outside.map(o => o.module)).toEqual(['src/state/store.ts']);
+  });
+
   it('allows the listed packages and files', () => {
     const allowed = ['node_modules/react-router/dist/index.js', 'node_modules/@remix-run/router/dist/router.js', 'node_modules/zustand/esm/vanilla.mjs',
       'node_modules/scheduler/index.js', 'src/styles/global.css', 'src/styles/tokens.css', 'src/content/repository.ts', '\0vite/preload-helper.js', 'index.html'];
