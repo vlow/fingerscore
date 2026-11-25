@@ -17,7 +17,7 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
   const [openAlt, setOpenAlt] = useState<string | null>(null);
   // The popover's code loads at the first click on a pill; the popover opens for the pill clicked once it has arrived.
   const pending = useRef<string | null>(null);
-  const { View: Popover, failed, request } = useAltPopoverLoad(() => setOpenAlt(pending.current));
+  const { value: Popover, failed, request } = useAltPopoverLoad(() => setOpenAlt(pending.current));
   const anchorRef = useRef<HTMLButtonElement | null>(null);
   const closeAlt = useCallback((focusAnchor: boolean) => {
     if (focusAnchor) anchorRef.current?.focus();

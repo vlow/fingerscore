@@ -1,3 +1,4 @@
+import { lazyModule } from '../shell/lazy';
 import { LOAD_FAILED } from '../shell/loadFailed';
 import type { Prefs } from '../domain/transpose';
 import type { InstId } from '../domain/types';
@@ -18,19 +19,19 @@ export interface Format {
 export const FORMATS: Format[] = [
   {
     name: 'MIDI', extensions: ['.mid', '.midi'], article: 'a',
-    load: async () => { const { parseMidi } = await import('./midi'); return async (file, bytes) => parseMidi(file, bytes); },
+    load: lazyModule<Parser>(() => import('./midi').then(m => async (file, bytes) => m.parseMidi(file, bytes))).load,
   },
   {
     name: 'MusicXML', extensions: ['.musicxml', '.xml', '.mxl'], article: 'a',
-    load: async () => (await import('./musicxml')).parseMusicXml,
+    load: lazyModule<Parser>(() => import('./musicxml').then(m => m.parseMusicXml)).load,
   },
   {
     name: 'MuseScore', extensions: ['.mscz', '.mscx'], article: 'a',
-    load: async () => (await import('./mscz')).parseMuseScore,
+    load: lazyModule<Parser>(() => import('./mscz').then(m => m.parseMuseScore)).load,
   },
   {
     name: 'ABC', extensions: ['.abc'], article: 'an',
-    load: async () => (await import('./abc')).parseAbc,
+    load: lazyModule<Parser>(() => import('./abc').then(m => m.parseAbc)).load,
   },
 ];
 

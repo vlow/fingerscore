@@ -63,6 +63,19 @@ export function useLazy<V>(m: LazyModule<V>, onReady?: () => void): { value: V |
 }
 
 /**
+ * A component that is its own chunk, for a caller that places its own Suspense and LoadBoundary (an editing panel
+ * with a fallback of its own size). Once loaded it renders at once; before that it suspends.
+ */
+export function lazyComponent<P extends object>(m: LazyModule<ComponentType<P>>): ComponentType<P> {
+  // JSX cannot spread a generic P onto a component typed by it; the props pass through unchanged.
+  const Pending = lazy(() => m.load().then(c => ({ default: c as ComponentType<object> })));
+  return function LazyComponent(props: P) {
+    const Loaded = (m.peek() ?? Pending) as ComponentType<object>;
+    return <Loaded {...props} />;
+  };
+}
+
+/**
  * A component that is its own chunk. Once loaded it renders at once, without suspending; before that it suspends with
  * `fallback`, and a failed load shows the reload notice (compact: a small box for a part of a page).
  */
@@ -70,14 +83,12 @@ export function lazyView<P extends object>(
   m: LazyModule<ComponentType<P>>,
   opts: { compact?: boolean; fallback?: ReactNode } = {},
 ): ComponentType<P> {
-  // JSX cannot spread a generic P onto a component typed by it; the props pass through unchanged.
-  const Pending = lazy(() => m.load().then(c => ({ default: c as ComponentType<object> })));
+  const Inner = lazyComponent(m);
   return function LazyView(props: P) {
-    const Loaded = m.peek() as ComponentType<object> | null;
-    if (Loaded) return <Loaded {...props} />;
+    if (m.peek()) return <Inner {...props} />;
     return (
       <LoadBoundary compact={opts.compact}>
-        <Suspense fallback={opts.fallback ?? null}><Pending {...props} /></Suspense>
+        <Suspense fallback={opts.fallback ?? null}><Inner {...props} /></Suspense>
       </LoadBoundary>
     );
   };

@@ -7,7 +7,8 @@ import {
 } from '../domain/scales';
 import type { InstId } from '../domain/types';
 import { ScaleStaff } from '../render/ScaleStaff';
-import { requestScalePdf } from '../pdf/request';
+import { requestScalePdf, scalePdfModule } from '../pdf/request';
+import { intentProps } from '../shell/lazy';
 import { readJSON, writeJSON } from '../shell/storage';
 import { useApp } from '../state/store';
 import { Segmented } from '../ui/Segmented';
@@ -151,7 +152,7 @@ export default function Scales() {
       <div className={s.head} data-print-hide="">
         <h1 className={s.h1}>Scales with fingerings</h1>
         <div className={s.buttons}>
-          <button type="button" className={s.primary} data-primary="" aria-disabled={pdf.busy} onClick={() => { if (!pdf.busy) void downloadPdf(); }}>
+          <button type="button" className={s.primary} data-primary="" aria-disabled={pdf.busy} {...intentProps(scalePdfModule)} onClick={() => { if (!pdf.busy) void downloadPdf(); }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" />
             </svg>

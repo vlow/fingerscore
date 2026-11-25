@@ -17,13 +17,13 @@ import { mkDoc, type EvSpec } from '../test/helpers';
 import { listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
 import { PdfError } from '../pdf/errors';
-import { requestSheetPdf } from '../pdf/request';
+import { requestSheetPdf, sheetPdfModule } from '../pdf/request';
 import { downloadText } from '../ui/download';
 import { ToastHost } from '../shell/Toast';
 import SheetPage from './SheetPage';
 
 vi.mock('../ui/download', () => ({ downloadText: vi.fn() }));
-vi.mock('../pdf/request', () => ({ requestSheetPdf: vi.fn(async () => {}) }));
+vi.mock('../pdf/request', () => ({ requestSheetPdf: vi.fn(async () => {}), sheetPdfModule: { prefetch: vi.fn() } }));
 
 const fakePlayer = vi.hoisted(() => ({
   play: vi.fn(), stop: vi.fn(), playing: false,
@@ -359,6 +359,14 @@ describe('save and the File menu', () => {
       vi.mocked(requestSheetPdf).mockImplementation(() => new Promise<void>((res, rej) => { finish = res; fail = rej; }));
       return { finish: () => act(() => finish()), fail: (e: unknown) => act(() => fail(e)) };
     }
+
+    it('focusing Download PDF prefetches the engine once', async () => {
+      open('asax');
+      await openMenu();
+      vi.mocked(sheetPdfModule.prefetch).mockClear();
+      fireEvent.focus(pdfItem());
+      expect(sheetPdfModule.prefetch).toHaveBeenCalledTimes(1);
+    });
 
     it('is the first, primary entry and requests the PDF of the sheet', async () => {
       const doc = sampleDoc('asax');

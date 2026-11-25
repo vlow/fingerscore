@@ -1,7 +1,8 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LOAD_FAILED } from './loadFailed';
-import { intentProps, lazyModule, lazyView, useLazy, type LazyModule } from './lazy';
+import { Suspense } from 'react';
+import { intentProps, lazyComponent, lazyModule, lazyView, useLazy, type LazyModule } from './lazy';
 
 /** Expected load failures: React reports them to the console and, in development, as window error events. */
 function quietErrors() {
@@ -109,6 +110,13 @@ describe('lazyView', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(LOAD_FAILED);
     restore();
   });
+});
+
+it('lazyComponent suspends to the caller\'s Suspense, then renders', async () => {
+  const Panel = lazyComponent(lazyModule(() => Promise.resolve(({ n }: { n: number }) => <p>panel {n}</p>)));
+  render(<Suspense fallback={<p>outer busy</p>}><Panel n={3} /></Suspense>);
+  expect(screen.getByText('outer busy')).toBeInTheDocument();
+  expect(await screen.findByText('panel 3')).toBeInTheDocument();
 });
 
 it('intentProps prefetches every module', () => {
