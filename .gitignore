@@ -11,3 +11,4 @@ playwright-report/
 
 # owner's sample files for import checks; licences unknown, not for publication
 samples/
+build-report/
