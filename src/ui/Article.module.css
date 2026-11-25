@@ -2,7 +2,7 @@
 .article {
   max-width: 680px;
   margin: 0 auto;
-  color: var(--text);
+  color: var(--c-text-2);
   font-size: 16px;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -10,7 +10,7 @@
 
 .eyebrow {
   margin: 0 0 8px;
-  color: var(--teal);
+  color: var(--c-accent);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -19,7 +19,7 @@
 
 .article h1 {
   margin: 0 0 24px;
-  color: var(--ink);
+  color: var(--c-text);
   font-size: 34px;
   font-weight: 700;
   line-height: 1.2;
@@ -27,7 +27,7 @@
 
 .article h2 {
   margin: 32px 0 8px;
-  color: var(--ink);
+  color: var(--c-text);
   font-size: 20px;
   font-weight: 700;
 }
@@ -37,17 +37,17 @@
 }
 
 .article a {
-  color: var(--teal);
+  color: var(--c-accent);
 }
 
 .article a:hover {
-  color: var(--teal-hover);
+  color: var(--c-accent-hover);
 }
 
 .changed {
   margin: 40px 0 0;
   padding-top: 16px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
+  border-top: 1px solid var(--c-border);
+  color: var(--c-muted);
   font-size: 14px;
 }

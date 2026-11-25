@@ -4,7 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './styles/global.css';
 import { hydrate } from './state/store';
+import { initTheme } from './state/theme';
 
+initTheme();
 hydrate();
 
 // Development only: the PDF test hook of src/pdf/devHook.ts, loaded on first call (e2e/pdf-content.spec.ts).

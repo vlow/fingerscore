@@ -1,20 +1,18 @@
 import { LAYOUT, SATS, SHAPE, type FingeringOption } from '../domain/fingerings';
 import type { Instrument } from '../domain/instruments';
+import { usePalette, type Palette } from './palette';
 
-const INK = '#15171C';
-const GHOST = '#C3C7CE';
-const BAD = '#B91C1C';
-const WARN = '#B45309';
 
 type HoleState = 'closed' | 'open' | 'half';
 const stateOf = (v: number): HoleState => (v === 1 ? 'closed' : v === 0.5 ? 'half' : 'open');
 
 function Disc(p: { cx: number; cy: number; d: number; state: HoleState }) {
+  const pal = usePalette();
   const r = p.d / 2 - 0.65; // 1.3px stroke sits inside the nominal size
   return (
     <>
-      <circle cx={p.cx} cy={p.cy} r={r} fill={p.state === 'closed' ? INK : '#fff'} stroke={INK} strokeWidth={1.3} />
-      {p.state === 'half' && <path d={`M${p.cx} ${p.cy - r}A${r} ${r} 0 0 0 ${p.cx} ${p.cy + r}Z`} fill={INK} />}
+      <circle cx={p.cx} cy={p.cy} r={r} fill={p.state === 'closed' ? pal.ink : pal.paper} stroke={pal.ink} strokeWidth={1.3} />
+      {p.state === 'half' && <path d={`M${p.cx} ${p.cy - r}A${r} ${r} 0 0 0 ${p.cx} ${p.cy + r}Z`} fill={pal.ink} />}
     </>
   );
 }
@@ -22,6 +20,7 @@ function Disc(p: { cx: number; cy: number; d: number; state: HoleState }) {
 type Kind = Instrument['kind'];
 
 function Holes(p: { kind: Kind; option: FingeringOption; full: boolean }) {
+  const pal = usePalette();
   return (
     <>
       {LAYOUT[p.kind].map((h, i) => {
@@ -31,7 +30,7 @@ function Holes(p: { kind: Kind; option: FingeringOption; full: boolean }) {
           // octave key as a pill in the full key map
           return (
             <rect key={i} data-hole={stateOf(v)} x={dx - 4} y={dy + 1} width={8} height={4} rx={2}
-              fill={v === 1 ? INK : '#fff'} stroke={INK} strokeWidth={1.3} />
+              fill={v === 1 ? pal.ink : pal.paper} stroke={pal.ink} strokeWidth={1.3} />
           );
         }
         if (dbl) {
@@ -54,6 +53,7 @@ function Holes(p: { kind: Kind; option: FingeringOption; full: boolean }) {
 }
 
 function Satellites(p: { kind: Kind; option: FingeringOption; full: boolean }) {
+  const pal = usePalette();
   const table = p.kind === 'sax' || p.kind === 'cl' || p.kind === 'fl' ? SATS[p.kind] : undefined;
   if (!table) return null;
   const pressed = new Set(p.option.x);
@@ -64,7 +64,7 @@ function Satellites(p: { kind: Kind; option: FingeringOption; full: boolean }) {
         const on = pressed.has(id);
         if (!p.full && !clusters.has(cluster)) return null;
         const [w, h] = p.full ? SHAPE[cluster] : [5, 5];
-        const common = { fill: on ? INK : 'none', stroke: on ? INK : GHOST, strokeWidth: on ? 0 : 1 };
+        const common = { fill: on ? pal.ink : 'none', stroke: on ? pal.ink : pal.ghostKey, strokeWidth: on ? 0 : 1 };
         const attr = { 'data-sat': on ? 'pressed' : 'ghost', 'data-key': id };
         if (!p.full || (w === h && cluster !== 'table')) {
           return <ellipse key={id} {...attr} cx={dx} cy={dy} rx={w / 2} ry={h / 2} {...common} />;
@@ -90,15 +90,15 @@ export function FingeringChart(p: {
   );
 }
 
-const MISSING = {
-  bad: { label: '!', color: BAD, bg: '#FEF2F2', border: BAD, name: 'Unplayable note' },
-  ext: { label: 'ext', color: WARN, bg: '#FFF7ED', border: WARN, name: 'Extended note, no fingering data' },
-  alt: { label: 'alt', color: '#5B616E', bg: '#F3F4F6', border: GHOST, name: 'Altissimo note, no fingering data' },
-} as const;
+const missing = (pal: Palette) => ({
+  bad: { label: '!', color: pal.error, bg: pal.errorBg, border: pal.error, name: 'Unplayable note' },
+  ext: { label: 'ext', color: pal.warning, bg: pal.warningBg, border: pal.warning, name: 'Extended note, no fingering data' },
+  alt: { label: 'alt', color: pal.muted, bg: pal.badgeBg, border: pal.ghostKey, name: 'Altissimo note, no fingering data' },
+});
 
 /** Dashed placeholder where a chart is missing. x = column centre, y = chart top. */
 export function MissingChart(p: { type: 'bad' | 'ext' | 'alt'; x: number; y: number }): JSX.Element {
-  const m = MISSING[p.type];
+  const m = missing(usePalette())[p.type];
   return (
     <g data-missing={p.type}>
       <title>{m.name}</title>

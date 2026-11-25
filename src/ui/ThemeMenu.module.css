@@ -1,0 +1,6 @@
+/* A narrow header keeps the icon of the theme switch; the button's name still says the theme. */
+@media (max-width: 560px) {
+  .label {
+    display: none;
+  }
+}

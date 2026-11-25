@@ -14,7 +14,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--text);
+  color: var(--c-text-2);
   font: 700 10px/1 'Atkinson Hyperlegible', system-ui, sans-serif;
   cursor: pointer;
 }
@@ -25,9 +25,9 @@
   position: absolute;
   z-index: -1;
   inset: 4px 0;
-  border: 1px solid var(--ghost);
+  border: 1px solid var(--c-ghost-key);
   border-radius: 8px;
-  background: var(--card);
+  background: var(--c-surface);
 }
 
 /* Invisible 36 × 36 touch target around the small pill. */
@@ -46,27 +46,27 @@
 }
 
 .pill:hover::after {
-  border-color: var(--muted);
+  border-color: var(--c-muted);
 }
 
 .changed {
-  color: #ffffff;
+  color: var(--c-on-accent);
 }
 
 .changed::after {
-  border-color: var(--teal);
-  background: var(--teal);
+  border-color: var(--c-accent);
+  background: var(--c-primary-bg);
 }
 
 .changed:hover::after {
-  background: var(--teal-hover);
+  background: var(--c-accent-hover);
 }
 
 .open {
-  color: #ffffff;
+  color: var(--c-on-accent);
 }
 
 .open::after {
-  border-color: var(--ink);
-  background: var(--ink);
+  border-color: var(--c-text);
+  background: var(--c-selected-bg);
 }

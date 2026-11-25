@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
+import { initTheme } from '../state/theme';
 import { Paper } from './Paper';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
@@ -48,6 +49,18 @@ describe('Paper', () => {
     expect(screen.getByText('fingerscore.eu')).toBeInTheDocument();
   });
 
+  it('carries the paper of dark mode, Night unless another is chosen', () => {
+    window.localStorage.clear();
+    initTheme();
+    setup('asax');
+    expect(screen.getByTestId('paper')).toHaveAttribute('data-paper', 'night');
+    window.localStorage.setItem('fingerscore.paper', 'dimmed');
+    act(() => initTheme());
+    expect(screen.getByTestId('paper')).toHaveAttribute('data-paper', 'dimmed');
+    window.localStorage.clear();
+    act(() => initTheme());
+  });
+
   it('is an article of 940px with one 860 × 290 svg per system', () => {
     const { container } = setup('xc');
     const paper = screen.getByTestId('paper');
@@ -73,7 +86,7 @@ describe('Paper', () => {
     expect(container.querySelectorAll('[data-state="bad"]')).toHaveLength(10);
     expect(container.querySelectorAll('[data-missing="bad"]')).toHaveLength(8);
     const head = container.querySelector('[data-state="bad"] [data-head]')!;
-    expect(head).toHaveAttribute('fill', '#B91C1C');
+    expect(head).toHaveAttribute('fill', 'var(--c-error)');
   });
 
   it('show toggles hide bands', () => {
@@ -227,7 +240,7 @@ describe('Paper', () => {
     const { container } = renderDoc(doc);
     const chord = container.querySelector(`[data-ev="${id}"] [data-chord]`)!;
     expect(chord).toHaveAttribute('data-chord', 'bad');
-    expect(chord.querySelector('text')).toHaveAttribute('fill', '#B91C1C');
+    expect(chord.querySelector('text')).toHaveAttribute('fill', 'var(--c-error)');
   });
 
   it('extensions are raised when asked, inline otherwise', () => {
@@ -294,8 +307,8 @@ describe('selection', () => {
     const svg = selected[0].closest('svg')!;
     expect(marks[0].parentElement).toBe(svg);
     expect(svg.firstElementChild).toBe(marks[0]);                                           // beneath the staff lines
-    expect(marks[0]).toHaveAttribute('fill', '#E3F4F2');
-    expect(marks[0]).toHaveAttribute('stroke', '#0E6E68');
+    expect(marks[0]).toHaveAttribute('fill', 'color-mix(in srgb, var(--c-chord) 20%, transparent)');
+    expect(marks[0]).toHaveAttribute('stroke', 'var(--c-chord)');
     expect(marks[0]).toHaveAttribute('stroke-width', '1.5');
     expect(marks[0]).toHaveAttribute('rx', '6');
   });
@@ -550,7 +563,7 @@ describe('triplet marks keep clear of neighbouring ink', () => {
   it('a number over a staff line has a white halo; a bracket never lies on a staff line', () => {
     const { container } = renderDoc(mkDoc([{ ev: specs(8, 4, 12, 24) }, { ev: [[69, 8], [71, 4], [72, 12], [74, 24]] }, { ev: [[64, 8], [64, 4], [64, 12], [64, 24]] }]));
     for (const t of container.querySelectorAll('[data-tuplet] text')) {
-      expect(t.getAttribute('stroke')).toBe('#fff');
+      expect(t.getAttribute('stroke')).toBe('var(--c-paper)');
       expect(t.getAttribute('paint-order')).toBe('stroke');
     }
     for (const path of container.querySelectorAll('[data-tuplet-bracket]')) {

@@ -144,7 +144,7 @@ File, then Download PDF, makes a PDF of the sheet. The Scales page has a Downloa
 
 ### Loading
 
-The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The code that loads at start (the entry chunk and the chunks it loads with it) stays at 400,000 bytes or less and holds no PDF code; `npm run check:bundle` checks both after a build.
+The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The code that loads at start (the entry chunk and the chunks it loads with it) stays at 410,000 bytes or less and holds no PDF code; `npm run check:bundle` checks both after a build.
 
 The PDF code and fonts load on the first click of Download PDF (see "PDF"). The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
 
@@ -167,7 +167,7 @@ There is no sync between browsers or devices, and none is planned: the app has n
 
 ## Checks
 
-Two end-to-end files test the finished app in Chromium. Both run in CI on every push with the other end-to-end tests.
+Three end-to-end files test the finished app in Chromium. All run in CI on every push with the other end-to-end tests.
 
 ### Acceptance: `e2e/acceptance.spec.ts`
 
@@ -186,7 +186,7 @@ Two end-to-end files test the finished app in Chromium. Both run in CI on every 
 | V09 | The four pages from the footer; the import notice links to the terms |
 | V10 | No request leaves the origin on the core path |
 
-The shipped sample is "Auld Lang Syne"; the handoff's numbers describe "The Water Is Wide". So A01, A02, A03 and A05 pin the sample's values. Unit tests pin the handoff's own numbers for checks 1, 2, 3 and 5 on the handoff song: `src/domain/transpose.test.ts` (checks 1, 2, 3), `src/domain/playback.test.ts` (check 5) and `src/pages/SheetPage.test.tsx` (check 2). `src/acceptanceIndex.test.ts` fails unless each of the 22 numbers appears once.
+The shipped sample is "Auld Lang Syne"; the handoff's numbers describe "The Water Is Wide". So A01, A02, A03 and A05 pin the sample's values. Unit tests pin the handoff's own numbers for checks 1, 2, 3 and 5 on the handoff song: `src/domain/transpose.test.ts` (checks 1, 2, 3), `src/domain/playback.test.ts` (check 5) and `src/pages/SheetPage.test.tsx` (check 2). `src/acceptanceIndex.test.ts` fails unless each of the 22 numbers appears once; it guards D01 to D06 of the dark mode file in the same way.
 
 Run one check by its number:
 
@@ -194,11 +194,26 @@ Run one check by its number:
 npx playwright test e2e/acceptance.spec.ts -g "A05"
 ```
 
+### Dark mode: `e2e/dark-mode.spec.ts`
+
+6 tests, about 15 s on a laptop (one run took 14.8 s). `src/noFlash.test.ts` runs the inline script of `index.html` that sets a chosen theme before the first paint. D01 to D06 are the six checks of the dark mode handoff (DARKMODE.md section 8), in its order:
+
+| Test | Covers |
+|---|---|
+| D01 | A first visit on a dark system is dark when the page has loaded; the page follows the system live; on a light system the sheet is white |
+| D02 | Light and Dark from the header survive a reload and override the system; System follows it again |
+| D03 | In dark mode none of the 20 states shows a colour that only the light theme has |
+| D04 | The sheet is on Night paper; Dimmed and Sepia apply at once and survive a reload; a paper change is no edit; Play mode and Scales use the same paper |
+| D05 | The PDF made in dark mode has the colours of the one made in light mode; print shows white paper and dark notes on all three papers, also under System on a dark system |
+| D06 | The accessibility scan passes on the sheet with out-of-range notes on Night, Dimmed and Sepia paper, and on Play mode and Scales on Dimmed and Sepia |
+
+The theme is System, Light or Dark. System is the default and follows the device. The choice is kept in the browser under `fingerscore.theme`, the paper under `fingerscore.paper`. Every colour is a token in `src/styles/tokens.css`; `src/colourLiterals.test.ts` fails on a colour written anywhere else under `src`, except the PDF's light palette (`src/render/palette.tsx`) and the PDF development page.
+
 ### Accessibility: `e2e/accessibility.spec.ts`
 
-The file has 93 tests and takes about 84 s on a laptop (test times add up to 83.6 s and 84.7 s in two runs). Each of 20 states is opened from empty storage: start (empty, one saved sheet, library, refusal), Tracks, the sheet in View, Edit notes with a note selected, Lyrics and Chords, the out-of-range banner, the alternate-fingering popover, the File menu and the PDF message, Play mode, Scales (default and popover), and the four text pages. Every state gets:
+The file has 113 tests and takes about 97 s on a laptop (test times add up to 97.2 s in one run). Each of 20 states is opened from empty storage: start (empty, one saved sheet, library, refusal), Tracks, the sheet in View, Edit notes with a note selected, Lyrics and Chords, the out-of-range banner, the alternate-fingering popover, the File menu and the PDF message, Play mode, Scales (default and popover), and the four text pages. Every state gets:
 
-- **Scan:** axe-core with the rule sets `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa`. Zero findings are required.
+- **Scan:** axe-core with the rule sets `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa`, once in light mode and once in dark mode. Zero findings are required.
 - **Target size:** 36 × 36 px for every control, 44 × 44 px for primary actions and the header navigation. The test measures the area that takes the click, by asking the browser which element sits at four points near the corners of the required box. A link inside a sentence is exempt; a menu item is not. On the paper, a note and an alternate-fingering pill are held to 24 px: a pill must stay under its note, and pills where notes sit close are 26 px apart, so a larger click area would reach the next pill. A note must be at least 24 px high. Its width follows the note spacing: it measured 31 px at the narrowest, once, on the sample, and the test asserts at least 16 px wide and 24 px high.
 - **Focus:** every Tab stop shows a mark with at least 3:1 contrast against its surroundings. The walk starts at the first control of the page and, when it leaves the page, its last stop is the last control. In the File menu the walk uses ArrowDown and visits every item.
 
@@ -227,7 +242,7 @@ npm run dev        # dev server on http://localhost:5173
 npm test           # unit tests (Vitest)
 npm run test:e2e   # end-to-end tests (Playwright), including the two suites under "Checks"
 npm run build      # type-check and build to dist/
-npm run check:bundle  # after a build: code loaded at start at most 400,000 bytes, no PDF library in it
+npm run check:bundle  # after a build: code loaded at start at most 410,000 bytes, no PDF library in it
 npm run demo       # regenerate the sample MIDI file
 npm run notices    # write third-party-packages.json, the list of packages in the build; add -- --check to compare without writing
 npm run check:release  # before publishing: build, bundle budget, package list, and the owner's details (see "Hosting")

@@ -3,9 +3,9 @@
   margin-top: 16px;
   padding: 28px 0 20px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--c-border);
   border-radius: 16px;
-  background: var(--card);
+  background: var(--c-surface);
 }
 
 .library {
@@ -25,7 +25,7 @@
   border: none;
   border-radius: 8px;
   background: none;
-  color: var(--ink);
+  color: var(--c-text);
   font-family: inherit;
   font-size: 13px;
   text-decoration: underline;
@@ -34,15 +34,15 @@
 }
 
 .textButton:hover {
-  color: var(--teal-hover);
+  color: var(--c-accent-hover);
 }
 
 .error {
   margin: 0 16px 12px;
   padding: 10px 14px;
   border-radius: var(--radius);
-  background: var(--red-bg);
-  color: var(--red);
+  background: var(--c-error-bg);
+  color: var(--c-error);
   font-weight: 600;
 }
 
@@ -54,7 +54,7 @@
 }
 
 .staff line {
-  stroke: var(--ink);
+  stroke: var(--c-text);
   stroke-width: 1;
 }
 
@@ -63,15 +63,15 @@
 }
 
 .staff ellipse {
-  fill: var(--ink);
+  fill: var(--c-text);
 }
 
 .staff[data-empty] > line {
-  stroke: var(--border-2);
+  stroke: var(--c-border-strong);
 }
 
 .staff rect {
-  fill: var(--ghost);
+  fill: var(--c-ghost-key);
 }
 
 /* --- strip --- */
@@ -86,7 +86,7 @@
 
 .label {
   margin: 0;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -105,7 +105,7 @@
 .bar {
   flex: 0 0 max(20%, 180px);
   min-width: 0;
-  border-left: 1.5px solid var(--ink);
+  border-left: 1.5px solid var(--c-text);
 }
 
 .bar:first-child {
@@ -117,7 +117,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 0 16px;
-  border-left-color: var(--border-2);
+  border-left-color: var(--c-border-strong);
 }
 
 .barOpen {
@@ -125,12 +125,12 @@
   flex-direction: column;
   gap: 8px;
   padding: 0 16px;
-  color: var(--ink);
+  color: var(--c-text);
   text-decoration: none;
 }
 
 .barOpen:hover .title {
-  color: var(--teal-hover);
+  color: var(--c-accent-hover);
 }
 
 .title {
@@ -144,7 +144,7 @@
 
 .meta {
   overflow: hidden;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -174,16 +174,16 @@
 }
 
 .openLink {
-  color: var(--teal);
+  color: var(--c-accent);
 }
 
 .playLink {
-  color: var(--ink);
+  color: var(--c-text);
 }
 
 .openLink:hover,
 .playLink:hover {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 .bin {
@@ -198,12 +198,12 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--red);
+  color: var(--c-error);
   cursor: pointer;
 }
 
 .bin:hover {
-  background: var(--red-bg);
+  background: var(--c-error-bg);
 }
 
 .confirm {
@@ -217,7 +217,7 @@
 .ask {
   margin-right: auto;
   padding-left: 4px;
-  color: var(--red);
+  color: var(--c-error);
   font-size: 13px;
   font-weight: 700;
 }
@@ -234,19 +234,19 @@
 }
 
 .confirmDelete {
-  border: 1px solid var(--red);
-  background: var(--red);
-  color: #ffffff;
+  border: 1px solid var(--c-error);
+  background: var(--c-danger-bg);
+  color: var(--c-on-accent);
 }
 
 .keep {
-  border: 1px solid var(--border-2);
-  background: var(--card);
-  color: var(--ink);
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-surface);
+  color: var(--c-text);
 }
 
 .keep:hover {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 /* --- library view --- */
@@ -266,7 +266,7 @@
 }
 
 .count {
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 13px;
 }
 
@@ -277,13 +277,13 @@
   width: 240px;
   min-height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  color: var(--muted);
+  color: var(--c-muted);
 }
 
 .search:focus-within {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--c-accent);
   outline-offset: 1px;
 }
 
@@ -293,7 +293,7 @@
   border: none;
   outline: none;
   background: transparent;
-  color: var(--ink);
+  color: var(--c-text);
   font-family: inherit;
   font-size: 14px;
 }
@@ -302,17 +302,17 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 13px;
 }
 
 .sort select {
   min-height: 40px;
   padding: 0 8px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font-family: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -330,10 +330,10 @@
   --hit-inset: -1px;
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font-family: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -341,9 +341,9 @@
 }
 
 .chip[aria-pressed='true'] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: #ffffff;
+  border-color: var(--c-text);
+  background: var(--c-selected-bg);
+  color: var(--c-selected-fg);
 }
 
 .rows {
@@ -358,12 +358,12 @@
   align-items: center;
   gap: 16px;
   padding: 10px 16px;
-  border-top: 1px solid #eef0f2;
+  border-top: 1px solid var(--c-border);
 }
 
 .rowTitle {
   overflow: hidden;
-  color: var(--ink);
+  color: var(--c-text);
   font-size: 15px;
   font-weight: 700;
   text-decoration: none;
@@ -372,19 +372,19 @@
 }
 
 .rowTitle:hover {
-  color: var(--teal-hover);
+  color: var(--c-accent-hover);
 }
 
 .rowMeta {
   overflow: hidden;
-  color: var(--text);
+  color: var(--c-text-2);
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .rowDate {
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 13px;
 }
 
@@ -404,8 +404,8 @@
 .none {
   margin: 0;
   padding: 20px 16px;
-  border-top: 1px solid #eef0f2;
-  color: var(--muted);
+  border-top: 1px solid var(--c-border);
+  color: var(--c-muted);
   font-size: 14px;
 }
 
@@ -415,15 +415,15 @@
   align-items: center;
   gap: 8px 16px;
   padding: 10px 16px;
-  border-top: 1px solid #eef0f2;
-  background: var(--pagebar);
-  color: var(--muted);
+  border-top: 1px solid var(--c-border);
+  background: var(--c-pagebar);
+  color: var(--c-muted);
   font-size: 13px;
 }
 
 .note {
   flex: 1 1 0;
-  color: var(--teal-hover);
+  color: var(--c-accent-hover);
   font-weight: 700;
 }
 
@@ -439,7 +439,7 @@
   border: none;
   border-radius: 8px;
   background: none;
-  color: var(--ink);
+  color: var(--c-text);
   font-family: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -447,7 +447,7 @@
 }
 
 .footButton:hover {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 /* Narrow screens: title and controls on the first line, instrument and date below; no incipit. */

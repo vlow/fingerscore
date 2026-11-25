@@ -4,8 +4,8 @@
   gap: 10px;
   padding: 14px 16px 16px;
   border-radius: 16px;
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
 }
 
 .head {
@@ -24,7 +24,7 @@
 
 .summary {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--c-muted);
 }
 
 /* Row 1: five equal family columns on a grey track. */
@@ -34,7 +34,7 @@
   gap: 4px;
   padding: 4px;
   border-radius: 12px;
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 .family {
@@ -48,19 +48,19 @@
   border: none;
   border-radius: var(--radius);
   background: transparent;
-  color: var(--ink);
+  color: var(--c-text);
   font-family: inherit;
   text-align: left;
   cursor: pointer;
 }
 
 .family[aria-checked='true'] {
-  background: var(--ink);
-  color: #ffffff;
+  background: var(--c-selected-bg);
+  color: var(--c-selected-fg);
 }
 
 .family:not([aria-checked='true']):hover {
-  background: var(--border);
+  background: var(--c-border);
 }
 
 .familyName {
@@ -87,10 +87,10 @@
   min-width: 0;
   min-height: 44px;
   padding: 0 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--c-border);
   border-radius: 9px;
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -98,13 +98,13 @@
 }
 
 .type[aria-checked='true'] {
-  border: 1.5px solid var(--teal);
-  background: var(--teal-light);
-  color: var(--teal-hover);
+  border: 1.5px solid var(--c-accent);
+  background: var(--c-accent-tint-2);
+  color: var(--c-accent-hover);
 }
 
 .type:not([aria-checked='true']):hover {
-  border-color: var(--border-2);
+  border-color: var(--c-border-strong);
 }
 
 .typeKey {

@@ -11,15 +11,15 @@
   width: 44px;
   height: 44px;
   padding: 0;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   cursor: pointer;
 }
 
 .button:hover:not(:disabled) {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 .button:disabled {

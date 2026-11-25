@@ -1,6 +1,6 @@
 .lead {
   margin: 0 0 24px;
-  color: var(--ink);
+  color: var(--c-text);
   font-size: 20px;
   line-height: 1.5;
 }
@@ -19,29 +19,29 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--teal);
-  color: #fff;
+  background: var(--c-primary-bg);
+  color: var(--c-on-accent);
   font-size: 16px;
   font-weight: 700;
 }
 
 .name {
   margin: 0;
-  color: var(--ink);
+  color: var(--c-text);
   font-weight: 700;
 }
 
 .bio {
   margin: 0;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 14px;
 }
 
 .quote {
   margin: 24px 0;
   padding: 4px 0 4px 20px;
-  border-left: 3px solid var(--teal);
-  color: var(--ink);
+  border-left: 3px solid var(--c-accent);
+  color: var(--c-text);
   font-size: 20px;
   line-height: 1.5;
 }

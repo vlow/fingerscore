@@ -56,7 +56,7 @@ export default function KeyBridge({ doc, derived, onShift }: Props) {
             <div id={`${uid}-ch`} className={s.help}>What the band and audience hear. Set this to play along with others.</div>
           </div>
           <div className={s.connector}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 4v16" /><path d="M6 14l6 6 6-6" />
             </svg>
             <span>{intervalText(i)}</span>

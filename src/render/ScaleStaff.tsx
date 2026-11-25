@@ -9,9 +9,10 @@ import { FingeringChart, MissingChart } from './FingeringChart';
 import { Glyph, glyphInk } from './Glyph';
 import { HEADER, headerWidth, SHEET } from './layout';
 import { TEXT_EM_PER_CHAR } from './lyrics';
-import { ACCIDENTAL_GAP, FONT, INK, LedgerLines, missingType, NoteHead, WARN, yOfPos } from './NoteView';
+import { ACCIDENTAL_GAP, FONT, LedgerLines, missingType, NoteHead, yOfPos } from './NoteView';
 import styles from './ScaleStaff.module.css';
-import { FLAT_POS, SHARP_POS, STAFF } from './SystemView';
+import { FLAT_POS, SHARP_POS } from './SystemView';
+import { usePalette } from './palette';
 
 export const NOTES_PER_LINE = 15;
 
@@ -28,7 +29,6 @@ const LABEL_PX = 10;
 const LABEL_LINE = 12;
 const BLOCK_GAP = 12;
 const BOTTOM_PAD = 16;
-const TEXT_COLOR = '#2A2D33';
 const PILL_SPACE = 24;                              // room under the chosen chart for the slot (the alternatives pill)
 
 interface Placed { note: ScaleNote; index: number; options: FingeringOption[]; chosen: number | undefined; auto: number | undefined; overridden: boolean }
@@ -54,8 +54,9 @@ function wrap(text: string, max: number): string[] {
 }
 
 function OptionName(p: { text: string; x: number; y: number; maxChars: number }) {
+  const pal = usePalette();
   return (
-    <text data-option-name="" x={p.x} y={p.y} textAnchor="middle" fontSize={LABEL_PX} fontFamily={FONT} fill={TEXT_COLOR}>
+    <text data-option-name="" x={p.x} y={p.y} textAnchor="middle" fontSize={LABEL_PX} fontFamily={FONT} fill={pal.text}>
       {wrap(p.text, p.maxChars).map((l, i) => <tspan key={i} x={p.x} dy={i === 0 ? 0 : LABEL_LINE}>{l}</tspan>)}
     </text>
   );
@@ -100,6 +101,7 @@ function layoutLine(p: LineProps) {
 
 /** One scale line: clef, key signature, up to 15 whole notes, and under each its name and fingering stack. */
 function ScaleLine(p: LineProps) {
+  const pal = usePalette();
   const { end, xOf, ys, top, nameY, chartY, maxChars, stacks, height } = layoutLine(p);
   const nAcc = Math.abs(p.sig);
   const sigPos = p.sig > 0 ? SHARP_POS : FLAT_POS;
@@ -110,8 +112,8 @@ function ScaleLine(p: LineProps) {
       <p className={styles.srOnly}>{p.notes.map(n => n.note.spelled.name + (n.note.state === 'ext' ? ' (extended)' : '')).join(', ')}</p>
       <svg data-testid="scale-line" aria-hidden="true" className={styles.line}
         width={WIDTH} height={height} viewBox={`0 ${top} ${WIDTH} ${height}`}>
-        {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={STAFF} />)}
-        <rect x={0} y={staffTop} width={1} height={STAFF_H} fill={INK} />
+        {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={pal.staff} />)}
+        <rect x={0} y={staffTop} width={1} height={STAFF_H} fill={pal.ink} />
         <g data-clef=""><Glyph name="trebleClef" x={HEADER.clefInset} y={staffBottom} /></g>
         <g data-keysig="">
           {Array.from({ length: nAcc }, (_, k) => (
@@ -124,7 +126,7 @@ function ScaleLine(p: LineProps) {
           const x = xOf(k);
           const y = ys[k];
           const ext = n.note.state === 'ext';
-          const color = ext ? WARN : INK;
+          const color = ext ? pal.warning : pal.ink;
           const acc = n.note.accidental;
           return (
             <g key={n.index} data-note="" data-state={n.note.state}>
@@ -133,7 +135,7 @@ function ScaleLine(p: LineProps) {
               {acc && <g data-acc={acc}><Glyph name={acc} x={x - ACCIDENTAL_GAP - glyphInk(acc).right} y={y} fill={color} /></g>}
               {p.showNames && (
                 <text data-name="" x={x} y={nameY} textAnchor="middle" fontSize={NAME_PX} fontWeight={700} fontFamily={FONT}
-                  fill={ext ? WARN : TEXT_COLOR}>{n.note.spelled.name}</text>
+                  fill={ext ? pal.warning : pal.text}>{n.note.spelled.name}</text>
               )}
               {n.chosen === undefined
                 ? <MissingChart type={missingType(n.note, p.kind)} x={x} y={chartY} />
@@ -149,8 +151,8 @@ function ScaleLine(p: LineProps) {
         })}
         {p.last && (
           <g data-end="">
-            <rect x={end - 5} y={staffTop} width={1} height={STAFF_H} fill={INK} />
-            <rect x={end - 1} y={staffTop} width={1} height={STAFF_H} fill={INK} />
+            <rect x={end - 5} y={staffTop} width={1} height={STAFF_H} fill={pal.ink} />
+            <rect x={end - 1} y={staffTop} width={1} height={STAFF_H} fill={pal.ink} />
           </g>
         )}
       </svg>

@@ -1,4 +1,5 @@
 // Turns a system drawn by the app into an SVG that svg2pdf converts as it looks on screen (Task 1's feature record).
+import { SVG_DEFAULT_FILL } from '../render/palette';
 import { layoutSpans, piecesInk, placeText, type Anchor, type Span } from './drawText';
 import { FONT_NAME, type Weight } from './fontMetrics';
 import { symbolPlacement } from './symbols';
@@ -99,7 +100,7 @@ function replaceText(text: SVGTextElement): void {
   const anchor = (inherited(text, 'text-anchor') ?? 'start') as Anchor;
   const length = text.getAttribute('textLength');
   const squeezeTo = length === null ? undefined : Number(length);
-  const fill = inherited(text, 'fill') ?? '#000';
+  const fill = inherited(text, 'fill') ?? SVG_DEFAULT_FILL;
   const stroke = text.getAttribute('stroke');
   const halo = text.getAttribute('paint-order') === 'stroke' && stroke !== null && stroke !== 'none'
     ? { color: stroke, width: Number(text.getAttribute('stroke-width') ?? 1) } : null;

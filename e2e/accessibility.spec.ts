@@ -338,6 +338,14 @@ for (const state of STATES) {
       judge('axe', state.id, await axeFindings(page, state.id));
     });
 
+    // The same scan in dark mode: no theme is stored, so the page follows the dark system (dark mode design 4.5).
+    test('scan (dark)', async ({ page }) => {
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await prepare(page, state.id);
+      expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'the page is dark').toBe('rgb(15, 17, 20)');
+      judge('axe', state.id, await axeFindings(page, state.id));
+    });
+
     test('targets', async ({ page }) => {
       await prepare(page, state.id);
       const { failures, near, measured, inside, overlayOpen } = await smallTargets(page);

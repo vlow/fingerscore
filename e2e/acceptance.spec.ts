@@ -110,7 +110,8 @@ test('A02 Xaphoon C: shifted down, the notes below C4 get the red banner, red no
   const red = page.locator('[data-state="bad"] [data-head]');
   await expect(red).toHaveCount(count);
   for (const head of await red.all()) {
-    expect(await head.evaluate(el => el.getAttribute('fill') ?? el.getAttribute('stroke'))).toBe('#B91C1C');
+    // The painted colour: the drawing names a token, the light theme makes it #B91C1C.
+    expect(await head.evaluate(el => { const cs = getComputedStyle(el); return cs.fill === 'none' ? cs.stroke : cs.fill; })).toBe('rgb(185, 28, 28)');
   }
   await expect(page.locator('[data-missing="bad"]')).toHaveCount(count);
   await expect(page.locator('[data-missing="bad"] text')).toHaveText(Array(count).fill('!'));

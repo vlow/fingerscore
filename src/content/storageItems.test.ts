@@ -35,7 +35,7 @@ function areasOf(key: string, file: string): Set<string> {
   const names = [...text.matchAll(new RegExp(`const (\\w+) = '${key.replace(/\./g, '\\.')}'`, 'g'))].map(m => m[1]);
   const areas = new Set<string>();
   for (const ref of [`'${key}'`, ...names]) {
-    const call = new RegExp(`(?:readJSON|writeJSON|remove|probe)\\w*(?:<[^()]*>)?\\('(local|session)', ${ref.replace(/[.]/g, '\\.')}\\b`, 'g');
+    const call = new RegExp(`(?:readJSON|writeJSON|readText|writeText|remove|probe)\\w*(?:<[^()]*>)?\\('(local|session)', ${ref.replace(/[.]/g, '\\.')}\\b`, 'g');
     for (const m of text.matchAll(call)) areas.add(m[1]);
   }
   return areas;

@@ -1,24 +1,275 @@
+/*
+ * Colour tokens, from the dark mode handoff (tokens.json, 24 Nov 2026) with three corrections (dark mode design 4.1):
+ * paper themes that follow the system sit inside the dark media query, print also resets the system-dark and the paper
+ * rules, and Dimmed paper sets every token to its light value. No other file under src holds a colour
+ * (src/colourLiterals.test.ts).
+ */
 :root {
-  --ink: #15171c;
-  --text: #2a2d33;
-  --muted: #5b616e;
-  --muted-2: #4a505c;
-  --border: #e2e4e8;
-  --border-2: #d5d8de;
-  --page: #f3f4f6;
-  --pagebar: #fafafb;
-  --card: #ffffff;
-  --teal: #0e6e68;
-  --teal-hover: #0a4f4a;
-  --teal-tint: #e3f4f2;
-  --teal-light: #f0faf8;
-  --teal-border: #9fcfc8;
-  --amber: #b45309;
-  --amber-bg: #fff7ed;
-  --red: #b91c1c;
-  --red-bg: #fef2f2;
-  --ghost: #c3c7ce;
   --radius: 10px;
   --radius-card: 14px;
   --page-padding: 28px;
+  color-scheme: light;
+  --c-bg: #F3F4F6;
+  --c-surface: #FFFFFF;
+  --c-raised: #E8EAED;
+  --c-pagebar: #FAFAFB;
+  --c-border: #E2E4E8;
+  --c-border-strong: #D5D8DE;
+  --c-text: #15171C;
+  --c-text-2: #2A2D33;
+  --c-muted: #5B616E;
+  --c-subtle: #9AA0AA;
+  --c-accent: #0E6E68;
+  --c-accent-hover: #0A4F4A;
+  --c-accent-tint: #E3F4F2;
+  --c-accent-tint-2: #F0FAF8;
+  --c-on-accent: #FFFFFF;
+  --c-primary-bg: #0E6E68;
+  --c-selected-bg: #15171C;
+  --c-selected-fg: #FFFFFF;
+  --c-warning: #B45309;
+  --c-warning-bg: #FFF7ED;
+  --c-error: #B91C1C;
+  --c-error-bg: #FEF2F2;
+  --c-danger-bg: #B91C1C;
+  --c-paper: #FFFFFF;
+  --c-ink: #15171C;
+  --c-chord: #0E6E68;
+  --c-lyric: #2A2D33;
+  --c-ghost-key: #C3C7CE;
+  --c-playmode-bg: #EEF0F2;
+  --c-playmode-paper: #FFFFFF;
+  --c-shadow: rgba(20,22,28,0.18);
+}
+
+/* dark: explicit choice */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #0F1114;
+  --c-surface: #171A1F;
+  --c-raised: #1E2229;
+  --c-pagebar: #13161A;
+  --c-border: #2A2F37;
+  --c-border-strong: #3A404A;
+  --c-text: #E8EAED;
+  --c-text-2: #C9CDD3;
+  --c-muted: #A3A9B3;
+  --c-subtle: #8A919C;
+  --c-accent: #5FD3C6;
+  --c-accent-hover: #8FE3D8;
+  --c-accent-tint: #123B38;
+  --c-accent-tint-2: #123B38;
+  --c-on-accent: #0F1114;
+  --c-primary-bg: #5FD3C6;
+  --c-selected-bg: #E8EAED;
+  --c-selected-fg: #0F1114;
+  --c-warning: #F2B45C;
+  --c-warning-bg: #2E2412;
+  --c-error: #F28B82;
+  --c-error-bg: #2E1715;
+  --c-danger-bg: #F28B82;
+  --c-paper: #1B1E23;
+  --c-ink: #E8EAED;
+  --c-chord: #5FD3C6;
+  --c-lyric: #C9CDD3;
+  --c-ghost-key: #4A505C;
+  --c-playmode-bg: #0B0D10;
+  --c-playmode-paper: #14171B;
+  --c-shadow: rgba(0,0,0,0.5);
+}
+
+/* dark: follow the system unless the user chose light */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --c-bg: #0F1114;
+    --c-surface: #171A1F;
+    --c-raised: #1E2229;
+    --c-pagebar: #13161A;
+    --c-border: #2A2F37;
+    --c-border-strong: #3A404A;
+    --c-text: #E8EAED;
+    --c-text-2: #C9CDD3;
+    --c-muted: #A3A9B3;
+    --c-subtle: #8A919C;
+    --c-accent: #5FD3C6;
+    --c-accent-hover: #8FE3D8;
+    --c-accent-tint: #123B38;
+    --c-accent-tint-2: #123B38;
+    --c-on-accent: #0F1114;
+    --c-primary-bg: #5FD3C6;
+    --c-selected-bg: #E8EAED;
+    --c-selected-fg: #0F1114;
+    --c-warning: #F2B45C;
+    --c-warning-bg: #2E2412;
+    --c-error: #F28B82;
+    --c-error-bg: #2E1715;
+    --c-danger-bg: #F28B82;
+    --c-paper: #1B1E23;
+    --c-ink: #E8EAED;
+    --c-chord: #5FD3C6;
+    --c-lyric: #C9CDD3;
+    --c-ghost-key: #4A505C;
+    --c-playmode-bg: #0B0D10;
+    --c-playmode-paper: #14171B;
+    --c-shadow: rgba(0,0,0,0.5);
+  }
+}
+
+/*
+ * Sheet paper themes (dark mode only). Dimmed is a light island: every token takes its light value, so the meta text,
+ * borders, badges and the controls inside the paper stay readable on it.
+ * Its muted text is a step darker than the light theme's, which has 4.46:1 on this paper (AA asks for 4.5:1).
+ */
+:root[data-theme="dark"] [data-paper="night"] {
+  --c-paper: #1B1E23;
+  --c-ink: #E8EAED;
+  --c-chord: #5FD3C6;
+  --c-lyric: #C9CDD3;
+  --c-warning: #F2B45C;
+  --c-error: #F28B82;
+  --c-ghost-key: #4A505C;
+}
+
+:root[data-theme="dark"] [data-paper="dimmed"] {
+  color-scheme: light;
+  --c-bg: #F3F4F6;
+  --c-surface: #FFFFFF;
+  --c-raised: #E8EAED;
+  --c-pagebar: #FAFAFB;
+  --c-border: #E2E4E8;
+  --c-border-strong: #D5D8DE;
+  --c-text: #15171C;
+  --c-text-2: #2A2D33;
+  --c-muted: #4A505C;
+  --c-subtle: #9AA0AA;
+  --c-accent: #0E6E68;
+  --c-accent-hover: #0A4F4A;
+  --c-accent-tint: #E3F4F2;
+  --c-accent-tint-2: #F0FAF8;
+  --c-on-accent: #FFFFFF;
+  --c-primary-bg: #0E6E68;
+  --c-selected-bg: #15171C;
+  --c-selected-fg: #FFFFFF;
+  --c-warning: #8F4204;
+  --c-warning-bg: #FFF7ED;
+  --c-error: #A01818;
+  --c-error-bg: #FEF2F2;
+  --c-danger-bg: #B91C1C;
+  --c-paper: #D9DBDF;
+  --c-ink: #15171C;
+  --c-chord: #0A5752;
+  --c-lyric: #2A2D33;
+  --c-ghost-key: #9AA0AA;
+  --c-playmode-bg: #EEF0F2;
+  --c-playmode-paper: #FFFFFF;
+  --c-shadow: rgba(20,22,28,0.18);
+}
+
+:root[data-theme="dark"] [data-paper="sepia"] {
+  --c-paper: #221E18;
+  --c-ink: #EADFCB;
+  --c-chord: #E8B96A;
+  --c-lyric: #CBBFA8;
+  --c-warning: #F2B45C;
+  --c-error: #F28B82;
+  --c-ghost-key: #4A4338;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) [data-paper="night"] {
+    --c-paper: #1B1E23;
+    --c-ink: #E8EAED;
+    --c-chord: #5FD3C6;
+    --c-lyric: #C9CDD3;
+    --c-warning: #F2B45C;
+    --c-error: #F28B82;
+    --c-ghost-key: #4A505C;
+  }
+
+  :root:not([data-theme="light"]) [data-paper="dimmed"] {
+    color-scheme: light;
+    --c-bg: #F3F4F6;
+    --c-surface: #FFFFFF;
+    --c-raised: #E8EAED;
+    --c-pagebar: #FAFAFB;
+    --c-border: #E2E4E8;
+    --c-border-strong: #D5D8DE;
+    --c-text: #15171C;
+    --c-text-2: #2A2D33;
+    --c-muted: #4A505C;
+    --c-subtle: #9AA0AA;
+    --c-accent: #0E6E68;
+    --c-accent-hover: #0A4F4A;
+    --c-accent-tint: #E3F4F2;
+    --c-accent-tint-2: #F0FAF8;
+    --c-on-accent: #FFFFFF;
+    --c-primary-bg: #0E6E68;
+    --c-selected-bg: #15171C;
+    --c-selected-fg: #FFFFFF;
+    --c-warning: #8F4204;
+    --c-warning-bg: #FFF7ED;
+    --c-error: #A01818;
+    --c-error-bg: #FEF2F2;
+    --c-danger-bg: #B91C1C;
+    --c-paper: #D9DBDF;
+    --c-ink: #15171C;
+    --c-chord: #0A5752;
+    --c-lyric: #2A2D33;
+    --c-ghost-key: #9AA0AA;
+    --c-playmode-bg: #EEF0F2;
+    --c-playmode-paper: #FFFFFF;
+    --c-shadow: rgba(20,22,28,0.18);
+  }
+
+  :root:not([data-theme="light"]) [data-paper="sepia"] {
+    --c-paper: #221E18;
+    --c-ink: #EADFCB;
+    --c-chord: #E8B96A;
+    --c-lyric: #CBBFA8;
+    --c-warning: #F2B45C;
+    --c-error: #F28B82;
+    --c-ghost-key: #4A4338;
+  }
+}
+
+/* printing / PDF always uses light paper */
+@media print {
+  :root,
+  :root[data-theme="dark"],
+  :root:not([data-theme="light"]),
+  :root [data-paper][data-paper] {
+    color-scheme: light;
+    --c-bg: #F3F4F6;
+    --c-surface: #FFFFFF;
+    --c-raised: #E8EAED;
+    --c-pagebar: #FAFAFB;
+    --c-border: #E2E4E8;
+    --c-border-strong: #D5D8DE;
+    --c-text: #15171C;
+    --c-text-2: #2A2D33;
+    --c-muted: #5B616E;
+    --c-subtle: #9AA0AA;
+    --c-accent: #0E6E68;
+    --c-accent-hover: #0A4F4A;
+    --c-accent-tint: #E3F4F2;
+    --c-accent-tint-2: #F0FAF8;
+    --c-on-accent: #FFFFFF;
+    --c-primary-bg: #0E6E68;
+    --c-selected-bg: #15171C;
+    --c-selected-fg: #FFFFFF;
+    --c-warning: #B45309;
+    --c-warning-bg: #FFF7ED;
+    --c-error: #B91C1C;
+    --c-error-bg: #FEF2F2;
+    --c-danger-bg: #B91C1C;
+    --c-paper: #FFFFFF;
+    --c-ink: #15171C;
+    --c-chord: #0E6E68;
+    --c-lyric: #2A2D33;
+    --c-ghost-key: #C3C7CE;
+    --c-playmode-bg: #EEF0F2;
+    --c-playmode-paper: #FFFFFF;
+    --c-shadow: rgba(20,22,28,0.18);
+  }
 }

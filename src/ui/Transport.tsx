@@ -17,7 +17,7 @@ export const TEMPO_MAX = 200;
 export default function Transport({ playing, fromSelected = false, tempo, onToggle, onTempo, onPlayMode, playModeRef }: Props) {
   return (
     <div role="group" aria-label="Playback" className={s.transport}>
-      <button ref={playModeRef} type="button" className={s.playMode} title="Show only the score, with page turning and auto-scroll" onClick={onPlayMode}>
+      <button ref={playModeRef} type="button" className={s.playMode} title="Show only the score, with page turning and auto-scroll. Dark mode is easier on the eyes on stage." onClick={onPlayMode}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M4 4h16v11H4z" /><path d="M12 15v5" /><path d="M8 20h8" />
         </svg>

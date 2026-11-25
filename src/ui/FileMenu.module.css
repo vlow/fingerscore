@@ -10,10 +10,10 @@
   gap: 6px;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -22,7 +22,7 @@
 
 .button:hover,
 .button[aria-expanded='true'] {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 /* Reachable only through the "Open JSON file…" item. */
@@ -45,10 +45,10 @@
   gap: 8px;
   width: min(380px, calc(100vw - 32px));
   padding: 12px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius-card);
-  background: var(--card);
-  box-shadow: 0 16px 40px rgba(20, 22, 28, 0.18);
+  background: var(--c-surface);
+  box-shadow: 0 16px 40px var(--c-shadow);
   box-sizing: border-box;
 }
 
@@ -68,10 +68,10 @@
   gap: 8px;
   min-height: 40px;
   padding: 0 10px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -80,7 +80,7 @@
 }
 
 .action:hover:not(:disabled) {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 .action > svg {
@@ -90,14 +90,14 @@
 .primary {
   /* A primary action takes 44 px. */
   min-height: 44px;
-  border-color: var(--teal);
-  background: var(--teal);
-  color: #ffffff;
+  border-color: var(--c-accent);
+  background: var(--c-primary-bg);
+  color: var(--c-on-accent);
 }
 
 .primary:hover:not(:disabled) {
-  border-color: var(--teal-hover);
-  background: var(--teal-hover);
+  border-color: var(--c-accent-hover);
+  background: var(--c-accent-hover);
 }
 
 .action:disabled {
@@ -108,7 +108,7 @@
 .rule {
   height: 1px;
   margin: 4px 0;
-  background: var(--border);
+  background: var(--c-border);
 }
 
 .listHead {
@@ -133,7 +133,7 @@
 }
 
 .entry[data-current] {
-  background: var(--teal-light);
+  background: var(--c-accent-tint-2);
 }
 
 .entryText {
@@ -150,17 +150,17 @@
 }
 
 .entryMeta {
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
 }
 
 .open {
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: 8px;
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -168,7 +168,7 @@
 }
 
 .open:hover {
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 .delete {
@@ -181,26 +181,26 @@
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: var(--red);
+  color: var(--c-error);
   cursor: pointer;
 }
 
 .delete:hover {
-  background: var(--red-bg);
+  background: var(--c-error-bg);
 }
 
 .empty {
   margin: 0;
   padding: 10px;
   border-radius: var(--radius);
-  background: var(--page);
-  color: var(--muted-2);
+  background: var(--c-bg);
+  color: var(--c-muted);
   font-size: 13px;
 }
 
 .note {
   margin: 0;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
   line-height: 1.4;
 }

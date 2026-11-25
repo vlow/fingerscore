@@ -3,7 +3,7 @@
   position: relative;
   height: 34px;
   border-radius: 8px;
-  background: var(--page);
+  background: var(--c-bg);
 }
 
 .bar > div {
@@ -14,12 +14,13 @@
 
 .ok {
   border-radius: 6px;
-  background: #d3eeea;
+  /* A step stronger than the tint: the legend's swatch must show on the card. */
+  background: color-mix(in srgb, var(--c-accent) 8%, var(--c-accent-tint));
 }
 
 .ext {
   border-radius: 0 6px 6px 0;
-  background: #fde7cf;
+  background: color-mix(in srgb, var(--c-warning) 10%, var(--c-warning-bg));
 }
 
 .bar > .song {
@@ -30,21 +31,21 @@
 }
 
 .songOk {
-  background: var(--teal);
+  background: var(--c-primary-bg);
 }
 
 .songExt {
-  background: var(--amber);
+  background: var(--c-warning);
 }
 
 .songBad {
-  background: var(--red);
+  background: var(--c-danger-bg);
 }
 
 .labels {
   position: relative;
   height: 16px;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 11px;
 }
 
@@ -58,7 +59,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
 }
 

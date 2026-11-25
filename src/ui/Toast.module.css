@@ -17,10 +17,10 @@
   max-width: 520px;
   padding: 8px 8px 8px 16px;
   border-radius: var(--radius);
-  background: var(--ink);
-  color: #ffffff;
+  background: var(--c-selected-bg);
+  color: var(--c-selected-fg);
   font-size: 14px;
-  box-shadow: 0 16px 40px rgba(20, 22, 28, 0.18);
+  box-shadow: 0 16px 40px var(--c-shadow);
   pointer-events: auto;
 }
 
@@ -32,20 +32,20 @@
   flex: none;
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid color-mix(in srgb, var(--c-selected-fg) 35%, transparent);
   border-radius: 8px;
   background: transparent;
-  color: #ffffff;
+  color: var(--c-selected-fg);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .action:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--c-selected-fg) 12%, transparent);
 }
 
 .action:focus-visible {
-  outline: 2px solid #5fd3c6;
+  outline: 2px solid var(--c-selected-fg);
   outline-offset: 2px;
 }

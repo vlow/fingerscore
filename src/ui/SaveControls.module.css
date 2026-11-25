@@ -8,7 +8,7 @@
 }
 
 .status {
-  color: var(--muted);
+  color: var(--c-muted);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -16,7 +16,7 @@
 .error {
   max-width: 320px;
   margin: 0;
-  color: var(--red);
+  color: var(--c-error);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -27,10 +27,10 @@
   gap: 6px;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--c-surface);
+  color: var(--c-text);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -38,5 +38,5 @@
 }
 
 .save:hover {
-  background: var(--page);
+  background: var(--c-bg);
 }

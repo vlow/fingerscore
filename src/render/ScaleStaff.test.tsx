@@ -48,8 +48,8 @@ it('extended notes are amber', () => {
   const ext = container.querySelectorAll('[data-state="ext"]');
   expect(ext.length).toBe(scale.notes.filter(n => n.state === 'ext').length);
   expect(ext.length).toBeGreaterThan(0);
-  for (const g of ext) expect(g.querySelector('[data-head]')).toHaveAttribute('stroke', '#B45309');
-  expect(container.querySelector('[data-state="ok"] [data-head]')).toHaveAttribute('stroke', '#15171C');
+  for (const g of ext) expect(g.querySelector('[data-head]')).toHaveAttribute('stroke', 'var(--c-warning)');
+  expect(container.querySelector('[data-state="ok"] [data-head]')).toHaveAttribute('stroke', 'var(--c-ink)');
 });
 
 it('a note without a sourced fingering shows a box (review focus 4)', () => {

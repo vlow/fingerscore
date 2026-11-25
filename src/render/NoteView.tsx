@@ -7,13 +7,8 @@ import { Glyph, glyphInk, type GlyphName } from './Glyph';
 import { notatedLength } from '../domain/triplets';
 import { SHEET } from './layout';
 import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
+import { usePalette, type Palette } from './palette';
 
-export const INK = '#15171C';
-const BAD = '#B91C1C';
-export const WARN = '#B45309';
-const TEAL = '#0E6E68';
-const TEXT = '#2A2D33';
-const SELECTED_FILL = '#E3F4F2';
 
 /** Bottom of an event's column: just below the fingering chart, above the alternate-fingering pill. */
 export const COLUMN_BOTTOM = SHEET.chartY + 88;
@@ -25,9 +20,10 @@ const MARKER_MAX = 30;
  * staff so staff lines and glyphs stay visible; the playing highlight is drawn above it.
  */
 export function SelectedMarker(p: { x: number; columnWidth: number }): JSX.Element {
+  const pal = usePalette();
   const w = Math.min(MARKER_MAX, p.columnWidth);
   return <rect data-mark="selected" x={p.x - w / 2} y={0.75} width={w} height={COLUMN_BOTTOM - 0.75} rx={6}
-    fill={SELECTED_FILL} stroke={TEAL} strokeWidth={1.5} />;
+    fill={pal.selection} stroke={pal.chord} strokeWidth={1.5} />;
 }
 export const CHORD_FONT_PX = 13;
 export const FONT = "'Atkinson Hyperlegible', system-ui, sans-serif";
@@ -58,8 +54,8 @@ function restGlyph(d: number, fullBar: boolean): { name: GlyphName; dotted: bool
   return { name: base[dotted ? (d * 2) / 3 : d], dotted };
 }
 
-function noteColor(ev: DerivedEvent): string {
-  return ev.state === 'bad' ? BAD : ev.state === 'ext' ? WARN : INK;
+function noteColor(ev: DerivedEvent, pal: Palette): string {
+  return ev.state === 'bad' ? pal.error : ev.state === 'ext' ? pal.warning : pal.ink;
 }
 
 /** Ellipse rotated −22°: filled up to a dotted quarter, open from a half, the whole note larger. d = duration in ticks (48 = whole). */
@@ -74,14 +70,16 @@ export function NoteHead(p: { d: number; x: number; y: number; color: string }) 
 }
 
 export function LedgerLines(p: { pos: number; x: number }) {
+  const pal = usePalette();
   const lines: number[] = [];
   for (let q = -2; q >= p.pos; q -= 2) lines.push(q);
   for (let q = 10; q <= p.pos; q += 2) lines.push(q);
-  return <>{lines.map(q => <rect key={q} data-ledger="" x={p.x - 10} y={yOfPos(q)} width={20} height={1.3} fill={INK} />)}</>;
+  return <>{lines.map(q => <rect key={q} data-ledger="" x={p.x - 10} y={yOfPos(q)} width={20} height={1.3} fill={pal.ink} />)}</>;
 }
 
 /** Flags hang from the stem tip: one for an eighth (plain or dotted), two for a sixteenth. */
 function Flags(p: { count: number; x: number; y: number; up: boolean }) {
+  const pal = usePalette();
   const flags = Array.from({ length: p.count }, (_, i) => {
     if (p.up) {
       const t = p.y - STEM.length + i * 7;
@@ -90,11 +88,12 @@ function Flags(p: { count: number; x: number; y: number; up: boolean }) {
     const b = p.y + STEM.length - i * 7;
     return `M${p.x - 5.5} ${b - 1}A7 7 0 0 0 ${p.x + 1.5} ${b - 8}V${b - 15}`;
   });
-  return <>{flags.map(d => <path key={d} data-flag="" d={d} fill="none" stroke={INK} strokeWidth={2} />)}</>;
+  return <>{flags.map(d => <path key={d} data-flag="" d={d} fill="none" stroke={pal.ink} strokeWidth={2} />)}</>;
 }
 
 function Dot(p: { x: number; y: number }) {
-  return <circle data-dot="" cx={p.x} cy={p.y} r={2} fill={INK} />;
+  const pal = usePalette();
+  return <circle data-dot="" cx={p.x} cy={p.y} r={2} fill={pal.ink} />;
 }
 
 /** Wavy underline of the given width under a chord we cannot read. */
@@ -106,6 +105,7 @@ function wavy(x: number, y: number, width: number): string {
 }
 
 function Chord(p: { text: string; ok: boolean; x: number; textLength?: number; raise: boolean }) {
+  const pal = usePalette();
   const y = SHEET.chordY + 13;
   const common = {
     x: p.x, y, textAnchor: 'middle' as const, fontSize: CHORD_FONT_PX, fontWeight: 700, fontFamily: FONT,
@@ -114,8 +114,8 @@ function Chord(p: { text: string; ok: boolean; x: number; textLength?: number; r
   if (!p.ok) {
     return (
       <g data-chord="bad">
-        <text {...common} fill={BAD}>{p.text}</text>
-        <path d={wavy(p.x, y + 3, p.textLength ?? p.text.length * TEXT_EM_PER_CHAR * CHORD_FONT_PX)} fill="none" stroke={BAD} strokeWidth={1} />
+        <text {...common} fill={pal.error}>{p.text}</text>
+        <path d={wavy(p.x, y + 3, p.textLength ?? p.text.length * TEXT_EM_PER_CHAR * CHORD_FONT_PX)} fill="none" stroke={pal.error} strokeWidth={1} />
       </g>
     );
   }
@@ -123,7 +123,7 @@ function Chord(p: { text: string; ok: boolean; x: number; textLength?: number; r
   const raised = p.raise && c.ext !== '';
   return (
     <g data-chord="ok">
-      <text {...common} fill={TEAL}>
+      <text {...common} fill={pal.chord}>
         {c.root}{c.quality}
         {c.ext !== '' && <tspan data-ext="" dy={raised ? -6 : undefined} dx={raised ? 1 : undefined} fontSize={raised ? 9 : undefined}>{c.ext}</tspan>}
         {c.bass !== null && <tspan dy={raised ? 6 : undefined}>/{c.bass}</tspan>}
@@ -143,16 +143,17 @@ export interface NoteViewProps {
 
 /** One event: highlight, chord, lyric, note or rest with its marks, and its fingering chart. */
 export function NoteView(p: NoteViewProps): JSX.Element {
+  const pal = usePalette();
   const { ev, x, show } = p;
   return (
     <g data-ev={ev.id} data-state={ev.state} data-tied={ev.tiedFrom ? '' : undefined}
       data-playing={p.playing ? 'true' : undefined} data-selected={p.selected ? 'true' : undefined}>
-      {p.playing && <rect data-mark="playing" x={x - 12} y={0} width={24} height={150} rx={6} fill="rgba(14,110,104,0.14)" />}
+      {p.playing && <rect data-mark="playing" x={x - 12} y={0} width={24} height={150} rx={6} fill={pal.playing} />}
       {show.chords && ev.chord !== null && (
         <Chord text={ev.chord} ok={ev.chordOk} x={p.chordAt?.x ?? x} textLength={p.chordAt?.textLength} raise={show.raiseExtensions} />
       )}
       {show.lyrics && !ev.rest && ev.lyric !== '' && (
-        <text data-lyric="" x={p.lyricAt?.x ?? x} y={SHEET.lyricY + 12} textAnchor="middle" fontSize={LYRIC_FONT_PX} fontFamily={FONT} fill={TEXT}
+        <text data-lyric="" x={p.lyricAt?.x ?? x} y={SHEET.lyricY + 12} textAnchor="middle" fontSize={LYRIC_FONT_PX} fontFamily={FONT} fill={pal.lyric}
           {...(p.lyricAt?.textLength === undefined ? {} : { textLength: p.lyricAt.textLength, lengthAdjust: 'spacingAndGlyphs' })}>
           {ev.lyric}
         </text>
@@ -182,8 +183,9 @@ function Rest(p: { ev: DerivedEvent; x: number; fullBar: boolean }) {
 }
 
 function Note(p: NoteViewProps) {
+  const pal = usePalette();
   const { ev, x, y } = p;
-  const color = noteColor(ev);
+  const color = noteColor(ev, pal);
   const up = stemUp(ev);
   const d = notatedLength(ev.d);   // a triplet member is drawn as its notated value
   const flags = p.beamed ? 0 : d === 3 ? 2 : d === 6 || d === 9 ? 1 : 0;
@@ -192,7 +194,7 @@ function Note(p: NoteViewProps) {
       <LedgerLines pos={ev.pos} x={x} />
       <NoteHead d={d} x={x} y={y} color={color} />
       {d < 48 && !p.beamed && (
-        <rect data-stem="" x={x + (up ? STEM.upDx : STEM.downDx)} y={up ? y - STEM.length : y} width={STEM.width} height={STEM.length} fill={INK} />
+        <rect data-stem="" x={x + (up ? STEM.upDx : STEM.downDx)} y={up ? y - STEM.length : y} width={STEM.width} height={STEM.length} fill={pal.ink} />
       )}
       {flags > 0 && <Flags count={flags} x={x} y={y} up={up} />}
       {DOTTED.has(d) && <Dot x={x + 12} y={ev.pos % 2 === 0 ? y - 5 : y} />}
