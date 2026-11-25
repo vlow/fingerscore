@@ -13,7 +13,7 @@ export interface Budget {
 export interface Row { layer: string; files: number; raw: number; brotli: number; limit: number }
 
 /** Features that are a large library by nature; they keep their own limits and do not set the default for new features. */
-export const LIBRARY_FEATURES = ['src/pdf/sheetPdf.ts', 'src/pdf/scalePdf.ts', 'src/import/abc.ts', 'src/import/mscz.ts', 'src/import/midi.ts'];
+export const LIBRARY_FEATURES = ['src/pdf/sheetPdf.ts', 'src/pdf/scalePdf.ts', 'src/import/abc.ts', 'src/import/mscz.ts', 'src/import/musicxml.ts', 'src/import/midi.ts'];
 
 /** Room on top of a measured size: the owner's decision of 25 Nov 2026 (design section 7). */
 const SHELL_ROOM = 1.10;

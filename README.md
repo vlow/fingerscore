@@ -173,16 +173,28 @@ File, then Download PDF, makes a PDF of the sheet. The Scales page has a Downloa
 - **Text:** the PDF embeds Atkinson Hyperlegible Regular, Bold and Bold Italic (SIL Open Font License, text in `src/pdf/fonts/OFL.txt`). Lyrics, chord symbols and titles can be searched and copied. The symbols ♭ ♯ ♮ 𝄫 𝄪 ♩ Δ ‿ ● ○ ◐ are drawn as shapes, not as text: a search for "Bm7" finds the chord, a search for "B♭" finds nothing, and copying "C♯m7♭5" gives "Cm75".
 - **Characters:** the PDF supports Latin and extended Latin letters (such as ł, ő, č, ř, š, ž) and the eleven symbols above. If a title, lyric or chord uses any other character, for example Cyrillic or Greek letters, no PDF is made. The red message line lists up to 12 of the characters and says "Use Print instead". Print draws them with the fonts of the browser.
 - **File name:** `{title}-{instrument}.pdf` for a sheet, `{key}-{scale}-{instrument}.pdf` for a scale, for example `auld-lang-syne-alto-sax.pdf` and `c-major-alto-sax.pdf`. Each part is lower case. Accented letters become plain letters (`Žluťoučký kůň` gives `zlutoucky-kun`). A sharp or flat sign after a letter A to G is written as a word (`F♯ major` gives `f-sharp-major`, `B♭ Blues` gives `b-flat-blues`), so that F♯ major and F major get different names. Other characters become `-`. A part is cut at 80 characters. An untitled sheet uses `sheet`. The JSON file name follows the same rule.
-- **Loading:** the PDF code and the six font files load when you first click Download PDF, not with the app. If they cannot load, the red message line shows the load message. Another failure shows "The PDF could not be made. Use Print instead." `npm run check:bundle` enforces a budget of 410,000 bytes for everything that loads at start, and fails when that code holds the PDF libraries.
+- **Loading:** the PDF code and the six font files load when you first click Download PDF, not with the app. If they cannot load, the red message line shows the load message. Another failure shows "The PDF could not be made. Use Print instead." `npm run check:bundle` fails when the shell or a page holds the PDF libraries (see "Loading").
 - **Progress:** the File menu entry reads "Preparing PDF…" and is disabled while the PDF is made. For a PDF of more than 10 pages the page announces "Preparing PDF, page {n} of {N}" at every 10th page and at the last. A sheet of 2000 bars makes about 125 pages. Leaving the page or opening another sheet stops the work and nothing is downloaded.
 - **Print:** unchanged. It stays in the File menu and next to Download PDF on the Scales page.
 - **Phones:** a browser that shows a PDF in a tab instead of saving it does so for this file too.
 
 ### Loading
 
-The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium). The code that loads at start (the entry chunk and the chunks it loads with it) stays at 410,000 bytes or less and holds no PDF code; `npm run check:bundle` checks both after a build.
+The MIDI, MusicXML, MuseScore and ABC readers load when you first drop a file of that format. If the download fails, the drop zone shows the load message and "Try another file"; choosing the file again retries (checked in Chromium).
 
-The PDF code and fonts load on the first click of Download PDF (see "PDF"). Play mode loads when you first open it; until the code arrives the sheet stays in its normal view, and if it cannot load the page shows "Play mode could not be loaded. Reload the page and try again." The Tracks and Scales pages and the editing panels load when you first need them; the start and sheet pages load with the app. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
+The PDF code and fonts load on the first click of Download PDF (see "PDF"). Play mode loads when you first open it; until the code arrives the sheet stays in its normal view, and if it cannot load the page shows "Play mode could not be loaded. Reload the page and try again." Every page loads on demand. A first visit downloads the shell and the code of the page at that address, both at once: a script in `index.html` preloads the page's files while the shell arrives, and the page shows with the header, without an empty frame in between. A link starts loading its page when the pointer enters it or it gets focus. The editing panels load when you first need them. If one fails to load, for example after a dropped connection or a new release, the app shows "This part of fingerscore could not be loaded. Check your connection and reload the page." with a Reload button. The header and the rest of the app keep working.
+
+### Bundle layers
+
+The build has three layers. `npm run check:bundle` measures each after a build, in brotli bytes, and fails when one is over its limit in `bundle-budget.json`.
+
+- **Shell:** the code every visitor downloads first: `src/shell/` (header, footer, theme, router, route table), React, React Router and zustand. 55,230 bytes today, limit 61,440. The check fails when any other module ends up in the shell and names the import chain that pulled it in.
+- **Routes:** one per page, the page's own code beyond the shell. The sheet page is the largest: 64,754 bytes, limit 81,920.
+- **Features:** code a page loads with `import()`: play mode, the panels, the popover, the file readers, the PDF engine.
+
+A new route or feature without its own entry in `bundle-budget.json` gets `routeDefault` or `featureDefault`. `npm run check:bundle -- --propose` prints limits from the current sizes (the shell plus 10 %, every other layer plus 25 %); copying them into `bundle-budget.json` is the owner's decision.
+
+**Adding a feature.** Code outside `src/shell/` stays out of the first download as long as the shell does not import it. To load a component on first use, declare it once: `const Panel = lazyView(lazyModule(() => import('./Panel').then(m => m.default)))` (`src/shell/lazy.tsx`). Spread `intentProps(module)` on the control that opens it to start the download on hover or focus.
 
 ### Rhythm rules
 
@@ -279,7 +291,7 @@ npm run dev        # dev server on http://localhost:5173
 npm test           # unit tests (Vitest)
 npm run test:e2e   # end-to-end tests (Playwright), including the two suites under "Checks"
 npm run build      # type-check and build to dist/
-npm run check:bundle  # after a build: code loaded at start at most 410,000 bytes, no PDF library in it
+npm run check:bundle  # after a build: brotli size of each layer within bundle-budget.json, only shell code in the shell
 npm run demo       # regenerate the sample MIDI file
 npm run notices    # write third-party-packages.json, the list of packages in the build; add -- --check to compare without writing
 npm run check:release  # before publishing: build, bundle budget, package list, and the owner's details (see "Hosting")
