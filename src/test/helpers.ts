@@ -1,8 +1,11 @@
-import type { Bar, Doc, Ev, TimeSig } from '../domain/types';
+import type { Bar, Doc, Ev, Jump, TimeSig } from '../domain/types';
 
 /** Compact event: [midi, duration in ticks, options]. midi 0 = rest. */
 export type EvSpec = [m: number, d: number, opts?: { tie?: boolean }];
-export interface BarSpec { ev: EvSpec[]; rs?: boolean; re?: boolean; volta?: Bar['volta'] }
+export interface BarSpec {
+  ev: EvSpec[]; rs?: boolean; re?: boolean; volta?: Bar['volta'];
+  segno?: true; coda?: true; fine?: true; toCoda?: true; jump?: Jump;
+}
 
 /** Small hand-built document for tests. Bar cap = sum of event durations. */
 export function mkDoc(bars: BarSpec[], timeSig: TimeSig = [4, 4]): Doc {
@@ -13,6 +16,11 @@ export function mkDoc(bars: BarSpec[], timeSig: TimeSig = [4, 4]): Doc {
     re: b.re ?? false,
     volta: b.volta ?? '',
     ev: b.ev.map(([m, d, o]): Ev => ({ id: `t${++n}`, m, d, r: m === 0, tie: o?.tie ?? false, l: '' })),
+    ...(b.segno && { segno: true as const }),
+    ...(b.coda && { coda: true as const }),
+    ...(b.fine && { fine: true as const }),
+    ...(b.toCoda && { toCoda: true as const }),
+    ...(b.jump && { jump: b.jump }),
   }));
   return {
     score, timeSig, originalTonicPc: 0, originalMode: 'major', tempo: 100, inst: 'xc', shift: 0,

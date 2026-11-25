@@ -10,9 +10,9 @@ export function usePlayback(doc: Doc, selectedId: string | null) {
   const [playing, setPlaying] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [playError, setPlayError] = useState(false);
-  // Playback stops when what it plays changes: pitches, lengths, rests, ties, bars and their repeats, key, instrument,
+  // Playback stops when what it plays changes: pitches, lengths, rests, ties, bars and their repeats and jump marks, key, instrument,
   // tempo. Lyrics live on the events too, but typing one must not stop the music.
-  const audible = useMemo(() => doc.score.map(b => `${b.cap}${b.rs ? 's' : ''}${b.re ? 'e' : ''}${b.volta}:`
+  const audible = useMemo(() => doc.score.map(b => `${b.cap}${b.rs ? 's' : ''}${b.re ? 'e' : ''}${b.volta}~${b.segno ? 'g' : ''}${b.coda ? 'c' : ''}${b.fine ? 'f' : ''}${b.toCoda ? 'o' : ''}${b.jump ?? ''}:`
     + b.ev.map(e => `${e.m},${e.d}${e.r ? 'r' : ''}${e.tie ? 't' : ''}`).join(';')).join('|'), [doc.score]);
   useEffect(() => () => playerRef.current?.stop(), [audible, doc.shift, doc.inst, doc.tempo]);
 

@@ -1,4 +1,5 @@
-import type { Doc } from './types';
+import { jumpProblems, skippedEndings } from './jumps';
+import type { Doc, Jump } from './types';
 
 /** Ticks; midi is the sounding pitch (m + shift). */
 export interface SchedNote { evId: string; start: number; dur: number; midi: number }
@@ -10,19 +11,46 @@ export function ticksToSeconds(ticks: number, tempo: number): number {
   return (ticks * 60) / (tempo * 12);
 }
 
+/** The bars after a jump: no repeat is taken, and of a group of endings only the last one present is played. */
+function playAfterJump(doc: Doc, jumpBar: number, order: number[], cuts: Set<number>, cap: number): void {
+  const bars = doc.score;
+  const jump = bars[jumpBar].jump as Jump;
+  const skipped = skippedEndings(bars);
+  const stopAtFine = !jump.endsWith('Coda') && bars.some(b => b.fine);
+  const coda = bars.findIndex(b => b.coda);
+  const viaCoda = jump.endsWith('Coda');
+  let i = jump.startsWith('ds') ? bars.findIndex(b => b.segno) : 0;
+  cuts.add(order.length); // the first bar after a jump starts fresh
+  while (i >= 0 && i < bars.length && order.length < cap) {
+    if (skipped[i]) { i++; continue; }
+    order.push(i);
+    if (stopAtFine && bars[i].fine) return;
+    if (viaCoda && bars[i].toCoda) {
+      cuts.add(order.length); // a tie does not carry from the To Coda into the Coda, also when the Coda is the next bar
+      i = coda;
+      continue;
+    }
+    i++;
+  }
+}
+
 /**
- * Bar indices in play order, following repeats and endings.
+ * Bar indices in play order, and the positions in that order where a jump starts (a tie does not carry across).
  * A section starts at a bar with a start-repeat mark, at bar 0, or after a finished repeat.
  * Each end-repeat mark jumps back to its section start once; every jump starts the next pass.
  * A first-ending bar plays only on pass 1, a second-ending bar only on passes 1–2, so
  * `A | 1.(re) | 2.(re) | 3.` plays A 1. A 2. A 3. (ending 3 has no volta in the doc).
+ * A jump mark (D.C., D.S.) is taken once, at the end of its bar, after that bar's repeat is played out;
+ * a document whose marks do not add up plays without it (see `jumpProblems`).
  * The order is capped at 4 × the bar count as a safety net.
  */
-function barOrder(doc: Doc): number[] {
+function playPlan(doc: Doc): { order: number[]; cuts: Set<number> } {
   const bars = doc.score;
   const cap = 4 * bars.length;
   const order: number[] = [];
+  const cuts = new Set<number>();
   const taken = new Set<number>();
+  const jumpBar = jumpProblems(doc).length === 0 ? bars.findIndex(b => b.jump) : -1;
   let start = 0;
   let pass = 1;
   let i = 0;
@@ -37,23 +65,32 @@ function barOrder(doc: Doc): number[] {
       i = start;
       continue;
     }
+    if (i === jumpBar) {
+      playAfterJump(doc, jumpBar, order, cuts, cap);
+      break;
+    }
     const endsEndings = pass > 1 && bar.volta !== '' && (bars[i + 1]?.volta ?? '') === '';
     if (bar.re || endsEndings) { start = i + 1; pass = 1; }
     i++;
   }
-  return order;
+  return { order, cuts };
+}
+
+/** Bar indices in play order: repeats, endings and the jump of D.C. and D.S. are followed. */
+export function playOrder(doc: Doc): number[] {
+  return playPlan(doc).order;
 }
 
 export function buildSchedule(doc: Doc): Schedule {
-  const order = barOrder(doc);
+  const { order, cuts } = playPlan(doc);
   const notes: SchedNote[] = [];
   const marks: SchedMark[] = [];
   let t = 0;
   let open: SchedNote | null = null;
   let prevBar = -2;
-  for (const bi of order) {
+  for (const [k, bi] of order.entries()) {
     const bar = doc.score[bi];
-    if (bi !== prevBar + 1) open = null; // a jump cuts any tie chain
+    if (bi !== prevBar + 1 || cuts.has(k)) open = null; // a jump cuts any tie chain
     prevBar = bi;
     for (const ev of bar.ev) {
       if (ev.r) {
@@ -79,7 +116,7 @@ export function buildSchedule(doc: Doc): Schedule {
 /** Tick of an event's first occurrence in play order (first pass of a repeat); null for an unknown id. */
 export function firstTickOf(doc: Doc, evId: string): number | null {
   let t = 0;
-  for (const bi of barOrder(doc)) {
+  for (const bi of playOrder(doc)) {
     for (const ev of doc.score[bi].ev) {
       if (ev.id === evId) return t;
       t += ev.d;

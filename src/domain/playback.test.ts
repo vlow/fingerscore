@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { sampleDoc } from './fixture';
-import { buildSchedule, firstTickOf, sliceSchedule, ticksToSeconds } from './playback';
-import { mkDoc } from '../test/helpers';
+import { buildSchedule, firstTickOf, playOrder, sliceSchedule, ticksToSeconds } from './playback';
+import { jumpProblems } from './jumps';
+import type { Doc } from './types';
+import { mkDoc, type BarSpec } from '../test/helpers';
 
 describe('playback schedule', () => {
   it('check 5: demo playback', () => {
@@ -207,5 +209,109 @@ describe('sliceSchedule', () => {
     expect(out.marks).toHaveLength(68);
     // the second pass of the repeat is still there: bar 1's first note sounds again later
     expect(out.notes.filter(n => n.evId === doc.score[1].ev[0].id)).toHaveLength(1);
+  });
+});
+
+/** Bars of one whole note each, named A, B, C … by position. */
+type Mark = Omit<BarSpec, 'ev'>;
+const tune = (...bars: Mark[]): Doc => mkDoc(bars.map(b => ({ ev: [[60, 48]], ...b })));
+const order = (d: Doc): string => playOrder(d).map(i => String.fromCharCode(65 + i)).join('');
+const withoutJump = (d: Doc): Doc => ({ ...d, score: d.score.map(({ jump: _jump, ...bar }) => bar) });
+
+describe('playOrder without marks', () => {
+  it('plays a straight song, a repeat and a repeat with two endings as before', () => {
+    expect(order(tune({}, {}, {}))).toBe('ABC');
+    expect(order(tune({ rs: true }, { re: true }, {}))).toBe('ABABC');
+    expect(order(tune({ rs: true }, { volta: '1', re: true }, { volta: '2' }, {}))).toBe('ABACD');
+  });
+});
+
+describe('playOrder with jumps', () => {
+  it('D.C. al Fine stops at the Fine', () => {
+    expect(order(tune({}, { fine: true }, {}, { jump: 'dcFine' }))).toBe('ABCDAB');
+  });
+
+  it('D.C. al Coda continues at the Coda', () => {
+    expect(order(tune({}, { toCoda: true }, {}, { jump: 'dcCoda' }, { coda: true }, {}))).toBe('ABCDABEF');
+  });
+
+  it('D.S. returns to the Segno; with a Fine it stops there', () => {
+    expect(order(tune({}, { segno: true }, {}, { jump: 'ds' }))).toBe('ABCDBCD');
+    expect(order(tune({}, { segno: true }, { fine: true }, { jump: 'ds' }))).toBe('ABCDBC');
+    expect(order(tune({}, { segno: true }, { fine: true }, { jump: 'dsFine' }))).toBe('ABCDBC');
+  });
+
+  it('D.S. al Coda jumps at the To Coda to the Coda', () => {
+    expect(order(tune({}, { segno: true }, { toCoda: true }, { jump: 'dsCoda' }, { coda: true }))).toBe('ABCDBCE');
+  });
+
+  it('a plain D.C. without a Fine runs to the end; with a Fine it stops at the Fine', () => {
+    expect(order(tune({}, {}, { jump: 'dc' }, {}))).toBe('ABCABCD');
+    expect(order(tune({}, { fine: true }, { jump: 'dc' }, {}))).toBe('ABCAB');
+  });
+
+  it('plays a repeat with endings before the jump, then only the last ending', () => {
+    const d = tune({ rs: true }, { volta: '1', re: true }, { volta: '2' }, { jump: 'dc' });
+    expect(order(d)).toBe('ABACDACD');
+  });
+
+  it('takes the repeat of the jump bar first, then the jump, and no repeat after it', () => {
+    expect(order(tune({ rs: true }, { re: true, jump: 'dc' }))).toBe('ABABAB');
+  });
+
+  it('D.C. goes back to a pickup bar', () => {
+    const d = mkDoc([{ ev: [[60, 24]] }, { ev: [[62, 48]] }, { ev: [[64, 48]], jump: 'dc' }]);
+    expect(order(d)).toBe('ABCABC');
+  });
+
+  it('takes the jump once', () => {
+    expect(order(tune({ segno: true, jump: 'ds' }))).toBe('AA');
+  });
+
+  it('cuts a tie at the jump and at the step from To Coda to the Coda, also when the Coda is the next bar', () => {
+    const d = mkDoc([
+      { ev: [[60, 48]] },
+      { ev: [[62, 48, { tie: true }]], toCoda: true },
+      { ev: [[62, 48]], coda: true, jump: 'dcCoda' },
+    ]);
+    expect(order(d)).toBe('ABCABC');
+    // first pass: A, B tied into C; second pass: A, B, C apart
+    expect(buildSchedule(d).notes.map(n => n.dur)).toEqual([48, 96, 48, 48, 48]);
+  });
+
+  it('ignores the jump of a document with a problem', () => {
+    const d = tune({}, {}, { jump: 'ds' });
+    expect(jumpProblems(d)).toHaveLength(1);
+    expect(order(d)).toBe(order(withoutJump(d)));
+    expect(order(d)).toBe('ABC');
+  });
+});
+
+describe('playOrder is total', () => {
+  it('ends within the cap and stays inside the score for random small documents', () => {
+    let seed = 12345;
+    const rnd = (n: number) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+    const jumps = ['dc', 'dcFine', 'dcCoda', 'ds', 'dsFine', 'dsCoda'] as const;
+    for (let run = 0; run < 400; run++) {
+      const n = 1 + rnd(8);
+      const d = tune(...Array.from({ length: n }, (): Mark => ({
+        ...(rnd(4) === 0 && { rs: true }), ...(rnd(4) === 0 && { re: true }),
+        volta: (['', '', '1', '2'] as const)[rnd(4)],
+        ...(rnd(5) === 0 && { segno: true as const }), ...(rnd(5) === 0 && { coda: true as const }),
+        ...(rnd(5) === 0 && { fine: true as const }), ...(rnd(5) === 0 && { toCoda: true as const }),
+        ...(rnd(3) === 0 && { jump: jumps[rnd(6)] }),
+      })));
+      const o = playOrder(d);
+      expect(o.length).toBeLessThanOrEqual(4 * n);
+      expect(o.every(i => Number.isInteger(i) && i >= 0 && i < n)).toBe(true);
+      expect(buildSchedule(d).totalTicks).toBe(o.length * 48);
+    }
+  });
+
+  it('a jump on every bar, and several marks on one bar, do not loop', () => {
+    const all = tune(...Array.from({ length: 5 }, (): Mark => ({ jump: 'dc' })));
+    expect(order(all)).toBe('ABCDE');
+    const one = tune({ segno: true, coda: true, fine: true, toCoda: true, jump: 'dsCoda' });
+    expect(playOrder(one).length).toBeLessThanOrEqual(4);
   });
 });

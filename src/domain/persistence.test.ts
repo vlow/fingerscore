@@ -8,6 +8,7 @@ import {
   canonical, fileName, importedMessage, importMessage, LIBRARY_FILE_NAME, MAX_FILE_BYTES, MAX_LIBRARY_BYTES, MAX_LIBRARY_SHEETS, parseFile, parseFileText,
   parseImport, parseImportText, readImport, readSheet, serializeFile, serializeLibrary, toFile, type LibrarySheet,
 } from './persistence';
+import { listEntries, saveEntry } from '../state/library';
 import type { Doc, Ev } from './types';
 
 const doc = () => sampleDoc('asax');
@@ -325,5 +326,70 @@ describe('library file', () => {
     expect(importedMessage(3, 0)).toBe('3 sheets added to your sheets');
     expect(importedMessage(3, 1)).toBe('3 sheets added to your sheets · 1 damaged sheet skipped');
     expect(importedMessage(2, 2)).toBe('2 sheets added to your sheets · 2 damaged sheets skipped');
+  });
+});
+
+describe('jump marks', () => {
+  const marked = (): Doc => {
+    const d = doc();
+    d.score = d.score.map((b, i) => (i === 1 ? { ...b, segno: true, coda: true, fine: true, toCoda: true, jump: 'dsCoda' as const } : b));
+    d.source = { ...d.source, dropped: ['Jump to Coda', 'a second Segno'] };
+    return d;
+  };
+
+  it('a sheet saved without the fields loads without them', () => {
+    const r = parseFileText(serializeFile(doc()));
+    if (!r.ok) throw new Error('not ok');
+    for (const bar of r.doc.score) for (const k of ['segno', 'coda', 'fine', 'toCoda', 'jump']) expect(k in bar).toBe(false);
+    expect('dropped' in r.doc.source).toBe(false);
+  });
+
+  it('every field round-trips through serialize and parse', () => {
+    const r = parseFileText(serializeFile(marked()));
+    expect(r.ok && canonical(r.doc)).toBe(canonical(marked()));
+    expect(r.ok && r.doc.score[1]).toMatchObject({ segno: true, coda: true, fine: true, toCoda: true, jump: 'dsCoda' });
+    expect(r.ok && r.doc.source.dropped).toEqual(['Jump to Coda', 'a second Segno']);
+  });
+
+  it('every field round-trips through the library store and the library file', () => {
+    localStorage.clear();
+    const saved = saveEntry(marked(), null);
+    if (!saved.ok) throw new Error('not saved');
+    expect(canonical(listEntries()[0].doc)).toBe(canonical(marked()));
+    const sheet: LibrarySheet = { title: 't', inst: 'i', key: 'k', fam: 'f', savedAt: '2026-11-25T00:00:00.000Z', doc: marked() };
+    const r = parseImportText(serializeLibrary([sheet]));
+    expect(r.ok && r.kind === 'library' && canonical(r.sheets[0].doc)).toBe(canonical(marked()));
+  });
+
+  it.each(['dc', 'dcFine', 'dcCoda', 'ds', 'dsFine', 'dsCoda'])('keeps the jump %s', jump => {
+    const d = doc();
+    d.score[0] = { ...d.score[0], jump: jump as 'dc' };
+    const r = parseFileText(serializeFile(d));
+    expect(r.ok && r.doc.score[0].jump).toBe(jump);
+  });
+
+  it('drops an unknown jump and a sign that is not true, and keeps the bar', () => {
+    const file = JSON.parse(serializeFile(doc()));
+    Object.assign(file.doc.score[0], { jump: 'coda', segno: false, coda: 'yes', fine: 1, toCoda: null });
+    Object.assign(file.doc.score[1], { jump: 7, segno: true });
+    const r = parseFile(file);
+    if (!r.ok) throw new Error('not ok');
+    for (const k of ['jump', 'segno', 'coda', 'fine', 'toCoda']) expect(k in r.doc.score[0]).toBe(false);
+    expect('jump' in r.doc.score[1]).toBe(false);
+    expect(r.doc.score[1].segno).toBe(true);
+  });
+
+  it('keeps the strings of dropped and leaves the field out when the list is empty or holds no strings', () => {
+    const withList = (dropped: unknown) => {
+      const file = JSON.parse(serializeFile(doc()));
+      file.doc.source.dropped = dropped;
+      const r = parseFile(file);
+      if (!r.ok) throw new Error('not ok');
+      return r.doc.source;
+    };
+    expect(withList(['a', 3, 'b']).dropped).toEqual(['a', 'b']);
+    expect('dropped' in withList([])).toBe(false);
+    expect('dropped' in withList([1, null])).toBe(false);
+    expect('dropped' in withList('a')).toBe(false);
   });
 });

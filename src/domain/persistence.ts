@@ -3,6 +3,7 @@ import { optionsFor } from './fingerings';
 import { MODES } from './keys';
 import { barCap, isPlainLength, isSupportedTimeSig, isTripletLength } from './time';
 import { tripletGroups } from './triplets';
+import { isJump } from './jumps';
 import type { Bar, ChordSym, Doc, Ev, InstId, Mode, TimeSig } from './types';
 
 export interface SheetFile { app: 'fingerscore'; format: 1; savedAt: string; title: string; doc: Doc }
@@ -154,6 +155,11 @@ function validBar(v: unknown, maxCap: number, fullCap: number, ids: Set<string>)
   }
   if (sum !== cap) return null;
   const bar: Bar = { cap, rs, re, volta, ev: events };
+  if (v.segno === true) bar.segno = true;
+  if (v.coda === true) bar.coda = true;
+  if (v.fine === true) bar.fine = true;
+  if (v.toCoda === true) bar.toCoda = true;
+  if (isJump(v.jump)) bar.jump = v.jump;
   return tripletGroups(bar, fullCap) ? bar : null;
 }
 
@@ -168,9 +174,12 @@ function validSource(v: unknown): Doc['source'] {
   const fallback: Doc['source'] = { file: '', format: 'file', track: '', trackCount: 0, simplified: false };
   if (!isObject(v)) return fallback;
   const formats = ['MIDI', 'MusicXML', 'MuseScore', 'ABC', 'sample', 'file', 'library'];
-  const { file, format, track, trackCount, simplified } = v;
+  const { file, format, track, trackCount, simplified, dropped } = v;
   if (!isStr(file) || !isStr(format) || !formats.includes(format) || !isStr(track) || !isNum(trackCount) || !isBool(simplified)) return fallback;
-  return { file, format: format as Doc['source']['format'], track, trackCount, simplified };
+  const source: Doc['source'] = { file, format: format as Doc['source']['format'], track, trackCount, simplified };
+  const notes = Array.isArray(dropped) ? dropped.filter(isStr) : [];
+  if (notes.length > 0) source.dropped = notes;
+  return source;
 }
 
 function validShow(v: unknown): Doc['show'] {

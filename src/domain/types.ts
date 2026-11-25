@@ -2,7 +2,12 @@ export type InstId = 'xc'|'xbb'|'ssax'|'asax'|'tsax'|'bsax'|'cl'|'rs'|'ra'|'fl'|
 export type Mode = 'major' | 'minor' | 'dorian' | 'phrygian' | 'lydian' | 'mixolydian' | 'locrian';
 export type TimeSig = [4,4] | [3,4] | [2,4] | [6,8] | [2,2];
 export interface Ev { id: string; m: number; d: number; r: boolean; tie: boolean; l: string }
-export interface Bar { cap: number; rs: boolean; re: boolean; volta: '' | '1' | '2'; ev: Ev[] }
+export type Jump = 'dc' | 'dcFine' | 'dcCoda' | 'ds' | 'dsFine' | 'dsCoda';
+export interface Bar {
+  cap: number; rs: boolean; re: boolean; volta: '' | '1' | '2'; ev: Ev[];
+  segno?: true; coda?: true;                       // the sign stands at the start of the bar
+  fine?: true; toCoda?: true; jump?: Jump;         // the instruction stands at the end of the bar
+}
 export interface ChordSym { raw: string; ok: boolean; pc: number; rest: string; bass: number | null; tk: number }
 export interface Doc {
   score: Bar[]; timeSig: TimeSig;
@@ -14,5 +19,5 @@ export interface Doc {
   title: string; subtitle: string;
   chartStyle: 'compact' | 'full'; recorderSystem: 'baroque' | 'german';
   show: { fingerings: boolean; chords: boolean; lyrics: boolean; raiseExtensions: boolean };
-  source: { file: string; format: 'MIDI' | 'MusicXML' | 'MuseScore' | 'ABC' | 'sample' | 'file' | 'library'; track: string; trackCount: number; simplified: boolean };
+  source: { file: string; format: 'MIDI' | 'MusicXML' | 'MuseScore' | 'ABC' | 'sample' | 'file' | 'library'; track: string; trackCount: number; simplified: boolean; dropped?: string[] };
 }
