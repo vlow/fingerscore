@@ -57,7 +57,7 @@ function anyNotes(rnd: () => number): { notes: RawNote[]; timeSig: TimeSig; pick
 
 function build(notes: RawNote[], timeSig: TimeSig, pickup: number) {
   const song: ParsedSong = {
-    file: 'any.mid', format: 'MIDI', timeSig, tempo: 100, key: null, pickup, marks: [],
+    file: 'any.mid', format: 'MIDI', timeSig, tempo: 100, key: null, pickup, marks: [], dropped: [],
     tracks: [{ id: 't', name: 'M', instrument: '', channel: 0, percussion: false, notes, lyrics: [], chords: [] }],
   };
   return buildDoc(song, { trackId: 't', keep: 'top', lyricsFrom: null, chordsFrom: null, instId: 'fl', prefs: DEFAULT_PREFS });

@@ -26,7 +26,7 @@ interface Props {
 type State =
   | { kind: 'idle' }
   | { kind: 'parsing'; file: string }
-  | { kind: 'ready'; file: string }
+  | { kind: 'ready'; file: string; dropped: string[] }
   | { kind: 'sheet'; entry: LibraryEntry }
   | { kind: 'library'; message: string }
   | { kind: 'unsaved'; title: string; message: string }
@@ -78,7 +78,7 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
     try {
       const song = await parseFile(file);
       onSong(song);
-      setState({ kind: 'ready', file: file.name });
+      setState({ kind: 'ready', file: file.name, dropped: song.dropped });
     } catch (err) {
       setState({ kind: 'error', message: errorMessage(err, file.name) });
     }
@@ -151,7 +151,7 @@ export default function DropZone({ instrumentName, onSong, onContinue, onSheet, 
           <div className={s.check}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
           </div>
-          <p className={s.result} role="status">{state.file} — Ready — next you pick the part to play.</p>
+          <p className={s.result} role="status">{state.file} — Ready — next you pick the part to play.{state.dropped.map(d => ` ${d}`).join('')}</p>
           <div className={s.actions}>
             <button type="button" className={s.primary} data-primary="" onClick={onContinue}>Continue →</button>
             <button type="button" className={s.secondary} onClick={reset}>Choose another file</button>

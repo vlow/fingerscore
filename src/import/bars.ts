@@ -2,7 +2,7 @@ import { barCap, newId } from '../domain/time';
 import type { Bar, Ev, TimeSig } from '../domain/types';
 import { withEdges, type QNote } from './quantise';
 import { findWindows } from './tripletWindows';
-import type { ParsedSong } from './types';
+import type { ParsedMark } from './types';
 
 const DEFAULT_REST_PITCH = 60;
 const GRID = 3;
@@ -72,8 +72,8 @@ function lastSounding(melody: QNote[], i: number): QNote | undefined {
  * (`rounded` true) and the bar is cut again. The bar's events are the pieces of the chosen cut. A note is split and
  * tied at window edges and bar lines.
  */
-export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: ParsedSong['marks']): { bars: Bar[]; rounded: boolean } {
-  if (notes.length === 0) return { bars: [], rounded: false };
+export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: ParsedMark[]): { bars: Bar[]; rounded: boolean; lost: ParsedMark[] } {
+  if (notes.length === 0) return { bars: [], rounded: false, lost: [] };
   const melody = withoutOverlaps(notes);
   const full = barCap(ts);
   const bars: Bar[] = [];
@@ -135,12 +135,21 @@ export function toBars(notes: QNote[], ts: TimeSig, pickupTicks: number, marks: 
     p.ev.tie = p.note !== null && next !== undefined && next.note === p.note;
   });
 
+  const lost: ParsedMark[] = [];     // jump marks behind the last note: the caller names them
   for (const m of marks) {
     const bar = bars[m.bar];
-    if (!bar) continue;
+    if (!bar) {
+      if (m.segno || m.coda || m.fine || m.toCoda || m.jump) lost.push(m);
+      continue;
+    }
     if (m.rs) bar.rs = true;
     if (m.re) bar.re = true;
     if (m.volta) bar.volta = m.volta;
+    if (m.segno) bar.segno = true;
+    if (m.coda) bar.coda = true;
+    if (m.fine) bar.fine = true;
+    if (m.toCoda) bar.toCoda = true;
+    if (m.jump) bar.jump = m.jump;
   }
-  return { bars, rounded };
+  return { bars, rounded, lost };
 }

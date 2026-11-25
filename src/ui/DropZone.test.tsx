@@ -24,6 +24,21 @@ it('lists the five formats as chips and accepts MuseScore and ABC files', () => 
   for (const ext of ['.mscz', '.mscx', '.abc']) expect(accept).toContain(ext);
 });
 
+it('adds the sentences about left-out jump marks to the ready message', async () => {
+  vi.mocked(parseFile).mockResolvedValue({ dropped: ['A second Segno in bar 12 was left out.', 'D.S.S. in bar 20 is not supported and was left out.'] } as never);
+  render(<MemoryRouter><DropZone instrumentName="alto sax" onSong={() => {}} onContinue={() => {}} /></MemoryRouter>);
+  await userEvent.upload(screen.getByLabelText(/drop a song/i), new File(['x'], 'a.abc'));
+  expect(await screen.findByRole('status')).toHaveTextContent(
+    'a.abc — Ready — next you pick the part to play. A second Segno in bar 12 was left out. D.S.S. in bar 20 is not supported and was left out.');
+});
+
+it('keeps the ready message as it was when nothing was left out', async () => {
+  vi.mocked(parseFile).mockResolvedValue({ dropped: [] } as never);
+  render(<MemoryRouter><DropZone instrumentName="alto sax" onSong={() => {}} onContinue={() => {}} /></MemoryRouter>);
+  await userEvent.upload(screen.getByLabelText(/drop a song/i), new File(['x'], 'a.abc'));
+  expect((await screen.findByRole('status')).textContent).toBe('a.abc — Ready — next you pick the part to play.');
+});
+
 describe('import notice', () => {
   const R = () => render(<MemoryRouter><DropZone instrumentName="alto sax" onSong={() => {}} onContinue={() => {}} /></MemoryRouter>);
   const notice = () => screen.getByRole('link', { name: 'Terms of Use' });
@@ -38,7 +53,7 @@ describe('import notice', () => {
   it('shows the notice when idle', () => { R(); expectNotice(); });
 
   it('shows the notice with the "Choose another file" button', async () => {
-    vi.mocked(parseFile).mockResolvedValue({} as never);
+    vi.mocked(parseFile).mockResolvedValue({ dropped: [] } as never);
     R();
     await userEvent.upload(screen.getByLabelText(/drop a song/i), new File(['x'], 'a.mid'));
     expect(await screen.findByRole('button', { name: 'Choose another file' })).toBeInTheDocument();

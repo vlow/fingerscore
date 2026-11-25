@@ -139,5 +139,5 @@ export function parseMidi(file: string, bytes: Uint8Array): ParsedSong {
     t.notes = t.notes.filter(n => n.start >= -ONSET_TOLERANCE);
   }
 
-  return { file, format: 'MIDI', timeSig, tempo, key, pickup, marks: [], tracks };
+  return { file, format: 'MIDI', timeSig, tempo, key, pickup, marks: [], dropped: [], tracks };
 }

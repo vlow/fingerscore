@@ -33,6 +33,8 @@ declare module 'abcjs/src/parse/abc_parse' {
     rest?: { type: string };
     chord?: { name: string; position: string }[];
     lyric?: { syllable: string; divider: string }[];   // one entry per verse
+    /** Names of the `!decoration!`s before a note or, when they stand before a bar line, on the bar. */
+    decoration?: string[];
     startTriplet?: number;
     tripletMultiplier?: number;
     tripletR?: number;

@@ -85,7 +85,7 @@ function referenceRun(count: number, seed: number) {
     let t = 0;
     const notes = lengths.map((d, i) => { const q = { start: t / 12, dur: d / 12, midi: 60 + i }; t += d; return q; });
     const song: ParsedSong = {
-      file: 'r.mid', format: 'MIDI', timeSig: ts, tempo: 100, key: null, pickup: 0, marks: [],
+      file: 'r.mid', format: 'MIDI', timeSig: ts, tempo: 100, key: null, pickup: 0, marks: [], dropped: [],
       tracks: [{ id: 't', name: 'M', instrument: '', channel: 0, percussion: false, notes, lyrics: [], chords: [] }],
     };
     const doc = buildDoc(song, { trackId: 't', keep: 'top', lyricsFrom: null, chordsFrom: null, instId: 'fl', prefs: DEFAULT_PREFS });

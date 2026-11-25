@@ -39,7 +39,7 @@ function looseNotes(bars: number, sd: number, seed: number, sixteenthsOnly = fal
 
 function buildLoose(notes: RawNote[]) {
   const song: ParsedSong = {
-    file: 'loose.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [],
+    file: 'loose.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [], dropped: [],
     tracks: [{ id: 't', name: 'M', instrument: '', channel: 0, percussion: false, notes, lyrics: [], chords: [] }],
   };
   return buildDoc(song, { trackId: 't', keep: 'top', lyricsFrom: null, chordsFrom: null, instId: 'fl', prefs: DEFAULT_PREFS });

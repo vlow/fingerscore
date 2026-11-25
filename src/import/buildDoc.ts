@@ -1,5 +1,7 @@
+import { barLabelOf } from '../domain/bars';
 import { parseChord } from '../domain/chords';
 import { inst } from '../domain/instruments';
+import { JUMP_TEXT } from '../domain/jumps';
 import { barCap } from '../domain/time';
 import { rankShifts, scoringPitches, type Prefs } from '../domain/transpose';
 import type { Doc, Ev, InstId } from '../domain/types';
@@ -7,7 +9,7 @@ import { toBars } from './bars';
 import { detectChords } from './harmony';
 import { estimateKey, majorOrRelativeMinor } from './keyfind';
 import { monophonic, quantise } from './quantise';
-import { ImportError, tooLong, type ParsedSong } from './types';
+import { ImportError, tooLong, type ParsedMark, type ParsedSong } from './types';
 import { MAX_BARS } from '../domain/persistence';
 
 export interface BuildOptions {
@@ -47,6 +49,12 @@ function titleFrom(file: string): string {
   return (dot > 0 ? file.slice(0, dot) : file).replace(/_/g, ' ');
 }
 
+/** The sentences for the jump marks of a bar that lies behind the last note of the chosen track. */
+function lostSentences(doc: Doc, m: ParsedMark): string[] {
+  const names = [m.segno && 'Segno', m.coda && 'Coda', m.fine && 'Fine', m.toCoda && 'To Coda', m.jump && JUMP_TEXT[m.jump]];
+  return names.filter((n): n is string => typeof n === 'string').map(n => `${n} in bar ${barLabelOf(doc, m.bar)} was left out.`);
+}
+
 export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
   const track = song.tracks.find(t => t.id === o.trackId);
   if (!track) throw new ImportError('That track is not in the file.');
@@ -58,7 +66,7 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
   const rawPickup = Number.isFinite(song.pickup) ? Math.max(0, song.pickup * TPQ) : 0;
   let pickupTicks = Math.round(rawPickup / 3) * 3;
   if (pickupTicks >= barCap(song.timeSig)) pickupTicks = 0; // a full bar or more is no pickup
-  const { bars: score, rounded } = toBars(melody, song.timeSig, pickupTicks, song.marks);
+  const { bars: score, rounded, lost } = toBars(melody, song.timeSig, pickupTicks, song.marks);
   const simplified = q.simplified || rounded || Math.abs(pickupTicks - rawPickup) > 0.02 * TPQ;
   const placed = place(score);
 
@@ -101,7 +109,7 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
     : { tonicPc: song.key.tonicPc, mode: song.key.mode };
   const shift = rankShifts(scoringPitches(score), inst(o.instId), key.tonicPc, key.mode, o.prefs)[0].shift;
 
-  return {
+  const doc: Doc = {
     score,
     timeSig: song.timeSig,
     originalTonicPc: key.tonicPc,
@@ -119,4 +127,7 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
     show: { fingerings: true, chords: true, lyrics: true, raiseExtensions: true },
     source: { file: song.file, format: song.format, track: track.name, trackCount: song.tracks.length, simplified },
   };
+  const dropped = [...song.dropped, ...lost.flatMap(m => lostSentences(doc, m))];
+  if (dropped.length > 0) doc.source.dropped = dropped;
+  return doc;
 }

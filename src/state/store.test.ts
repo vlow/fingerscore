@@ -198,7 +198,7 @@ describe('store', () => {
   });
 
   it('song survives a reload and setSong(null) clears storage', () => {
-    const song: ParsedSong = { file: 'a.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [], tracks: [] };
+    const song: ParsedSong = { file: 'a.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [], dropped: [], tracks: [] };
     useApp.getState().setSong(song);
     useApp.setState({ song: null });
     hydrate();
@@ -244,7 +244,7 @@ describe('store', () => {
     });
     useApp.getState().setDoc({ ...sampleDoc('fl'), title: 'File B' });
     expect(sessionStorage.getItem('fingerscore.doc')).toBeNull();
-    const song: ParsedSong = { file: 'b.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [],
+    const song: ParsedSong = { file: 'b.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [], dropped: [],
       tracks: [{ id: 't0', name: 'x'.repeat(3000), instrument: '', channel: 1, percussion: false, notes: [], lyrics: [], chords: [] }] };
     sessionStorage.setItem('fingerscore.song', '{"old":true}');
     useApp.getState().setSong(song);

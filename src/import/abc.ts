@@ -1,11 +1,12 @@
 import Parse, { type AbcElement, type AbcKey, type AbcMeter, type AbcPitch, type AbcStaff } from 'abcjs/src/parse/abc_parse';
 import { mod12 } from '../domain/keys';
-import type { Mode } from '../domain/types';
+import type { Jump, Mode } from '../domain/types';
 import { ROOT_NAMES } from './chordNames';
 import { barAt, onBarLine, type Grid } from './grid';
+import { jumpCollector, mergeMarks } from './jumpMarks';
 import { songTimeSig } from './meter';
 import { own } from './own';
-import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './types';
+import { ImportError, type ParsedMark, type ParsedSong, type ParsedTrack, type RawNote } from './types';
 
 const DEFAULT_TEMPO = 120;
 const EPS = 1e-9;
@@ -196,6 +197,7 @@ interface VoiceState {
   staff: number; voice: number;
   notes: RawNote[]; lyrics: ParsedTrack['lyrics']; chords: ParsedTrack['chords'];
   bars: { at: number; el: AbcElement }[];
+  decorated: { at: number; names: string[] }[];     // notes with decorations, at the note's start
   pos: number;                       // quarter notes
   key: ReadKey | null; keyName: string;
   firstKey: { key: ReadKey; transpose: number } | null;   // the voice's first key and its transpose= at that point
@@ -240,6 +242,7 @@ function readNote(state: VoiceState, el: AbcElement): void {
     if (el.endTriplet) state.tupletLeft = 0;
   }
 
+  if (el.decoration?.length) state.decorated.push({ at, names: el.decoration });
   const symbol = el.chord?.find(c => c.position === 'default');
   const text = symbol ? chordText(symbol.name, state.transpose) : null;
   if (text !== null) state.chords.push({ at, text });
@@ -339,12 +342,13 @@ function realign(state: VoiceState, full: number): void {
   }
   for (const l of state.lyrics) l.at = moved(l.at, true);
   for (const c of state.chords) c.at = moved(c.at, true);
+  for (const d of state.decorated) d.at = moved(d.at, true);
   for (const b of state.bars) b.at = moved(b.at, false);
   state.pos += shift;
 }
 
-function readMarks(bars: VoiceState['bars'], grid: Grid, end: number): ParsedSong['marks'] {
-  const marks = new Map<number, ParsedSong['marks'][number]>();
+function readMarks(bars: VoiceState['bars'], grid: Grid, end: number): ParsedMark[] {
+  const marks = new Map<number, ParsedMark>();
   const mark = (bar: number) => {
     const m = marks.get(bar) ?? { bar };
     marks.set(bar, m);
@@ -363,6 +367,36 @@ function readMarks(bars: VoiceState['bars'], grid: Grid, end: number): ParsedSon
     if (volta && next <= lastBar) mark(next).volta ??= volta;
   }
   return Array.from(marks.values()).sort((a, b) => a.bar - b.bar);
+}
+
+// ---- jump marks ----
+
+/** The decorations that are jump marks. `!dacoda!` is a "To Coda". */
+const DECORATIONS: Record<string, 'segno' | 'coda' | 'fine' | 'toCoda' | Jump> = {
+  segno: 'segno', coda: 'coda', fine: 'fine', dacoda: 'toCoda',
+  'D.C.': 'dc', dacapo: 'dc', 'D.C.alfine': 'dcFine', 'D.C.alcoda': 'dcCoda',
+  'D.S.': 'ds', 'D.S.alfine': 'dsFine', 'D.S.alcoda': 'dsCoda',
+};
+
+/**
+ * Jump marks of one voice. A decoration on a note belongs to the note's bar: Segno and Coda stand at its start, the
+ * other marks at its end. A decoration on a bar line gives a Segno or Coda to the bar after it and every other mark to the bar before.
+ */
+function readJumpMarks(state: VoiceState, grid: Grid): Pick<ParsedSong, 'marks' | 'dropped'> {
+  const jumps = jumpCollector();
+  const put = (name: string, starts: number, ends: number) => {
+    const kind = own(DECORATIONS, name);
+    if (kind === undefined) return;
+    if (kind === 'segno' || kind === 'coda') jumps[kind](starts);
+    else if (kind === 'fine' || kind === 'toCoda') jumps[kind](ends);
+    else jumps.jump(ends, kind);
+  };
+  for (const { at, names } of state.decorated) for (const name of names) put(name, barAt(grid, at), barAt(grid, at));
+  for (const { at, el } of state.bars) {
+    const boundary = onBarLine(grid, at);
+    for (const name of el.decoration ?? []) put(name, barAt(grid, at) + (boundary ? 0 : 1), barAt(grid, at) - (boundary ? 1 : 0));
+  }
+  return jumps.result(grid.pickup);
 }
 
 // ---- entry ----
@@ -389,7 +423,7 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
       let state = states.get(id);
       if (!state) {
         state = {
-          staff: s, voice: v, notes: [], lyrics: [], chords: [], bars: [], pos: 0, key: null, keyName: '', firstKey: null,
+          staff: s, voice: v, notes: [], lyrics: [], chords: [], bars: [], decorated: [], pos: 0, key: null, keyName: '', firstKey: null,
           barAccidentals: new Map(), waiting: new Map(), shift: 0, transpose: 0, tupletLeft: 0, tupletRatio: 1,
         };
         states.set(id, state);
@@ -443,9 +477,11 @@ export async function parseAbc(file: string, bytes: Uint8Array): Promise<ParsedS
   const end = Math.max(...ordered.map(st => st.pos));
   // concert key: the written key of the first voice with notes, moved by that voice's transpose=
   const { key, transpose } = first.firstKey ?? { key: song.key, transpose: first.transpose };
+  const grid = { pickup, barLength };
+  const jumps = readJumpMarks(first, grid);
   return {
     file, format: 'ABC', timeSig, tempo: tempoOf(tune.metaText.tempo), pickup,
     key: { tonicPc: mod12(key.tonicPc + transpose), mode: key.mode },
-    marks: readMarks(first.bars, { pickup, barLength }, end), tracks,
+    marks: mergeMarks(readMarks(first.bars, grid, end), jumps.marks), dropped: jumps.dropped, tracks,
   };
 }

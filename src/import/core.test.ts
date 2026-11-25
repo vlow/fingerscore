@@ -14,7 +14,7 @@ const n = (start: number, dur: number, midi = 60): RawNote => ({ start, dur, mid
 
 function mkSong(notes: RawNote[], extra: { file?: string; lyrics?: { at: number; text: string }[]; chords?: { at: number; text: string }[]; key?: ParsedSong['key'] } = {}): ParsedSong {
   return {
-    file: extra.file ?? 'song.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: extra.key ?? null, pickup: 0, marks: [],
+    file: extra.file ?? 'song.mid', format: 'MIDI', timeSig: [4, 4], tempo: 100, key: extra.key ?? null, pickup: 0, marks: [], dropped: [],
     tracks: [{ id: 't1', name: 'Melody', instrument: 'Flute', channel: 0, percussion: false, notes, lyrics: extra.lyrics ?? [], chords: extra.chords ?? [] }],
   };
 }

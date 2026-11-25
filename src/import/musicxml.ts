@@ -1,11 +1,12 @@
 import JSZip from 'jszip';
 import { ROOT_NAMES } from './chordNames';
 import { barAt, barEndingAt, barStartingAt } from './grid';
+import { jumpCollector, mergeMarks } from './jumpMarks';
 import { songTimeSig } from './meter';
 import { own } from './own';
 import { MODE_BELOW_MAJOR } from '../domain/keys';
-import type { Mode, TimeSig } from '../domain/types';
-import { ImportError, type ParsedSong, type ParsedTrack, type RawNote } from './types';
+import type { Jump, Mode, TimeSig } from '../domain/types';
+import { ImportError, type ParsedMark, type ParsedSong, type ParsedTrack, type RawNote } from './types';
 
 const DEFAULT_TEMPO = 120;
 const EPS = 1e-9;
@@ -19,7 +20,7 @@ const NO_CHORD = /^n\.?\s*c\.?$/i;
 const BEAT_UNITS: Record<string, number> = { whole: 4, half: 2, quarter: 1, eighth: 0.5, '16th': 0.25 };
 
 interface WrittenKey { tonicPc: number; mode: Mode | null; transpose: number }
-type Mark = ParsedSong['marks'][number];
+type Mark = ParsedMark;
 type Lyric = ParsedTrack['lyrics'][number];
 
 // ---- DOM helpers ----
@@ -208,7 +209,70 @@ function voltaOf(list: string): '1' | '2' | null {
   return numbers.has(1) ? '1' : numbers.has(2) ? '2' : null;
 }
 
-function readPart(part: Element, info: Map<string, Element>, grid: Grid, marks: Map<number, Mark> | null): PartResult {
+type Jumps = ReturnType<typeof jumpCollector>;
+type Family = 'dc' | 'ds';
+
+/** The jumps the words of a direction name, without dots and spaces: "D.S. al Coda" is `dsalcoda`. */
+const WORD_JUMPS: Record<string, Jump> = {};
+for (const [heads, forms] of [[['dc', 'dacapo'], ['dc', 'dcFine', 'dcCoda']], [['ds', 'dalsegno'], ['ds', 'dsFine', 'dsCoda']]] as const) {
+  for (const head of heads) {
+    WORD_JUMPS[head] = forms[0];
+    WORD_JUMPS[`${head}alfine`] = forms[1];
+    WORD_JUMPS[`${head}alcoda`] = forms[2];
+  }
+}
+
+/** Reads what one measure says about jumps. Words decide a jump; a `sound` without words is settled by the file's Fine or To Coda. */
+function measureJumpReader(measureStart: number, measureEnd: number, grid: Grid, jumps: Jumps) {
+  const wordJumps: { t: number; words: string }[] = [];
+  const soundJumps: { t: number; family: Family }[] = [];
+  const sound = (el: Element, t: number) => {
+    const has = (name: string) => el.getAttribute(name) !== null;
+    if (has('segno')) jumps.segno(barAt(grid, t));
+    if (has('coda')) jumps.coda(barAt(grid, t));
+    if (has('fine')) jumps.fine(barEndingAt(grid, t));
+    if (has('tocoda')) jumps.toCoda(barEndingAt(grid, t));
+    if (has('dacapo')) soundJumps.push({ t, family: 'dc' });
+    if (has('dalsegno')) soundJumps.push({ t, family: 'ds' });
+  };
+  const squeeze = (words: string) => words.toLowerCase().replace(/[\s.]/g, '');
+  return {
+    /** `t` is where the element stands, in quarter notes from the start of the song. */
+    read(el: Element, t: number): void {
+      if (el.localName === 'barline') {
+        const at = el.getAttribute('location') === 'left' ? measureStart : measureEnd;
+        if (kid(el, 'segno')) jumps.segno(barAt(grid, at));
+        if (kid(el, 'coda')) jumps.coda(barAt(grid, at));
+      } else if (el.localName === 'sound') {
+        sound(el, t);
+      } else if (el.localName === 'direction') {
+        const types = kids(el, 'direction-type');
+        if (types.some(d => kid(d, 'segno'))) jumps.segno(barAt(grid, t));
+        if (types.some(d => kid(d, 'coda'))) jumps.coda(barAt(grid, t));
+        const words = types.flatMap(d => kids(d, 'words')).map(w => w.textContent ?? '').join(' ').trim();
+        const plain = squeeze(words);
+        if (plain === 'fine') jumps.fine(barEndingAt(grid, t));
+        else if (plain === 'tocoda') jumps.toCoda(barEndingAt(grid, t));
+        else if (/^(dc|ds|dacapo|dalsegno)/.test(plain)) wordJumps.push({ t, words });
+        for (const sd of kids(el, 'sound')) sound(sd, t);
+      }
+    },
+    /** At the end of the measure, when its words and its sounds are all in. */
+    finish(): void {
+      if (wordJumps.length === 0) {
+        for (const { t, family } of soundJumps) jumps.jumpByFile(barEndingAt(grid, t), family);
+        return;
+      }
+      for (const { t, words } of wordJumps) {
+        const form = own(WORD_JUMPS, squeeze(words));
+        if (form) jumps.jump(barEndingAt(grid, t), form);
+        else jumps.unsupported(barEndingAt(grid, t), words);
+      }
+    },
+  };
+}
+
+function readPart(part: Element, info: Map<string, Element>, grid: Grid, marks: Map<number, Mark> | null, jumps: Jumps): PartResult {
   const id = part.getAttribute('id') ?? 'P1';
   const sp = info.get(id);
   const channel = num(text(kid(sp ?? part, 'midi-instrument'), 'midi-channel'));
@@ -233,8 +297,10 @@ function readPart(part: Element, info: Map<string, Element>, grid: Grid, marks: 
     let pos = 0;
     let lastStart = 0;
     let endVolta = false;
+    const measureJumps = measureJumpReader(measureStart, measureEnd, grid, jumps);
     for (const el of Array.from(measure.children)) {
       const name = el.localName;
+      if (name === 'direction' || name === 'sound' || name === 'barline') measureJumps.read(el, measureStart + pos);
       if (name === 'attributes') {
         divisions = num(text(el, 'divisions')) ?? divisions;
         const tr = kid(el, 'transpose');
@@ -298,6 +364,7 @@ function readPart(part: Element, info: Map<string, Element>, grid: Grid, marks: 
         if (tieStart) waiting.set(midi, target); else waiting.delete(midi);
       }
     }
+    measureJumps.finish();
     if (marks && voltaActive) {
       const m = mark(barAt(grid, (measureStart + measureEnd) / 2));
       m.volta ??= voltaActive;
@@ -326,8 +393,9 @@ export async function parseMusicXml(file: string, bytes: Uint8Array): Promise<Pa
   const pickup = grid.pickup;
 
   const marks = new Map<number, Mark>();
+  const jumps = jumpCollector();      // the marks of every part, merged by bar: the marks may stand in any one part
   const tracks: ParsedTrack[] = [];
-  const results = parts.map((part, i) => readPart(part, info, grid, i === 0 ? marks : null));
+  const results = parts.map((part, i) => readPart(part, info, grid, i === 0 ? marks : null, jumps));
   results.forEach((r, i) => {
     const voiceIds = Array.from(r.voices.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     voiceIds.forEach((vid, vi) => {
@@ -348,8 +416,9 @@ export async function parseMusicXml(file: string, bytes: Uint8Array): Promise<Pa
   });
 
   if (!tracks.some(t => !t.percussion)) throw new ImportError(`"${file}" has no melody track.`);
+  const found = jumps.result(pickup);
   return {
     file, format: 'MusicXML', timeSig, tempo: readTempo(root), key: concertKey(results), pickup,
-    marks: Array.from(marks.values()).sort((a, b) => a.bar - b.bar), tracks,
+    marks: mergeMarks(Array.from(marks.values()), found.marks), dropped: found.dropped, tracks,
   };
 }

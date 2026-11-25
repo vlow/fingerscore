@@ -1,5 +1,8 @@
 import { barAt, barEndingAt, barStartingAt, type Grid } from '../grid';
+import { jumpCollector, mergeMarks } from '../jumpMarks';
 import { songTimeSig } from '../meter';
+import { own } from '../own';
+import type { Jump } from '../../domain/types';
 import { ImportError, tooLong, type ParsedSong, type ParsedTrack, type RawNote } from '../types';
 import { harmonyOf, kid, kids, lyricText, majorTonicOfFifths, mod12, num, text } from './common';
 
@@ -61,6 +64,42 @@ export function markSink(grid: Grid) {
     volta(measure: Bar, endings: '1' | '2'): void { at(barAt(grid, measure.start + measure.length / 2)).volta = endings; },
     result(): ParsedSong['marks'] { return Array.from(marks.values()).sort((a, b) => a.bar - b.bar); },
   };
+}
+
+// ---- jump marks ----
+
+/** What a `Marker`'s label says: the Segno, the Coda sign (`codab`), the Fine and the "To Coda" (`coda`). The text is not used. */
+const MARKER_LABELS: Record<string, 'segno' | 'coda' | 'fine' | 'toCoda'> = { segno: 'segno', codab: 'coda', fine: 'fine', coda: 'toCoda' };
+
+/** The six jumps by their labels `jumpTo`, `playUntil` and `continueAt`. */
+const JUMP_LABELS: Record<string, Jump> = {
+  'start|end|': 'dc', 'start|fine|': 'dcFine', 'start|coda|codab': 'dcCoda',
+  'segno|end|': 'ds', 'segno|fine|': 'dsFine', 'segno|coda|codab': 'dsCoda',
+};
+
+/**
+ * Jump marks of the first staff. `Marker` and `Jump` are direct children of a measure in every version. A Segno or Coda
+ * sign belongs to the bar that holds the measure's start, the other marks to the bar that holds its end.
+ */
+function readJumpMarks(bars: Bar[], grid: Grid): Pick<ParsedSong, 'marks' | 'dropped'> {
+  const jumps = jumpCollector();
+  for (const { el, start, length } of bars) {
+    const first = barAt(grid, start);
+    const last = barEndingAt(grid, start + length);
+    for (const marker of kids(el, 'Marker')) {
+      const label = (text(marker, 'label') ?? '').toLowerCase();
+      const kind = own(MARKER_LABELS, label);
+      if (kind === 'segno' || kind === 'coda') jumps[kind](first);
+      else if (kind) jumps[kind](last);
+      else if (/segno|coda|fine/.test(label)) jumps.unsupported(last, `A marker "${label}"`);
+    }
+    for (const jump of kids(el, 'Jump')) {
+      const form = own(JUMP_LABELS, [text(jump, 'jumpTo'), text(jump, 'playUntil'), text(jump, 'continueAt')].map(l => (l ?? '').toLowerCase()).join('|'));
+      if (form) jumps.jump(last, form);
+      else jumps.unsupported(last, text(jump, 'text') || 'A jump');
+    }
+  }
+  return jumps.result(grid.pickup);
 }
 
 // ---- parts ----
@@ -224,5 +263,10 @@ export function readScore(file: string, score: Element, version: number, dialect
 
   const keyPart = parts.find(p => !p.percussion && p.staffIds.length > 0);
   const key = readKey(score, version, keyPart && byId.get(keyPart.staffIds[0]), keyPart?.transpose ?? 0, items);
-  return { file, format: 'MuseScore', timeSig, tempo: readTempo(staves.map(s => s.measures), items), key, pickup, marks: dialect.readMarks(bars, { pickup, barLength: meter }), tracks };
+  const grid = { pickup, barLength: meter };
+  const jumps = readJumpMarks(bars, grid);
+  return {
+    file, format: 'MuseScore', timeSig, tempo: readTempo(staves.map(s => s.measures), items), key, pickup,
+    marks: mergeMarks(dialect.readMarks(bars, grid), jumps.marks), dropped: jumps.dropped, tracks,
+  };
 }
