@@ -123,3 +123,12 @@ describe('glyph geometry in sheet pixels', () => {
     }
   });
 });
+
+describe('the bundled glyph file', () => {
+  it('holds only what the renderer reads: outlines, ink boxes and advances, one entry per glyph', () => {
+    expect(Object.keys(glyphs).sort()).toEqual(['advance', 'bbox', 'paths']);
+    const names = Object.keys(glyphs.paths).sort();
+    expect(Object.keys(glyphs.bbox).sort()).toEqual(names);
+    expect(Object.keys(glyphs.advance).sort()).toEqual(names);
+  });
+});

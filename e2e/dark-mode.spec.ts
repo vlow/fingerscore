@@ -236,6 +236,7 @@ test('D06 the accessibility scan passes in dark mode on Night, Dimmed and Sepia 
   for (const choice of ['Dimmed', 'Sepia'] as const) {
     await paperChoice(page, choice).click();
     await page.getByRole('button', { name: 'Play mode' }).click();
+    await expect(page.getByRole('region', { name: 'Play mode' })).toBeVisible();
     await expect(page.getByRole('button', { name: `Paper: ${choice}` })).toBeVisible();
     await scan(`Play mode on ${choice} paper`);
     await page.keyboard.press('Escape');

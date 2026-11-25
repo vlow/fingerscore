@@ -16,7 +16,7 @@ const ADVANCE = glyphs.advance as Record<AnyGlyph, number>;
 export const GLYPH_SCALE = 10 / 250;
 
 /**
- * SMuFL origin of each glyph relative to the y the caller passes (glyphs.json `placement`):
+ * SMuFL origin of each glyph relative to the y the caller passes (scripts/extract-glyphs.md):
  * clef and rests get the bottom staff line B, accidentals the note y.
  */
 const ORIGIN_DY: Record<GlyphName, number> = {

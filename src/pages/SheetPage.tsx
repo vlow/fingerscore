@@ -16,7 +16,6 @@ import KeyBridge from '../ui/KeyBridge';
 import { LoadBoundary } from '../ui/LoadBoundary';
 import { ModeSwitch } from '../ui/ModeSwitch';
 import PageBar from '../ui/PageBar';
-import PlayMode from '../ui/PlayMode';
 import RangeMeter from '../ui/RangeMeter';
 import SaveControls from '../ui/SaveControls';
 import PaperChoice from '../ui/PaperChoice';
@@ -32,6 +31,7 @@ import { preloadPanel, useEditPanelSlot } from './sheet/useEditPanelSlot';
 import { useFileActions } from './sheet/useFileActions';
 import { paperDescription } from './sheet/paperDescription';
 import { usePlayback } from './sheet/usePlayback';
+import { PLAY_MODE_LOAD_FAILED, usePlayModeLoad } from './sheet/usePlayModeLoad';
 import { useSelection } from './sheet/useSelection';
 import { useSheetKeys } from './sheet/useSheetKeys';
 import '../styles/print.css';
@@ -111,22 +111,25 @@ function Sheet({ doc }: { doc: Doc }) {
   }
 
   // Play mode (SPEC §11a) covers the page: no audio, no edit mode, no selection, and nothing that changes the document.
+  // Its code loads on first use; until it has arrived the sheet stays as it is, and a failed load shows a notice.
   // A sheet opened with ▶ Play starts there, once: the history entry loses that state, so a reload shows the editor.
   const location = useLocation();
   const startsInPlayMode = (location.state as { playMode?: boolean } | null)?.playMode === true;
-  const [performing, setPerforming] = useState(startsInPlayMode);
-  useEffect(() => {
-    if (startsInPlayMode) navigate(location.pathname, { replace: true, state: null });
-  }, [startsInPlayMode, location.pathname, navigate]);
+  const [performing, setPerforming] = useState(false);
   const descriptionId = useId();
   const playModeButton = useRef<HTMLButtonElement>(null);
-  function enterPlayMode() {
+  const { View: PlayMode, failed: playModeFailed, request: enterPlayMode } = usePlayModeLoad(() => {
     stopPlay();
     closeAlt(false);
     changeMode('view', false);
     select(null);
     setPerforming(true);
-  }
+  });
+  useEffect(() => {
+    if (!startsInPlayMode) return;
+    navigate(location.pathname, { replace: true, state: null });
+    enterPlayMode();
+  }, [startsInPlayMode, location.pathname, navigate, enterPlayMode]);
   const wasPerforming = useRef(false);
   useEffect(() => {
     if (wasPerforming.current && !performing) playModeButton.current?.focus();
@@ -154,7 +157,7 @@ function Sheet({ doc }: { doc: Doc }) {
 
   return (
     <div className={s.page}>
-      {performing && <PlayMode doc={doc} derived={derived} layout={layout} onExit={() => setPerforming(false)} />}
+      {performing && PlayMode && <PlayMode doc={doc} derived={derived} layout={layout} onExit={() => setPerforming(false)} />}
       <div data-print-hide="">
         <PageBar
           left={
@@ -272,6 +275,7 @@ function Sheet({ doc }: { doc: Doc }) {
             <ModeSwitch mode={mode} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
             <div className={s.toolbarEnd}>
               {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
+              {playModeFailed && <p role="alert" className={s.playError}>{PLAY_MODE_LOAD_FAILED}</p>}
               <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')}
                 onPlayMode={enterPlayMode} playModeRef={playModeButton} />
             </div>

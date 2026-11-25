@@ -2184,7 +2184,7 @@ describe('play mode', () => {
   it('opens with the Play mode button and closes with Esc, back on the button', async () => {
     open('asax');
     await user.click(screen.getByRole('button', { name: 'Play mode' }));
-    expect(region()).toBeInTheDocument();
+    await screen.findByRole('region', { name: 'Play mode' });
     expect(within(region()!).getByRole('heading', { level: 1 })).toHaveTextContent('The Water Is Wide');
     expect(screen.getByRole('textbox', { name: 'Sheet title' }).closest('[inert]')).not.toBeNull();
     await user.keyboard('{Escape}');
@@ -2200,6 +2200,7 @@ describe('play mode', () => {
     await user.click(screen.getByRole('button', { name: 'Listen' }));
     fakePlayer.stop.mockClear();
     await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    await screen.findByRole('region', { name: 'Play mode' });
     expect(fakePlayer.stop).toHaveBeenCalled();
     await user.keyboard('{Escape}');
     expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
@@ -2211,6 +2212,7 @@ describe('play mode', () => {
     await user.click(container.querySelector('[data-hit]')!);
     expect(screen.getByRole('button', { name: 'Listen from selected' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    await screen.findByRole('region', { name: 'Play mode' });
     await user.keyboard('{Escape}');
     expect(screen.getByRole('radio', { name: /View/ })).toBeChecked();
     expect(screen.getByRole('button', { name: 'Listen' })).toBeInTheDocument();
@@ -2221,6 +2223,7 @@ describe('play mode', () => {
     act(() => useApp.getState().patchDoc({ tempo: 120 }));
     const before = useApp.getState().doc;
     await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    await screen.findByRole('region', { name: 'Play mode' });
     await user.keyboard('{Control>}z{/Control}');
     await user.keyboard('{Control>}s{/Control}');
     expect(useApp.getState().doc).toBe(before);
