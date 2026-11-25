@@ -14,6 +14,7 @@ const PATHS = glyphs.paths as Record<string, string>;
 const ALL = {
   trebleClef: 1, flat: 1, sharp: 1, natural: 1, doubleSharp: 1, doubleFlat: 1,
   restWhole: 1, restHalf: 1, restQuarter: 1, restEighth: 1, restSixteenth: 1,
+  segno: 1, coda: 1,
 } satisfies Record<GlyphName, 1>;
 const NAMES = Object.keys(ALL) as GlyphName[];
 

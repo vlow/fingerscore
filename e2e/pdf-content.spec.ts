@@ -446,6 +446,68 @@ test('the triplet\'s white outline is a shape under the one text item "3"', asyn
   }
 });
 
+/** The sample song with every jump mark, each in a bar of its own (the Segno and the "D.S. al Coda" far apart). */
+const marked: Builder = `h => {
+  const d = h.sampleDoc();
+  d.score[0].segno = true;
+  d.score[3].fine = true;
+  d.score[4].coda = true;
+  d.score[5].toCoda = true;
+  d.score[16].jump = 'dsCoda';
+  return d;
+}`;
+
+interface MarkGeometry { systemHeight: number; markRow: number; systemOfBar: number[]; pages: number[][] }
+
+test('jump marks: texts in bold italic and the signs as paths, each in the row of its bar\'s system on the page of that system', async ({ page }) => {
+  const g = await call<Geometry>(page, 'geometry');
+  const m = await hook<MarkGeometry>(page, 'sheetGeometry', marked, 'de-DE');
+  expect(m.markRow).toBeGreaterThan(0);
+  expect(m.systemHeight).toBe(g.systemHeight + m.markRow);
+  const { bytes } = await makePdf(page, marked);
+  const { pages } = await readPdf(bytes);
+  expect(pages).toHaveLength(m.pages.length);
+  // the row of system `s`: a y interval on the page that holds it (the first page also holds the title block)
+  const rowOf = (s: number) => {
+    const n = m.pages.findIndex(list => list.includes(s));
+    const top = MARGIN + ((n === 0 ? g.titleBlock : 0) + m.systemHeight * m.pages[n].indexOf(s)) * unitOf(pages[n]);
+    return { n, top, bottom: top + m.markRow * unitOf(pages[n]) };
+  };
+  const texts: [string, number][] = [['D.S. al Coda', 16], ['Fine', 3], ['To Coda', 5]];
+  for (const [str, bar] of texts) {
+    const row = rowOf(m.systemOfBar[bar]);
+    const hits = pages.flatMap((p, n) => p.text.filter(t => t.str === str).map(t => ({ t, n })));
+    expect(hits, `text "${str}" once`).toHaveLength(1);
+    expect(hits[0].n, `"${str}" on the page of its system`).toBe(row.n);
+    expect(hits[0].t.font).toBe('AtkinsonHyperlegible-BoldItalic');
+    expect(hits[0].t.y).toBeGreaterThan(row.top);
+    expect(hits[0].t.y).toBeLessThan(row.bottom);
+  }
+  // the signs: one path in the row of the Segno's system; two in the row of the bar with the Coda and the bar with "To Coda"
+  const signs = (s: number) => {
+    const row = rowOf(s);
+    return pages[row.n].paths.filter(q => q.fill !== null && q.y1 >= row.top - 0.01 && q.y2 <= row.bottom + 0.01).length;
+  };
+  const rows = new Map<number, number>();
+  for (const [bar, count] of [[0, 1], [4, 1], [5, 1]] as const) rows.set(m.systemOfBar[bar], (rows.get(m.systemOfBar[bar]) ?? 0) + count);
+  for (const [s, count] of rows) expect(signs(s), `sign outlines in the row of system ${s}`).toBe(count);
+  expect(signs(m.systemOfBar[16])).toBe(0);
+  // nothing is cut and nothing leaves the margins
+  expectPagesInsideMargins(pages, (n, total) => `The Water Is Wide · page ${n} of ${total}`);
+});
+
+test('a sheet with marks and 20 systems breaks between systems, as the page model says, and keeps everything in the margins', async ({ page }) => {
+  const twenty: Builder = `h => { const d = (${repeated(80)})(h); d.score[0].segno = true; d.score[79].jump = 'dc'; return d; }`;
+  const m = await hook<MarkGeometry>(page, 'sheetGeometry', twenty, 'de-DE');
+  expect(m.pages.flat()).toEqual(Array.from({ length: 20 }, (_, i) => i));
+  const { pages } = await readPdf((await makePdf(page, twenty)).bytes);
+  expect(pages).toHaveLength(m.pages.length);
+  expect(pages).toHaveLength(await hook<number>(page, 'expectedPages', twenty, 'de-DE'));
+  expectPagesInsideMargins(pages, (n, total) => `The Water Is Wide · page ${n} of ${total}`);
+  expect(pages[0].text.some(t => t.str === 'D.C.')).toBe(false);
+  expect(pages[pages.length - 1].text.some(t => t.str === 'D.C.' && t.font === 'AtkinsonHyperlegible-BoldItalic')).toBe(true);
+});
+
 test('a squeezed text with symbols is scaled as a whole, outlines included', async ({ page }) => {
   const items = [
     { text: 'B♭m7', px: 13, weight: 700, squeezeTo: 24 },
@@ -602,6 +664,9 @@ test.describe('images for review (set PDF_OUT to run)', () => {
       await hook(page, 'showPaper', build);
       await page.locator('#pdf-screen [data-testid="paper"]').screenshot({ path: join(OUT!, `sheet-${name}-screen.png`) });
     }
+    const withMarks = await makePdf(page, marked);
+    writeFileSync(join(OUT!, 'sheet-marks.pdf'), withMarks.bytes);
+    writeFileSync(join(OUT!, 'sheet-marks-p1.png'), await renderPdfPage(withMarks.bytes, 1, 150));
     const nine = await makePdf(page, repeated(36));
     expect(nine.bytes.length).toBeGreaterThan(0);
     console.log(`one page (12 bars): ${(await makePdf(page, repeated(12))).bytes.length} bytes; nine systems: ${nine.bytes.length} bytes`);

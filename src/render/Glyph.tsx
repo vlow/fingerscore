@@ -4,7 +4,8 @@ import { usePalette } from './palette';
 
 export type GlyphName =
   | 'trebleClef' | 'flat' | 'sharp' | 'natural' | 'doubleSharp' | 'doubleFlat'
-  | 'restWhole' | 'restHalf' | 'restQuarter' | 'restEighth' | 'restSixteenth';
+  | 'restWhole' | 'restHalf' | 'restQuarter' | 'restEighth' | 'restSixteenth'
+  | 'segno' | 'coda';
 export type DigitName = `digit${0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`;
 type AnyGlyph = GlyphName | DigitName;
 
@@ -24,9 +25,10 @@ const ORIGIN_DY: Record<GlyphName, number> = {
   flat: 0, sharp: 0, natural: 0, doubleSharp: 0, doubleFlat: 0,   // notehead centre
   restWhole: -30,                                // hangs from the 4th line
   restHalf: -20, restQuarter: -20, restEighth: -20, restSixteenth: -20,   // middle line
+  segno: 0, coda: 0,                             // baseline
 };
 
-const transform = (x: number, y: number) => `translate(${x}, ${y}) scale(${GLYPH_SCALE}, ${-GLYPH_SCALE})`;
+const transform = (x: number, y: number, scale = GLYPH_SCALE) => `translate(${x}, ${y}) scale(${scale}, ${-scale})`;
 
 /** Horizontal ink extent in px relative to the glyph origin. */
 export function glyphInk(name: AnyGlyph): { left: number; right: number } {
@@ -34,10 +36,13 @@ export function glyphInk(name: AnyGlyph): { left: number; right: number } {
   return { left: x1 * GLYPH_SCALE, right: x2 * GLYPH_SCALE };
 }
 
-/** x = glyph origin (left side); y = bottom staff line for clef and rests, note y for accidentals. */
-export function Glyph(p: { name: GlyphName; x: number; y: number; fill?: string }): JSX.Element {
+/**
+ * x = glyph origin (left side); y = bottom staff line for clef and rests, note y for accidentals, the baseline for signs.
+ * `scale` is px per font unit; the default draws on the staff (one staff space = 10px).
+ */
+export function Glyph(p: { name: GlyphName; x: number; y: number; fill?: string; scale?: number }): JSX.Element {
   const pal = usePalette();
-  return <path d={PATHS[p.name]} transform={transform(p.x, p.y + ORIGIN_DY[p.name])} fill={p.fill ?? pal.ink} />;
+  return <path d={PATHS[p.name]} transform={transform(p.x, p.y + ORIGIN_DY[p.name], p.scale)} fill={p.fill ?? pal.ink} />;
 }
 
 /** One number from time-signature digits, ink centred on cx, digit origins on y. */

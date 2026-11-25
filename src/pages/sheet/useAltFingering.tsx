@@ -36,7 +36,7 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
         {open && (
           <AltFingeringPopover note={{ name: ev.spelled.name, options: ev.options, chosen: ev.chosen, auto: ev.auto }} bar={ev.bar + firstBar} kind={kind} chartStyle={doc.chartStyle}
             left={Math.round(Math.max(0, Math.min(SHEET.systemWidth - width, x - width / 2)))}
-            top={lastSystem ? SHEET.chartY - 148 : SHEET.chartY + 112}
+            top={lastSystem ? y - SHEET.altButtonDy - 148 : y - SHEET.altButtonDy + 112}
             anchor={anchorRef.current}
             onPick={k => { setFingering(ev.id, k === ev.auto ? null : k); closeAlt(true); }}
             onClose={closeAlt} />

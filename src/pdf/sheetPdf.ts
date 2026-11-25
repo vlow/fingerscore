@@ -47,7 +47,7 @@ export function planSheet(doc: Doc, d: Derived, layout: SheetLayout): SheetPlan 
   if (title.text !== '') blocks.push({ kind: 'title', height: TITLE.height });
   if (subtitle.text !== '') blocks.push({ kind: 'subtitle', height: SUBTITLE.height });
   blocks.push({ kind: 'meta', height: META.height });
-  for (const s of layout.systems) blocks.push({ kind: 'system', height: SHEET.systemHeight, index: s.index });
+  for (const s of layout.systems) blocks.push({ kind: 'system', height: layout.systemHeight, index: s.index });
   const lines = legend.lines.length + (legend.footerOwnLine ? 1 : 0);
   blocks.push({ kind: 'legend', height: LEGEND.top + LEGEND.line * lines });
   return { blocks, title, subtitle, legend };
@@ -93,7 +93,7 @@ async function drawPage(pdf: Pdf, sheet: Sheet, groups: PageGroup[], page: numbe
   const systems = renderSystems(sheet, placed.filter(p => p.block.kind === 'system').map(p => p.block.index!));
   try {
     for (const { block, y, scale, x0 } of placed) {
-      if (block.kind === 'system') await drawSvgScaled(pdf, systems.svgs.get(block.index!)!, y, SHEET.systemWidth, SHEET.systemHeight, scale);
+      if (block.kind === 'system') await drawSvgScaled(pdf, systems.svgs.get(block.index!)!, y, SHEET.systemWidth, sheet.layout.systemHeight, scale);
       else if (block.kind === 'legend') drawLegend(pdf, y, sheet.plan.legend);
       else drawHeading(pdf, sheet, block, y, x0, scale);
     }

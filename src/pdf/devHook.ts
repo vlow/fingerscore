@@ -11,7 +11,7 @@ import { inst } from '../domain/instruments';
 import { mod12 } from '../domain/keys';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
-import { layoutSheet, SHEET } from '../render/layout';
+import { layoutSheet, markRow, SHEET } from '../render/layout';
 import { COLUMN_BOTTOM } from '../render/NoteView';
 import { drawText, fontsOf, textWidth } from './drawText';
 import { Paper } from '../render/Paper';
@@ -143,6 +143,21 @@ export function geometry(): { chordY: number; lyricY: number; chartY: number; ch
     chordY: SHEET.chordY, lyricY: SHEET.lyricY, chartY: SHEET.chartY, chartBottom: COLUMN_BOTTOM, systemHeight: SHEET.systemHeight,
     titleBlock: TITLE.height + SUBTITLE.height + META.height,
   };
+}
+
+/**
+ * The height of every system of this document (the mark row included), the mark row's height, the system of each bar
+ * and the systems on each page of the page model.
+ */
+export async function sheetGeometry(doc: Doc, language: string): Promise<{ systemHeight: number; markRow: number; systemOfBar: number[]; pages: number[][] }> {
+  await loadFonts();
+  const d = derive(doc, DEFAULT_PREFS);
+  const layout = layoutSheet(doc, d);
+  const systemOfBar: number[] = [];
+  for (const s of layout.systems) for (const b of s.bars) systemOfBar[b.bar] = s.index;
+  const pages = paginate(planSheet(doc, d, layout).blocks, pageHeightUnits(pageSizeFor(language)))
+    .map(groups => groups.flatMap(g => g.blocks).filter(b => b.kind === 'system').map(b => b.index!));
+  return { systemHeight: layout.systemHeight, markRow: markRow(doc), systemOfBar, pages };
 }
 
 /** The number of pages the page model gives the document. */

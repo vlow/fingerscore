@@ -28,6 +28,8 @@ const GLYPHS: Record<string, [string, number]> = {
   restEighth: ['rest8th', 0xe4e6],
   restSixteenth: ['rest16th', 0xe4e7],
   noteQuarterUp: ['noteQuarterUp', 0xe1d5],
+  segno: ['segno', 0xe047],
+  coda: ['coda', 0xe048],
 };
 for (let d = 0; d <= 9; d++) GLYPHS[`digit${d}`] = [`timeSig${d}`, 0xe080 + d];
 

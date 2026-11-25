@@ -4,7 +4,8 @@ import { barCap } from '../domain/time';
 import { notatedLength } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
-import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
+import { JumpMarks } from './JumpMarks';
+import { HEADER, markRow, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
 import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
@@ -188,48 +189,58 @@ export function SystemView(p: SystemViewProps): JSX.Element {
   const columns = system.bars.flatMap(hitColumns);
   const selectedColumn = columns.find(c => c.id === p.selectedId);
   const selectedPlaced = selectedColumn && byId.get(selectedColumn.id);
+  const row = markRow(doc);
+  const height = SHEET.systemHeight + row;
   const chords = band(show.chords ? placed.filter(n => n.ev.chord !== null).map(n => ({ id: n.ev.id, x: n.x, text: n.ev.chord! })) : [], CHORD_FONT_PX);
 
+  // With a mark row the drawing of the system moves down as a whole, so every distance inside it stays as it was.
+  const drawing = (
+    <>
+      {selectedColumn && selectedPlaced && <SelectedMarker x={selectedPlaced.x} columnWidth={selectedColumn.width} />}
+      {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={pal.staff} />)}
+      <Glyph name="trebleClef" x={HEADER.clefInset} y={staffBottom} />
+      {Array.from({ length: nAcc }, (_, k) => (
+        <Glyph key={k} name={derived.sig > 0 ? 'sharp' : 'flat'} x={HEADER.clef + k * HEADER.accidental} y={yOfPos(accPos[k])} />
+      ))}
+      {system.showTimeSig && <TimeSigDigits ts={doc.timeSig} x={HEADER.clef + nAcc * HEADER.accidental + HEADER.timeSig / 2} y={staffBottom} />}
+      {system.barNumber !== null && (
+        <text data-bar-number="" x={0} y={65} fontSize={11} fontFamily={FONT} fill={pal.muted}>{system.barNumber}</text>
+      )}
+      {barline(pal.ink)(0, 1)}
+      {system.bars.map(bar => <g key={bar.bar} data-bar={bar.bar}><Barlines bar={bar} doc={doc} /></g>)}
+      {system.bars.map(bar => bar.events.map(e => (
+        <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}
+          show={show} playing={p.playingId === e.id} selected={p.selectedId === e.id}
+          beamed={beamOf.has(e.id)} fullBarRest={fullBarRest(bar)} />
+      )))}
+      {groups.map(g => <Beams key={g.ids[0]} group={g} notes={g.ids.map(id => byId.get(id)!)} />)}
+      {system.bars.map(bar => {
+        const marks = p.tuplets[bar.bar] ?? [];
+        const barIds = bar.events.map(e => e.id);
+        return marks.map(m => (
+          <Tuplet key={m.ids[0]} mark={m} byId={byId} beamOf={beamOf} marks={marks} barIds={barIds} volta={doc.score[m.bar].volta !== ''} />
+        ));
+      })}
+      {p.ties.map((t, i) => <Tie key={i} {...t} />)}
+      {!p.readOnly && columns.map(c => (
+        <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={SHEET.chordY} width={c.width} height={COLUMN_BOTTOM - SHEET.chordY}
+          fill="transparent" onClick={() => p.onSelect?.(p.selectedId === c.id ? null : c.id)} />
+      ))}
+    </>
+  );
+
   return (
-    <div className={styles.system}>
-      <svg data-testid="system" width={SHEET.systemWidth} height={SHEET.systemHeight}
-        viewBox={`0 0 ${SHEET.systemWidth} ${SHEET.systemHeight}`} aria-hidden="true">
-        {selectedColumn && selectedPlaced && <SelectedMarker x={selectedPlaced.x} columnWidth={selectedColumn.width} />}
-        {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={pal.staff} />)}
-        <Glyph name="trebleClef" x={HEADER.clefInset} y={staffBottom} />
-        {Array.from({ length: nAcc }, (_, k) => (
-          <Glyph key={k} name={derived.sig > 0 ? 'sharp' : 'flat'} x={HEADER.clef + k * HEADER.accidental} y={yOfPos(accPos[k])} />
-        ))}
-        {system.showTimeSig && <TimeSigDigits ts={doc.timeSig} x={HEADER.clef + nAcc * HEADER.accidental + HEADER.timeSig / 2} y={staffBottom} />}
-        {system.barNumber !== null && (
-          <text data-bar-number="" x={0} y={65} fontSize={11} fontFamily={FONT} fill={pal.muted}>{system.barNumber}</text>
-        )}
-        {barline(pal.ink)(0, 1)}
-        {system.bars.map(bar => <g key={bar.bar} data-bar={bar.bar}><Barlines bar={bar} doc={doc} /></g>)}
-        {system.bars.map(bar => bar.events.map(e => (
-          <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}
-            show={show} playing={p.playingId === e.id} selected={p.selectedId === e.id}
-            beamed={beamOf.has(e.id)} fullBarRest={fullBarRest(bar)} />
-        )))}
-        {groups.map(g => <Beams key={g.ids[0]} group={g} notes={g.ids.map(id => byId.get(id)!)} />)}
-        {system.bars.map(bar => {
-          const marks = p.tuplets[bar.bar] ?? [];
-          const barIds = bar.events.map(e => e.id);
-          return marks.map(m => (
-            <Tuplet key={m.ids[0]} mark={m} byId={byId} beamOf={beamOf} marks={marks} barIds={barIds} volta={doc.score[m.bar].volta !== ''} />
-          ));
-        })}
-        {p.ties.map((t, i) => <Tie key={i} {...t} />)}
-        {!p.readOnly && columns.map(c => (
-          <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={SHEET.chordY} width={c.width} height={COLUMN_BOTTOM - SHEET.chordY}
-            fill="transparent" onClick={() => p.onSelect?.(p.selectedId === c.id ? null : c.id)} />
-        ))}
+    <div className={styles.system} style={row > 0 ? { height } : undefined}>
+      <svg data-testid="system" width={SHEET.systemWidth} height={height}
+        viewBox={`0 0 ${SHEET.systemWidth} ${height}`} aria-hidden="true">
+        {row > 0 && system.bars.map(bar => <JumpMarks key={bar.bar} bar={bar} mark={doc.score[bar.bar]} />)}
+        {row > 0 ? <g transform={`translate(0 ${row})`}>{drawing}</g> : drawing}
       </svg>
       {under && (() => {
         const charts = placed.filter(n => charted(n.ev));
         const pillXs = pillCentres(charts.map(n => ({ id: n.ev.id, x: n.x, options: n.ev.options })), SHEET.systemWidth);
         return charts.map(n => (
-          <Fragment key={n.ev.id}>{under(n.ev, n.x, SHEET.chartY + SHEET.altButtonDy, system.index, p.lastSystem, pillXs.get(n.ev.id) ?? n.x)}</Fragment>
+          <Fragment key={n.ev.id}>{under(n.ev, n.x, SHEET.chartY + SHEET.altButtonDy + row, system.index, p.lastSystem, pillXs.get(n.ev.id) ?? n.x)}</Fragment>
         ));
       })()}
     </div>

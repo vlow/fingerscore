@@ -52,6 +52,8 @@ describe('play mode maths', () => {
   it('scrolls one zoomed system per line time', () => {
     expect(scrollSpeed(16, 100, 100, 125)).toBeCloseTo((290 * 1.25) / 9.6);
     expect(scrollSpeed(0, 100, 100, 125)).toBe(0);
+    // a sheet with marks has taller systems: one system per line time at the layout's height
+    expect(scrollSpeed(16, 100, 100, 125, 320)).toBeCloseTo((320 * 1.25) / 9.6);
   });
 
   it('counts pages of 88 % of the visible height', () => {

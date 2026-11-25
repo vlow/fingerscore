@@ -1,10 +1,22 @@
 import type { Derived, DerivedEvent } from '../domain/derive';
 import { barLabelOf } from '../domain/bars';
+import { hasJumpMarks } from '../domain/jumps';
 import { barCap, beatTicks } from '../domain/time';
 import { notatedLength, tripletGroups, type TripletGroup } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 
 export const SHEET = { width: 940, pad: 40, systemWidth: 860, systemHeight: 290, staffTop: 75, staffBottom: 115, chordY: 2, lyricY: 22, voltaY: 46, chartY: 166, altButtonDy: 90, minPitch: 20, barPad: 16, barPadAfterRepeat: 26, barTail: 14 } as const;
+
+/**
+ * Height in px of the row above every system that holds the jump marks (Segno, Coda, Fine, To Coda, D.C., D.S.).
+ * The row sits above the band of chords, lyrics, endings and triplet marks, which keep their distances to the staff.
+ */
+export const MARK_ROW = 30;
+
+/** 0 for a sheet without jump marks, else the row's height; every system of the sheet has it. */
+export function markRow(doc: Doc): number {
+  return hasJumpMarks(doc) ? MARK_ROW : 0;
+}
 
 /**
  * System header pieces, left to right: clef, key-signature accidentals, time signature (first system only), gap.
@@ -19,7 +31,8 @@ export interface BeamGroup { ids: string[]; beams: 1 | 2 | 'mixed' }
 /** One triplet group: its number (and bracket unless `beamed`: one beam joins all members). */
 export interface TupletMark { bar: number; ids: string[]; beamed: boolean }
 /** `beams` and `tuplets` are indexed by bar: a system draws only the entries of its own bars. */
-export interface SheetLayout { systems: SystemLayout[]; height: number; beams: BeamGroup[][]; tuplets: TupletMark[][] }
+/** `systemHeight` is the height of every system, mark row included: everything that sizes a system reads it here. */
+export interface SheetLayout { systems: SystemLayout[]; height: number; systemHeight: number; beams: BeamGroup[][]; tuplets: TupletMark[][] }
 
 const MAX_BARS_PER_SYSTEM = 4;
 const STAFF_MIDDLE = (SHEET.staffTop + SHEET.staffBottom) / 2;
@@ -121,6 +134,7 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
   const byBar: DerivedEvent[][] = doc.score.map(() => []);
   for (const ev of d.events) byBar[ev.bar].push(ev);
 
+  const systemHeight = SHEET.systemHeight + markRow(doc);
   const systems: SystemLayout[] = breakSystems(doc, d.sig).map(({ bars, widths }, index) => {
     const first = index === 0;
     const hw = headerWidth(d.sig, first);
@@ -132,7 +146,7 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
       return layout;
     });
     return {
-      index, y: index * SHEET.systemHeight, headerWidth: hw, showTimeSig: first,
+      index, y: index * systemHeight, headerWidth: hw, showTimeSig: first,
       barNumber: first ? null : barLabelOf(doc, bars[0]), bars: barLayouts,
     };
   });
@@ -149,5 +163,5 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
       bar, ids: g.ids, beamed: barBeams.some(b => b.ids.length === g.ids.length && b.ids[0] === g.ids[0]),
     })));
   });
-  return { systems, height: systems.length * SHEET.systemHeight, beams, tuplets };
+  return { systems, height: systems.length * systemHeight, systemHeight, beams, tuplets };
 }

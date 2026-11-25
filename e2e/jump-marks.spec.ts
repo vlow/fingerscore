@@ -1,0 +1,105 @@
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { expect, test, type Page } from '@playwright/test';
+
+/** Where the pictures for looking at go; they are written only when JUMPS_OUT is set. */
+const OUT = process.env.JUMPS_OUT;
+const LIGHT_INK = 'rgb(21, 23, 28)';
+const KINDS = ['coda', 'fine', 'jump', 'segno', 'toCoda'];
+
+async function openMarks(page: Page, file = 'e2e/fixtures/jumps.abc') {
+  await page.goto('/');
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+  await page.reload();
+  await page.getByTestId('drop-zone').locator('input[type=file]').setInputFiles(file);
+  await page.getByRole('button', { name: /Continue/ }).click();
+  await expect(page).toHaveURL(/\/sheet$/);
+  await expect(page.getByTestId('system').first()).toBeVisible();
+}
+
+const kindsDrawn = (page: Page) =>
+  page.locator('[data-jump]').evaluateAll(els => Array.from(new Set(els.map(e => e.getAttribute('data-jump')))).sort());
+
+/** Every drawn mark of the sheet: its kind, whether it is painted, its box and the system's. */
+const marksOnScreen = (page: Page) => page.locator('[data-jump]').evaluateAll(els => els.map(e => {
+  const r = e.getBoundingClientRect();
+  const s = e.closest('svg')!.getBoundingClientRect();
+  const first = e.matches('text, path') ? e : e.querySelector('text, path')!;
+  const cs = getComputedStyle(first);
+  return { kind: e.getAttribute('data-jump'), display: cs.display, visibility: cs.visibility, fill: cs.fill, w: r.width, h: r.height, top: r.top - s.top, bottom: r.bottom - s.top, left: r.left - s.left, right: r.right - s.left, width: s.width };
+}));
+
+test('the marks are drawn on the sheet, taller systems all alike', async ({ page }) => {
+  await openMarks(page);
+  expect(await kindsDrawn(page)).toEqual(KINDS);
+  const heights = await page.getByTestId('system').evaluateAll(els => els.map(e => e.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThan(1);
+  expect(new Set(heights).size).toBe(1);
+  expect(heights[0]).toBeGreaterThan(290);
+  for (const m of await marksOnScreen(page)) {
+    expect(m.w, m.kind!).toBeGreaterThan(5);
+    expect(m.top, `${m.kind} is inside the system`).toBeGreaterThanOrEqual(0);
+    expect(m.bottom, `${m.kind} is above the staff`).toBeLessThan(75 + 30);
+    expect(m.right).toBeLessThanOrEqual(m.width);
+  }
+});
+
+test('the pill and the popover of an alternate fingering follow the taller system', async ({ page }) => {
+  /** Offsets of the first pill and its popover from the top of the first system, and the system's height. */
+  const offsets = async (file: string) => {
+    await openMarks(page, file);
+    const pill = page.locator('[aria-haspopup="dialog"]').first();
+    await expect(pill).toBeVisible();
+    await pill.click();
+    const popover = page.getByRole('dialog', { name: /Alternate fingerings/ });
+    await expect(popover).toBeVisible();
+    const [s, p, d] = await Promise.all([page.getByTestId('system').first().boundingBox(), pill.boundingBox(), popover.boundingBox()]);
+    return { pill: p!.y - s!.y, popover: d!.y - s!.y, height: s!.height };
+  };
+  const plain = await offsets('e2e/fixtures/jumps-plain.abc');
+  const marked = await offsets('e2e/fixtures/jumps.abc');
+  expect(marked.height - plain.height).toBe(30);
+  expect(marked.pill - plain.pill).toBeCloseTo(30, 0);
+  expect(marked.popover - plain.popover).toBeCloseTo(30, 0);
+});
+
+test('print shows the marks, in the light ink, and prints the same drawing', async ({ page }) => {
+  await openMarks(page);
+  const before = await marksOnScreen(page);
+  await page.emulateMedia({ media: 'print' });
+  const printed = await marksOnScreen(page);
+  expect(printed.map(m => m.kind)).toEqual(before.map(m => m.kind));
+  for (const m of printed) {
+    expect(m.display).not.toBe('none');
+    expect(m.visibility).toBe('visible');
+    expect(m.w).toBeGreaterThan(5);
+    expect(m.fill).toBe(LIGHT_INK);
+  }
+});
+
+test('on a dark paper the marks take the paper\'s ink, not the light one', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await openMarks(page);
+  const fills = (await marksOnScreen(page)).map(m => m.fill);
+  expect(fills.length).toBeGreaterThan(4);
+  expect(fills.every(f => f !== LIGHT_INK)).toBe(true);
+  expect(new Set(fills).size).toBe(1);
+});
+
+test.describe('pictures (set JUMPS_OUT to run)', () => {
+  test.skip(!OUT, 'JUMPS_OUT is not set');
+  test.use({ deviceScaleFactor: 2 });
+
+  test('the sheet on the light paper and on Night, Dimmed and Sepia', async ({ page }) => {
+    mkdirSync(OUT!, { recursive: true });
+    await page.setViewportSize({ width: 1300, height: 1500 });
+    await page.emulateMedia({ colorScheme: 'light' });
+    await openMarks(page);
+    await page.getByTestId('paper').screenshot({ path: join(OUT!, 'sheet-light.png') });
+    await page.emulateMedia({ colorScheme: 'dark' });
+    for (const choice of ['Night', 'Dimmed', 'Sepia'] as const) {
+      await page.getByRole('radiogroup', { name: 'Paper' }).getByRole('radio', { name: choice }).click();
+      await page.getByTestId('paper').screenshot({ path: join(OUT!, `sheet-${choice.toLowerCase()}.png`) });
+    }
+  });
+});

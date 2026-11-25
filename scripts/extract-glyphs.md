@@ -29,6 +29,8 @@ npm run glyphs        # tsx scripts/extract-glyphs.ts
 | `restEighth` | rest8th | U+E4E6 |
 | `restSixteenth` | rest16th | U+E4E7 |
 | `noteQuarterUp` | noteQuarterUp | U+E1D5 |
+| `segno` | segno | U+E047 |
+| `coda` | coda | U+E048 |
 | `digit0` … `digit9` | timeSig0 … timeSig9 | U+E080 … U+E089 |
 
 Units: 1000 per em, y up, one staff space = 250 units. `bbox` is `[xMin, yMin, xMax, yMax]`.
@@ -49,5 +51,7 @@ One transform for every glyph: `translate(x, y) scale(0.04, -0.04)`, since one s
 | time-signature denominator | 2nd line, `B - 10` | number's ink centred on the slot |
 
 `noteQuarterUp` is the quarter note of the tempo line in the PDF. Its origin is the left edge of the notehead, with the head centred vertically on it and the stem up (ink y -141 to 875 units). The PDF places it on the text line itself.
+
+`segno` and `coda` mark jumps above the staff (`src/render/JumpMarks.tsx`). Their origin is the baseline, ink y -27 to 759 (segno) and -158 to 898 (coda) units, at 0.57 of the usual scale so the Coda (42px at full size) fits the mark row.
 
 Bravura digits are two staff spaces tall and vertically centred on their origin, so the numerator fills the upper half of the staff and the denominator the lower half. `Glyph` adds the origin offset itself: callers pass the bottom staff line for clef and rests and the note y for accidentals. `src/render/Glyph.test.tsx` checks the resulting pixel boxes.

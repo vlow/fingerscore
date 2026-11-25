@@ -6,7 +6,7 @@ import {
   systemBeats, turnTarget, zoomBelow,
 } from '../domain/playMode';
 import type { Doc } from '../domain/types';
-import { SHEET, type SheetLayout } from '../render/layout';
+import type { SheetLayout } from '../render/layout';
 import { Paper } from '../render/Paper';
 import { readPlayModePrefs, writePlayModePrefs } from '../state/playModePrefs';
 import PaperChoice from './PaperChoice';
@@ -80,8 +80,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
 
   const beats = useMemo(() => systemBeats(doc, layout.systems), [doc, layout]);
   // The running scroll reads its pace here, so the slider, the zoom and the tempo apply without a restart.
-  const pace = useRef({ beats, tempo: doc.tempo, speed: prefs.speed, zoom });
-  pace.current = { beats, tempo: doc.tempo, speed: prefs.speed, zoom };
+  const pace = useRef({ beats, tempo: doc.tempo, speed: prefs.speed, zoom, systemHeight: layout.systemHeight });
+  pace.current = { beats, tempo: doc.tempo, speed: prefs.speed, zoom, systemHeight: layout.systemHeight };
   // Where the lines are in the scrolled content: the top of the first one and the distance to the next.
   const lines = useRef({ firstTop: 0, pitch: 0 });
   // Auto-scroll waits while the music comes down from the top of the screen to the reading line: how far it has
@@ -149,9 +149,9 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
       if (el.scrollTop + el.clientHeight >= el.scrollHeight - END_SLACK) { setAuto(false); return; }
       // The pace of the line the player reads: every line passes in the time its own beats take.
       const p = pace.current;
-      const pitch = lines.current.pitch > 0 ? lines.current.pitch : (SHEET.systemHeight * p.zoom) / 100;
+      const pitch = lines.current.pitch > 0 ? lines.current.pitch : (p.systemHeight * p.zoom) / 100;
       const at = systemAt(el.scrollTop + READ_AT * el.clientHeight, lines.current.firstTop, pitch, p.beats.length);
-      const speed = scrollSpeed(p.beats[at] ?? 0, p.tempo, p.speed, p.zoom);
+      const speed = scrollSpeed(p.beats[at] ?? 0, p.tempo, p.speed, p.zoom, p.systemHeight);
       const moved = last === null ? 0 : (speed * Math.min(ts - last, MAX_FRAME_MS)) / 1000;
       last = ts;
       const wait = leadIn(el.clientHeight) - travelled.current;
