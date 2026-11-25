@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { useApp } from '../state/store';
-import { LOAD_FAILED } from '../ui/LoadBoundary';
+import { LOAD_FAILED } from '../shell/LoadBoundary';
 import SheetPage from './SheetPage';
 
 // The Edit notes panel's chunk fails to load; the Chords panel's chunk arrives only when the test opens the gate.

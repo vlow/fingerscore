@@ -75,7 +75,7 @@ const everything: Builder = `h => {
 
 interface HookResult { pdf?: string; type?: string; error?: { name: string; message: string }; progress: [number, number][]; progressAfterAbort: number; ms: number }
 
-/** Calls a function of src/pdf/devHook.ts, through the dev-only hook of src/main.tsx, with the document the builder makes. */
+/** Calls a function of src/pdf/devHook.ts, through the dev-only hook of src/shell/main.tsx, with the document the builder makes. */
 async function hook<T>(page: Page, fn: string, build: Builder, ...args: unknown[]): Promise<T> {
   return page.evaluate(async ([name, source, rest]) => {
     const load = (window as unknown as { fingerscorePdf?: () => Promise<Record<string, unknown>> }).fingerscorePdf;

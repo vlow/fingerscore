@@ -1,4 +1,4 @@
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from '../shell/loadFailed';
 
 // The engine imports the PDF libraries, which need a real browser; fonts are all this file touches.
 vi.mock('jspdf', () => ({ jsPDF: class {} }));

@@ -15,7 +15,7 @@ import Banners from '../ui/Banners';
 import FileMenu from '../ui/FileMenu';
 import JumpNotice from '../ui/JumpNotice';
 import KeyBridge from '../ui/KeyBridge';
-import { LoadBoundary } from '../ui/LoadBoundary';
+import { LoadBoundary } from '../shell/LoadBoundary';
 import { ModeSwitch } from '../ui/ModeSwitch';
 import PageBar from '../ui/PageBar';
 import RangeMeter from '../ui/RangeMeter';

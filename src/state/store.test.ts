@@ -6,7 +6,7 @@ import { mod12 } from '../domain/keys';
 import { inst } from '../domain/instruments';
 import { DEFAULT_PREFS, rankShifts, scoringPitches } from '../domain/transpose';
 import type { ParsedSong } from '../import/types';
-import { readJSON } from './storage';
+import { readJSON } from '../shell/storage';
 import { BLOCKED_MESSAGE, deleteEntry, listEntries } from './library';
 import { canRedo, canUndo, HISTORY_LIMIT, hydrate, saveStatus, setClock, useApp } from './store';
 

@@ -5,7 +5,7 @@ import { sampleDoc } from '../domain/fixture';
 import { fullLineBeats, scrollSpeed, speedLabel, systemBeats } from '../domain/playMode';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { layoutSheet } from '../render/sheetLayout';
-import { initTheme } from '../state/theme';
+import { initTheme } from '../shell/theme';
 import PlayMode from './PlayMode';
 
 const KEY = 'fingerscore.playmode';

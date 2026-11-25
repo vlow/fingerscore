@@ -2,7 +2,7 @@
 // Type-only imports of the engine files are erased, so the PDF libraries stay out of the entry chunk.
 import { inst } from '../domain/instruments';
 import type { Doc } from '../domain/types';
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from '../shell/loadFailed';
 import { downloadBlob } from '../ui/download';
 import { PDF_FAILED, PdfError } from './errors';
 import { scalePdfName, sheetPdfName } from './names';

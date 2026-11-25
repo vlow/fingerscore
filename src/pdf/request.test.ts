@@ -1,5 +1,5 @@
 import { sampleDoc } from '../domain/fixture';
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from '../shell/loadFailed';
 import { PDF_FAILED } from './errors';
 
 const downloadBlob = vi.fn();

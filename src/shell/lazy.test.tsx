@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from './loadFailed';
 import { intentProps, lazyModule, lazyView, useLazy, type LazyModule } from './lazy';
 
 /** Expected load failures: React reports them to the console and, in development, as window error events. */

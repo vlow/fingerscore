@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import App from '../App';
+import App from '../shell/App';
 import { sampleDoc } from '../domain/fixture';
 import { buildScale, scaleFingerings } from '../domain/scales';
 import { PdfError } from '../pdf/errors';

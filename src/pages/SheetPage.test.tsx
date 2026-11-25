@@ -19,7 +19,7 @@ import { useApp } from '../state/store';
 import { PdfError } from '../pdf/errors';
 import { requestSheetPdf } from '../pdf/request';
 import { downloadText } from '../ui/download';
-import { ToastHost } from '../ui/Toast';
+import { ToastHost } from '../shell/Toast';
 import SheetPage from './SheetPage';
 
 vi.mock('../ui/download', () => ({ downloadText: vi.fn() }));

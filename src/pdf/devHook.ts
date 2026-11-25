@@ -1,5 +1,5 @@
 // Development only: lets the Playwright tests (e2e/pdf-content.spec.ts, e2e/pdf-scale.spec.ts) build sheet and scale PDFs and show the same sheet on screen.
-// Loaded through a dynamic import behind import.meta.env.DEV (src/main.tsx); not part of a production build.
+// Loaded through a dynamic import behind import.meta.env.DEV (src/shell/main.tsx); not part of a production build.
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';

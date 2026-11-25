@@ -14,7 +14,7 @@ How to use it: decide or do an item, then delete it or move it to "Closed" at th
 | 4 | Must Imprint and Privacy also exist in German? The site is English only. | The lawyer. | — |
 | 5 | Is a phone number published in the Imprint? | The owner, with the lawyer. | `operator.ts`, field `phone` |
 | 6 | The footer and About show a GitHub link only when an address is set. | The owner sets it or leaves it empty. | `src/content/repository.ts` |
-| 7 | Hosting under a sub-path needs a Vite `base` and a router `basename`; neither is set. The host must answer unknown paths with `index.html`. | Where the site will live. | `vite.config.ts`, `src/main.tsx`; README "Hosting" |
+| 7 | Hosting under a sub-path needs a Vite `base` and a router `basename`; neither is set. The host must answer unknown paths with `index.html`. | Where the site will live. | `vite.config.ts`, `src/shell/main.tsx`; README "Hosting" |
 | 8 | Trademark clearance for the name and the logo. | The owner. | — |
 | 9 | No test with a real screen reader and none on a real phone. Automated checks run in Chromium only. | One session with VoiceOver, one on a phone. | README "Checks → Not tested" |
 
@@ -24,7 +24,7 @@ Each of these was made during a build so that work could continue. Reversing one
 
 | # | Decision | Why it was made | Where |
 |---|---|---|---|
-| 10 | The footer reads "Your sheets are stored in your browser, not on a server." The handoff said "Nothing is stored on the server." | The host keeps request logs, which the Privacy page states. | `src/ui/Footer.tsx` |
+| 10 | The footer reads "Your sheets are stored in your browser, not on a server." The handoff said "Nothing is stored on the server." | The host keeps request logs, which the Privacy page states. | `src/shell/Footer.tsx` |
 | 11 | Terms, section Fingerings: "The fingerings are taken from published fingering charts." | The earlier wording read as if the drawings were copied. | `src/pages/Terms.tsx` |
 | 12 | "Terms of Use" in the File menu is a menu entry reached with the arrow keys; Tab closes the menu. | A paragraph inside a menu is invisible to a screen reader, and the accessibility scan allows no exemption. | `src/ui/FileMenu.tsx`, `RightsNotice.tsx` |
 | 13 | Alternate-fingering marks on the sheet have a 24 px click area, not the handoff's 36 px, and sit 26 px apart where notes are close. | At 36 px a mark moved under the neighbouring note. | `src/ui/AltPill.module.css`, `src/render/pillSpread.ts` |

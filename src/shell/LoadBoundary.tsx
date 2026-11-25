@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react';
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from './loadFailed';
 import s from './LoadBoundary.module.css';
 
 export { LOAD_FAILED };

@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { initTheme } from '../state/theme';
+import { initTheme } from '../shell/theme';
 import PaperChoice from './PaperChoice';
 
 function setup(theme: 'light' | 'dark' | null, variant: 'card' | 'toolbar', systemDark = false, onKeyDown?: () => void) {

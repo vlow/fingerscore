@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { parseFile } from '../import';
 import { ImportError } from '../import/types';
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from '../shell/loadFailed';
 import DropZone from './DropZone';
 
 vi.mock('../import', async importOriginal => ({ ...(await importOriginal<typeof import('../import')>()), parseFile: vi.fn() }));

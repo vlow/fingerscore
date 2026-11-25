@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, type KeyboardE
 import type { Derived } from '../../domain/derive';
 import type { Doc } from '../../domain/types';
 import { SHEET, type SheetLayout } from '../../render/layout';
-import { LoadBoundary } from '../../ui/LoadBoundary';
+import { LoadBoundary } from '../../shell/LoadBoundary';
 import type { Mode } from '../../ui/ModeSwitch';
 import s from '../SheetPage.module.css';
 

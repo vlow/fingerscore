@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import App from '../App';
+import App from '../shell/App';
 import { operator, type Operator } from '../content/operator';
 import { STORAGE_ITEMS } from '../content/storageItems';
 import About from './About';

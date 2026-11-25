@@ -8,12 +8,12 @@ import {
 import type { InstId } from '../domain/types';
 import { ScaleStaff } from '../render/ScaleStaff';
 import { requestScalePdf } from '../pdf/request';
-import { readJSON, writeJSON } from '../state/storage';
+import { readJSON, writeJSON } from '../shell/storage';
 import { useApp } from '../state/store';
 import { Segmented } from '../ui/Segmented';
 import { usePdfJob } from '../ui/usePdfJob';
 import { useScaleAlternatives } from './scales/useScaleAlternatives';
-import { usePaper } from '../state/theme';
+import { usePaper } from '../shell/theme';
 import '../styles/print.css';
 import s from './Scales.module.css';
 

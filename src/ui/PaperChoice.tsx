@@ -1,5 +1,5 @@
-import { usePaper, useTheme, type PaperTheme } from '../state/theme';
-import RadioMenu from './RadioMenu';
+import { usePaper, useTheme, type PaperTheme } from '../shell/theme';
+import RadioMenu from '../shell/RadioMenu';
 import { Segmented } from './Segmented';
 import s from './PaperChoice.module.css';
 

@@ -2,7 +2,7 @@ import { displayName, inst, type Family } from '../domain/instruments';
 import { keyName, mod12 } from '../domain/keys';
 import { validateDoc, type ImportedSheet } from '../domain/persistence';
 import type { Doc } from '../domain/types';
-import { probe, readJSON, writeJSON } from './storage';
+import { probe, readJSON, writeJSON } from '../shell/storage';
 
 /** `inst` is the instrument's display name, `key` the written key ("G major"), `fam` the instrument family. */
 export interface LibraryEntry { id: string; title: string; inst: string; key: string; fam: Family; savedAt: string; doc: Doc }

@@ -4,7 +4,7 @@ import { createElement, type ReactElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { svg2pdf } from 'svg2pdf.js';
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from '../shell/loadFailed';
 import { LIGHT, LIGHT_BORDER, PaletteProvider } from '../render/palette';
 import { drawText, fontsOf, textWidth, type Anchor } from './drawText';
 import { FONT_KEYS, FONT_NAME, setFontMetrics, type FontKey, type Weight } from './fontMetrics';

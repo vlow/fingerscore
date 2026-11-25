@@ -1,4 +1,4 @@
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from '../shell/loadFailed';
 import type { Prefs } from '../domain/transpose';
 import type { InstId } from '../domain/types';
 import type { BuildOptions } from './buildDoc';

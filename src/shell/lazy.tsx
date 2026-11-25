@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { LoadBoundary } from '../ui/LoadBoundary';
+import { LoadBoundary } from './LoadBoundary';
 
 /**
  * Code that loads on first use: a route's page, a panel, the PDF engine, a parser. One request at a time; a failed
