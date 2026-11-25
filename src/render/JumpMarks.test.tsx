@@ -7,7 +7,7 @@ import { JUMP_TEXT } from '../domain/jumps';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
 import { mkDoc, type BarSpec } from '../test/helpers';
-import { layoutSheet, MARK_DROP, MARK_ROW, markDrop, markRow, SHEET } from './layout';
+import { layoutSheet, MARK_DROP, MARK_ROW, markRow, SHEET } from './layout';
 import { planMarks, resetMarkFace, useMarkFace } from './JumpMarks';
 import { TEXT_EM_PER_CHAR } from './lyrics';
 import { LIGHT, PaletteProvider, SCREEN } from './palette';
@@ -193,42 +193,6 @@ describe('jump marks on the sheet', () => {
     expect(base.shift + SHEET.staffTop - base.bottom).toBeGreaterThan(25);
     expect(base.shift + SHEET.staffTop - base.bottom).toBeLessThan(40);
     expect(up.shift + SHEET.staffTop - up.bottom).toBeGreaterThan(70);
-  });
-
-  it('markDrop reads the same flags as the renderer: a chord needs show.chords, a lyric needs show.lyrics and a note', () => {
-    const doc = mkDoc([bar()]);
-    const events = () => derive(doc, DEFAULT_PREFS).events;
-    expect(markDrop(events(), doc.show)).toBe(MARK_DROP);
-    doc.chords[doc.score[0].ev[0].id] = parseChord('C', 0);
-    expect(markDrop(events(), doc.show)).toBe(0);
-    expect(markDrop(events(), { ...doc.show, chords: false })).toBe(MARK_DROP);
-    doc.score[0].ev[1].l = 'la';
-    expect(markDrop(events(), { ...doc.show, chords: false })).toBe(0);
-    expect(markDrop(events(), { ...doc.show, chords: false, lyrics: false })).toBe(MARK_DROP);
-  });
-
-  it('the highest note decides for the sheet: a head just below the lowered row lowers the marks, one that reaches the row keeps the top row', () => {
-    const at = (midi: number, accidental = false) => {
-      const doc = mkDoc([bar({ segno: true, jump: 'dc' }), { ev: [[midi, 12], [60, 12], [60, 12], [60, 12]] }]);
-      const events = derive(doc, DEFAULT_PREFS).events;
-      const top = events.find(e => !e.rest && e.pos === Math.max(...events.map(x => x.pos)))!;
-      const out = draw(doc);
-      const text = out.container.querySelector('text[data-jump="jump"]')!;
-      return { drop: markDrop(events, doc.show), y: num(text, 'y'), pos: top.pos, acc: !!top.accidental && accidental };
-    };
-    const c6 = at(84);
-    const d6 = at(86);
-    expect(c6.pos).toBe(12);
-    expect(d6.pos).toBe(13);
-    expect(c6.drop).toBe(MARK_DROP);
-    expect(d6.drop).toBe(0);
-    expect(c6.y - d6.y).toBe(MARK_DROP);
-    // the layout's own numbers: a head at C6 has its top at row + staffBottom - 5 * 12 - 5 = 80, and the lowered row
-    // plus margin ends at 30 + 44 + 4 = 78; at D6 the top is at 75
-    expect(MARK_ROW + SHEET.staffBottom - 5 * c6.pos - 5).toBeGreaterThan(MARK_ROW + MARK_DROP + 4);
-    expect(MARK_ROW + SHEET.staffBottom - 5 * d6.pos - 5).toBeLessThanOrEqual(MARK_ROW + MARK_DROP + 4);
-    // an accidental rises 10 px above its note, so C#6 (still position 12) keeps the top row
-    expect(at(85).drop).toBe(0);
   });
 
   it('lowered marks overlap no ending bracket, triplet mark or note, also with high notes on ledger lines', () => {

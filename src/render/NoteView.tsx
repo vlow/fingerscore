@@ -46,6 +46,12 @@ export function missingType(ev: Pick<DerivedEvent, 'state' | 'written'>, kind: I
 
 const DOTTED = new Set([9, 18, 36]);
 
+/** Whether a note is drawn with a dot, and the y of that dot: in the space above a note that sits on a line. */
+export const isDotted = (ev: DerivedEvent) => DOTTED.has(notatedLength(ev.d));
+export const dotY = (ev: DerivedEvent, y: number) => (ev.pos % 2 === 0 ? y - 5 : y);
+/** Radius and distance right of the head of that dot. */
+export const DOT = { r: 2, dx: 12 } as const;
+
 /** Rest glyph for a duration as written (a triplet member passes its notated value); a rest filling a whole full bar is a whole rest. */
 function restGlyph(d: number, fullBar: boolean): { name: GlyphName; dotted: boolean } {
   if (fullBar) return { name: 'restWhole', dotted: false };
@@ -93,7 +99,7 @@ function Flags(p: { count: number; x: number; y: number; up: boolean }) {
 
 function Dot(p: { x: number; y: number }) {
   const pal = usePalette();
-  return <circle data-dot="" cx={p.x} cy={p.y} r={2} fill={pal.ink} />;
+  return <circle data-dot="" cx={p.x} cy={p.y} r={DOT.r} fill={pal.ink} />;
 }
 
 /** Wavy underline of the given width under a chord we cannot read. */
@@ -197,7 +203,7 @@ function Note(p: NoteViewProps) {
         <rect data-stem="" x={x + (up ? STEM.upDx : STEM.downDx)} y={up ? y - STEM.length : y} width={STEM.width} height={STEM.length} fill={pal.ink} />
       )}
       {flags > 0 && <Flags count={flags} x={x} y={y} up={up} />}
-      {DOTTED.has(d) && <Dot x={x + 12} y={ev.pos % 2 === 0 ? y - 5 : y} />}
+      {isDotted(ev) && <Dot x={x + DOT.dx} y={dotY(ev, y)} />}
       {ev.accidental && <Glyph name={ev.accidental} x={x - ACCIDENTAL_GAP - glyphInk(ev.accidental).right} y={y} fill={color} />}
     </>
   );

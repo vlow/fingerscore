@@ -18,26 +18,12 @@ export const MARK_ROW = 30;
  * in the empty chord and lyric bands, directly above the ending brackets, about 30 px above the staff instead of 75.
  */
 export const MARK_DROP = 44;
-/** Clear space (px) the lowered row keeps from the highest note of the sheet. */
-const DROP_MARGIN = 4;
+/** Clear space (px) the lowered row keeps from anything the notes draw. */
+export const DROP_MARGIN = 4;
 
-/** Top of a note's ink (head, or accidental) above its centre, as TupletMark's `eventInk` takes it. */
-const HEAD_RISE = 5;
-const ACCIDENTAL_RISE = 10;
-
-/**
- * MARK_DROP when the sheet draws no chord symbol and no lyric (the renderer's own test, by the flags of `show`) and no
- * note reaches into the lowered row plus a margin; else 0. The highest note decides for the whole sheet, by the
- * layout's own y positions: with the row above the system, a head whose top lies above `MARK_ROW + MARK_DROP + 4` keeps
- * the marks in the top row.
- */
-export function markDrop(events: DerivedEvent[], show: Doc['show']): number {
-  const draws = events.some(ev => (show.chords && ev.chord !== null) || (show.lyrics && !ev.rest && ev.lyric !== ''));
-  if (draws) return 0;
-  const limit = MARK_ROW + MARK_DROP + DROP_MARGIN;
-  const reaches = events.some(ev => !ev.rest
-    && MARK_ROW + SHEET.staffBottom - 5 * ev.pos - (ev.accidental ? ACCIDENTAL_RISE : HEAD_RISE) <= limit);
-  return reaches ? 0 : MARK_DROP;
+/** True when the sheet draws a chord symbol or a lyric: the renderer's own test, by the flags of `show`. */
+export function drawsBands(events: DerivedEvent[], show: Doc['show']): boolean {
+  return events.some(ev => (show.chords && ev.chord !== null) || (show.lyrics && !ev.rest && ev.lyric !== ''));
 }
 
 /** 0 for a sheet without jump marks, else the row's height; every system of the sheet has it. */

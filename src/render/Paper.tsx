@@ -2,7 +2,8 @@ import { Fragment, useMemo, type ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import type { Doc } from '../domain/types';
 import { usePaper } from '../state/theme';
-import type { SheetLayout } from './layout';
+import { markRow, type SheetLayout } from './layout';
+import { sheetMarkDrop } from './markDrop';
 import styles from './Paper.module.css';
 import { SystemView, tieSegments, type UnderChart } from './SystemView';
 
@@ -33,6 +34,7 @@ export function Paper(p: PaperProps): JSX.Element {
     () => (forcedLyrics || forcedChords ? { ...doc.show, lyrics: doc.show.lyrics || forcedLyrics, chords: doc.show.chords || forcedChords } : doc.show),
     [doc.show, forcedLyrics, forcedChords],
   );
+  const drop = useMemo(() => (markRow(doc) > 0 ? sheetMarkDrop(doc, derived, layout, show, ties) : 0), [doc, derived, layout, show, ties]);
   return (
     <article className={`paper ${styles.paper}`} data-testid="paper" data-paper={paper}
       data-forced-lyrics={forcedLyrics ? '' : undefined} data-forced-chords={forcedChords ? '' : undefined}>
@@ -59,7 +61,7 @@ export function Paper(p: PaperProps): JSX.Element {
         const under = p.readOnly ? null : p.renderUnderSystem?.(s.index);
         return (
           <Fragment key={s.index}>
-            <SystemView doc={doc} show={show} derived={derived} system={s} beams={layout.beams} tuplets={layout.tuplets} ties={ties[s.index]}
+            <SystemView doc={doc} show={show} derived={derived} system={s} beams={layout.beams} tuplets={layout.tuplets} ties={ties[s.index]} markDrop={drop}
               playingId={p.playingId} selectedId={p.readOnly ? null : p.selectedId ?? null} onSelect={p.onSelect} readOnly={p.readOnly} lastSystem={s.index === last}
               renderUnderChart={p.readOnly ? undefined : p.renderUnderChart} />
             {under != null && under !== false && <div className={styles.underSystem} data-under-system="" data-print-hide="">{under}</div>}

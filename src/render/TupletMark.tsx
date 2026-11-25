@@ -31,7 +31,7 @@ const CHART_LIMIT = SHEET.chartY - CLEAR;
 const STAFF_LINES = [0, 1, 2, 3, 4].map(i => SHEET.staffTop + 10 * i + 0.5);
 
 /** Ink of one event: head, accidental, ledger lines, stem, flags (a beamed event's stem reaches its beam tip). */
-function eventInk(n: Placed, beam: BeamGeo | undefined): Box[] {
+export function eventInk(n: Placed, beam: BeamGeo | undefined): Box[] {
   const { x, y, ev } = n;
   if (ev.rest) return [{ x1: x - 7, x2: x + 7, y1: y - REST_HALF_H, y2: y + REST_HALF_H }];
   const out: Box[] = [{ x1: x - 6, x2: x + 6, y1: y - 5, y2: y + 5 }];
@@ -59,7 +59,7 @@ function eventInk(n: Placed, beam: BeamGeo | undefined): Box[] {
 }
 
 /** Ink of a beam group: stems are in eventInk; this is the bars across their tips (two levels, to be safe). */
-function beamInk(notes: Placed[], geo: BeamGeo): Box {
+export function beamInk(notes: Placed[], geo: BeamGeo): Box {
   const sx = (n: Placed) => n.x + (geo.up ? STEM.upDx : STEM.downDx);
   return {
     x1: sx(notes[0]), x2: sx(notes[notes.length - 1]) + STEM.width,
@@ -79,7 +79,7 @@ export interface TupletProps {
   volta: boolean;
 }
 
-interface Candidate { side: 'above' | 'below'; x1: number; x2: number; line: number; baseline: number; y1: number; y2: number }
+export interface Candidate { side: 'above' | 'below'; x1: number; x2: number; line: number; baseline: number; y1: number; y2: number }
 
 /**
  * The 3 of a triplet group, with a bracket unless one beam joins all members.
@@ -92,8 +92,7 @@ interface Candidate { side: 'above' | 'below'; x1: number; x2: number; line: num
  * Within a side the mark moves out in steps until it keeps CLEAR units from the ink of the events next to the
  * group (its bracket ends shorten to the heads first).
  */
-export function Tuplet(p: TupletProps): JSX.Element {
-  const pal = usePalette();
+export function placeTuplet(p: TupletProps): { chosen: Candidate; cx: number } {
   const { mark, byId } = p;
   const members = mark.ids.map(id => byId.get(id)!);
   const notesOf = (g: BeamGroup) => g.ids.map(i => byId.get(i)!);
@@ -170,6 +169,13 @@ export function Tuplet(p: TupletProps): JSX.Element {
   const b = fits(a) ? a : place(other);
   const chosen = fits(b) ? b : intoLimit(a);
 
+  return { chosen, cx };
+}
+
+export function Tuplet(p: TupletProps): JSX.Element {
+  const pal = usePalette();
+  const { mark } = p;
+  const { chosen, cx } = placeTuplet(p);
   const half = Math.max(2, Math.min(HALF_GAP, (chosen.x2 - chosen.x1) / 2 - 2));
   const hook = chosen.side === 'above' ? HOOK : -HOOK;
   const d = `M${chosen.x1} ${chosen.line + hook}V${chosen.line}H${cx - half}M${cx + half} ${chosen.line}H${chosen.x2}V${chosen.line + hook}`;

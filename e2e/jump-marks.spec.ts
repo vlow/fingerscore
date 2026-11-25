@@ -98,10 +98,12 @@ test('crowded bars: in a narrow bar (Coda, Fine) and in a bar with an ending, a 
 });
 
 /** Without chords and lyrics the marks stand lowered above the ending brackets, unless a note reaches the lowered row: then they keep the top row. */
-for (const [file, lowered, note] of [
-  ['crowded-bare.abc', true, 'the highest note stands on ledger lines, below the lowered row'],
-  ['crowded-high.abc', false, 'the highest note is one step higher and reaches the lowered row'],
-] as const) test(`a sheet without chords and lyrics, ${note}: the marks ${lowered ? 'are lowered above the ending bracket' : 'keep the top row'} and touch no ending, triplet mark or note`, async ({ page }, testInfo) => {
+const ALL = ['coda', 'fine', 'jump', 'segno', 'toCoda'];
+for (const [file, lowered, note, kinds, needs] of [
+  ['crowded-bare.abc', true, 'the highest note stands on ledger lines, below the lowered row', ALL, ['volta', 'tuplet', 'note']],
+  ['crowded-high.abc', false, 'the highest note is one step higher and reaches the lowered row', ALL, ['volta', 'tuplet', 'note']],
+  ['crowded-beam.abc', false, 'a stem-up beamed group under the Segno has heads below the row but a beam in it', ['fine', 'jump', 'segno'], ['beam', 'stem', 'note']],
+] as const) test(`a sheet without chords and lyrics, ${note}: the marks ${lowered ? 'are lowered above the ending bracket' : 'keep the top row'} and touch no ending, triplet mark, note, stem, beam or tie`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1300, height: 1500 });
   await openMarks(page, `e2e/fixtures/${file}`);
   const found = await page.evaluate(() => {
@@ -111,7 +113,7 @@ for (const [file, lowered, note] of [
       return {
         box: rect(svg),
         marks: Array.from(svg.querySelectorAll('[data-jump]')).filter(e => !e.parentElement?.closest('[data-jump]')).map(e => ({ kind: e.getAttribute('data-jump')!, r: rect(e) })),
-        others: [...all('[data-volta]', 'volta'), ...all('[data-tuplet]', 'tuplet'), ...all('[data-ev]', 'note'), ...all('[data-chord], [data-lyric]', 'chord or lyric')],
+        others: [...all('[data-volta]', 'volta'), ...all('[data-tuplet]', 'tuplet'), ...all('[data-ev]', 'note'), ...all('[data-stem]', 'stem'), ...all('[data-beam]', 'beam'), ...all('[data-tie]', 'tie'), ...all('[data-chord], [data-lyric]', 'chord or lyric')],
         staff: rect(svg.querySelector('[data-bar]')!),
       };
     });
@@ -119,12 +121,19 @@ for (const [file, lowered, note] of [
   const crowded = found.filter(f => f.marks.length > 0);
   expect(crowded).toHaveLength(1);
   const [{ marks, others, box }] = crowded;
-  expect(marks.map(m => m.kind).sort()).toEqual(['coda', 'fine', 'jump', 'segno', 'toCoda']);
-  for (const what of ['volta', 'tuplet', 'note']) expect(others.some(o => o.what === what), `the system has a ${what}`).toBe(true);
+  expect(marks.map(m => m.kind).sort()).toEqual([...kinds]);
+  for (const what of needs) expect(others.some(o => o.what === what), `the system has a ${what}`).toBe(true);
   expect(others.some(o => o.what === 'chord or lyric')).toBe(false);
   type R = { x1: number; y1: number; x2: number; y2: number };
   const meets = (a: R, b: R) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
   const volta = others.filter(o => o.what === 'volta');
+  if (file === 'crowded-beam.abc') {
+    // what the picture shows: every head is lower than the lowered row plus margin (heads alone would lower the marks), the beam is not
+    const tops = (what: string) => Math.min(...others.filter(o => o.what === what).map(o => o.r.y1 - box.y1));
+    const heads = await page.locator('[data-head]').evaluateAll(els => Math.min(...els.map(e => e.getBoundingClientRect().top)));
+    expect(heads - box.y1, 'the heads stay below the margin edge (78 px)').toBeGreaterThan(78);
+    expect(tops('beam'), 'the beam reaches into the lowered row').toBeLessThanOrEqual(78);
+  }
   const lowest = Math.max(...marks.map(m => m.r.y2));
   // lowered: the marks end just above the ending brackets, about 30 px above the staff (75 px + the 30 px row below the system's top)
   if (lowered) {
@@ -170,11 +179,11 @@ test.describe('pictures (set JUMPS_OUT to run)', () => {
   test.skip(!OUT, 'JUMPS_OUT is not set');
   test.use({ deviceScaleFactor: 2 });
 
-  test('the row of a bar with chords and lyrics, and of a bar without', async ({ page }) => {
+  test('the row of a bar with chords and lyrics, of a bar without, and over a stem-up beamed group', async ({ page }) => {
     mkdirSync(OUT!, { recursive: true });
     await page.setViewportSize({ width: 1300, height: 1500 });
     await page.emulateMedia({ colorScheme: 'light' });
-    for (const [file, name] of [['crowded.abc', 'row-with-chords.png'], ['crowded-bare.abc', 'row-without-chords.png']]) {
+    for (const [file, name] of [['crowded.abc', 'row-with-chords.png'], ['crowded-bare.abc', 'row-without-chords.png'], ['crowded-beam.abc', 'row-beam-group.png']]) {
       await openMarks(page, `e2e/fixtures/${file}`);
       const marked = page.getByTestId('system').filter({ has: page.locator('[data-jump]') }).first();
       await marked.screenshot({ path: join(OUT!, name) });

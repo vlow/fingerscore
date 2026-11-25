@@ -5,11 +5,12 @@ import { notatedLength } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
 import { JumpMarks } from './JumpMarks';
-import { HEADER, markDrop, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
+import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
 import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
 import { pillCentres } from './pillSpread';
+import { systemPlacement } from './placed';
 import { beamGeometry, Tuplet, type Placed } from './TupletMark';
 import { usePalette } from './palette';
 
@@ -54,13 +55,16 @@ export function tieSegments(d: Derived, layout: SheetLayout): TieSegment[][] {
   return out;
 }
 
+/** The path of a tie arc, and the top of its ink (the arc's apex or its ends, whichever is higher). */
+export function tieArc(p: TieSegment): { d: string; top: number } {
+  const rx = (p.x2 - p.x1) / 2;
+  const [y0, sweep, apex] = p.below ? [p.y + 2, 0, p.y + 2 + 5] : [p.y + 5, 1, p.y + 5 - 5];
+  return { d: `M${p.x1} ${y0}A${rx} 5 0 0 ${sweep} ${p.x2} ${y0}`, top: Math.min(y0, apex) };
+}
+
 function Tie(p: TieSegment) {
   const pal = usePalette();
-  const rx = (p.x2 - p.x1) / 2;
-  const d = p.below
-    ? `M${p.x1} ${p.y + 2}A${rx} 5 0 0 0 ${p.x2} ${p.y + 2}`
-    : `M${p.x1} ${p.y + 5}A${rx} 5 0 0 1 ${p.x2} ${p.y + 5}`;
-  return <path data-tie="" d={d} fill="none" stroke={pal.ink} strokeWidth={1.5} />;
+  return <path data-tie="" d={tieArc(p).d} fill="none" stroke={pal.ink} strokeWidth={1.5} />;
 }
 
 const barline = (ink: string) => (x: number, w: number) => <rect x={x} y={staffTop} width={w} height={STAFF_H} fill={ink} />;
@@ -160,6 +164,8 @@ export interface SystemViewProps {
   show?: Doc['show'];
   playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
   selectedId: string | null; onSelect?(id: string | null): void;
+  /** How far the jump marks are lowered (see `sheetMarkDrop`); 0 or absent: the top row. */
+  markDrop?: number;
   /** Play mode: no hit areas. */
   readOnly?: boolean;
 }
@@ -172,10 +178,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
   const end = systemEnd(system);
   const nAcc = Math.abs(derived.sig);
   const accPos = derived.sig > 0 ? SHARP_POS : FLAT_POS;
-  const placed: Placed[] = system.bars.flatMap(bar => bar.events.map(e => ({ ev: derived.byId[e.id], x: e.x, y: e.y })));
-  const byId = new Map(placed.map(n => [n.ev.id, n]));
-  const groups = system.bars.flatMap(bar => p.beams[bar.bar] ?? []);
-  const beamOf = new Map(groups.flatMap(g => g.ids.map(id => [id, g] as const)));
+  const { placed, byId, groups, beamOf } = systemPlacement(derived, system, p.beams);
   const full = barCap(doc.timeSig);
   const fullBarRest = (bar: BarLayout) => {
     const evs = doc.score[bar.bar].ev;
@@ -233,7 +236,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
     <div className={styles.system} style={row > 0 ? { height } : undefined}>
       <svg data-testid="system" width={SHEET.systemWidth} height={height}
         viewBox={`0 0 ${SHEET.systemWidth} ${height}`} aria-hidden="true">
-        {row > 0 && <JumpMarks system={system} score={doc.score} drop={markDrop(derived.events, show)} />}
+        {row > 0 && <JumpMarks system={system} score={doc.score} drop={p.markDrop ?? 0} />}
         {row > 0 ? <g transform={`translate(0 ${row})`}>{drawing}</g> : drawing}
       </svg>
       {under && (() => {
