@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Derived, DerivedEvent } from '../../domain/derive';
 import { lengthName } from '../../domain/edit';
-import { barCap } from '../../domain/time';
+import { barLabelOf } from '../../domain/bars';
 import type { Doc } from '../../domain/types';
 import { useApp } from '../../state/store';
 import type { Mode } from '../../ui/ModeSwitch';
@@ -31,7 +31,7 @@ export function useSelection(doc: Doc, derived: Derived) {
   const scrollToSelection = useRef(false);
   const sheetGen = useApp(st => st.sheetGen);
   useEffect(() => { setSelection(null); setAnnouncement(''); }, [sheetGen]);
-  const firstBar = doc.score.length > 0 && doc.score[0].cap < barCap(doc.timeSig) ? 0 : 1;
+  const firstBar = barLabelOf(doc, 0);
 
   /** In Lyrics mode a rest or tied continuation hands the selection to the next note that can carry a syllable. */
   function landing(id: string, m: Mode): string {
@@ -43,7 +43,7 @@ export function useSelection(doc: Doc, derived: Derived) {
     return to ? to.id : id;
   }
 
-  const barLabel = (ev: DerivedEvent) => (ev.bar + firstBar === 0 ? 'pickup bar' : `bar ${ev.bar + firstBar}`);
+  const barLabel = (ev: DerivedEvent) => (barLabelOf(doc, ev.bar) === 0 ? 'pickup bar' : `bar ${barLabelOf(doc, ev.bar)}`);
 
   function select(picked: string | null, byKeyboard = false) {
     const id = picked === null ? null : landing(picked, mode);

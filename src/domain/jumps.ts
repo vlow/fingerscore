@@ -1,4 +1,5 @@
-import { barCap } from './time';
+import { barLabelOf } from './bars';
+import { walkRepeats } from './repeats';
 import type { Bar, Doc, Jump } from './types';
 
 /** The texts drawn on the sheet and used in notices. */
@@ -16,12 +17,6 @@ export const isJump = (v: unknown): v is Jump => typeof v === 'string' && Object
 
 export function hasJumpMarks(doc: Doc): boolean {
   return doc.score.some(b => b.segno || b.coda || b.fine || b.toCoda || b.jump);
-}
-
-/** The number printed on the sheet for a bar index: bars count from 1 at the first full bar, a pickup bar is bar 0. */
-export function barLabelOf(doc: Doc, bar: number): number {
-  const firstNumber = doc.score.length > 0 && doc.score[0].cap < barCap(doc.timeSig) ? 0 : 1;
-  return bar + firstNumber;
 }
 
 /** `bar` is a bar index; `text` is the notice, with the printed bar number. */
@@ -117,6 +112,10 @@ export function jumpProblems(doc: Doc): JumpProblem[] {
     if (i !== undefined && skipped[i]) {
       out.push(problem(i, `The ${MARK_NAME[m]} in bar ${label(i)} stands in an ending that is skipped after the jump.`));
     }
+  }
+  if (out.length === 0 && !walkRepeats(doc, at).fired) {
+    const place = { '1': 'a first ending', '2': 'a second ending', '': 'a repeated section' }[bars[at].volta];
+    out.push(problem(at, `${name} stands in ${place} and is never reached.`));
   }
   return out;
 }

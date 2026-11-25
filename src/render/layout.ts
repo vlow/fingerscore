@@ -1,4 +1,5 @@
 import type { Derived, DerivedEvent } from '../domain/derive';
+import { barLabelOf } from '../domain/bars';
 import { barCap, beatTicks } from '../domain/time';
 import { notatedLength, tripletGroups, type TripletGroup } from '../domain/triplets';
 import type { Doc } from '../domain/types';
@@ -120,9 +121,6 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
   const byBar: DerivedEvent[][] = doc.score.map(() => []);
   for (const ev of d.events) byBar[ev.bar].push(ev);
 
-  // Bars count from 1 at the first full bar; a pickup is bar 0.
-  const firstNumber = doc.score.length > 0 && doc.score[0].cap < barCap(doc.timeSig) ? 0 : 1;
-
   const systems: SystemLayout[] = breakSystems(doc, d.sig).map(({ bars, widths }, index) => {
     const first = index === 0;
     const hw = headerWidth(d.sig, first);
@@ -135,7 +133,7 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
     });
     return {
       index, y: index * SHEET.systemHeight, headerWidth: hw, showTimeSig: first,
-      barNumber: first ? null : bars[0] + firstNumber, bars: barLayouts,
+      barNumber: first ? null : barLabelOf(doc, bars[0]), bars: barLayouts,
     };
   });
 

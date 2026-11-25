@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { barLabelOf, hasJumpMarks, jumpProblems, JUMP_TEXT } from './jumps';
+import { barLabelOf } from './bars';
+import { hasJumpMarks, jumpProblems, JUMP_TEXT } from './jumps';
 import { playOrder } from './playback';
 import type { Doc } from './types';
 import { mkDoc, type BarSpec } from '../test/helpers';
@@ -47,6 +48,22 @@ describe('jumpProblems', () => {
 
   it('finds none in a document without a jump', () => {
     expect(jumpProblems(tune({ segno: true }, { segno: true, fine: true }, { coda: true }))).toEqual([]);
+  });
+
+  it('a jump in a second ending, or in the last bar after a repeat with endings, is taken and is no problem', () => {
+    expect(texts(tune({ rs: true }, { volta: '1', re: true }, { volta: '2', jump: 'dc' }))).toEqual([]);
+    expect(texts(tune({ rs: true }, { volta: '1', re: true }, { volta: '2' }, { jump: 'dc' }))).toEqual([]);
+  });
+
+  it('a jump in the first ending that carries the repeat is never reached and is named', () => {
+    const d = tune({ rs: true }, { volta: '1', re: true, jump: 'dc' }, { volta: '2' });
+    expect(texts(d)).toEqual(['D.C. in bar 2 stands in a first ending and is never reached.' + IGNORED]);
+    expect(playOrder(d)).toEqual(playOrder(withoutJump(d)));
+  });
+
+  it('a jump in an ending that repeats again, past its last pass, is never reached', () => {
+    const d = tune({ volta: '1', re: true }, { volta: '2', re: true, jump: 'dc' });
+    expect(texts(d)).toEqual(['D.C. in bar 2 stands in a second ending and is never reached.' + IGNORED]);
   });
 
   it('a mark in the last ending, or in a bar that plays again, is no problem', () => {

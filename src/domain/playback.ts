@@ -1,4 +1,5 @@
 import { jumpProblems, skippedEndings } from './jumps';
+import { walkRepeats } from './repeats';
 import type { Doc, Jump } from './types';
 
 /** Ticks; midi is the sounding pitch (m + shift). */
@@ -36,43 +37,14 @@ function playAfterJump(doc: Doc, jumpBar: number, order: number[], cuts: Set<num
 
 /**
  * Bar indices in play order, and the positions in that order where a jump starts (a tie does not carry across).
- * A section starts at a bar with a start-repeat mark, at bar 0, or after a finished repeat.
- * Each end-repeat mark jumps back to its section start once; every jump starts the next pass.
- * A first-ending bar plays only on pass 1, a second-ending bar only on passes 1–2, so
- * `A | 1.(re) | 2.(re) | 3.` plays A 1. A 2. A 3. (ending 3 has no volta in the doc).
  * A jump mark (D.C., D.S.) is taken once, at the end of its bar, after that bar's repeat is played out;
  * a document whose marks do not add up plays without it (see `jumpProblems`).
- * The order is capped at 4 × the bar count as a safety net.
  */
 function playPlan(doc: Doc): { order: number[]; cuts: Set<number> } {
-  const bars = doc.score;
-  const cap = 4 * bars.length;
-  const order: number[] = [];
+  const jumpBar = jumpProblems(doc).length === 0 ? doc.score.findIndex(b => b.jump) : -1;
+  const { order, fired } = walkRepeats(doc, jumpBar);
   const cuts = new Set<number>();
-  const taken = new Set<number>();
-  const jumpBar = jumpProblems(doc).length === 0 ? bars.findIndex(b => b.jump) : -1;
-  let start = 0;
-  let pass = 1;
-  let i = 0;
-  while (i < bars.length && order.length < cap) {
-    const bar = bars[i];
-    if ((bar.volta === '1' && pass > 1) || (bar.volta === '2' && pass > 2)) { i++; continue; }
-    if (bar.rs && i !== start) { start = i; pass = 1; }
-    order.push(i);
-    if (bar.re && !taken.has(i)) {
-      taken.add(i);
-      pass += 1;
-      i = start;
-      continue;
-    }
-    if (i === jumpBar) {
-      playAfterJump(doc, jumpBar, order, cuts, cap);
-      break;
-    }
-    const endsEndings = pass > 1 && bar.volta !== '' && (bars[i + 1]?.volta ?? '') === '';
-    if (bar.re || endsEndings) { start = i + 1; pass = 1; }
-    i++;
-  }
+  if (fired) playAfterJump(doc, jumpBar, order, cuts, 4 * doc.score.length);
   return { order, cuts };
 }
 
