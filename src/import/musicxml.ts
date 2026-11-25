@@ -222,51 +222,56 @@ for (const [heads, forms] of [[['dc', 'dacapo'], ['dc', 'dcFine', 'dcCoda']], [[
   }
 }
 
-/** Reads what one measure says about jumps. Words decide a jump; a `sound` without words is settled by the file's Fine or To Coda. */
+/**
+ * Reads what one measure says about jumps. A mark belongs to the measure it is written in, wherever it stands there:
+ * Segno and Coda to the first bar of the measure, Fine, To Coda and the jumps to its last bar. A sign in a right barline
+ * belongs to the start of the next measure. Words decide a jump; a `sound` without words is settled by the file's Fine or To Coda.
+ */
 function measureJumpReader(measureStart: number, measureEnd: number, grid: Grid, jumps: Jumps) {
-  const wordJumps: { t: number; words: string }[] = [];
-  const soundJumps: { t: number; family: Family }[] = [];
-  const sound = (el: Element, t: number) => {
+  const first = barAt(grid, measureStart);
+  const last = barEndingAt(grid, measureEnd);
+  const wordJumps: string[] = [];
+  const soundJumps: Family[] = [];
+  const sound = (el: Element) => {
     const has = (name: string) => el.getAttribute(name) !== null;
-    if (has('segno')) jumps.segno(barAt(grid, t));
-    if (has('coda')) jumps.coda(barAt(grid, t));
-    if (has('fine')) jumps.fine(barEndingAt(grid, t));
-    if (has('tocoda')) jumps.toCoda(barEndingAt(grid, t));
-    if (has('dacapo')) soundJumps.push({ t, family: 'dc' });
-    if (has('dalsegno')) soundJumps.push({ t, family: 'ds' });
+    if (has('segno')) jumps.segno(first);
+    if (has('coda')) jumps.coda(first);
+    if (has('fine')) jumps.fine(last);
+    if (has('tocoda')) jumps.toCoda(last);
+    if (has('dacapo')) soundJumps.push('dc');
+    if (has('dalsegno')) soundJumps.push('ds');
   };
   const squeeze = (words: string) => words.toLowerCase().replace(/[\s.]/g, '');
   return {
-    /** `t` is where the element stands, in quarter notes from the start of the song. */
-    read(el: Element, t: number): void {
+    read(el: Element): void {
       if (el.localName === 'barline') {
-        const at = el.getAttribute('location') === 'left' ? measureStart : measureEnd;
-        if (kid(el, 'segno')) jumps.segno(barAt(grid, at));
-        if (kid(el, 'coda')) jumps.coda(barAt(grid, at));
+        const bar = el.getAttribute('location') === 'left' ? first : barAt(grid, measureEnd);
+        if (kid(el, 'segno')) jumps.segno(bar);
+        if (kid(el, 'coda')) jumps.coda(bar);
       } else if (el.localName === 'sound') {
-        sound(el, t);
+        sound(el);
       } else if (el.localName === 'direction') {
         const types = kids(el, 'direction-type');
-        if (types.some(d => kid(d, 'segno'))) jumps.segno(barAt(grid, t));
-        if (types.some(d => kid(d, 'coda'))) jumps.coda(barAt(grid, t));
+        if (types.some(d => kid(d, 'segno'))) jumps.segno(first);
+        if (types.some(d => kid(d, 'coda'))) jumps.coda(first);
         const words = types.flatMap(d => kids(d, 'words')).map(w => w.textContent ?? '').join(' ').trim();
         const plain = squeeze(words);
-        if (plain === 'fine') jumps.fine(barEndingAt(grid, t));
-        else if (plain === 'tocoda') jumps.toCoda(barEndingAt(grid, t));
-        else if (/^(dc|ds|dacapo|dalsegno)/.test(plain)) wordJumps.push({ t, words });
-        for (const sd of kids(el, 'sound')) sound(sd, t);
+        if (plain === 'fine') jumps.fine(last);
+        else if (plain === 'tocoda') jumps.toCoda(last);
+        else if (/^(dc|ds|dacapo|dalsegno)/.test(plain)) wordJumps.push(words);
+        for (const sd of kids(el, 'sound')) sound(sd);
       }
     },
     /** At the end of the measure, when its words and its sounds are all in. */
     finish(): void {
       if (wordJumps.length === 0) {
-        for (const { t, family } of soundJumps) jumps.jumpByFile(barEndingAt(grid, t), family);
+        for (const family of soundJumps) jumps.jumpByFile(last, family);
         return;
       }
-      for (const { t, words } of wordJumps) {
+      for (const words of wordJumps) {
         const form = own(WORD_JUMPS, squeeze(words));
-        if (form) jumps.jump(barEndingAt(grid, t), form);
-        else jumps.unsupported(barEndingAt(grid, t), words);
+        if (form) jumps.jump(last, form);
+        else jumps.unsupported(last, words);
       }
     },
   };
@@ -300,7 +305,7 @@ function readPart(part: Element, info: Map<string, Element>, grid: Grid, marks: 
     const measureJumps = measureJumpReader(measureStart, measureEnd, grid, jumps);
     for (const el of Array.from(measure.children)) {
       const name = el.localName;
-      if (name === 'direction' || name === 'sound' || name === 'barline') measureJumps.read(el, measureStart + pos);
+      if (name === 'direction' || name === 'sound' || name === 'barline') measureJumps.read(el);
       if (name === 'attributes') {
         divisions = num(text(el, 'divisions')) ?? divisions;
         const tr = kid(el, 'transpose');

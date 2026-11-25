@@ -160,6 +160,35 @@ describe('MusicXML', () => {
     expect(jumpMarksOf(u)).toEqual([{ bar: 1, coda: true }]);
   });
 
+  it('a mark belongs to its measure, before or after the notes', async () => {
+    const dc = dir('<words>D.C. al Fine</words>') + '<sound dacapo="yes"/>';
+    const fineFirst = await xml(fourBars({ 4: [dir('<words>Fine</words>'), ''] }));
+    expect(jumpMarksOf(fineFirst)).toEqual([{ bar: 3, fine: true }]);
+    const before = await xml(fourBars({ 4: [dc, ''] }));
+    const after = await xml(fourBars({ 4: ['', dc] }));
+    expect(jumpMarksOf(before)).toEqual([{ bar: 3, jump: 'dcFine' }]);
+    expect(jumpMarksOf(after)).toEqual(jumpMarksOf(before));
+    const segno = await xml(fourBars({ 3: ['', dir('<segno/>')] }));
+    expect(jumpMarksOf(segno)).toEqual([{ bar: 2, segno: true }]);
+    const toCoda = await xml(fourBars({ 2: ['<sound tocoda="c1"/>', ''] }));
+    expect(jumpMarksOf(toCoda)).toEqual([{ bar: 1, toCoda: true }]);
+  });
+
+  it('a sign in a right barline starts the next measure, in a left barline its own', async () => {
+    const right = await xml(fourBars({ 2: ['', '<barline location="right"><segno/></barline>'] }));
+    expect(jumpMarksOf(right)).toEqual([{ bar: 2, segno: true }]);
+    const left = await xml(fourBars({ 3: ['<barline location="left"><coda/></barline>', ''] }));
+    expect(jumpMarksOf(left)).toEqual([{ bar: 2, coda: true }]);
+  });
+
+  it('with a pickup measure: indices and printed bar numbers', async () => {
+    const pick = `<measure number="0">${ATTRS}${q('C')}</measure>`;
+    const s = await xml([pick, xmlMeasure(2, dir('<words>Fine</words>')), xmlMeasure(3, '', dir('<segno/>') + dir('<segno/>')), xmlMeasure(4, dir('<segno/>'))]);
+    expect(s.pickup).toBe(1);
+    expect(jumpMarksOf(s)).toEqual([{ bar: 1, fine: true }, { bar: 2, segno: true }]);
+    expect(s.dropped).toEqual(['A second Segno in bar 3 was left out.']);
+  });
+
   it('marks in part 1 only: the marks are the same when part 2 is played', async () => {
     const part1 = fourBars({ 1: [dir('<segno/>'), ''], 3: ['', dir('<words>Fine</words>')], 4: ['', dir('<words>D.S. al Fine</words>')] });
     const part2 = fourBars();
