@@ -4,7 +4,8 @@ import { keySignature, mod12, signatureLetters } from './keys';
 import { barCap, isPlainLength, isTripletLength, newId, splitDuration } from './time';
 import { canStartGroup, groupOf, MEMBER_LENGTHS, notatedLength, tripletGroups, tripletRestLayouts } from './triplets';
 import type { Span, TripletGroup } from './triplets';
-import type { Bar, Doc, Ev } from './types';
+import type { BarMark } from './jumps';
+import type { Bar, Doc, Ev, Jump } from './types';
 
 /** Pure edit operations on a document. Each returns a new document, or null when the edit is not allowed. */
 
@@ -421,6 +422,23 @@ export function removeBar(doc: Doc, barIndex: number): { doc: Doc; selectId: str
   const select = score[barIndex] ?? score[barIndex - 1];
   return { doc: fixTies(forget({ ...doc, score }, removed), [lastBefore]), selectId: select.ev[0].id };
 }
+
+/** Puts a field on one bar and takes it off every other: a document never holds two of a mark. */
+function placeField(doc: Doc, bar: number, key: BarMark | 'jump', value: true | Jump | undefined): Doc {
+  if (!Number.isInteger(bar) || bar < 0 || bar >= doc.score.length) return doc;
+  const score = doc.score.map((b, k) => {
+    if (k !== bar && (value === undefined || b[key] === undefined)) return b;
+    const { [key]: _gone, ...rest } = b;
+    return k === bar && value !== undefined ? { ...rest, [key]: value } as Bar : rest;
+  });
+  return { ...doc, score };
+}
+
+/** Sets or clears a mark of a bar; a mark that stands on another bar moves here. An unknown bar changes nothing. */
+export const setBarMark = (doc: Doc, bar: number, mark: BarMark, on: boolean): Doc => placeField(doc, bar, mark, on ? true : undefined);
+
+/** Sets the jump at the end of a bar, or clears it with null; a jump on another bar moves here. */
+export const setJump = (doc: Doc, bar: number, jump: Jump | null): Doc => placeField(doc, bar, 'jump', jump ?? undefined);
 
 /** The dot toggle: a dotted length goes back to its base, a base length gets its dot; null when that is not allowed. */
 export function toggleDotted(doc: Doc, id: string): Doc | null {

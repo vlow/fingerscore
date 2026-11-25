@@ -1,0 +1,17 @@
+/* Marks that do not add up: amber, like the "extended" banner. */
+.notice {
+  padding: 12px 18px;
+  border: 1px solid color-mix(in srgb, var(--c-warning) 35%, transparent);
+  border-radius: 12px;
+  background: var(--c-warning-bg);
+  color: var(--c-warning);
+  font-size: 13px;
+}
+
+.line {
+  margin: 0;
+}
+
+.line + .line {
+  margin-top: 4px;
+}

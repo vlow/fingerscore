@@ -5,6 +5,7 @@ import { barLabelOf } from '../../domain/bars';
 import type { Doc } from '../../domain/types';
 import { useApp } from '../../state/store';
 import type { Mode } from '../../ui/ModeSwitch';
+import { barAnnouncement } from './barAnnouncement';
 
 /** A note that can carry a syllable: not a rest, not a tied continuation. */
 const takesSyllable = (ev: DerivedEvent) => !ev.rest && !ev.tiedFrom;
@@ -77,11 +78,14 @@ export function useSelection(doc: Doc, derived: Derived) {
 
   function applyNoteEdit(next: Doc | null, selectId?: string) {
     if (selectedId === null || !useApp.getState().applyEdit(next)) return;
+    // A change of marks is announced by the bar and the mark; the note's own message would not say it.
+    const said = next === null ? null : barAnnouncement(doc, next);
+    if (said !== null) setAnnouncement(prev => (prev === said ? `${said}\u200B` : said));
     if (selectId !== undefined) {
       setSelection(selectId);
       scrollToSelection.current = true;
     }
-    announceEdit.current = selectId ?? selectedId;
+    announceEdit.current = said === null ? selectId ?? selectedId : null;
   }
 
   /** A click on Lyrics or Chords focuses the field of the selected note; arrow keys leave the focus on the switch. */

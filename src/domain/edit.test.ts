@@ -4,7 +4,7 @@ import { expectValidBars } from '../test/validBars';
 import { parseChord } from './chords';
 import {
   addBarAfter, canMakeTriplet, canTie, dottedOf, eventOrder, fits, inTriplet, lengthChoices, lengthName, locate, makeTriplet, nextEvent,
-  removeBar, setLength, setLetter, shiftPitch, splitLength, toggleDotted, toggleRest, toggleTie, toggleTriplet, undoTriplet,
+  removeBar, setBarMark, setJump, setLength, setLetter, shiftPitch, splitLength, toggleDotted, toggleRest, toggleTie, toggleTriplet, undoTriplet,
 } from './edit';
 import { sampleDoc } from './fixture';
 import { MAX_BARS, validateDoc } from './persistence';
@@ -524,5 +524,56 @@ describe('lengthChoices d values', () => {
         for (const c of lengthChoices(d, e.id)) expect(isTripletLength(c.d) || DURATIONS.includes(c.d as never), `${c.notated} → ${c.d}`).toBe(true);
       }
     }
+  });
+});
+
+describe('jump marks', () => {
+  const tune = () => mkDoc([{ ev: [[60, 48]] }, { ev: [[62, 48]] }, { ev: [[64, 48]] }]);
+
+  it('setBarMark sets and clears a mark, and leaves the key out when it is clear', () => {
+    const on = setBarMark(tune(), 1, 'segno', true);
+    expect(on.score[1].segno).toBe(true);
+    const off = setBarMark(on, 1, 'segno', false);
+    expect('segno' in off.score[1]).toBe(false);
+    expect(off).toEqual(tune());
+  });
+
+  it('setBarMark moves a mark that stands on another bar, in the same result', () => {
+    const d = setBarMark(setBarMark(tune(), 0, 'fine', true), 2, 'fine', true);
+    expect(d.score.map(b => b.fine)).toEqual([undefined, undefined, true]);
+    expect('fine' in d.score[0]).toBe(false);
+  });
+
+  it('setJump sets, changes, clears and moves the jump', () => {
+    const a = setJump(tune(), 2, 'dsCoda');
+    expect(a.score[2].jump).toBe('dsCoda');
+    expect(setJump(a, 2, 'dc').score[2].jump).toBe('dc');
+    const moved = setJump(a, 1, 'ds');
+    expect(moved.score.map(b => b.jump)).toEqual([undefined, 'ds', undefined]);
+    expect('jump' in moved.score[2]).toBe(false);
+    expect(setJump(a, 2, null)).toEqual(tune());
+  });
+
+  it('an unknown bar index returns the document unchanged', () => {
+    const d = tune();
+    for (const k of [-1, 3, 1.5, Number.NaN]) {
+      expect(setBarMark(d, k, 'coda', true)).toBe(d);
+      expect(setJump(d, k, 'ds')).toBe(d);
+    }
+  });
+
+  it('does not change its input', () => {
+    const d = deepFreeze(setBarMark(tune(), 0, 'segno', true));
+    expect(() => { setBarMark(d, 1, 'segno', true); setJump(d, 1, 'dc'); }).not.toThrow();
+  });
+
+  it('removeBar takes the marks of the bar with it; addBarAfter leaves marks on their bars', () => {
+    const d = setJump(setBarMark(tune(), 1, 'segno', true), 2, 'ds');
+    const removed = removeBar(d, 1)!.doc;
+    expect(removed.score.map(b => b.segno)).toEqual([undefined, undefined]);
+    expect(removed.score[1].jump).toBe('ds');
+    const added = addBarAfter(d, 0)!.doc;
+    expect(added.score.map(b => b.segno)).toEqual([undefined, undefined, true, undefined]);
+    expect(added.score.map(b => b.jump)).toEqual([undefined, undefined, undefined, 'ds']);
   });
 });

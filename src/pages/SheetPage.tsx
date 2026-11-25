@@ -4,6 +4,7 @@ import { derive } from '../domain/derive';
 import { locate } from '../domain/edit';
 import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
+import { jumpProblems } from '../domain/jumps';
 import { keySignature, spell } from '../domain/keys';
 import type { Doc } from '../domain/types';
 import { usableTracks } from '../import/melody';
@@ -12,6 +13,7 @@ import { Paper } from '../render/Paper';
 import { canRedo, canUndo, useApp } from '../state/store';
 import Banners from '../ui/Banners';
 import FileMenu from '../ui/FileMenu';
+import JumpNotice from '../ui/JumpNotice';
 import KeyBridge from '../ui/KeyBridge';
 import { LoadBoundary } from '../ui/LoadBoundary';
 import { ModeSwitch } from '../ui/ModeSwitch';
@@ -81,6 +83,7 @@ function Sheet({ doc }: { doc: Doc }) {
 
   const derived = useMemo(() => derive(doc, prefs), [doc, prefs]);
   const layout = useMemo(() => layoutSheet(doc, derived), [doc, derived]);
+  const problems = useMemo(() => jumpProblems(doc), [doc]);
   const i = derived.inst;
 
   const {
@@ -280,6 +283,7 @@ function Sheet({ doc }: { doc: Doc }) {
                 onPlayMode={enterPlayMode} playModeRef={playModeButton} />
             </div>
           </div>
+          <JumpNotice problems={problems} dropped={doc.source.dropped ?? []} />
           {/* Outside the group it describes: a description inside its own element is read twice. */}
           <p id={descriptionId} className={s.srOnly}>{paperDescription(doc, derived)}</p>
           {/* Focusable on purpose: a scrolling area must be reachable by keyboard, and the sheet keys act from here. */}

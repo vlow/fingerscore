@@ -105,6 +105,17 @@ const RAW: AppState[] = [
     },
   },
   {
+    // The Bar section of the panel and the amber notice: a D.S. without a Segno.
+    id: 'sheet-jump-notice',
+    landmark: page => page.getByRole('status', { name: 'Jump marks' }).filter({ hasText: 'needs a Segno' }),
+    open: async page => {
+      await sheet(page);
+      await mode(page, 'Edit notes');
+      await page.locator('[data-hit]').nth(1).click();
+      await page.getByRole('group', { name: 'Edit notes panel' }).getByLabel('Jump at the end of the bar').selectOption({ label: 'D.S.' });
+    },
+  },
+  {
     id: 'sheet-lyrics',
     landmark: page => page.getByRole('group', { name: 'Lyrics panel' }).getByLabel('Lyric'),
     open: async page => {

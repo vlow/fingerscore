@@ -7,7 +7,8 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc, InstId } from '../domain/types';
-import { addBarAfter, lengthName, locate, setLength, shiftPitch, toggleRest, toggleTriplet } from '../domain/edit';
+import { barLabelOf } from '../domain/bars';
+import { addBarAfter, lengthName, locate, setBarMark, setJump, setLength, shiftPitch, toggleRest, toggleTriplet } from '../domain/edit';
 import { setChord } from '../domain/editText';
 import { inst } from '../domain/instruments';
 import { mod12, signatureLetters } from '../domain/keys';
@@ -2228,5 +2229,140 @@ describe('play mode', () => {
     await user.keyboard('{Control>}s{/Control}');
     expect(useApp.getState().doc).toBe(before);
     expect(listEntries()).toHaveLength(0);
+  });
+});
+
+describe('jump marks: the Bar section and the notice', () => {
+  const hit = (id: string) => document.querySelector(`[data-hit="${id}"]`)!;
+  const sheet = () => screen.getByRole('group', { name: /Sheet music/ });
+  const live = () => sheet().querySelector('[aria-live="polite"]')!;
+  const panel = () => screen.getByRole('group', { name: 'Edit notes panel' });
+  const bar = () => within(panel()).getByRole('group', { name: 'Bar' });
+  const current = () => useApp.getState().doc!;
+  const notice = () => screen.queryByRole('status', { name: 'Jump marks' });
+  const IGNORED = 'Playback ignores the jump.';
+  /** The sample, with `marks` applied; bar indices as in the document. */
+  const openMarked = async (marks: (d: Doc) => Doc = d => d) => {
+    open('asax', marks(sampleDoc('asax')));
+    await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
+  };
+  const selectBar = async (k: number) => {
+    await user.click(hit(current().score[k].ev[0].id));
+    await screen.findByRole('group', { name: 'Edit notes panel' });
+  };
+  const label = (k: number) => barLabelOf(current(), k);
+  const doc0 = () => sampleDoc('asax');
+
+  it('shows the section Bar with four toggles and a select, for the bar of the selected note', async () => {
+    await openMarked();
+    await selectBar(2);
+    for (const name of ['Segno', 'Coda', 'Fine', 'To Coda']) {
+      expect(within(bar()).getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false');
+    }
+    const select = within(bar()).getByLabelText('Jump at the end of the bar');
+    expect(within(select).getAllByRole('option').map(o => o.textContent)).toEqual(
+      ['None', 'D.C.', 'D.C. al Fine', 'D.C. al Coda', 'D.S.', 'D.S. al Fine', 'D.S. al Coda']);
+  });
+
+  it('a toggle sets the mark on that bar as one undo step; Undo takes it back', async () => {
+    await openMarked();
+    await selectBar(2);
+    const before = current();
+    await user.click(within(bar()).getByRole('button', { name: 'Segno' }));
+    expect(current().score[2].segno).toBe(true);
+    expect(within(bar()).getByRole('button', { name: 'Segno' })).toHaveAttribute('aria-pressed', 'true');
+    expect(live()).toHaveTextContent(`Bar ${label(2)}: Segno`);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(useApp.getState().doc).toBe(before);
+    expect(useApp.getState().past).toHaveLength(0);
+  });
+
+  it('the select sets the jump; "None" clears it', async () => {
+    await openMarked();
+    await selectBar(3);
+    const select = within(bar()).getByLabelText('Jump at the end of the bar');
+    await user.selectOptions(select, 'D.S. al Coda');
+    expect(current().score[3].jump).toBe('dsCoda');
+    expect(live()).toHaveTextContent(`Bar ${label(3)}: D.S. al Coda`);
+    await user.selectOptions(select, 'None');
+    expect('jump' in current().score[3]).toBe(false);
+    expect(live()).toHaveTextContent(`Bar ${label(3)}: D.S. al Coda removed`);
+  });
+
+  it('a mark set on a second bar moves; Undo brings it back to the first and says so', async () => {
+    await openMarked(d => setBarMark(d, 1, 'fine', true));
+    await selectBar(3);
+    await user.click(within(bar()).getByRole('button', { name: 'Fine' }));
+    expect(current().score.map(b => b.fine)).toEqual(current().score.map((_b, k) => (k === 3 ? true : undefined)));
+    expect(live()).toHaveTextContent(`Bar ${label(3)}: Fine moved from bar ${label(1)}`);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(current().score[1].fine).toBe(true);
+    expect('fine' in current().score[3]).toBe(false);
+  });
+
+  it('the notice names a jump without a Segno, and goes when the marks add up', async () => {
+    await openMarked(d => setJump(d, 3, 'ds'));
+    expect(notice()).toHaveTextContent(`D.S. in bar ${label(3)} needs a Segno.`);
+    expect(notice()).toHaveTextContent(IGNORED);
+    await selectBar(1);
+    await user.click(within(bar()).getByRole('button', { name: 'Segno' }));
+    expect(notice()).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(notice()).not.toBeNull();
+  });
+
+  it('removing the Segno bar of a D.S. song shows the notice; Undo removes it', async () => {
+    await openMarked(d => setJump(setBarMark(d, 1, 'segno', true), 3, 'ds'));
+    expect(notice()).toBeNull();
+    await selectBar(1);
+    await user.click(within(panel()).getByRole('button', { name: 'Remove bar' }));
+    expect(notice()).toHaveTextContent('needs a Segno');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(notice()).toBeNull();
+  });
+
+  it('the notice sits above the paper and below the other banner, which keeps its own message', async () => {
+    await openMarked(d => setJump(d, 3, 'ds'));
+    expect(screen.getByText(/Suggested key applied/)).toBeInTheDocument();
+    const n = notice()!;
+    expect(n.closest('[data-print-hide]')).not.toBeNull();
+    expect(document.querySelector('[data-print-paper]')!.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(screen.getByText(/Suggested key applied/).compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('lists the sentences an import left out', () => {
+    open('asax', { source: { ...doc0().source, dropped: ['A coda sign in bar 9 was left out.'] } });
+    expect(notice()).toHaveTextContent('A coda sign in bar 9 was left out.');
+  });
+
+  it('is not shown without a problem or a dropped sentence', () => {
+    open('asax');
+    expect(notice()).toBeNull();
+  });
+
+  it('the sheet keys do nothing while the select has focus: D does not change the pitch', async () => {
+    await openMarked();
+    await selectBar(2);
+    const id = current().score[2].ev[0].id;
+    const m = locate(current(), id)!.ev.m;
+    const select = within(bar()).getByLabelText('Jump at the end of the bar');
+    select.focus();
+    await user.keyboard('d');
+    expect(locate(current(), id)!.ev.m).toBe(m);
+    expect(useApp.getState().past).toHaveLength(0);
+  });
+
+  it('the toggles work with Space and Enter and the select is next in the Tab order', async () => {
+    await openMarked();
+    await selectBar(2);
+    within(bar()).getByRole('button', { name: 'Coda' }).focus();
+    await user.keyboard(' ');
+    expect(current().score[2].coda).toBe(true);
+    await user.keyboard('{Enter}');
+    expect('coda' in current().score[2]).toBe(false);
+    await user.tab();
+    await user.tab();
+    await user.tab();
+    expect(within(bar()).getByLabelText('Jump at the end of the bar')).toHaveFocus();   // the arrow keys are in e2e/jump-edit.spec.ts
   });
 });

@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import {
   addBarAfter, canAddBar, canMakeTriplet, canTie, dottedOf, fits, inTriplet, LENGTH_NAMES, lengthChoices, locate, removeBar, setLength,
-  shiftPitch, splitLength, toggleDotted, toggleRest, toggleTie, toggleTriplet,
+  setBarMark, setJump, shiftPitch, splitLength, toggleDotted, toggleRest, toggleTie, toggleTriplet,
 } from '../domain/edit';
-import type { Doc } from '../domain/types';
+import { isJump, JUMP_TEXT, type BarMark } from '../domain/jumps';
+import type { Doc, Jump } from '../domain/types';
 import s from './NotePanel.module.css';
 
 /** Button names: "Sixteenth" … "Whole". */
@@ -21,6 +22,8 @@ const ICONS: Record<number, ReactNode> = {
   48: <ellipse cx="8" cy="12" rx="5" ry="3.4" fill="none" stroke="currentColor" strokeWidth="2" />,
 };
 
+const JUMPS = Object.keys(JUMP_TEXT) as Jump[];
+
 const KEY_OF_LENGTH: Record<number, string> = { 3: '2', 6: '3', 12: '4', 24: '5', 48: '6' };
 
 interface Props {
@@ -36,6 +39,8 @@ export default function NotePanel(p: Props): JSX.Element | null {
   const shown = p.derived.byId[id];
   if (!at || !shown) return null;
   const ev = at.ev;
+  const bar = doc.score[at.bar];
+  const jumpId = useId();
   const member = inTriplet(doc, id);
   const { base, dotted } = splitLength(ev.d);
   const longer = dottedOf(base);
@@ -43,6 +48,10 @@ export default function NotePanel(p: Props): JSX.Element | null {
   const pitch = (step: number, name: string, label: string, keys: string) => (
     <button type="button" className={s.symb} aria-label={`${label} ${name}`} aria-keyshortcuts={keys} disabled={shiftPitch(doc, id, step) === null}
       onClick={() => onEdit(shiftPitch(doc, id, step))}>{label}</button>
+  );
+
+  const mark = (key: BarMark, name: string) => (
+    <button type="button" className={s.symb} aria-pressed={bar[key] === true} onClick={() => onEdit(setBarMark(doc, at.bar, key, bar[key] !== true))}>{name}</button>
   );
 
   return (
@@ -77,6 +86,27 @@ export default function NotePanel(p: Props): JSX.Element | null {
         <span className={s.spacer} />
         <button type="button" className={s.symb} aria-label="Tie" aria-keyshortcuts="T" aria-pressed={ev.tie}
           disabled={!ev.tie && !canTie(doc, id)} onClick={() => onEdit(toggleTie(doc, id))}>⁀</button>
+      </div>
+      <div className={`${s.label} ${s.gap}`} aria-hidden="true">Bar</div>
+      <div role="group" aria-label="Bar" className={s.bar}>
+        <div role="group" aria-label="Start of the bar" className={s.row}>
+          <span className={s.caption} aria-hidden="true">Start</span>
+          {mark('segno', 'Segno')}
+          {mark('coda', 'Coda')}
+        </div>
+        <div role="group" aria-label="End of the bar" className={s.row}>
+          <span className={s.caption} aria-hidden="true">End</span>
+          {mark('fine', 'Fine')}
+          {mark('toCoda', 'To Coda')}
+        </div>
+        <div className={s.row}>
+          <label htmlFor={jumpId} className={s.fieldLabel}>Jump at the end of the bar</label>
+          <select id={jumpId} className={s.select} value={bar.jump ?? ''}
+            onChange={e => onEdit(setJump(doc, at.bar, isJump(e.target.value) ? e.target.value : null))}>
+            <option value="">None</option>
+            {JUMPS.map(j => <option key={j} value={j}>{JUMP_TEXT[j]}</option>)}
+          </select>
+        </div>
       </div>
       <div className={s.actions}>
         <button type="button" className={s.action} aria-keyshortcuts="R" onClick={() => onEdit(toggleRest(doc, id))}>

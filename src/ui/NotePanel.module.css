@@ -68,6 +68,44 @@
   color: var(--c-selected-fg);
 }
 
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.caption {
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
+.fieldLabel {
+  composes: caption;
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 100%;
+  min-height: 24px;
+}
+
+.select {
+  flex: 1 1 100%;
+  min-width: 96px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: 8px;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
