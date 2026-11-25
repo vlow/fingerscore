@@ -12,7 +12,8 @@
 
 ## Global Constraints
 
-- Everything loaded at page start stays at or under 400,000 bytes (`npm run build && npm run check:bundle`); it is 397,568 bytes. Task 1 must free at least 9,000 bytes before any mark is built; if it frees less, stop and report.
+- Everything loaded at page start stays at or under 410,000 bytes (`npm run build && npm run check:bundle`; the owner raised the limit for dark mode). It is 405,390 bytes. Task 1 must bring it to 397,000 bytes or less before any mark is built; if it does not, stop and report.
+- Dark mode (merged from main on 2026-11-25): everything drawn on the paper takes its colours from the palette (`src/render/palette`), never a fixed colour; the PDF keeps the light palette; stylesheets use the `--c-*` variables; `e2e/dark-mode.spec.ts` (D01–D06) and the accessibility scan in both themes keep passing.
 - The six jumps are `dc`, `dcFine`, `dcCoda`, `ds`, `dsFine`, `dsCoda`. Their texts on the sheet are "D.C.", "D.C. al Fine", "D.C. al Coda", "D.S.", "D.S. al Fine", "D.S. al Coda". The other texts are "Fine" and "To Coda".
 - New bar fields are optional and absent when unset: `segno?: true`, `coda?: true`, `fine?: true`, `toCoda?: true`, `jump?: Jump`. A saved sheet without them opens and plays as before. No migration.
 - A sheet without any mark keeps today's layout to the pixel: the existing layout, PDF, print and end-to-end tests pass unchanged.
@@ -47,7 +48,7 @@
 - [ ] **Step 2:** Write failing tests: (a) with the play-mode chunk not yet loaded, pressing "Play mode" keeps the sheet visible and usable and shows play mode once the chunk resolves; (b) when the chunk fails to load, a message "Play mode could not be loaded. Reload the page and try again." appears as an alert, the sheet is in its normal view, and the Play mode button works again after a later successful load; (c) arriving at `/sheet?…&mode=play` from the library behaves the same in both cases; (d) the glyph file has no key other than the ones the renderer reads.
 - [ ] **Step 3:** Load play mode with `lazy` and a boundary that handles the failure as (b) says; do not render an inline fallback that changes the page. Keep `inert`, focus return and Esc as they are.
 - [ ] **Step 4:** Change the glyph script so the bundled JSON carries no prose, move the prose to the `.md`, run `npm run glyphs`, and confirm the outlines are unchanged (compare the path data before and after in a test or a one-off script; report the result).
-- [ ] **Step 5:** Run `npx vitest run`, `npx tsc --noEmit -p .`, `npm run test:e2e`, `npm run test:e2e:preview`, `npm run build && npm run check:bundle`. Report the start set before and after. If fewer than 9,000 bytes were freed, stop and report BLOCKED with the numbers.
+- [ ] **Step 5:** Run `npx vitest run`, `npx tsc --noEmit -p .`, `npm run test:e2e`, `npm run test:e2e:preview`, `npm run build && npm run check:bundle`. Report the start set before and after. If it is above 397,000 bytes, stop and report BLOCKED with the numbers.
 - [ ] **Step 6:** Commit — `build: play mode loads on first use; the glyph data carries outlines only`
 
 ---
@@ -168,9 +169,9 @@
 **Interfaces:**
 - Consumes: everything above.
 
-- [ ] **Step 1:** Change the index test to require V01–V11; run it — expected: FAIL.
+- [ ] **Step 1:** Change the index test to require V01–V11 for `e2e/acceptance.spec.ts` (the dark-mode file keeps D01–D06); run it — expected: FAIL.
 - [ ] **Step 2:** Write `V11` in `e2e/acceptance.spec.ts`: import `ds-coda.abc` (a Segno, a "To Coda", a Coda, "D.S. al Coda", 8 short bars); the four marks are on the sheet in their bars; play at the fastest speed and assert the order of highlighted bars; with the keyboard only, select a note in the last bar, set the jump to "D.C. al Fine" and "Fine" on an earlier bar, see the texts change; Undo twice restores the imported marks; the downloaded PDF holds the text "D.S. al Coda". Keep it under 20 s; show one assertion failing once.
-- [ ] **Step 3:** README: the feature list (the six forms, the three import formats, editing, the notice), what is not supported (double signs, D.S.S., quoted ABC text, jumps from MIDI, auto-scroll does not follow jumps or repeats), the "Checks" section (V11; 23 checks), and remove D.C./Coda from any not-done list.
+- [ ] **Step 3:** README: the feature list (the six forms, the three import formats, editing, the notice), what is not supported (double signs, D.S.S., quoted ABC text, jumps from MIDI, auto-scroll does not follow jumps or repeats), the "Checks" section (V11; count the checks the README names and correct the number), and remove D.C./Coda from any not-done list.
 - [ ] **Step 4:** Correct the design where the build differs. Change nothing else.
 - [ ] **Step 5:** Run `npx vitest run`, `npx tsc --noEmit -p .`, `npm run test:e2e`, `npm run test:e2e:preview`, `npm run notices -- --check`, `npm run build && npm run check:bundle` — expected: PASS.
 - [ ] **Step 6:** Commit — `test: acceptance check V11 for jump marks; README`

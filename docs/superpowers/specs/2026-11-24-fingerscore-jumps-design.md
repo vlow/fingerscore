@@ -34,7 +34,8 @@ This part makes the marks part of the sheet: imported, drawn, played, printed, a
 
 ## 3. Constraints
 
-- Everything loaded at page start stays at or under 400,000 bytes. It is 397,568 now, and the model, the play order and the drawing all load at start. The marks need an estimated 6,000 to 9,000 bytes. So room is made first (section 5.8).
+- Everything loaded at page start stays at or under 410,000 bytes (the limit since dark mode). It is 405,390 now, and the model, the play order and the drawing all load at start. The marks need an estimated 6,000 to 9,000 bytes. So room is made first (section 5.8).
+- The marks take their colours from the renderer's palette, so they follow the dark papers; the PDF keeps the light palette.
 - Saved sheets keep opening. The new fields are optional; a sheet without them has no marks. No migration.
 - The accessibility checks keep requiring zero findings with no exemption: new controls have a 36 px click area, a name, a focus mark and keyboard access.
 - The pipeline's rules apply: code under `src` comes with unit tests; no test depends on macOS rendering; fixtures are self-made.
@@ -139,7 +140,7 @@ Two steps make room, and the builder measures each before the marks are built:
 - **Play mode** (the full-screen view) is loaded when it is first opened, from the sheet page or from "Play" in the library. That frees about 8,000 bytes. While the code is on its way the sheet stays as it is and usable; play mode starts when the code has arrived. If it cannot be loaded, a message says so and the sheet stays in its normal view.
 - **The glyph data** bundled with the app carries explanatory text beside the outlines. The text moves to the script's notes and the bundled file keeps the outlines only.
 
-If the two steps do not free at least 9,000 bytes, the builder stops and reports before building the marks.
+If the two steps do not bring the start set to 397,000 bytes or less, the builder stops and reports before building the marks.
 
 ### 5.9 Tests
 
