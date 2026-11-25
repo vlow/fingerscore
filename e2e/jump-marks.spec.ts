@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -61,6 +61,40 @@ test('the pill and the popover of an alternate fingering follow the taller syste
   expect(marked.height - plain.height).toBe(30);
   expect(marked.pill - plain.pill).toBeCloseTo(30, 0);
   expect(marked.popover - plain.popover).toBeCloseTo(30, 0);
+});
+
+test('crowded bars: in a narrow bar (Coda, Fine) and in a bar with an ending, a triplet and a chord, no mark touches another mark, a chord, a lyric, an ending, a triplet mark or the clef, or leaves its system', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1300, height: 1500 });
+  await openMarks(page, 'e2e/fixtures/crowded.abc');
+  const found = await page.evaluate(clefPath => {
+    const rect = (e: Element) => { const r = e.getBoundingClientRect(); return { x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }; };
+    const out: { system: number; marks: { kind: string; r: ReturnType<typeof rect> }[]; others: { what: string; r: ReturnType<typeof rect> }[]; box: ReturnType<typeof rect> }[] = [];
+    document.querySelectorAll('svg[data-testid="system"]').forEach((svg, system) => {
+      const others: { what: string; r: ReturnType<typeof rect> }[] = [];
+      for (const [what, sel] of [['chord', '[data-chord]'], ['lyric', '[data-lyric]'], ['volta', '[data-volta]'], ['tuplet', '[data-tuplet]'], ['clef', `path[d="${clefPath}"]`]] as const) {
+        svg.querySelectorAll(sel).forEach(e => others.push({ what, r: rect(e) }));
+      }
+      out.push({ system, box: rect(svg), others, marks: Array.from(svg.querySelectorAll('[data-jump]')).map(e => ({ kind: e.getAttribute('data-jump')!, r: rect(e) })) });
+    });
+    return out;
+  }, (JSON.parse(readFileSync('src/data/glyphs.json', 'utf8')) as { paths: Record<string, string> }).paths.trebleClef);
+  const crowded = found.filter(f => f.marks.length > 0);
+  expect(crowded).toHaveLength(1);
+  const [{ marks, others, box }] = crowded;
+  expect(marks.map(m => m.kind).sort()).toEqual(['coda', 'fine', 'jump', 'segno', 'toCoda']);
+  for (const what of ['chord', 'lyric', 'volta', 'tuplet', 'clef']) expect(others.some(o => o.what === what), `the system has a ${what}`).toBe(true);
+  type R = { x1: number; y1: number; x2: number; y2: number };
+  const meets = (a: R, b: R) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+  marks.forEach((m, i) => {
+    expect(m.r.x1, `${m.kind} inside the system`).toBeGreaterThanOrEqual(box.x1);
+    expect(m.r.x2).toBeLessThanOrEqual(box.x2);
+    expect(m.r.y1).toBeGreaterThanOrEqual(box.y1);
+    expect(m.r.y2).toBeLessThanOrEqual(box.y2);
+    for (const o of others) expect(meets(m.r, o.r), `${m.kind} meets a ${o.what}`).toBe(false);
+    marks.slice(i + 1).forEach(n => expect(meets(m.r, n.r), `${m.kind} meets ${n.kind}`).toBe(false));
+  });
+  await page.getByTestId('system').nth(crowded[0].system).screenshot({ path: testInfo.outputPath('crowded-bar.png') });
+  if (OUT) { mkdirSync(OUT, { recursive: true }); await page.getByTestId('system').nth(crowded[0].system).screenshot({ path: join(OUT, 'crowded-bar.png') }); }
 });
 
 test('print shows the marks, in the light ink, and prints the same drawing', async ({ page }) => {

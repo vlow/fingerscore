@@ -6,6 +6,7 @@ import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
 import { mkDoc, type BarSpec } from '../test/helpers';
 import { layoutSheet, markRow, SHEET } from './layout';
+import { planMarks } from './JumpMarks';
 import { TEXT_EM_PER_CHAR } from './lyrics';
 import { LIGHT, PaletteProvider, SCREEN } from './palette';
 import { Paper } from './Paper';
@@ -192,5 +193,112 @@ describe('jump marks on the sheet', () => {
     const d = derive(doc, DEFAULT_PREFS);
     const { container } = render(<Paper doc={doc} derived={d} layout={layoutSheet(doc, d)} playingId={null} readOnly />);
     expect(container.querySelectorAll('[data-jump]').length).toBeGreaterThan(1);
+  });
+});
+
+describe('the marks of one bar stay in the bar', () => {
+  const FULL: BarSpec['ev'] = [Q(), Q(69), Q(71), Q(72)];
+  /** A doc of four quarter-note bars with the key signature of most accidentals: the narrowest bars the layout makes. */
+  function narrowDoc(marks: Partial<BarSpec>[]): Doc {
+    let best = mkDoc([]);
+    let most = -1;
+    for (let shift = 0; shift < 12; shift++) {
+      const doc = mkDoc(marks.map(m => ({ ev: FULL, ...m })));
+      doc.shift = shift;
+      const sig = Math.abs(derive(doc, DEFAULT_PREFS).sig);
+      if (sig > most) { most = sig; best = doc; }
+    }
+    return best;
+  }
+  const systemOf = (doc: Doc) => layoutSheet(doc, derive(doc, DEFAULT_PREFS)).systems[0];
+  const disjoint = (ms: { x1: number; x2: number }[]) => {
+    const sorted = ms.slice().sort((a, b) => a.x1 - b.x1);
+    for (let i = 1; i < sorted.length; i++) expect(sorted[i].x1).toBeGreaterThan(sorted[i - 1].x2);
+  };
+  const THREE = { segno: true, toCoda: true, jump: 'dsCoda' } as const;
+
+  it('the narrowest bar is a quarter of a system after the widest header', () => {
+    const doc = narrowDoc([{}, {}, {}, {}]);
+    const s = systemOf(doc);
+    expect(s.bars).toHaveLength(4);
+    expect(Math.abs(derive(doc, DEFAULT_PREFS).sig)).toBeGreaterThanOrEqual(6);
+    expect(Math.min(...s.bars.map(b => b.width))).toBeCloseTo((SHEET.systemWidth - s.headerWidth) / 4, 6);
+  });
+
+  it.each([
+    ['Segno + To Coda + D.S. al Coda', { ...THREE }],
+    ['Coda + Fine + D.C. al Fine', { coda: true, fine: true, jump: 'dcFine' }],
+    ['Fine + a jump', { fine: true, jump: 'dc' }],
+    ['To Coda + a jump', { toCoda: true, jump: 'dsCoda' }],
+  ] as const)('%s in every bar of the narrowest system: inside the bar, no two marks touch, texts at 10 px or more', (_, mark) => {
+    const doc = narrowDoc([mark, mark, mark, mark]);
+    const s = systemOf(doc);
+    const placed = planMarks(s, doc.score);
+    expect(placed.length).toBeGreaterThanOrEqual(8);
+    for (const b of s.bars) {
+      const own = placed.filter(m => m.bar === b.bar);
+      for (const m of own) {
+        expect(m.x1, `${m.kind} of bar ${b.bar}`).toBeGreaterThanOrEqual(b.x);
+        expect(m.x2).toBeLessThanOrEqual(b.x + b.width);
+        expect(m.px).toBeGreaterThanOrEqual(10);
+      }
+      disjoint(own);
+    }
+    disjoint(placed);
+    expect(placed[0].x1).toBeGreaterThan(s.headerWidth);
+  });
+
+  it('the first and the last bar of a system alone: clef and key signature are not touched, nothing leaves the system', () => {
+    for (const at of [0, 3]) {
+      const doc = narrowDoc([0, 1, 2, 3].map(i => (i === at ? { ...THREE, coda: true, fine: true } : {})));
+      const s = systemOf(doc);
+      const placed = planMarks(s, doc.score);
+      expect(placed.length).toBe(5);
+      for (const m of placed) {
+        expect(m.x1).toBeGreaterThanOrEqual(s.bars[at].x - (at === 0 ? 0 : s.bars[at].width / 2));
+        expect(m.x2).toBeLessThanOrEqual(SHEET.systemWidth);
+        expect(m.x1).toBeGreaterThanOrEqual(s.headerWidth);
+      }
+      disjoint(placed);
+    }
+  });
+
+  it('every mark in every bar of the narrowest system: they still touch neither each other, the clef, nor the system\'s edge', () => {
+    const all = { segno: true, coda: true, fine: true, toCoda: true, jump: 'dsCoda' } as const;
+    const doc = narrowDoc([all, all, all, all]);
+    const s = systemOf(doc);
+    const placed = planMarks(s, doc.score);
+    expect(placed).toHaveLength(20);
+    disjoint(placed);
+    for (const m of placed) {
+      expect(m.x1).toBeGreaterThanOrEqual(s.headerWidth);
+      expect(m.x2).toBeLessThanOrEqual(SHEET.systemWidth);
+    }
+  });
+
+  it('an overflowing bar reaches left into an empty bar before it, never into a marked one', () => {
+    const all = { segno: true, coda: true, fine: true, toCoda: true, jump: 'dsCoda' } as const;
+    const doc = narrowDoc([{}, all, {}, {}]);
+    const s = systemOf(doc);
+    const placed = planMarks(s, doc.score);
+    expect(placed).toHaveLength(5);
+    const bar = s.bars[1];
+    expect(Math.max(...placed.map(m => m.x2))).toBeLessThanOrEqual(bar.x + bar.width);
+    disjoint(placed);
+    expect(Math.min(...placed.map(m => m.x1))).toBeGreaterThanOrEqual(s.bars[0].x);
+  });
+
+  it('all five marks need a bar of 212 px at 10 px or more (estimated widths, wider than the font\'s)', () => {
+    const doc = narrowDoc([{ segno: true, coda: true, fine: true, toCoda: true, jump: 'dsCoda' }]);
+    const s = systemOf(doc);
+    const fits = (w: number) => {
+      const one = { ...s, bars: [{ ...s.bars[0], x: 0, width: w }] };
+      const m = planMarks(one, doc.score);
+      return m.every(x => x.x1 >= 4 && x.px >= 10);
+    };
+    let w = 100;
+    while (!fits(w)) w += 1;
+    expect(w).toBe(212);                      // narrower bars (the narrowest is 178 px) use the overflow rule
+    expect(w).toBeGreaterThan(Math.min(...s.bars.map(b => b.width)));
   });
 });

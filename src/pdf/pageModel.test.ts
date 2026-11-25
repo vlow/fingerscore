@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { legend } from '../domain/fingerings';
 import { instrumented } from '../test/timing';
 import {
-  type Block, MARGIN_MM, UNITS, fitText, footerText, pageHeightUnits, pageSizeFor, paginate, unitMm, wrapLegend,
+  type Block, MARGIN_MM, UNITS, fitText, footerText, pageHeightUnits, pageSizeFor, paginate, sheetBlocks, unitMm, wrapLegend,
 } from './pageModel';
 
 const A4 = pageSizeFor('de-DE');
@@ -209,4 +209,17 @@ describe('footerText', () => {
   it('names title and page', () => expect(footerText('Song', 2, 3)).toBe('Song · page 2 of 3'));
   it('works without a title', () => expect(footerText('', 2, 3)).toBe('page 2 of 3'));
   it('is null for a one-page PDF', () => expect(footerText('Song', 1, 1)).toBeNull());
+});
+
+describe('sheetBlocks', () => {
+  const base = { title: 44, subtitle: 28, meta: 24, systems: [{ index: 0 }, { index: 1 }], systemHeight: 320, legend: 41 };
+  it('lists title block, systems of the given height, legend', () => {
+    expect(sheetBlocks(base)).toEqual([
+      { kind: 'title', height: 44 }, { kind: 'subtitle', height: 28 }, { kind: 'meta', height: 24 },
+      { kind: 'system', height: 320, index: 0 }, { kind: 'system', height: 320, index: 1 }, { kind: 'legend', height: 41 },
+    ]);
+  });
+  it('leaves out a title and a subtitle that are null', () => {
+    expect(sheetBlocks({ ...base, title: null, subtitle: null }).map(b => b.kind)).toEqual(['meta', 'system', 'system', 'legend']);
+  });
 });

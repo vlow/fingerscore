@@ -26,7 +26,8 @@ export const HEADER = { clef: 34, clefInset: 4, accidental: 11, timeSig: 26, gap
 
 export interface EvLayout { id: string; x: number; y: number }            // y = notehead centre; rests: staff middle
 export interface BarLayout { bar: number; x: number; width: number; events: EvLayout[] }
-export interface SystemLayout { index: number; y: number; headerWidth: number; showTimeSig: boolean; barNumber: number | null; bars: BarLayout[] }
+/** `markRow` is the jump-mark row at the top of the system (0 without marks), `height` the system's whole height. */
+export interface SystemLayout { index: number; y: number; markRow: number; height: number; headerWidth: number; showTimeSig: boolean; barNumber: number | null; bars: BarLayout[] }
 export interface BeamGroup { ids: string[]; beams: 1 | 2 | 'mixed' }
 /** One triplet group: its number (and bracket unless `beamed`: one beam joins all members). */
 export interface TupletMark { bar: number; ids: string[]; beamed: boolean }
@@ -134,7 +135,8 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
   const byBar: DerivedEvent[][] = doc.score.map(() => []);
   for (const ev of d.events) byBar[ev.bar].push(ev);
 
-  const systemHeight = SHEET.systemHeight + markRow(doc);
+  const row = markRow(doc);
+  const systemHeight = SHEET.systemHeight + row;
   const systems: SystemLayout[] = breakSystems(doc, d.sig).map(({ bars, widths }, index) => {
     const first = index === 0;
     const hw = headerWidth(d.sig, first);
@@ -146,7 +148,7 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
       return layout;
     });
     return {
-      index, y: index * systemHeight, headerWidth: hw, showTimeSig: first,
+      index, y: index * systemHeight, markRow: row, height: systemHeight, headerWidth: hw, showTimeSig: first,
       barNumber: first ? null : barLabelOf(doc, bars[0]), bars: barLayouts,
     };
   });

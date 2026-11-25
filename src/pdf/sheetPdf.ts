@@ -11,7 +11,7 @@ import { textWidth } from './drawText';
 import { collapse, drawFooter, fitFooterTitle, headingText, drawLegend, drawSvgScaled, INK, LEGEND, loadFonts, MUTED, newPdf, nextTurn, placeBlocks, renderOffscreen, SITE, text, TEXT, throwIfAborted, width, type Pdf } from './engine';
 import { PdfError, unsupportedMessage } from './errors';
 import { prepareSvg } from './prepareSvg';
-import { fitText, pageHeightUnits, pageSizeFor, paginate, UNITS, wrapLegend, type Block, type PageGroup, type PageSize } from './pageModel';
+import { fitText, pageHeightUnits, pageSizeFor, paginate, sheetBlocks, UNITS, wrapLegend, type Block, type PageGroup, type PageSize } from './pageModel';
 
 // Sizes of the title block in units (src/render/Paper.module.css).
 export const TITLE = { px: 26, minPx: 14, height: 44, baseline: 28 };
@@ -43,13 +43,11 @@ export function planSheet(doc: Doc, d: Derived, layout: SheetLayout): SheetPlan 
   const title = fitText(headingText(doc.title), width(700), UNITS, TITLE.px, TITLE.minPx);
   const subtitle = fitText(headingText(doc.subtitle), width(700), UNITS, SUBTITLE.px, SUBTITLE.minPx);
   const legend = wrapLegend(collapse(d.legend), SITE, t => textWidth(t, LEGEND.px, 400), UNITS);
-  const blocks: Block[] = [];
-  if (title.text !== '') blocks.push({ kind: 'title', height: TITLE.height });
-  if (subtitle.text !== '') blocks.push({ kind: 'subtitle', height: SUBTITLE.height });
-  blocks.push({ kind: 'meta', height: META.height });
-  for (const s of layout.systems) blocks.push({ kind: 'system', height: layout.systemHeight, index: s.index });
   const lines = legend.lines.length + (legend.footerOwnLine ? 1 : 0);
-  blocks.push({ kind: 'legend', height: LEGEND.top + LEGEND.line * lines });
+  const blocks = sheetBlocks({
+    title: title.text !== '' ? TITLE.height : null, subtitle: subtitle.text !== '' ? SUBTITLE.height : null, meta: META.height,
+    systems: layout.systems, systemHeight: layout.systemHeight, legend: LEGEND.top + LEGEND.line * lines,
+  });
   return { blocks, title, subtitle, legend };
 }
 

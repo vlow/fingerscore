@@ -30,6 +30,19 @@ export interface Block {
   index?: number;
 }
 
+/** The blocks of a sheet in page order; a height of null leaves that block out. */
+export function sheetBlocks(h: {
+  title: number | null; subtitle: number | null; meta: number; systems: { index: number }[]; systemHeight: number; legend: number;
+}): Block[] {
+  const blocks: Block[] = [];
+  if (h.title !== null) blocks.push({ kind: 'title', height: h.title });
+  if (h.subtitle !== null) blocks.push({ kind: 'subtitle', height: h.subtitle });
+  blocks.push({ kind: 'meta', height: h.meta });
+  for (const s of h.systems) blocks.push({ kind: 'system', height: h.systemHeight, index: s.index });
+  blocks.push({ kind: 'legend', height: h.legend });
+  return blocks;
+}
+
 export interface PageGroup { blocks: Block[]; scale: number }
 
 const EPS = 1e-9;

@@ -11,7 +11,7 @@ import { SystemView, tieSegments } from '../render/SystemView';
 import { mkDoc } from '../test/helpers';
 import { unsupported } from './chars';
 import { FONT_KEYS, FONT_NAME, setFontMetrics, type FontKey } from './fontMetrics';
-import { pageHeightUnits, pageSizeFor, paginate, type Block } from './pageModel';
+import { pageHeightUnits, pageSizeFor, paginate, sheetBlocks } from './pageModel';
 import { prepareSvg } from './prepareSvg';
 
 const FILE: Record<FontKey, string> = {
@@ -35,16 +35,9 @@ function sheet(bars: number, marked: boolean): Doc {
 }
 
 const A4 = pageSizeFor('de-DE');
-/**
- * The blocks planSheet (src/pdf/sheetPdf.ts, which svg2pdf keeps out of jsdom) gives a sheet: it takes each system's
- * height from the layout; e2e/pdf-content.spec.ts checks the page count of the real PDF against the page model.
- */
 const plan = (doc: Doc) => {
   const layout = layoutSheet(doc, derive(doc, DEFAULT_PREFS));
-  const blocks: Block[] = [{ kind: 'meta', height: 24 }];
-  for (const s of layout.systems) blocks.push({ kind: 'system', height: layout.systemHeight, index: s.index });
-  blocks.push({ kind: 'legend', height: 41 });
-  return { blocks };
+  return { blocks: sheetBlocks({ title: 44, subtitle: 28, meta: 24, systems: layout.systems, systemHeight: layout.systemHeight, legend: 41 }) };
 };
 const systemBlocks = (doc: Doc) => plan(doc).blocks.filter(b => b.kind === 'system');
 
