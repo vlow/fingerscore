@@ -84,8 +84,8 @@ export function lazyView<P extends object>(
   opts: { compact?: boolean; fallback?: ReactNode } = {},
 ): ComponentType<P> {
   const Inner = lazyComponent(m);
+  // One tree before and after the load: switching to a bare <Inner/> once loaded would remount it and lose its state.
   return function LazyView(props: P) {
-    if (m.peek()) return <Inner {...props} />;
     return (
       <LoadBoundary compact={opts.compact}>
         <Suspense fallback={opts.fallback ?? null}><Inner {...props} /></Suspense>

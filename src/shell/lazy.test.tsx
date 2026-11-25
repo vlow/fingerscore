@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LOAD_FAILED } from './loadFailed';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { intentProps, lazyComponent, lazyModule, lazyView, useLazy, type LazyModule } from './lazy';
 
 /** Expected load failures: React reports them to the console and, in development, as window error events. */
@@ -101,6 +101,20 @@ describe('lazyView', () => {
     render(<View name="sax" />);
     expect(screen.getByText('hello sax')).toBeInTheDocument();
     expect(screen.queryByText('busy')).toBeNull();
+  });
+
+  it('keeps its child mounted when the parent re-renders after a suspended load', async () => {
+    let mounts = 0;
+    function Card({ n }: { n: number }) {
+      useEffect(() => { mounts++; }, []);
+      return <p>card {n}</p>;
+    }
+    const View = lazyView(lazyModule(() => Promise.resolve(Card)));
+    const { rerender } = render(<View n={1} />);
+    expect(await screen.findByText('card 1')).toBeInTheDocument();
+    rerender(<View n={2} />);
+    expect(screen.getByText('card 2')).toBeInTheDocument();
+    expect(mounts).toBe(1);
   });
 
   it('shows the reload notice when the chunk fails', async () => {

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import '../styles/global.css';
 import { routeModule } from './routes';
+import { stylesheetsReady } from './stylesheets';
 import { initTheme } from './theme';
 
 initTheme();
@@ -21,7 +22,7 @@ const render = () => createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// The current page's code is already on its way (the preload script of index.html, written by scripts/bundle-layers).
-// Waiting for it means the first render shows the page, not the header above an empty main area. A page that cannot
-// load renders anyway and shows the reload notice.
-routeModule(location.pathname).load().catch(() => {}).finally(render);
+// The current page's code and styles are already on their way (the preload script of index.html, written by
+// scripts/bundle-layers). Waiting for them means the first render shows the styled page, not the header above an empty
+// main area. A page that cannot load renders anyway and shows the reload notice.
+Promise.all([routeModule(location.pathname).load().catch(() => {}), stylesheetsReady()]).finally(render);

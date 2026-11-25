@@ -48,3 +48,20 @@ test('a failed route chunk shows the reload notice', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Songs' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Imprint' })).toBeVisible();
 });
+
+test('a cold load renders only once the page\'s stylesheets have loaded', async ({ page }) => {
+  const css = layers.routes['/'].files.filter(f => f.endsWith('.css'));
+  expect(css.length).toBeGreaterThan(0);
+  for (const f of css) await page.route(`**/${f}`, async r => { await new Promise(res => setTimeout(res, 1500)); await r.continue(); });
+  await page.addInitScript(() => {
+    new MutationObserver((_, obs) => {
+      const root = document.getElementById('root');
+      if (!root || root.childElementCount === 0) return;
+      (window as unknown as { unstyled: boolean }).unstyled = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].some(l => l.sheet === null);
+      obs.disconnect();
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: /Try a sample/ })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { unstyled?: boolean }).unstyled)).toBe(false);
+});
