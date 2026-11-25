@@ -4,13 +4,10 @@ import type { FingeringOption } from '../domain/fingerings';
 import type { Instrument } from '../domain/instruments';
 import { FingeringChart } from '../render/FingeringChart';
 import s from './AltFingeringPopover.module.css';
+import { POPOVER_HEIGHT, popoverWidth } from './popoverSize';
 
-/** Width of one option button plus the gap; the popover adds its padding. */
-export const OPTION_PITCH = 84;
-export const POPOVER_PAD = 24;
-export const popoverWidth = (options: number) => options * OPTION_PITCH + POPOVER_PAD;
-/** Height of a popover with one row of options, used until the real height is measured. */
-export const POPOVER_HEIGHT = 148;
+export { OPTION_PITCH, POPOVER_HEIGHT, POPOVER_PAD, popoverWidth } from './popoverSize';
+
 
 /** Places a popover of the given size in document coordinates (left and top of its box). */
 export type PlacePopover = (size: { width: number; height: number }) => { left: number; top: number };

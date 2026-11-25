@@ -30,9 +30,6 @@ let faceRequested = false;
 let faceVersion = 0;
 const faceListeners = new Set<() => void>();
 
-/** Test hook: forget that the face was requested. */
-export function resetMarkFace(): void { faceRequested = false; faceVersion = 0; }
-
 function requestFace(): void {
   if (faceRequested) return;
   faceRequested = true;

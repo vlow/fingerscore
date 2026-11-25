@@ -26,6 +26,13 @@ export const BELOW_STAFF = 215;
 /** The system height of a sheet that uses every band but the marks and has no high note: the height the stylesheet gives `.system`. */
 export const FULL_HEIGHT = SHEET.staffTop + BELOW_STAFF;
 
+/**
+ * The bar number at the left of every system but the first: baseline `y` in the staff frame, font size `px`, and `rise`,
+ * the height of the text's cell above the baseline in em (what the browser reports as its box, a little more than the digits). SystemView draws it from these, and the stack reads its top from them.
+ */
+export const BAR_NUMBER = { y: 65, px: 11, rise: 0.92 } as const;
+const BAR_NUMBER_TOP = BAR_NUMBER.y - BAR_NUMBER.px * BAR_NUMBER.rise;
+
 /** The bands a sheet stacks above its staff. Heights in px; 0 for a band the sheet does not use. */
 export interface Bands { marks: number; chords: number; lyrics: number; endings: number; headroom: number }
 
@@ -77,9 +84,13 @@ export function bandsUsed(doc: Doc, events: DerivedEvent[], force: { chords?: bo
 /**
  * The stack for the bands in use. `inkTop` is the highest y of anything the notes draw, in the staff frame (Infinity
  * when there is none). Headroom: the ink's height above the top staff line plus a margin, never below the minimum.
+ * `numbered`: some system draws a bar number.
  */
-export function stackOf(use: BandUse, inkTop: number): Stack {
-  const headroom = Math.max(MIN_HEADROOM, SHEET.staffTop - inkTop + HEADROOM_MARGIN);
+export function stackOf(use: BandUse, inkTop: number, numbered = false): Stack {
+  // With no band at all the bar numbers (when a system has one) stand in the headroom and must fit under the system's top.
+  const none = !(use.marks || use.chords || use.lyrics || use.endings);
+  const numberRoom = none && numbered ? Math.ceil(SHEET.staffTop - BAR_NUMBER_TOP) : 0;
+  const headroom = Math.max(MIN_HEADROOM, SHEET.staffTop - inkTop + HEADROOM_MARGIN, numberRoom);
   const bands: Bands = {
     marks: use.marks ? BAND_HEIGHT.marks : 0, chords: use.chords ? BAND_HEIGHT.chords : 0,
     lyrics: use.lyrics ? BAND_HEIGHT.lyrics : 0, endings: use.endings ? BAND_HEIGHT.endings : 0, headroom,

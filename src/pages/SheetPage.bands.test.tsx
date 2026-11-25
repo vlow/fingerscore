@@ -27,9 +27,9 @@ beforeEach(() => { sessionStorage.clear(); localStorage.clear(); });
 afterEach(cleanup);
 
 describe('the bands on the sheet page', () => {
-  it('a bare sheet has no band: systems 230 px', () => {
+  it('a bare sheet has no band: systems 236 px (15 px of headroom would cut the bar numbers)', () => {
     open();
-    expect(heights()).toEqual([230, 230]);
+    expect(heights()).toEqual([236, 236]);
   });
 
   it('Lyrics mode adds the lyric band to every system, Chords mode the chord band; View takes them away', async () => {
@@ -39,10 +39,10 @@ describe('the bands on the sheet page', () => {
     await user.click(screen.getByRole('radio', { name: 'Chords' }));
     expect(heights()).toEqual([252, 252]);
     await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
-    expect(heights()).toEqual([230, 230]);
+    expect(heights()).toEqual([236, 236]);
     await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
     await user.click(screen.getByRole('radio', { name: 'View' }));
-    expect(heights()).toEqual([230, 230]);
+    expect(heights()).toEqual([236, 236]);
   });
 
   it('a lyric typed in Lyrics mode keeps the band when the mode is left', async () => {
@@ -59,7 +59,7 @@ describe('the bands on the sheet page', () => {
     await user.click(screen.getByRole('radio', { name: 'Lyrics' }));
     expect(heights()).toEqual([254, 254]);
     act(() => { window.dispatchEvent(new Event('beforeprint')); });
-    expect(heights()).toEqual([230, 230]);
+    expect(heights()).toEqual([236, 236]);
     act(() => { window.dispatchEvent(new Event('afterprint')); });
     expect(heights()).toEqual([254, 254]);
   });

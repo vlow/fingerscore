@@ -36,6 +36,12 @@ export function glyphInk(name: AnyGlyph): { left: number; right: number } {
   return { left: x1 * GLYPH_SCALE, right: x2 * GLYPH_SCALE };
 }
 
+/** Vertical ink extent in px relative to the y passed to `Glyph`: `top` is negative above it. */
+export function glyphInkY(name: GlyphName): { top: number; bottom: number } {
+  const [, y1, , y2] = BBOX[name];
+  return { top: ORIGIN_DY[name] - y2 * GLYPH_SCALE, bottom: ORIGIN_DY[name] - y1 * GLYPH_SCALE };
+}
+
 /**
  * x = glyph origin (left side); y = bottom staff line for clef and rests, note y for accidentals, the baseline for signs.
  * `scale` is px per font unit; the default draws on the staff (one staff space = 10px).

@@ -29,9 +29,10 @@ import { useSheetShortcuts } from '../ui/useSheetShortcuts';
 import Card from './sheet/Card';
 import Toggle from './sheet/Toggle';
 import { useAltFingering } from './sheet/useAltFingering';
+import { ALT_LOAD_FAILED } from './sheet/useAltPopoverLoad';
 import { preloadPanel, useEditPanelSlot } from './sheet/useEditPanelSlot';
 import { useFileActions } from './sheet/useFileActions';
-import { useHoldView } from './sheet/useHoldView';
+import HoldView from './sheet/HoldView';
 import { usePrinting } from './sheet/usePrinting';
 import { paperDescription } from './sheet/paperDescription';
 import { usePlayback } from './sheet/usePlayback';
@@ -95,9 +96,8 @@ function Sheet({ doc }: { doc: Doc }) {
   const printing = usePrinting();
   const force = useMemo(() => ({ lyrics: mode === 'lyrics' && !printing, chords: mode === 'chords' && !printing }), [mode, printing]);
   const layout = useMemo(() => layoutSheet(doc, derived, force), [doc, derived, force]);
-  const holdView = useHoldView(paperRef, layout.systemHeight, selectedId);
   const { playerRef, playing, playingId, playError, togglePlay, stopPlay } = usePlayback(doc, selectedId);
-  const { openAlt, closeAlt, renderUnderChart } = useAltFingering(doc, firstBar, i.kind);
+  const { openAlt, closeAlt, renderUnderChart, altLoadFailed } = useAltFingering(doc, firstBar, i.kind);
   const { onSheetKey, onToolbarKey } = useSheetKeys({
     doc, derived, mode, selectedId, openAlt, stops, paperRef, select, applyNoteEdit, togglePlay,
   });
@@ -281,10 +281,11 @@ function Sheet({ doc }: { doc: Doc }) {
           </div>
           {/* The handler catches keys that bubble up from the controls inside; the div itself is not a control. */}
           <div role="presentation" className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
-            <ModeSwitch mode={mode} onMode={(m, byClick) => { if (m !== mode) holdView(); preloadPanel(m); changeMode(m, byClick); }} />
+            <ModeSwitch mode={mode} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
             <div className={s.toolbarEnd}>
               {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
               {playModeFailed && <p role="alert" className={s.playError}>{PLAY_MODE_LOAD_FAILED}</p>}
+              {altLoadFailed && <p role="alert" className={s.playError}>{ALT_LOAD_FAILED}</p>}
               <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')}
                 onPlayMode={enterPlayMode} playModeRef={playModeButton} />
             </div>
@@ -295,6 +296,7 @@ function Sheet({ doc }: { doc: Doc }) {
           {/* Focusable on purpose: a scrolling area must be reachable by keyboard, and the sheet keys act from here. */}
           <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL} // NOSONAR typescript:S6845
             aria-describedby={descriptionId} onKeyDown={onSheetKey}>
+            <HoldView paper={paperRef} systemHeight={layout.systemHeight} selectedId={selectedId} />
             <p role="status" className={s.srOnly} aria-live="polite">{announcement}</p>
             <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}
               selectedId={selectedId} onSelect={id => select(id)}

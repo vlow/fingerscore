@@ -1,6 +1,6 @@
 import type { DerivedEvent } from '../domain/derive';
 import { notatedLength } from '../domain/triplets';
-import { glyphInk } from './Glyph';
+import { glyphInk, glyphInkY } from './Glyph';
 import { BAND_HEIGHT, MIN_HEADROOM, SHEET, type BeamGroup, type TupletMark } from './layout';
 import { ACCIDENTAL_GAP, FONT, STEM, stemUp, yOfPos } from './NoteView';
 import { usePalette } from './palette';
@@ -40,7 +40,8 @@ export function eventInk(n: Placed, beam: BeamGeo | undefined): Box[] {
   if (ev.accidental) {
     const ink = glyphInk(ev.accidental);
     const x2 = x - ACCIDENTAL_GAP;
-    out.push({ x1: x2 - (ink.right - ink.left), x2, y1: y - 10, y2: y + 10 });
+    const rise = glyphInkY(ev.accidental);
+    out.push({ x1: x2 - (ink.right - ink.left), x2, y1: y + rise.top, y2: y + rise.bottom });
   }
   for (let q = -2; q >= ev.pos; q -= 2) out.push({ x1: x - 10, x2: x + 10, y1: yOfPos(q), y2: yOfPos(q) + 1.3 });
   for (let q = 10; q <= ev.pos; q += 2) out.push({ x1: x - 10, x2: x + 10, y1: yOfPos(q), y2: yOfPos(q) + 1.3 });
@@ -87,10 +88,11 @@ export interface Candidate { side: 'above' | 'below'; x1: number; x2: number; li
  * The 3 of a triplet group, with a bracket unless one beam joins all members.
  *
  * Side, in order of preference. A beamed group: at its beam, on the stem side. A bracketed group: above.
- * When that position is taken (above: it would reach the ending bracket line, or the lyric band without one;
- * below: it would enter the fingering chart row) the other side is tried; when neither is free the preferred
- * side is used: above it gives up the upper limit, below it rises to the chart limit and gives up the clearance
- * from its neighbours; it never enters the chart row.
+ * When that position is taken (above: it would reach `limit`, the top of the minimum headroom for a bar with an ending
+ * and 14 px higher for a bar without; below: it would enter the fingering chart row) the other side is tried; when
+ * neither is free the preferred side is used: above it gives up the upper limit, below it rises to the chart limit and
+ * gives up the clearance from its neighbours; it never enters the chart row. A mark above that rises past the minimum
+ * headroom is not held back by any band: the sheet's headroom grows by what it needs (see `sheetInkTop`), in every system.
  * Within a side the mark moves out in steps until it keeps CLEAR units from the ink of the events next to the
  * group (its bracket ends shorten to the heads first).
  */

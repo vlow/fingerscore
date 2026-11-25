@@ -3,6 +3,7 @@ import { derive } from '../domain/derive';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
 import { bare, withChords, withEndings, withLyrics, withMarks } from '../test/bandSheets';
+import { BAR_NUMBER } from './layout';
 import { Paper } from './Paper';
 import { layoutSheet, type BandForce } from './sheetLayout';
 
@@ -88,5 +89,16 @@ describe('the drawing follows the stack', () => {
     expect(num(playing, 'y') + shift).toBe(b.marks);
     expect(num(playing, 'y') + num(playing, 'height') + shift).toBe(150 + shift);
     expect(frame).not.toBeNull();
+  });
+
+  it('the bar number of the second system lies inside the system\'s box on a bare sheet, and nothing changes where a band is present', () => {
+    for (const [doc, bareSheet] of [[bare(), true], [withLyrics(bare()), false]] as const) {
+      const { container, layout, shift } = draw(doc);
+      const text = container.querySelectorAll('svg[data-testid="system"]')[1].querySelector('[data-bar-number]')!;
+      const top = num(text, 'y') - num(text, 'font-size') * BAR_NUMBER.rise + shift;
+      expect(top).toBeGreaterThanOrEqual(0);
+      if (bareSheet) expect(top).toBeLessThan(1);                         // as high as the system allows
+      else expect(layout.stack.bands.headroom).toBe(15);
+    }
   });
 });

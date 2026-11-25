@@ -2,7 +2,7 @@ import { derive } from '../domain/derive';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
 import { bare, withC6, withChords, withEndings, withLyrics, withMarks } from '../test/bandSheets';
-import { BAND_HEIGHT, MIN_HEADROOM, SHEET } from './layout';
+import { BAND_HEIGHT, BAR_NUMBER, MIN_HEADROOM, SHEET } from './layout';
 import { layoutSheet, type BandForce } from './sheetLayout';
 
 const layoutOf = (doc: Doc, force?: BandForce) => layoutSheet(doc, derive(doc, DEFAULT_PREFS), force);
@@ -37,7 +37,8 @@ describe('which bands a sheet stacks', () => {
   it.each(cases)('%s', (_, make, force, want) => {
     const { headroom, ...heights } = bandsOf(make(), force);
     expect(heights).toEqual(want);
-    expect(headroom).toBe(MIN_HEADROOM);
+    // with no band at all the headroom also holds the bar numbers of the second system: 21 instead of 15
+    expect(headroom).toBe(Object.values(want).every(h => h === 0) ? 21 : MIN_HEADROOM);
   });
 
   it('a lyric on a rest is not drawn, so it does not make the band', () => {
@@ -63,11 +64,22 @@ describe('the stack of a system', () => {
     expect(stack).toMatchObject({ staffTop: 105, shift: 30, systemHeight: 320, chartTop: 196, pillY: 286, frame: { columnTop: 0, chordY: 2, lyricY: 22, voltaY: 46 } });
   });
 
-  it('a bare sheet is shorter by the heights of the absent bands: 230 instead of 290', () => {
+  it('a bare sheet is shorter by the heights of the absent bands, less 6 px for its bar numbers: 236 instead of 290', () => {
     const { stack, height } = layoutOf(bare());
-    expect(stack).toMatchObject({ bands: { marks: 0, chords: 0, lyrics: 0, endings: 0, headroom: 15 }, staffTop: 15, shift: -60, systemHeight: 230, chartTop: 106, pillY: 196 });
-    expect(height).toBe(2 * 230);
-    expect(290 - 230).toBe(BAND_HEIGHT.chords + BAND_HEIGHT.lyrics + BAND_HEIGHT.endings);
+    expect(stack).toMatchObject({ bands: { marks: 0, chords: 0, lyrics: 0, endings: 0, headroom: 21 }, staffTop: 21, shift: -54, systemHeight: 236, chartTop: 112, pillY: 202 });
+    expect(height).toBe(2 * 236);
+    expect(290 - 236).toBe(BAND_HEIGHT.chords + BAND_HEIGHT.lyrics + BAND_HEIGHT.endings - 6);
+  });
+
+  it('a bare sheet of one system has no bar number, so its headroom is the minimum: 230', () => {
+    const doc = bare(); doc.score.length = 4;
+    expect(layoutOf(doc).systemHeight).toBe(230);
+  });
+
+  it('the bar number of a system after the first stands inside the system: a bare sheet\'s headroom covers its top', () => {
+    const { stack } = layoutOf(bare());
+    expect(stack.frame.columnTop).toBe(54);     // the system's top in the staff frame: 0 - shift
+    expect(BAR_NUMBER.y - BAR_NUMBER.px * BAR_NUMBER.rise).toBeGreaterThanOrEqual(stack.frame.columnTop);
   });
 
   it.each([
@@ -116,7 +128,7 @@ describe('the stack of a system', () => {
 
 describe('the headroom', () => {
   it('never less than 15 px: ordinary notes (G4 quarters, stems down or up) need less', () => {
-    expect(bandsOf(bare()).headroom).toBe(15);
+    expect(bandsOf(withLyrics(bare())).headroom).toBe(15);
   });
 
   it('a note at C6 (head top at 50): 25 px of ink above the staff top plus 4 px, so 29', () => {
@@ -126,9 +138,9 @@ describe('the headroom', () => {
   });
 
   it('A5 on its ledger line (head top at 60) needs 19; B4 (pos 6, nothing above 62) stays at the minimum', () => {
-    const doc = bare(); doc.score[2].ev[0].m = 81;
+    const doc = withLyrics(bare()); doc.score[2].ev[0].m = 81;
     expect(bandsOf(doc).headroom).toBe(19);
-    const low = bare(); low.score[2].ev[0].m = 71;
+    const low = withLyrics(bare()); low.score[2].ev[0].m = 71;
     expect(bandsOf(low).headroom).toBe(15);
   });
 
@@ -151,18 +163,17 @@ describe('the headroom', () => {
 });
 
 describe('Lyrics and Chords mode', () => {
-  it('Lyrics mode on a sheet without lyrics: every system is 24 px taller; leaving the mode takes it back', () => {
+  it('Lyrics mode on a sheet without lyrics: every system is 254 px instead of 236 (the band 24 px, the headroom 6 px less); leaving the mode takes it back', () => {
     const doc = bare();
-    const before = layoutOf(doc).systemHeight;
-    expect(layoutOf(doc, { lyrics: true }).systemHeight).toBe(before + 24);
-    expect(layoutOf(doc, { lyrics: false }).systemHeight).toBe(before);
+    expect(layoutOf(doc).systemHeight).toBe(236);
+    expect(layoutOf(doc, { lyrics: true }).systemHeight).toBe(254);
+    expect(layoutOf(doc, { lyrics: false }).systemHeight).toBe(236);
   });
 
-  it('Chords mode: 22 px; both: 46', () => {
+  it('Chords mode: 252 px; both: 276', () => {
     const doc = bare();
-    const before = layoutOf(doc).systemHeight;
-    expect(layoutOf(doc, { chords: true }).systemHeight).toBe(before + 22);
-    expect(layoutOf(doc, { lyrics: true, chords: true }).systemHeight).toBe(before + 46);
+    expect(layoutOf(doc, { chords: true }).systemHeight).toBe(252);
+    expect(layoutOf(doc, { lyrics: true, chords: true }).systemHeight).toBe(276);
   });
 
   it('on a sheet that has lyrics the mode changes nothing', () => {
@@ -172,6 +183,6 @@ describe('Lyrics and Chords mode', () => {
 
   it('PDF, print and play mode call layoutSheet without the mode: the same height as the plain layout', () => {
     const doc = bare();
-    expect(layoutOf(doc).systemHeight).toBe(230);
+    expect(layoutOf(doc).systemHeight).toBe(236);
   });
 });

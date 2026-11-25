@@ -13,7 +13,7 @@ export interface BandForce { lyrics?: boolean; chords?: boolean }
  */
 export function layoutSheet(doc: Doc, d: Derived, force: BandForce = {}): SheetLayout {
   const base = layoutSystems(doc, d);
-  const stack = stackOf(bandsUsed(doc, d.events, force), sheetInkTop(doc, d, base));
+  const stack = stackOf(bandsUsed(doc, d.events, force), sheetInkTop(doc, d, base), base.systems.some(s => s.barNumber !== null));
   const systems = base.systems.map(s => ({ ...s, y: s.index * stack.systemHeight, height: stack.systemHeight, stack }));
   return { ...base, systems, height: systems.length * stack.systemHeight, systemHeight: stack.systemHeight, stack };
 }

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { vi } from 'vitest';
 import { parseChord } from '../domain/chords';
 import { derive } from '../domain/derive';
@@ -9,7 +9,7 @@ import type { Doc } from '../domain/types';
 import { mkDoc, type BarSpec } from '../test/helpers';
 import { BAND_HEIGHT, SHEET } from './layout';
 import { layoutSheet } from './sheetLayout';
-import { planMarks, resetMarkFace, useMarkFace } from './JumpMarks';
+import { planMarks } from './JumpMarks';
 import { TEXT_EM_PER_CHAR } from './lyrics';
 import { LIGHT, PaletteProvider, SCREEN } from './palette';
 import { Paper } from './Paper';
@@ -367,20 +367,26 @@ describe('the marks of one bar stay in the bar', () => {
 describe('the bold italic face of the texts', () => {
   const FACE = 'italic 700 13px "Atkinson Hyperlegible"';
   const stub = (fonts: unknown) => Object.defineProperty(document, 'fonts', { value: fonts, configurable: true });
-  beforeEach(resetMarkFace);
-  afterEach(() => { Reflect.deleteProperty(document, 'fonts'); resetMarkFace(); });
+  afterEach(() => { Reflect.deleteProperty(document, 'fonts'); });
 
-  function Probe({ onRender }: { onRender(n: number): void }) { onRender(useMarkFace()); return null; }
-  const probe = () => {
-    const seen: number[] = [];
-    render(<Probe onRender={n => seen.push(n)} />);
-    return seen;
+  // The face's state lives in the module: each test takes a fresh copy of the module and of React with it.
+  const fresh = async () => {
+    vi.resetModules();
+    const [marks, rtl] = await Promise.all([import('./JumpMarks'), import('@testing-library/react')]);
+    const probe = () => {
+      const seen: number[] = [];
+      const Probe = () => { seen.push(marks.useMarkFace()); return null; };
+      rtl.render(<Probe />);
+      return seen;
+    };
+    return { probe, act: rtl.act };
   };
 
   it('is requested once, at first use, and the marks are drawn again when it has loaded', async () => {
     let done!: () => void;
     const load = vi.fn(() => new Promise<unknown[]>(res => { done = () => res([]); }));
     stub({ load, check: vi.fn(() => false) });
+    const { probe, act } = await fresh();
     const seen = probe();
     probe();
     expect(load).toHaveBeenCalledTimes(1);
@@ -398,6 +404,7 @@ describe('the bold italic face of the texts', () => {
   it('does not draw again when the face is already loaded', async () => {
     const load = vi.fn(() => Promise.resolve([]));
     stub({ load, check: vi.fn(() => true) });
+    const { probe, act } = await fresh();
     const seen = probe();
     await act(async () => { await Promise.resolve(); });
     expect(load).not.toHaveBeenCalled();
@@ -406,12 +413,13 @@ describe('the bold italic face of the texts', () => {
 
   it('survives a load that fails, and a document without fonts', async () => {
     stub({ load: vi.fn(() => Promise.reject(new Error('no'))), check: () => false });
+    const { probe, act } = await fresh();
     const seen = probe();
     await act(async () => { await Promise.resolve(); });
     expect(new Set(seen)).toEqual(new Set([0]));
-    resetMarkFace();
+    const second = await fresh();
     Reflect.deleteProperty(document, 'fonts');
-    expect(() => probe()).not.toThrow();
+    expect(() => second.probe()).not.toThrow();
     expect(() => draw(mkDoc([bar({ jump: 'dc' })]))).not.toThrow();
   });
 });

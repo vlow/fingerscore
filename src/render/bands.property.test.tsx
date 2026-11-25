@@ -93,7 +93,7 @@ describe('no note element meets a band', () => {
       if (b.chords > 0) stats.chords++;
       if (b.lyrics > 0) stats.lyrics++;
       if (b.endings > 0) stats.endings++;
-      if (b.headroom > 15) stats.taller++;
+      if (b.headroom > (b.marks + b.chords + b.lyrics + b.endings === 0 ? 21 : 15)) stats.taller++;
       stats.ties += container.querySelectorAll('[data-tie]').length;
       stats.triplets += container.querySelectorAll('[data-tuplet]').length;
       stats.ledgerAbove += Array.from(container.querySelectorAll('[data-ledger]')).filter(e => num(e, 'y') < 75).length;
@@ -105,6 +105,12 @@ describe('no note element meets a band', () => {
           expect(box.y1, `run ${run}: a note element at y ${box.y1} to ${box.y2} reaches into a band (they end at ${lowest})`).toBeGreaterThanOrEqual(lowest);
         }
       });
+      // where the headroom grew for the notes beyond its minimum, the highest ink keeps the 4 px margin from the lowest band
+      if (b.headroom > (lowest === 0 ? 21 : 15)) {
+        const tops = Array.from(container.querySelectorAll('svg[data-testid="system"]')).flatMap(svg => noteBoxes(svg).map(x => x.y1));
+        // the ink model may be a little roomier than the drawing, never tighter: the real top is at least `lowest + 4`
+        expect(Math.min(...tops), `run ${run}: the highest ink keeps 4 px from the lowest band (headroom ${b.headroom}, lowest ${lowest}, force ${JSON.stringify(force)})`).toBeGreaterThanOrEqual(lowest + 4 - 1e-6);
+      }
       unmount();
     }
   }
@@ -114,12 +120,14 @@ describe('no note element meets a band', () => {
   }
 
   it('the random sheets are not vacuous: every band is present on some and absent on others, and some sheets grow for high notes', () => {
-    expect(stats.sheets).toBe(120);
+    // independent of the order of the tests: it runs its own sample
+    check(120);
+    expect(stats.sheets).toBeGreaterThanOrEqual(120);
     for (const k of ['marks', 'chords', 'lyrics', 'endings'] as const) {
       expect(stats[k], k).toBeGreaterThan(10);
-      expect(stats[k], k).toBeLessThan(110);
+      expect(stats[k], k).toBeLessThan(stats.sheets - 10);
     }
     expect(stats.taller).toBeGreaterThan(10);
     for (const k of ['ties', 'triplets', 'ledgerAbove'] as const) expect(stats[k], k).toBeGreaterThan(0);
-  });
+  }, 60_000);
 });

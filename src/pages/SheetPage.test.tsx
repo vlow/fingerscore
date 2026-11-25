@@ -168,8 +168,8 @@ it('alternate fingering: pick, summary, reset', async () => {
   open('asax');
   const pills = screen.getAllByRole('button', { name: /⇅/ });
   await user.click(pills[0]);
+  const dialog = await screen.findByRole('dialog');        // the popover's code loads at the first click
   expect(pills[0]).toHaveAttribute('aria-expanded', 'true');
-  const dialog = screen.getByRole('dialog');
   expect(dialog).toHaveTextContent(/pick a fingering/);
   expect(within(dialog).getByText('auto')).toBeInTheDocument();
   const options = within(dialog).getAllByRole('button');
@@ -187,16 +187,16 @@ it('alternate fingering: picking the auto option removes the override; Esc and o
   const pill = screen.getAllByRole('button', { name: /⇅/ })[0];
   expect(pill).toHaveAttribute('aria-haspopup', 'dialog');
   await user.click(pill);
-  let dialog = screen.getByRole('dialog');
+  let dialog = await screen.findByRole('dialog');
   await user.click(within(dialog).getAllByRole('button').find(b => !/auto/.test(b.textContent!))!);
   expect(Object.keys(useApp.getState().doc!.fingering)).toHaveLength(1);
   await user.click(pill);
-  dialog = screen.getByRole('dialog');
+  dialog = await screen.findByRole('dialog');
   await user.click(within(dialog).getByText('auto').closest('button')!);
   expect(useApp.getState().doc!.fingering).toEqual({});
 
   await user.click(pill);
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(pill).toHaveFocus();

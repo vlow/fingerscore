@@ -58,9 +58,10 @@ test('the pill and the popover of an alternate fingering follow the taller syste
   };
   const plain = await offsets('e2e/fixtures/jumps-plain.abc');
   const marked = await offsets('e2e/fixtures/jumps.abc');
-  expect(marked.height - plain.height).toBe(30);
-  expect(marked.pill - plain.pill).toBeCloseTo(30, 0);
-  expect(marked.popover - plain.popover).toBeCloseTo(30, 0);
+  // 30 px of row, less the 6 px that the bare sheet's headroom held for the bar numbers (21 against 15)
+  expect(marked.height - plain.height).toBe(24);
+  expect(marked.pill - plain.pill).toBeCloseTo(24, 0);
+  expect(marked.popover - plain.popover).toBeCloseTo(24, 0);
 });
 
 test('crowded bars: in a narrow bar (Coda, Fine) and in a bar with an ending, a triplet and a chord, no mark touches another mark, a chord, a lyric, an ending, a triplet mark or the clef, or leaves its system', async ({ page }, testInfo) => {

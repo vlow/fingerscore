@@ -4,7 +4,8 @@ import type { Instrument } from '../../domain/instruments';
 import type { Doc } from '../../domain/types';
 import { SHEET } from '../../render/layout';
 import { useApp } from '../../state/store';
-import AltFingeringPopover, { popoverWidth } from '../../ui/AltFingeringPopover';
+import { popoverWidth } from '../../ui/popoverSize';
+import { useAltPopoverLoad } from './useAltPopoverLoad';
 import { hasPill } from '../../render/pillSpread';
 import AltPill, { PILL_HALF } from '../../ui/AltPill';
 
@@ -14,6 +15,9 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
 
   // Alternate fingerings: one popover at a time, anchored to its pill.
   const [openAlt, setOpenAlt] = useState<string | null>(null);
+  // The popover's code loads at the first click on a pill; the popover opens for the pill clicked once it has arrived.
+  const pending = useRef<string | null>(null);
+  const { View: Popover, failed, request } = useAltPopoverLoad(() => setOpenAlt(pending.current));
   const anchorRef = useRef<HTMLButtonElement | null>(null);
   const closeAlt = useCallback((focusAnchor: boolean) => {
     if (focusAnchor) anchorRef.current?.focus();
@@ -31,10 +35,11 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
           onClick={e => {
             if (open) { closeAlt(false); return; }
             anchorRef.current = e.currentTarget;
-            setOpenAlt(ev.id);
+            pending.current = ev.id;
+            request();
           }} />
-        {open && (
-          <AltFingeringPopover note={{ name: ev.spelled.name, options: ev.options, chosen: ev.chosen, auto: ev.auto }} bar={ev.bar + firstBar} kind={kind} chartStyle={doc.chartStyle}
+        {open && Popover && (
+          <Popover note={{ name: ev.spelled.name, options: ev.options, chosen: ev.chosen, auto: ev.auto }} bar={ev.bar + firstBar} kind={kind} chartStyle={doc.chartStyle}
             left={Math.round(Math.max(0, Math.min(SHEET.systemWidth - width, x - width / 2)))}
             top={lastSystem ? y - SHEET.altButtonDy - 148 : y - SHEET.altButtonDy + 112}
             anchor={anchorRef.current}
@@ -45,5 +50,5 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
     );
   };
 
-  return { openAlt, closeAlt, renderUnderChart };
+  return { openAlt, closeAlt, renderUnderChart, altLoadFailed: failed };
 }

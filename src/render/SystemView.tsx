@@ -5,7 +5,7 @@ import { notatedLength } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
 import { JumpMarks } from './JumpMarks';
-import { FULL_HEIGHT, HEADER, SHEET, type BarLayout, type BeamGroup, type BarsLayout, type SystemBars, type SystemLayout, type TupletMark } from './layout';
+import { BAR_NUMBER, FULL_HEIGHT, HEADER, SHEET, type BarLayout, type BeamGroup, type BarsLayout, type SystemBars, type SystemLayout, type TupletMark } from './layout';
 import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
@@ -206,7 +206,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
       ))}
       {system.showTimeSig && <TimeSigDigits ts={doc.timeSig} x={HEADER.clef + nAcc * HEADER.accidental + HEADER.timeSig / 2} y={staffBottom} />}
       {system.barNumber !== null && (
-        <text data-bar-number="" x={0} y={65} fontSize={11} fontFamily={FONT} fill={pal.muted}>{system.barNumber}</text>
+        <text data-bar-number="" x={0} y={BAR_NUMBER.y} fontSize={BAR_NUMBER.px} fontFamily={FONT} fill={pal.muted}>{system.barNumber}</text>
       )}
       {barline(pal.ink)(0, 1)}
       {system.bars.map(bar => <g key={bar.bar} data-bar={bar.bar}><Barlines bar={bar} doc={doc} voltaY={frame.voltaY} /></g>)}
