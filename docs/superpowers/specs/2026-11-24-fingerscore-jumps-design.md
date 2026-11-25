@@ -129,6 +129,29 @@ With any problem, playback ignores the jump and plays straight. The sheet page s
 - The two signs are extracted from Bravura into `src/data/glyphs.json` with the existing script.
 - Print uses the same drawing. In the PDF the signs are outlines and the texts are searchable text.
 
+### 5.10 Bands above the staff collapse when empty (owner's decision of 2026-11-25)
+
+After testing, the owner found the marks too far above the staff on sheets without chords and lyrics, and the empty space itself too large. The rule of 5.5 for where the marks row sits (top row, or lowered into empty bands) is replaced by this one, which applies to every sheet, with or without marks.
+
+A system stacks only the bands the sheet uses. The decision is made once per sheet, so all systems of a sheet keep the same height. From top to bottom:
+
+| Band | Present when |
+|---|---|
+| Marks | the sheet has a jump mark |
+| Chord symbols | a chord symbol is drawn anywhere on the sheet, or the sheet is in Chords mode |
+| Lyrics | a lyric is drawn anywhere on the sheet, or the sheet is in Lyrics mode |
+| Ending brackets | a bar of the sheet has an ending |
+| Headroom | always |
+
+- "Drawn" is the renderer's own test: the content exists and its "Show on sheet" switch is on. Print, PDF and play mode never count the editing mode.
+- Each band keeps the height and inner layout it has today. A sheet that uses every band and has no note reaching above the old lanes looks as it does today.
+- **Headroom** is the space between the lowest present band and the top staff line. It is as tall as the highest thing any note of the sheet draws (heads, ledger lines, accidentals, stems, beams, flags, dots, ties, triplet marks) plus a 4 px margin, and never less than today's gap between the ending brackets and the staff. Notes therefore no longer run into lyrics or brackets; a sheet with very high notes grows by what they need.
+- The marks row sits on top of the bands that are present. On a sheet with no chords, lyrics or endings it stands directly above the headroom.
+- Everything below the staff (fingering charts, alternate-fingering marks) keeps its distance to the staff. The system's height is the sum of what is present.
+- Entering Lyrics or Chords mode on a sheet without that band makes the band appear and every system grow; leaving the mode without typing removes it again. The owner chose this to start with; the alternative (bands stay during all editing and collapse only for viewing, playing and printing) remains open.
+- The rule "low or top" of the marks row, with its 44 px drop, is removed. The fitting of several marks in one bar (gap, text size, run past the barline) stays.
+- The guard for unchanged layout is recorded anew on purpose: sheets get shorter where a band is empty.
+
 ### 5.6 Editing
 
 In "Edit notes", the panel for the selected note gains a section "Bar" for the bar that note is in:
