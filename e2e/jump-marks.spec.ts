@@ -26,7 +26,7 @@ const marksOnScreen = (page: Page) => page.locator('[data-jump]').evaluateAll(el
   const s = e.closest('svg')!.getBoundingClientRect();
   const first = e.matches('text, path') ? e : e.querySelector('text, path')!;
   const cs = getComputedStyle(first);
-  return { kind: e.getAttribute('data-jump'), display: cs.display, visibility: cs.visibility, fill: cs.fill, w: r.width, h: r.height, top: r.top - s.top, bottom: r.bottom - s.top, left: r.left - s.left, right: r.right - s.left, width: s.width };
+  return { kind: e.getAttribute('data-jump'), systemHeight: s.height, display: cs.display, visibility: cs.visibility, fill: cs.fill, w: r.width, h: r.height, top: r.top - s.top, bottom: r.bottom - s.top, left: r.left - s.left, right: r.right - s.left, width: s.width };
 }));
 
 test('the marks are drawn on the sheet, taller systems all alike', async ({ page }) => {
@@ -35,11 +35,11 @@ test('the marks are drawn on the sheet, taller systems all alike', async ({ page
   const heights = await page.getByTestId('system').evaluateAll(els => els.map(e => e.getBoundingClientRect().height));
   expect(heights.length).toBeGreaterThan(1);
   expect(new Set(heights).size).toBe(1);
-  expect(heights[0]).toBeGreaterThan(290);
+  expect(heights[0], 'a sheet with no chords, lyrics or endings: 15 px of headroom, 30 px of marks, 215 px from the staff down').toBe(260);
   for (const m of await marksOnScreen(page)) {
     expect(m.w, m.kind!).toBeGreaterThan(5);
     expect(m.top, `${m.kind} is inside the system`).toBeGreaterThanOrEqual(0);
-    expect(m.bottom, `${m.kind} is above the staff`).toBeLessThan(75 + 30);
+    expect(m.bottom, `${m.kind} is above the staff`).toBeLessThan(m.systemHeight - 215);
     expect(m.right).toBeLessThanOrEqual(m.width);
   }
 });
@@ -97,13 +97,13 @@ test('crowded bars: in a narrow bar (Coda, Fine) and in a bar with an ending, a 
   if (OUT) { mkdirSync(OUT, { recursive: true }); await page.getByTestId('system').nth(crowded[0].system).screenshot({ path: join(OUT, 'crowded-bar.png') }); }
 });
 
-/** Without chords and lyrics the marks stand lowered above the ending brackets, unless a note reaches the lowered row: then they keep the top row. */
+/** The marks stand in the row at the top of the system whatever else the sheet draws; a high note makes the headroom grow, so nothing the notes draw reaches the row. */
 const ALL = ['coda', 'fine', 'jump', 'segno', 'toCoda'];
-for (const [file, lowered, note, kinds, needs] of [
-  ['crowded-bare.abc', true, 'the highest note stands on ledger lines, below the lowered row', ALL, ['volta', 'tuplet', 'note']],
-  ['crowded-high.abc', false, 'the highest note is one step higher and reaches the lowered row', ALL, ['volta', 'tuplet', 'note']],
-  ['crowded-beam.abc', false, 'a stem-up beamed group under the Segno has heads below the row but a beam in it', ['fine', 'jump', 'segno'], ['beam', 'stem', 'note']],
-] as const) test(`a sheet without chords and lyrics, ${note}: the marks ${lowered ? 'are lowered above the ending bracket' : 'keep the top row'} and touch no ending, triplet mark, note, stem, beam or tie`, async ({ page }, testInfo) => {
+for (const [file, note, kinds, needs] of [
+  ['crowded-bare.abc', 'the highest note stands on ledger lines', ALL, ['volta', 'tuplet', 'note']],
+  ['crowded-high.abc', 'the highest note is one step higher', ALL, ['volta', 'tuplet', 'note']],
+  ['crowded-beam.abc', 'a stem-up beamed group under the Segno has a beam high above its heads', ['fine', 'jump', 'segno'], ['beam', 'stem', 'note']],
+] as const) test(`a sheet without chords and lyrics, ${note}: the marks stand in the top row and touch no ending, triplet mark, note, stem, beam or tie`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1300, height: 1500 });
   await openMarks(page, `e2e/fixtures/${file}`);
   const found = await page.evaluate(() => {
@@ -114,7 +114,6 @@ for (const [file, lowered, note, kinds, needs] of [
         box: rect(svg),
         marks: Array.from(svg.querySelectorAll('[data-jump]')).filter(e => !e.parentElement?.closest('[data-jump]')).map(e => ({ kind: e.getAttribute('data-jump')!, r: rect(e) })),
         others: [...all('[data-volta]', 'volta'), ...all('[data-tuplet]', 'tuplet'), ...all('[data-ev]', 'note'), ...all('[data-stem]', 'stem'), ...all('[data-beam]', 'beam'), ...all('[data-tie]', 'tie'), ...all('[data-chord], [data-lyric]', 'chord or lyric')],
-        staff: rect(svg.querySelector('[data-bar]')!),
       };
     });
   });
@@ -126,22 +125,11 @@ for (const [file, lowered, note, kinds, needs] of [
   expect(others.some(o => o.what === 'chord or lyric')).toBe(false);
   type R = { x1: number; y1: number; x2: number; y2: number };
   const meets = (a: R, b: R) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
-  const volta = others.filter(o => o.what === 'volta');
-  if (file === 'crowded-beam.abc') {
-    // what the picture shows: every head is lower than the lowered row plus margin (heads alone would lower the marks), the beam is not
-    const tops = (what: string) => Math.min(...others.filter(o => o.what === what).map(o => o.r.y1 - box.y1));
-    const heads = await page.locator('[data-head]').evaluateAll(els => Math.min(...els.map(e => e.getBoundingClientRect().top)));
-    expect(heads - box.y1, 'the heads stay below the margin edge (78 px)').toBeGreaterThan(78);
-    expect(tops('beam'), 'the beam reaches into the lowered row').toBeLessThanOrEqual(78);
-  }
-  const lowest = Math.max(...marks.map(m => m.r.y2));
-  // lowered: the marks end just above the ending brackets, about 30 px above the staff (75 px + the 30 px row below the system's top)
-  if (lowered) {
-    expect(Math.min(...marks.map(m => m.r.y1)) - box.y1).toBeGreaterThan(40);
-    expect(Math.min(...volta.map(o => o.r.y1)) - lowest).toBeGreaterThanOrEqual(0);
-  } else {
-    expect(lowest - box.y1).toBeLessThanOrEqual(30);
-  }
+  // marks 30 + endings 14 + the minimum headroom 15 + 215 below the staff top: the high notes make it taller
+  expect(box.y2 - box.y1, 'the headroom grew for the high notes').toBeGreaterThan(30 + 14 + 15 + 215);
+  const row = box.y1 + 30;
+  expect(Math.max(...marks.map(m => m.r.y2)), 'the marks stand in the row').toBeLessThanOrEqual(row);
+  for (const o of others) expect(o.r.y1, `a ${o.what} stays below the row`).toBeGreaterThanOrEqual(row - 0.5);
   marks.forEach((m, i) => {
     expect(m.r.y1).toBeGreaterThanOrEqual(box.y1);
     expect(m.r.x1).toBeGreaterThanOrEqual(box.x1);
@@ -149,7 +137,7 @@ for (const [file, lowered, note, kinds, needs] of [
     for (const o of others) expect(meets(m.r, o.r), `${m.kind} meets a ${o.what}`).toBe(false);
     marks.slice(i + 1).forEach(n => expect(meets(m.r, n.r), `${m.kind} meets ${n.kind}`).toBe(false));
   });
-  await page.getByTestId('system').nth(0).screenshot({ path: testInfo.outputPath(`row-without-chords-${lowered ? 'lowered' : 'top'}.png`) });
+  await page.getByTestId('system').nth(0).screenshot({ path: testInfo.outputPath(`row-without-chords-${file}.png`) });
 });
 
 test('print shows the marks, in the light ink, and prints the same drawing', async ({ page }) => {

@@ -1,21 +1,19 @@
 import type { Derived } from '../domain/derive';
 import type { Doc } from '../domain/types';
-import { drawsBands, DROP_MARGIN, MARK_DROP, type SheetLayout } from './layout';
+import type { BarsLayout } from './layout';
 import { DOT, dotY, isDotted } from './NoteView';
 import { systemPlacement } from './placed';
-import { tieArc, type tieSegments } from './SystemView';
+import { tieArc, tieSegments } from './SystemView';
 import { beamGeometry, beamInk, eventInk, placeTuplet } from './TupletMark';
 
 /**
- * MARK_DROP when the lowered row is free, else 0. The row is free when the sheet draws no chord symbol and no lyric
- * (the renderer's own test) and nothing the notes draw reaches into the row plus a margin: heads, accidentals, ledger
- * lines, stems, flags, beams, dots, tie arcs and triplet marks. Each extent comes from the function that places that
- * element. One element in the way anywhere keeps the top row for the whole sheet. Not called for a sheet without marks.
+ * The highest y (smallest number) of anything the notes of the sheet draw, in the staff frame (the top staff line at
+ * `SHEET.staffTop`): heads, accidentals, ledger lines, stems, flags, beams, dots, tie arcs and triplet marks, in every
+ * system. Infinity for a sheet without notes. Each extent comes from the function that places that element, so the
+ * measure is the renderer's own geometry. The stack's headroom is made from it.
  */
-export function sheetMarkDrop(doc: Doc, derived: Derived, layout: SheetLayout, show: Doc['show'], ties: ReturnType<typeof tieSegments>): number {
-  if (drawsBands(derived.events, show)) return 0;
-  // In the system's own coordinates (without the row): the lowered row and its margin end at this y.
-  const limit = MARK_DROP + DROP_MARGIN;
+export function sheetInkTop(doc: Doc, derived: Derived, layout: BarsLayout): number {
+  const ties = tieSegments(derived, layout);
   let top = Infinity;
   for (const system of layout.systems) {
     const { placed, byId, groups, beamOf } = systemPlacement(derived, system, layout.beams);
@@ -41,5 +39,5 @@ export function sheetMarkDrop(doc: Doc, derived: Derived, layout: SheetLayout, s
       }
     }
   }
-  return top > limit ? MARK_DROP : 0;
+  return top;
 }

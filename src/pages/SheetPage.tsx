@@ -8,8 +8,8 @@ import { jumpProblems } from '../domain/jumps';
 import { keySignature, spell } from '../domain/keys';
 import type { Doc } from '../domain/types';
 import { usableTracks } from '../import/melody';
-import { layoutSheet } from '../render/layout';
 import { Paper } from '../render/Paper';
+import { layoutSheet } from '../render/sheetLayout';
 import { canRedo, canUndo, useApp } from '../state/store';
 import Banners from '../ui/Banners';
 import FileMenu from '../ui/FileMenu';
@@ -31,6 +31,8 @@ import Toggle from './sheet/Toggle';
 import { useAltFingering } from './sheet/useAltFingering';
 import { preloadPanel, useEditPanelSlot } from './sheet/useEditPanelSlot';
 import { useFileActions } from './sheet/useFileActions';
+import { useHoldView } from './sheet/useHoldView';
+import { usePrinting } from './sheet/usePrinting';
 import { paperDescription } from './sheet/paperDescription';
 import { usePlayback } from './sheet/usePlayback';
 import { PLAY_MODE_LOAD_FAILED, usePlayModeLoad } from './sheet/usePlayModeLoad';
@@ -82,7 +84,6 @@ function Sheet({ doc }: { doc: Doc }) {
   const navigate = useNavigate();
 
   const derived = useMemo(() => derive(doc, prefs), [doc, prefs]);
-  const layout = useMemo(() => layoutSheet(doc, derived), [doc, derived]);
   const problems = useMemo(() => jumpProblems(doc), [doc]);
   const i = derived.inst;
 
@@ -90,6 +91,11 @@ function Sheet({ doc }: { doc: Doc }) {
     mode, selection, setSelection, selectedId, fieldFocus, focusField, announcement, setAnnouncement, paperRef, firstBar,
     select, applyNoteEdit, changeMode, stops,
   } = useSelection(doc, derived);
+  // Lyrics and Chords mode stack their band although the sheet draws nothing in it (somewhere to type); print never does.
+  const printing = usePrinting();
+  const force = useMemo(() => ({ lyrics: mode === 'lyrics' && !printing, chords: mode === 'chords' && !printing }), [mode, printing]);
+  const layout = useMemo(() => layoutSheet(doc, derived, force), [doc, derived, force]);
+  const holdView = useHoldView(paperRef, layout.systemHeight, selectedId);
   const { playerRef, playing, playingId, playError, togglePlay, stopPlay } = usePlayback(doc, selectedId);
   const { openAlt, closeAlt, renderUnderChart } = useAltFingering(doc, firstBar, i.kind);
   const { onSheetKey, onToolbarKey } = useSheetKeys({
@@ -275,7 +281,7 @@ function Sheet({ doc }: { doc: Doc }) {
           </div>
           {/* The handler catches keys that bubble up from the controls inside; the div itself is not a control. */}
           <div role="presentation" className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
-            <ModeSwitch mode={mode} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
+            <ModeSwitch mode={mode} onMode={(m, byClick) => { if (m !== mode) holdView(); preloadPanel(m); changeMode(m, byClick); }} />
             <div className={s.toolbarEnd}>
               {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
               {playModeFailed && <p role="alert" className={s.playError}>{PLAY_MODE_LOAD_FAILED}</p>}
@@ -294,7 +300,7 @@ function Sheet({ doc }: { doc: Doc }) {
               selectedId={selectedId} onSelect={id => select(id)}
               onTitle={title => patchDoc({ title }, 'title')} onSubtitle={subtitle => patchDoc({ subtitle }, 'subtitle')}
               renderUnderChart={renderUnderChart}
-              forceShow={{ lyrics: mode === 'lyrics', chords: mode === 'chords' }} renderUnderSystem={renderUnderSystem} />
+              forceShow={force} renderUnderSystem={renderUnderSystem} />
           </div>
         </div>
       </div>

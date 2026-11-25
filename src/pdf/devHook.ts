@@ -11,7 +11,7 @@ import { inst } from '../domain/instruments';
 import { mod12 } from '../domain/keys';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
-import { layoutSheet, markRow, SHEET } from '../render/layout';
+import { layoutSheet } from '../render/sheetLayout';
 import { COLUMN_BOTTOM } from '../render/NoteView';
 import { drawText, fontsOf, textWidth } from './drawText';
 import { Paper } from '../render/Paper';
@@ -137,16 +137,22 @@ export async function drawTextPdf(items: { text: string; px: number; weight: 400
   return { pdf: await base64(pdf.doc.output('blob')), natural: items.map(it => textWidth(it.text, it.px, it.weight)) };
 }
 
-/** Layout constants of the sheet and the height of a full title block, for the tests' geometry. */
-export function geometry(): { chordY: number; lyricY: number; chartY: number; chartBottom: number; systemHeight: number; titleBlock: number } {
+/**
+ * The stack of this document's systems (design 5.10) and the height of a full title block, for the tests' geometry. All y
+ * values are in a system's own coordinates: the chord lane starts at `chordY`, the lyric band at `lyricY`, the charts
+ * stand between `chartY` and `chartBottom`.
+ */
+export function geometry(doc: Doc): { chordY: number; lyricY: number; chartY: number; chartBottom: number; systemHeight: number; titleBlock: number } {
+  const { stack } = layoutSheet(doc, derive(doc, DEFAULT_PREFS));
   return {
-    chordY: SHEET.chordY, lyricY: SHEET.lyricY, chartY: SHEET.chartY, chartBottom: COLUMN_BOTTOM, systemHeight: SHEET.systemHeight,
+    chordY: stack.frame.chordY + stack.shift, lyricY: stack.frame.lyricY + stack.shift, chartY: stack.chartTop,
+    chartBottom: COLUMN_BOTTOM + stack.shift, systemHeight: stack.systemHeight,
     titleBlock: TITLE.height + SUBTITLE.height + META.height,
   };
 }
 
 /**
- * The height of every system of this document (the mark row included), the mark row's height, the system of each bar
+ * The height of every system of this document, the mark row's height, the system of each bar
  * and the systems on each page of the page model.
  */
 export async function sheetGeometry(doc: Doc, language: string): Promise<{ systemHeight: number; markRow: number; systemOfBar: number[]; pages: number[][] }> {
@@ -157,7 +163,7 @@ export async function sheetGeometry(doc: Doc, language: string): Promise<{ syste
   for (const s of layout.systems) for (const b of s.bars) systemOfBar[b.bar] = s.index;
   const pages = paginate(planSheet(doc, d, layout).blocks, pageHeightUnits(pageSizeFor(language)))
     .map(groups => groups.flatMap(g => g.blocks).filter(b => b.kind === 'system').map(b => b.index!));
-  return { systemHeight: layout.systemHeight, markRow: markRow(doc), systemOfBar, pages };
+  return { systemHeight: layout.systemHeight, markRow: layout.stack.bands.marks, systemOfBar, pages };
 }
 
 /** The number of pages the page model gives the document. */
@@ -194,7 +200,7 @@ export async function showPaper(doc: Doc): Promise<{ squeezed: { text: string; t
     raised: host.querySelectorAll('tspan[data-ext][dy]').length,
     systems: layout.systems.map(s => s.bars.map(b => b.bar)),
     tuplets: Array.from(host.querySelectorAll('svg[data-testid="system"]')).flatMap((svg, system) =>
-      Array.from(svg.querySelectorAll('[data-tuplet] text'), t => ({ x: Number(t.getAttribute('x')), y: Number(t.getAttribute('y')), system }))),
+      Array.from(svg.querySelectorAll('[data-tuplet] text'), t => ({ x: Number(t.getAttribute('x')), y: Number(t.getAttribute('y')) + layout.stack.shift, system }))),
   };
 }
 

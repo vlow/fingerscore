@@ -43,9 +43,9 @@ export function lineSeconds(beats: number, tempo: number, speed: number): number
 
 /**
  * Auto-scroll speed in CSS pixels per second: one zoomed system per line time. `systemHeight` is the layout's
- * (`SheetLayout.systemHeight`: a sheet with jump marks has taller systems).
+ * (`SheetLayout.systemHeight`: it depends on the bands the sheet uses).
  */
-export function scrollSpeed(beats: number, tempo: number, speed: number, zoom: number, systemHeight: number = SHEET.systemHeight): number {
+export function scrollSpeed(beats: number, tempo: number, speed: number, zoom: number, systemHeight: number): number {
   if (beats <= 0) return 0;
   return (systemHeight * zoom) / 100 / lineSeconds(beats, tempo, speed);
 }

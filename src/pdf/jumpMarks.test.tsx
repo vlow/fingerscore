@@ -5,7 +5,7 @@ import { sampleDoc } from '../domain/fixture';
 import { JUMP_TEXT } from '../domain/jumps';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
-import { layoutSheet, markRow, SHEET } from '../render/layout';
+import { layoutSheet } from '../render/sheetLayout';
 import { LIGHT, PaletteProvider } from '../render/palette';
 import { SystemView, tieSegments } from '../render/SystemView';
 import { mkDoc } from '../test/helpers';
@@ -42,17 +42,18 @@ const plan = (doc: Doc) => {
 const systemBlocks = (doc: Doc) => plan(doc).blocks.filter(b => b.kind === 'system');
 
 describe('the PDF page model with marks', () => {
-  it('a sheet without marks gives the blocks of today', () => {
-    const blocks = systemBlocks(sheet(16, false));
+  const heightOf = (doc: Doc) => layoutSheet(doc, derive(doc, DEFAULT_PREFS)).systemHeight;
+
+  it('a sheet without marks gives system blocks of the height of its stack', () => {
+    const doc = sheet(16, false);
+    const blocks = systemBlocks(doc);
     expect(blocks).toHaveLength(4);
-    expect(blocks.every(b => b.height === SHEET.systemHeight)).toBe(true);
+    expect(blocks.every(b => b.height === heightOf(doc))).toBe(true);
   });
 
-  it('a sheet with marks: every system block is taller by the row', () => {
-    const doc = sheet(16, true);
-    const blocks = systemBlocks(doc);
-    expect(markRow(doc)).toBeGreaterThan(0);
-    expect(blocks.every(b => b.height === SHEET.systemHeight + markRow(doc))).toBe(true);
+  it('a sheet with marks: every system block is taller by the row of 30 px', () => {
+    const blocks = systemBlocks(sheet(16, true));
+    expect(blocks.every(b => b.height === heightOf(sheet(16, false)) + 30)).toBe(true);
   });
 
   it('20 systems with marks break between systems; no page is over full and every system is on exactly one page, in order', () => {
@@ -67,9 +68,8 @@ describe('the PDF page model with marks', () => {
       const used = page.reduce((s, g) => s + g.blocks.reduce((t, b) => t + b.height * g.scale, 0), 0);
       expect(used).toBeLessThanOrEqual(height + 1e-6);
     }
-    // the taller systems fit fewer to a page than the plain ones
-    const per = (d: Doc) => Math.max(...paginate(plan(d).blocks, height).map(p => p.flatMap(g => g.blocks).filter(b => b.kind === 'system').length));
-    expect(per(doc)).toBeLessThan(per(sheet(80, false)));
+    // the taller systems need more pages than the plain ones (the band's 30 px take the room of a system on the first page)
+    expect(pages.length).toBeGreaterThan(paginate(plan(sheet(80, false)).blocks, height).length);
   });
 });
 

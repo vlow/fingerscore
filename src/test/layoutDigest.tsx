@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { derive } from '../domain/derive';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
-import { layoutSheet } from '../render/layout';
+import { layoutSheet } from '../render/sheetLayout';
 import { Paper } from '../render/Paper';
 
 /** Every number of the layout, rounded to 1e-6 so float noise cannot hide a change. */

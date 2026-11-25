@@ -4,7 +4,8 @@ import { Paper } from './Paper';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
-import { SHEET, layoutSheet } from './layout';
+import { SHEET } from './layout';
+import { layoutSheet } from './sheetLayout';
 import { pathBox } from './pathBox';
 import { hasPill, spreadPills } from './pillSpread';
 import { missingType } from './NoteView';
@@ -277,9 +278,10 @@ describe('selection', () => {
       y: Number(r.getAttribute('y')), h: Number(r.getAttribute('height')),
     }));
     expect(rects).toHaveLength(5);
+    const shift = Number(/translate\(0 (-?[\d.]+)\)/.exec(container.querySelector('svg[data-testid="system"] > g[transform]')!.getAttribute('transform')!)![1]);
     for (const r of rects) {
       expect(r.w).toBeGreaterThanOrEqual(16);
-      expect(r.y).toBeLessThanOrEqual(2);
+      expect(r.y + shift).toBeLessThanOrEqual(2);       // from the chord band's top in the system's coordinates
       expect(r.y + r.h).toBeGreaterThan(166 + 80);
     }
     for (let k = 1; k < rects.length; k++) expect(rects[k].x).toBeGreaterThanOrEqual(rects[k - 1].x + rects[k - 1].w - 1e-6);
@@ -642,9 +644,12 @@ function markBox(m: Element) {
   return { y1: Math.min(...boxes.map(b => b.y1)), y2: Math.max(...boxes.map(b => b.y2)) };
 }
 
+/** The lanes of a sheet that uses every band, in the staff frame (a mark stays out of them so that such a sheet looks as it did). */
+const LANE = { chordY: 2, lyricY: 22, voltaY: 46 };
+
 function expectClear(m: Element, volta: boolean) {
   const { y1, y2 } = markBox(m);
-  const bands: [number, number][] = [[SHEET.chordY, SHEET.chordY + 15], [SHEET.lyricY, SHEET.lyricY + 16]];
-  if (volta) bands.push([SHEET.voltaY, SHEET.voltaY + 14]);
+  const bands: [number, number][] = [[LANE.chordY, LANE.chordY + 15], [LANE.lyricY, LANE.lyricY + 16]];
+  if (volta) bands.push([LANE.voltaY, LANE.voltaY + 14]);
   for (const [a, b] of bands) expect(y2 < a || y1 > b).toBe(true);
 }

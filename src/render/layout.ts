@@ -5,30 +5,96 @@ import { barCap, beatTicks } from '../domain/time';
 import { notatedLength, tripletGroups, type TripletGroup } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 
-export const SHEET = { width: 940, pad: 40, systemWidth: 860, systemHeight: 290, staffTop: 75, staffBottom: 115, chordY: 2, lyricY: 22, voltaY: 46, chartY: 166, altButtonDy: 90, minPitch: 20, barPad: 16, barPadAfterRepeat: 26, barTail: 14 } as const;
+export const SHEET = { width: 940, pad: 40, systemWidth: 860, staffTop: 75, staffBottom: 115, chartY: 166, altButtonDy: 90, minPitch: 20, barPad: 16, barPadAfterRepeat: 26, barTail: 14 } as const;
 
 /**
- * Height in px of the row above every system that holds the jump marks (Segno, Coda, Fine, To Coda, D.C., D.S.).
- * The row sits above the band of chords, lyrics, endings and triplet marks, which keep their distances to the staff.
+ * Heights (px) of the bands above the staff, from the lanes of the layout before bands could be absent: the chord band
+ * runs from the system's top to the lyric lane (22), the lyric band to the ending lane (24), the ending band holds the
+ * bracket and its hook (14), and the jump marks have a row of their own (30). What is left down to the staff is the
+ * minimum headroom (15). The chord band's first 2 px are empty.
  */
-export const MARK_ROW = 30;
+export const BAND_HEIGHT = { marks: 30, chords: 22, lyrics: 24, endings: 14 } as const;
+export const MIN_HEADROOM = 15;
+/** Clear space (px) between the highest thing a note draws and the lowest band. */
+export const HEADROOM_MARGIN = 4;
+/** Where the chord symbols' lane starts inside the chord band: its top 2 px stay empty. */
+const CHORD_INSET = 2;
+
+/** From the top staff line to the bottom of a system: the staff, the charts and the alternate-fingering pill (290 - 75 before bands could collapse). */
+export const BELOW_STAFF = 215;
+
+/** The system height of a sheet that uses every band but the marks and has no high note: the height the stylesheet gives `.system`. */
+export const FULL_HEIGHT = SHEET.staffTop + BELOW_STAFF;
+
+/** The bands a sheet stacks above its staff. Heights in px; 0 for a band the sheet does not use. */
+export interface Bands { marks: number; chords: number; lyrics: number; endings: number; headroom: number }
+
+/** Which bands a sheet uses (see `bandsUsed`). */
+export interface BandUse { marks: boolean; chords: boolean; lyrics: boolean; endings: boolean }
 
 /**
- * How far (px) the marks of the row move down on a sheet that draws no chord symbol and no lyric: they then stand
- * in the empty chord and lyric bands, directly above the ending brackets, about 30 px above the staff instead of 75.
+ * The one description of what a system stacks, the same for every system of a sheet. Systems are drawn in two frames:
+ * the staff frame, in which the top staff line is at `SHEET.staffTop` (notes, ties, charts, barlines, and the chord,
+ * lyric and ending lanes, all given in it by `frame`), and the system's own coordinates, from the top of its svg. The
+ * staff frame is moved down by `shift` (negative when bands are absent). Distances below the staff do not depend on the stack.
  */
-export const MARK_DROP = 44;
-/** Clear space (px) the lowered row keeps from anything the notes draw. */
-export const DROP_MARGIN = 4;
-
-/** True when the sheet draws a chord symbol or a lyric: the renderer's own test, by the flags of `show`. */
-export function drawsBands(events: DerivedEvent[], show: Doc['show']): boolean {
-  return events.some(ev => (show.chords && ev.chord !== null) || (show.lyrics && !ev.rest && ev.lyric !== ''));
+export interface Stack {
+  bands: Bands;
+  /** Where the top staff line stands in the system: the sum of the bands. */
+  staffTop: number;
+  /** How far the staff frame is moved: `staffTop - SHEET.staffTop`. */
+  shift: number;
+  /** The system's whole height. */
+  systemHeight: number;
+  /** In the staff frame: top of the click columns' area (the chord band's top), and the lanes' tops. */
+  frame: { columnTop: number; chordY: number; lyricY: number; voltaY: number };
+  /** In the system's coordinates: top of the fingering charts, and the alternate-fingering pill below them. */
+  chartTop: number; pillY: number;
 }
 
-/** 0 for a sheet without jump marks, else the row's height; every system of the sheet has it. */
-export function markRow(doc: Doc): number {
-  return hasJumpMarks(doc) ? MARK_ROW : 0;
+/** True when a sheet draws a chord symbol or a lyric by the flags of `show` (the renderer's own test). */
+function drawsContent(events: DerivedEvent[], show: Doc['show']) {
+  return {
+    chords: events.some(ev => show.chords && ev.chord !== null),
+    lyrics: events.some(ev => show.lyrics && !ev.rest && ev.lyric !== ''),
+  };
+}
+
+/**
+ * The bands a sheet uses. Chords and lyrics: drawn anywhere on the sheet (the content exists and its Show switch is on),
+ * or forced by the editing mode (`force`). Endings: some bar has one. Marks: some bar has a jump mark.
+ */
+export function bandsUsed(doc: Doc, events: DerivedEvent[], force: { chords?: boolean; lyrics?: boolean } = {}): BandUse {
+  const drawn = drawsContent(events, doc.show);
+  return {
+    marks: hasJumpMarks(doc),
+    chords: drawn.chords || !!force.chords,
+    lyrics: drawn.lyrics || !!force.lyrics,
+    endings: doc.score.some(b => b.volta !== ''),
+  };
+}
+
+/**
+ * The stack for the bands in use. `inkTop` is the highest y of anything the notes draw, in the staff frame (Infinity
+ * when there is none). Headroom: the ink's height above the top staff line plus a margin, never below the minimum.
+ */
+export function stackOf(use: BandUse, inkTop: number): Stack {
+  const headroom = Math.max(MIN_HEADROOM, SHEET.staffTop - inkTop + HEADROOM_MARGIN);
+  const bands: Bands = {
+    marks: use.marks ? BAND_HEIGHT.marks : 0, chords: use.chords ? BAND_HEIGHT.chords : 0,
+    lyrics: use.lyrics ? BAND_HEIGHT.lyrics : 0, endings: use.endings ? BAND_HEIGHT.endings : 0, headroom,
+  };
+  const staffTop = bands.marks + bands.chords + bands.lyrics + bands.endings + bands.headroom;
+  const shift = staffTop - SHEET.staffTop;
+  const systemHeight = staffTop + BELOW_STAFF;
+  return {
+    bands, staffTop, shift, systemHeight,
+    frame: {
+      columnTop: bands.marks - shift, chordY: bands.marks + CHORD_INSET - shift,
+      lyricY: bands.marks + bands.chords - shift, voltaY: bands.marks + bands.chords + bands.lyrics - shift,
+    },
+    chartTop: SHEET.chartY + shift, pillY: SHEET.chartY + SHEET.altButtonDy + shift,
+  };
 }
 
 /**
@@ -39,14 +105,17 @@ export const HEADER = { clef: 34, clefInset: 4, accidental: 11, timeSig: 26, gap
 
 export interface EvLayout { id: string; x: number; y: number }            // y = notehead centre; rests: staff middle
 export interface BarLayout { bar: number; x: number; width: number; events: EvLayout[] }
-/** `markRow` is the jump-mark row at the top of the system (0 without marks), `height` the system's whole height. */
-export interface SystemLayout { index: number; y: number; markRow: number; height: number; headerWidth: number; showTimeSig: boolean; barNumber: number | null; bars: BarLayout[] }
+/** A system's bars and header, before the stack (so before its position and height) is known. */
+export interface SystemBars { index: number; headerWidth: number; showTimeSig: boolean; barNumber: number | null; bars: BarLayout[] }
+/** `height` is the system's whole height and `stack` the sheet's one stack: everything that sizes or positions a system reads them. */
+export interface SystemLayout extends SystemBars { y: number; height: number; stack: Stack }
 export interface BeamGroup { ids: string[]; beams: 1 | 2 | 'mixed' }
 /** One triplet group: its number (and bracket unless `beamed`: one beam joins all members). */
 export interface TupletMark { bar: number; ids: string[]; beamed: boolean }
-/** `beams` and `tuplets` are indexed by bar: a system draws only the entries of its own bars. */
-/** `systemHeight` is the height of every system, mark row included: everything that sizes a system reads it here. */
-export interface SheetLayout { systems: SystemLayout[]; height: number; systemHeight: number; beams: BeamGroup[][]; tuplets: TupletMark[][] }
+/** What the stack is measured from: the systems' bars, the beam groups and the triplet marks. `beams` and `tuplets` are indexed by bar: a system draws only the entries of its own bars. */
+export interface BarsLayout { systems: SystemBars[]; beams: BeamGroup[][]; tuplets: TupletMark[][] }
+/** `systemHeight` is the height of every system: everything that sizes a system reads it here (or from `stack`). */
+export interface SheetLayout extends BarsLayout { systems: SystemLayout[]; height: number; systemHeight: number; stack: Stack }
 
 const MAX_BARS_PER_SYSTEM = 4;
 const STAFF_MIDDLE = (SHEET.staffTop + SHEET.staffBottom) / 2;
@@ -144,13 +213,12 @@ function beamGroups(barEvents: DerivedEvent[], beat: number, groups: TripletGrou
   return out;
 }
 
-export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
+/** The systems' bars, the beam groups and the triplet marks: all that does not depend on the bands above the staff. */
+export function layoutSystems(doc: Doc, d: Derived): BarsLayout {
   const byBar: DerivedEvent[][] = doc.score.map(() => []);
   for (const ev of d.events) byBar[ev.bar].push(ev);
 
-  const row = markRow(doc);
-  const systemHeight = SHEET.systemHeight + row;
-  const systems: SystemLayout[] = breakSystems(doc, d.sig).map(({ bars, widths }, index) => {
+  const systems: SystemBars[] = breakSystems(doc, d.sig).map(({ bars, widths }, index) => {
     const first = index === 0;
     const hw = headerWidth(d.sig, first);
     let x = hw;
@@ -160,10 +228,7 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
       x += width;
       return layout;
     });
-    return {
-      index, y: index * systemHeight, markRow: row, height: systemHeight, headerWidth: hw, showTimeSig: first,
-      barNumber: first ? null : barLabelOf(doc, bars[0]), bars: barLayouts,
-    };
+    return { index, headerWidth: hw, showTimeSig: first, barNumber: first ? null : barLabelOf(doc, bars[0]), bars: barLayouts };
   });
 
   const beat = beatTicks(doc.timeSig);
@@ -178,5 +243,5 @@ export function layoutSheet(doc: Doc, d: Derived): SheetLayout {
       bar, ids: g.ids, beamed: barBeams.some(b => b.ids.length === g.ids.length && b.ids[0] === g.ids[0]),
     })));
   });
-  return { systems, height: systems.length * systemHeight, systemHeight, beams, tuplets };
+  return { systems, beams, tuplets };
 }

@@ -4,8 +4,8 @@ import { prettyChord } from '../domain/chords';
 import { derive, type Derived } from '../domain/derive';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
-import { layoutSheet, markRow, SHEET, type SheetLayout } from '../render/layout';
-import { sheetMarkDrop } from '../render/markDrop';
+import { SHEET, type SheetLayout } from '../render/layout';
+import { layoutSheet } from '../render/sheetLayout';
 import { SystemView, tieSegments } from '../render/SystemView';
 import { unsupported } from './chars';
 import { textWidth } from './drawText';
@@ -52,7 +52,7 @@ export function planSheet(doc: Doc, d: Derived, layout: SheetLayout): SheetPlan 
   return { blocks, title, subtitle, legend };
 }
 
-interface Sheet { doc: Doc; derived: Derived; layout: SheetLayout; plan: SheetPlan; ties: ReturnType<typeof tieSegments>; drop: number }
+interface Sheet { doc: Doc; derived: Derived; layout: SheetLayout; plan: SheetPlan; ties: ReturnType<typeof tieSegments> }
 
 /** The page's systems rendered off screen and prepared, by system index; `dispose` removes them. */
 function renderSystems(sheet: Sheet, indices: number[]): { svgs: Map<number, SVGSVGElement>; dispose(): void } {
@@ -61,7 +61,7 @@ function renderSystems(sheet: Sheet, indices: number[]): { svgs: Map<number, SVG
   const last = layout.systems.length - 1;
   const views = indices.map(index => createElement(SystemView, {
     key: index, doc, derived, system: layout.systems[index], beams: layout.beams, tuplets: layout.tuplets, ties: ties[index],
-    playingId: null, selectedId: null, onSelect: () => {}, lastSystem: index === last, markDrop: sheet.drop,
+    playingId: null, selectedId: null, onSelect: () => {}, lastSystem: index === last,
   }));
   const off = renderOffscreen(createElement(Fragment, null, ...views));
   try {
@@ -117,8 +117,7 @@ export async function makeSheetPdf(doc: Doc, o: SheetPdfOptions): Promise<Blob> 
   const layout = layoutSheet(doc, derived);
   const plan = planSheet(doc, derived, layout);
   const ties = tieSegments(derived, layout);
-  const drop = markRow(doc) > 0 ? sheetMarkDrop(doc, derived, layout, doc.show, ties) : 0;
-  const sheet: Sheet = { doc, derived, layout, plan, ties, drop };
+  const sheet: Sheet = { doc, derived, layout, plan, ties };
   const pages = paginate(plan.blocks, pageHeightUnits(size));
   const title = headingText(doc.title);
   const footerTitle = fitFooterTitle(title, pages.length);

@@ -5,7 +5,7 @@ import { notatedLength } from '../domain/triplets';
 import type { Doc } from '../domain/types';
 import { Glyph, TimeSigDigits } from './Glyph';
 import { JumpMarks } from './JumpMarks';
-import { HEADER, SHEET, type BarLayout, type BeamGroup, type SheetLayout, type SystemLayout, type TupletMark } from './layout';
+import { FULL_HEIGHT, HEADER, SHEET, type BarLayout, type BeamGroup, type BarsLayout, type SystemBars, type SystemLayout, type TupletMark } from './layout';
 import { placeLyrics, type LyricItem } from './lyrics';
 import { CHORD_FONT_PX, COLUMN_BOTTOM, FONT, NoteView, SelectedMarker, STEM, stemUp, yOfPos, type TextSpot } from './NoteView';
 import styles from './Paper.module.css';
@@ -26,14 +26,14 @@ export type UnderChart = (ev: DerivedEvent, x: number, y: number, systemIndex: n
 export interface TieSegment { x1: number; x2: number; y: number; below: boolean }
 
 /** Right end of a system's staff: the end of its last bar. */
-function systemEnd(s: SystemLayout): number {
+function systemEnd(s: SystemBars): number {
   const last = s.bars[s.bars.length - 1];
   return last ? last.x + last.width : s.headerWidth;
 }
 
 /** Tie arcs per system; a tie into the next system is drawn as two halves (prototype geometry). */
-export function tieSegments(d: Derived, layout: SheetLayout): TieSegment[][] {
-  const placed = new Map<string, { x: number; y: number; system: SystemLayout }>();
+export function tieSegments(d: Derived, layout: BarsLayout): TieSegment[][] {
+  const placed = new Map<string, { x: number; y: number; system: SystemBars }>();
   for (const system of layout.systems) for (const bar of system.bars) for (const e of bar.events) placed.set(e.id, { ...e, system });
   const out: TieSegment[][] = layout.systems.map(() => []);
   d.events.forEach((ev, i) => {
@@ -70,7 +70,7 @@ function Tie(p: TieSegment) {
 const barline = (ink: string) => (x: number, w: number) => <rect x={x} y={staffTop} width={w} height={STAFF_H} fill={ink} />;
 const repeatDots = (ink: string) => (x: number) => DOT_YS.map(y => <circle key={y} cx={x} cy={y} r={2} fill={ink} />);
 
-function Barlines(p: { bar: BarLayout; doc: Doc }) {
+function Barlines(p: { bar: BarLayout; doc: Doc; voltaY: number }) {
   const pal = usePalette();
   const line = barline(pal.ink);
   const dots = repeatDots(pal.ink);
@@ -89,9 +89,9 @@ function Barlines(p: { bar: BarLayout; doc: Doc }) {
           : line(x1 - 1, 1)}
       {b.volta !== '' && (
         <g data-volta="">
-          <path d={voltaStarts ? `M${x0 + 2.5} ${SHEET.voltaY + 14}V${SHEET.voltaY + 0.5}H${voltaEnd}` : `M${x0} ${SHEET.voltaY + 0.5}H${voltaEnd}`}
+          <path d={voltaStarts ? `M${x0 + 2.5} ${p.voltaY + 14}V${p.voltaY + 0.5}H${voltaEnd}` : `M${x0} ${p.voltaY + 0.5}H${voltaEnd}`}
             fill="none" stroke={pal.ink} strokeWidth={1} />
-          {voltaStarts && <text x={x0 + 7} y={SHEET.voltaY + 11} fontSize={11} fontWeight={700} fontFamily={FONT} fill={pal.ink}>{b.volta}.</text>}
+          {voltaStarts && <text x={x0 + 7} y={p.voltaY + 11} fontSize={11} fontWeight={700} fontFamily={FONT} fill={pal.ink}>{b.volta}.</text>}
         </g>
       )}
     </>
@@ -164,8 +164,6 @@ export interface SystemViewProps {
   show?: Doc['show'];
   playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
   selectedId: string | null; onSelect?(id: string | null): void;
-  /** How far the jump marks are lowered (see `sheetMarkDrop`); 0 or absent: the top row. */
-  markDrop?: number;
   /** Play mode: no hit areas. */
   readOnly?: boolean;
 }
@@ -192,14 +190,15 @@ export function SystemView(p: SystemViewProps): JSX.Element {
   const columns = system.bars.flatMap(hitColumns);
   const selectedColumn = columns.find(c => c.id === p.selectedId);
   const selectedPlaced = selectedColumn && byId.get(selectedColumn.id);
-  const row = system.markRow;
+  const { stack } = system;
+  const { frame } = stack;
   const height = system.height;
   const chords = band(show.chords ? placed.filter(n => n.ev.chord !== null).map(n => ({ id: n.ev.id, x: n.x, text: n.ev.chord! })) : [], CHORD_FONT_PX);
 
-  // With a mark row the drawing of the system moves down as a whole, so every distance inside it stays as it was.
+  // The drawing is in the staff frame; the stack moves it as a whole (`stack.shift`), so every distance inside it stays as it was.
   const drawing = (
     <>
-      {selectedColumn && selectedPlaced && <SelectedMarker x={selectedPlaced.x} columnWidth={selectedColumn.width} />}
+      {selectedColumn && selectedPlaced && <SelectedMarker x={selectedPlaced.x} columnWidth={selectedColumn.width} top={frame.columnTop} />}
       {[0, 1, 2, 3, 4].map(i => <rect key={i} x={0} y={staffTop + 10 * i} width={end} height={1} fill={pal.staff} />)}
       <Glyph name="trebleClef" x={HEADER.clefInset} y={staffBottom} />
       {Array.from({ length: nAcc }, (_, k) => (
@@ -210,9 +209,9 @@ export function SystemView(p: SystemViewProps): JSX.Element {
         <text data-bar-number="" x={0} y={65} fontSize={11} fontFamily={FONT} fill={pal.muted}>{system.barNumber}</text>
       )}
       {barline(pal.ink)(0, 1)}
-      {system.bars.map(bar => <g key={bar.bar} data-bar={bar.bar}><Barlines bar={bar} doc={doc} /></g>)}
+      {system.bars.map(bar => <g key={bar.bar} data-bar={bar.bar}><Barlines bar={bar} doc={doc} voltaY={frame.voltaY} /></g>)}
       {system.bars.map(bar => bar.events.map(e => (
-        <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} inst={derived.inst} chartStyle={doc.chartStyle}
+        <NoteView key={e.id} ev={derived.byId[e.id]} x={e.x} y={e.y} lyricAt={lyrics.get(e.id)} chordAt={chords.get(e.id)} frame={frame} inst={derived.inst} chartStyle={doc.chartStyle}
           show={show} playing={p.playingId === e.id} selected={p.selectedId === e.id}
           beamed={beamOf.has(e.id)} fullBarRest={fullBarRest(bar)} />
       )))}
@@ -226,24 +225,24 @@ export function SystemView(p: SystemViewProps): JSX.Element {
       })}
       {p.ties.map((t, i) => <Tie key={i} {...t} />)}
       {!p.readOnly && columns.map(c => (
-        <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={SHEET.chordY} width={c.width} height={COLUMN_BOTTOM - SHEET.chordY}
+        <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={frame.chordY} width={c.width} height={COLUMN_BOTTOM - frame.chordY}
           fill="transparent" onClick={() => p.onSelect?.(p.selectedId === c.id ? null : c.id)} />
       ))}
     </>
   );
 
   return (
-    <div className={styles.system} style={row > 0 ? { height } : undefined}>
+    <div className={styles.system} style={height === FULL_HEIGHT ? undefined : { height }}>
       <svg data-testid="system" width={SHEET.systemWidth} height={height}
         viewBox={`0 0 ${SHEET.systemWidth} ${height}`} aria-hidden="true">
-        {row > 0 && <JumpMarks system={system} score={doc.score} drop={p.markDrop ?? 0} />}
-        {row > 0 ? <g transform={`translate(0 ${row})`}>{drawing}</g> : drawing}
+        {stack.bands.marks > 0 && <JumpMarks system={system} score={doc.score} />}
+        {stack.shift !== 0 ? <g transform={`translate(0 ${stack.shift})`}>{drawing}</g> : drawing}
       </svg>
       {under && (() => {
         const charts = placed.filter(n => charted(n.ev));
         const pillXs = pillCentres(charts.map(n => ({ id: n.ev.id, x: n.x, options: n.ev.options })), SHEET.systemWidth);
         return charts.map(n => (
-          <Fragment key={n.ev.id}>{under(n.ev, n.x, SHEET.chartY + SHEET.altButtonDy + row, system.index, p.lastSystem, pillXs.get(n.ev.id) ?? n.x)}</Fragment>
+          <Fragment key={n.ev.id}>{under(n.ev, n.x, stack.pillY, system.index, p.lastSystem, pillXs.get(n.ev.id) ?? n.x)}</Fragment>
         ));
       })()}
     </div>

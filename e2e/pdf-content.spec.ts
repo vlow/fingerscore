@@ -95,7 +95,7 @@ async function call<T>(page: Page, fn: string, ...args: unknown[]): Promise<T> {
   }, [fn, args] as const) as Promise<T>;
 }
 
-/** Layout constants of the sheet (src/render/layout.ts SHEET) and the title block's height, from the dev hook. */
+/** The stack of one document's systems (design 5.10, y in a system's coordinates) and the title block's height, from the dev hook. */
 interface Geometry { chordY: number; lyricY: number; chartY: number; chartBottom: number; systemHeight: number; titleBlock: number }
 
 async function makePdf(page: Page, build: Builder, language = 'de-DE', extra: Record<string, unknown> = {}): Promise<{ result: HookResult; bytes: Uint8Array }> {
@@ -281,20 +281,24 @@ test('every Latin and extended-Latin character is drawn as text and each symbol 
 
 test('with the Show switches off there is no lyric, chord or chart', async ({ page }) => {
   const off = `h => { const d = h.sampleDoc(); d.show = { fingerings: false, chords: false, lyrics: false, raiseExtensions: true }; return d; }`;
-  const g = await call<Geometry>(page, 'geometry');
-  const tops = (p: PdfPage) => [0, 1, 2, 3].map(i => MARGIN + (g.titleBlock + g.systemHeight * i) * unitOf(p));
-  const chartPaths = (p: PdfPage) => p.paths.filter(q => {
+  // The two sheets have different stacks (the switches off take the chord and lyric bands away), so each has its own geometry.
+  const geometryOf = (build: Builder) => hook<Geometry>(page, 'geometry', build);
+  const tops = (p: PdfPage, g: Geometry) => [0, 1, 2, 3].map(i => MARGIN + (g.titleBlock + g.systemHeight * i) * unitOf(p));
+  const chartPaths = (p: PdfPage, g: Geometry) => p.paths.filter(q => {
     const cy = (q.y1 + q.y2) / 2;
-    return tops(p).some(top => cy > top + g.chartY * unitOf(p) && cy < top + g.chartBottom * unitOf(p));
+    return tops(p, g).some(top => cy > top + g.chartY * unitOf(p) && cy < top + g.chartBottom * unitOf(p));
   });
   // The chord band starts at chordY; the lyric baseline is 12 units below lyricY.
-  const bands = (p: PdfPage) => p.text.filter(t => tops(p).some(top => t.y > top + g.chordY * unitOf(p) && t.y < top + (g.lyricY + 16) * unitOf(p)));
+  const bands = (p: PdfPage, g: Geometry) => p.text.filter(t => tops(p, g).some(top => t.y > top + g.chordY * unitOf(p) && t.y < top + (g.lyricY + 16) * unitOf(p)));
+  const gOn = await geometryOf(sample);
+  const gOff = await geometryOf(off);
+  expect(gOff.systemHeight, 'with the switches off the system has no chord or lyric band').toBeLessThan(gOn.systemHeight);
   const on = (await readPdf((await makePdf(page, sample)).bytes)).pages[0];
-  expect(chartPaths(on).length).toBeGreaterThan(0);
-  expect(bands(on).length).toBeGreaterThan(0);
+  expect(chartPaths(on, gOn).length).toBeGreaterThan(0);
+  expect(bands(on, gOn).length).toBeGreaterThan(0);
   const p = (await readPdf((await makePdf(page, off)).bytes)).pages[0];
-  expect(chartPaths(p)).toEqual([]);
-  expect(bands(p).map(t => t.str)).toEqual([]);
+  expect(chartPaths(p, gOff)).toEqual([]);
+  expect(bands(p, gOn).map(t => t.str)).toEqual([]);     // nothing where the bands of the full sheet were
   for (const s of ['The', 'wat-', 'cross']) expect(p.text.map(t => t.str)).not.toContain(s);
 });
 
@@ -460,10 +464,10 @@ const marked: Builder = `h => {
 interface MarkGeometry { systemHeight: number; markRow: number; systemOfBar: number[]; pages: number[][] }
 
 test('jump marks: texts in bold italic and the signs as paths, each in the row of its bar\'s system on the page of that system', async ({ page }) => {
-  const g = await call<Geometry>(page, 'geometry');
+  const g = await hook<Geometry>(page, 'geometry', marked);
   const m = await hook<MarkGeometry>(page, 'sheetGeometry', marked, 'de-DE');
-  expect(m.markRow).toBeGreaterThan(0);
-  expect(m.systemHeight).toBe(g.systemHeight + m.markRow);
+  expect(m.markRow).toBe(30);
+  expect(m.systemHeight).toBe(g.systemHeight);
   const { bytes } = await makePdf(page, marked);
   const { pages } = await readPdf(bytes);
   expect(pages).toHaveLength(m.pages.length);
@@ -542,7 +546,9 @@ test('nothing stays in the document: not after a failed render, a finished PDF o
 });
 
 test('four systems: one page, the legend kept on it by shrinking the systems, centred, no footer', async ({ page }) => {
-  const four = repeated(16);
+  // One chord symbol and one ending bring the chord and ending bands back (22 + 14 px), so the systems are 290 px as they
+  // were: four of them and the legend are just over a page. Without them they are 254 px, and all fit without shrinking.
+  const four: Builder = `h => { const d = (${repeated(16)})(h); d.chords[d.score[0].ev.find(e => !e.r).id] = h.parseChord('Am', 0); d.score[1].volta = '1'; return d; }`;
   const { bytes } = await makePdf(page, four);
   const { pages } = await readPdf(bytes);
   expect(await hook<number>(page, 'expectedPages', four, 'de-DE')).toBe(1);
@@ -570,7 +576,7 @@ test('four systems: one page, the legend kept on it by shrinking the systems, ce
   }
 });
 
-test('ink above a system\'s box is drawn where the paper draws it: a high triplet mark', async ({ page }) => {
+test('a high triplet mark is drawn where the paper draws it, and the system makes room for it', async ({ page }) => {
   const high = `h => {
     const d = h.sampleDoc();
     const ev = (id, m, dur) => ({ id, m, d: dur, r: false, tie: false, l: '' });
@@ -579,8 +585,8 @@ test('ink above a system\'s box is drawn where the paper draws it: a high triple
   }`;
   const screen = await hook<{ tuplets: { x: number; y: number; system: number }[] }>(page, 'showPaper', high);
   const mark = screen.tuplets.find(t => t.system === 0)!;
-  expect(mark.y).toBeLessThan(0);
-  const g = await call<Geometry>(page, 'geometry');
+  expect(mark.y, 'the headroom holds the mark: it is inside the system\'s box').toBeGreaterThanOrEqual(0);
+  const g = await hook<Geometry>(page, 'geometry', high);
   const p = (await readPdf((await makePdf(page, high)).bytes)).pages[0];
   const u = unitOf(p);
   const top = MARGIN + g.titleBlock * u;
@@ -588,7 +594,7 @@ test('ink above a system\'s box is drawn where the paper draws it: a high triple
   expect(three).toBeDefined();
   expect(three!.y).toBeCloseTo(top + mark.y * u, 0);
   expect(three!.x + three!.width / 2).toBeCloseTo(MARGIN + mark.x * u, 0);
-  const bracket = p.paths.filter(q => q.stroke !== null && q.y1 < top && Math.abs((q.x1 + q.x2) / 2 - (MARGIN + mark.x * u)) < 10 * u);
+  const bracket = p.paths.filter(q => q.stroke !== null && Math.abs((q.y1 + q.y2) / 2 - (top + mark.y * u)) < 12 * u && Math.abs((q.x1 + q.x2) / 2 - (MARGIN + mark.x * u)) < 10 * u);
   expect(bracket.length).toBeGreaterThan(0);
 });
 

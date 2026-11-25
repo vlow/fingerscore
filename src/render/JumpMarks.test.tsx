@@ -7,7 +7,8 @@ import { JUMP_TEXT } from '../domain/jumps';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { Doc } from '../domain/types';
 import { mkDoc, type BarSpec } from '../test/helpers';
-import { layoutSheet, MARK_DROP, MARK_ROW, markRow, SHEET } from './layout';
+import { BAND_HEIGHT, SHEET } from './layout';
+import { layoutSheet } from './sheetLayout';
 import { planMarks, resetMarkFace, useMarkFace } from './JumpMarks';
 import { TEXT_EM_PER_CHAR } from './lyrics';
 import { LIGHT, PaletteProvider, SCREEN } from './palette';
@@ -29,7 +30,7 @@ function draw(doc: Doc, palette = SCREEN) {
 const num = (el: Element, name: string) => Number(el.getAttribute(name));
 const shiftOf = (svg: Element) => {
   const g = Array.from(svg.children).find(c => c.localName === 'g' && c.getAttribute('transform')?.startsWith('translate(0 '));
-  return g ? Number(/translate\(0 ([\d.]+)\)/.exec(g.getAttribute('transform')!)![1]) : 0;
+  return g ? Number(/translate\(0 (-?[\d.]+)\)/.exec(g.getAttribute('transform')!)![1]) : 0;
 };
 
 /** Ink box of one drawn mark element, in the system's coordinates: text by the estimated advance, path by its outline. */
@@ -54,10 +55,11 @@ const inkOf = (el: Element): Box => union([
 const marks = (c: Element, kind: string) => Array.from(c.querySelectorAll(`[data-jump="${kind}"]`));
 
 describe('jump marks on the sheet', () => {
-  it('a sheet without marks draws none and has no shifted group', () => {
-    const { container } = draw(mkDoc([bar(), bar()]));
+  it('a sheet without marks draws none and has no row', () => {
+    const { container, layout } = draw(mkDoc([bar(), bar()]));
+    expect(layout.stack.bands.marks).toBe(0);
     expect(container.querySelectorAll('[data-jump]')).toHaveLength(0);
-    expect(shiftOf(container.querySelector('svg[data-testid="system"]')!)).toBe(0);
+    expect(shiftOf(container.querySelector('svg[data-testid="system"]')!)).toBe(layout.stack.shift);
   });
 
   it('Segno and Coda stand at the left edge of their bar, as outlines', () => {
@@ -102,20 +104,20 @@ describe('jump marks on the sheet', () => {
     expect(marks(container, 'jump').map(e => e.textContent)).toEqual(jumps.map(j => JUMP_TEXT[j]));
   });
 
-  it('the row is above the band: staff, chords, lyrics, endings and triplets move down by the row, nothing else changes', () => {
+  it('the row is on top of the stack: the staff frame moves by the stack\'s shift, the marks stand outside it', () => {
     const plain = draw(mkDoc([bar(), bar()]));
     const doc = mkDoc([bar(), bar({ segno: true })]);
-    const { container } = draw(doc);
-    const row = markRow(doc);
+    const { container, layout } = draw(doc);
     const svg = container.querySelector('svg[data-testid="system"]')!;
-    expect(row).toBeGreaterThan(0);
-    expect(shiftOf(svg)).toBe(row);
-    expect(num(svg, 'height')).toBe(SHEET.systemHeight + row);
-    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${SHEET.systemWidth} ${SHEET.systemHeight + row}`);
-    expect((svg.parentElement as HTMLElement).style.height).toBe(`${SHEET.systemHeight + row}px`);
-    expect(plain.container.querySelector('svg[data-testid="system"]')!.getAttribute('height')).toBe(String(SHEET.systemHeight));
+    expect(layout.stack.bands.marks).toBe(BAND_HEIGHT.marks);
+    expect(layout.systemHeight).toBe(plain.layout.systemHeight + BAND_HEIGHT.marks);
+    expect(shiftOf(svg)).toBe(layout.stack.shift);
+    expect(num(svg, 'height')).toBe(layout.systemHeight);
+    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${SHEET.systemWidth} ${layout.systemHeight}`);
+    expect((svg.parentElement as HTMLElement).style.height).toBe(`${layout.systemHeight}px`);
+    expect(plain.container.querySelector('svg[data-testid="system"]')!.getAttribute('height')).toBe(String(plain.layout.systemHeight));
     // the shifted group holds the staff and the bands; the marks stand outside it
-    const g = Array.from(svg.children).find(c => c.getAttribute('transform') === `translate(0 ${row})`)!;
+    const g = Array.from(svg.children).find(c => c.getAttribute('transform') === `translate(0 ${layout.stack.shift})`)!;
     expect(g.querySelector('[data-bar]')).not.toBeNull();
     expect(g.querySelector('[data-jump]')).toBeNull();
     expect(svg.querySelector('[data-jump]')!.closest('g[transform]')).toBeNull();
@@ -156,46 +158,37 @@ describe('jump marks on the sheet', () => {
     for (let i = 1; i < rights.length; i++) expect(rights[i].x1).toBeGreaterThanOrEqual(rights[i - 1].x2);
   });
 
-  it('a sheet that draws no chord and no lyric lowers the marks by 44 px, into the empty bands; the row and the system stay as they are', () => {
+  it('the marks stand in the row at the top whichever bands the sheet uses; on a bare sheet the row is directly above the headroom', () => {
     const marked = (): Doc => mkDoc([bar({ segno: true }), bar({ toCoda: true, fine: true, jump: 'dc' })]);
-    /** Baseline of the first text and bottom of the first sign, in the system's coordinates. */
-    const inkTop = (doc: Doc) => {
-      const { container } = draw(doc);
-      const svg = container.querySelector('svg[data-testid="system"]')!;
+    /** Top and bottom of the marks' ink in the system's coordinates, and the system's stack. */
+    const ink = (doc: Doc) => {
+      const { container, layout } = draw(doc);
       const boxes = Array.from(container.querySelectorAll('[data-jump]')).filter(e => !e.parentElement?.closest('[data-jump]')).map(inkOf);
-      return { top: Math.min(...boxes.map(b => b.y1)), bottom: Math.max(...boxes.map(b => b.y2)), height: num(svg, 'height'), shift: shiftOf(svg) };
+      return { top: Math.min(...boxes.map(b => b.y1)), bottom: Math.max(...boxes.map(b => b.y2)), stack: layout.stack };
     };
-    const base = inkTop(marked());                                    // nothing to draw in the bands: lowered
+    const bareSheet = ink(marked());
     const withChord = marked();
     withChord.chords[withChord.score[0].ev[1].id] = parseChord('Am7', 0);
     const withLyric = marked();
     withLyric.score[1].ev[0].l = 'one';
-    const chordHidden = marked();
-    chordHidden.chords[chordHidden.score[0].ev[1].id] = parseChord('Am7', 0);
-    chordHidden.show = { ...chordHidden.show, chords: false };
-    const bothOff = marked();
-    bothOff.chords[bothOff.score[0].ev[1].id] = parseChord('Am7', 0);
-    bothOff.score[1].ev[0].l = 'one';
-    bothOff.show = { ...bothOff.show, chords: false, lyrics: false };
-    const lyricOnRest = marked();
-    lyricOnRest.score[0].ev[0] = { ...lyricOnRest.score[0].ev[0], r: true, l: 'x' };
-
-    const up = inkTop(withChord);
-    expect(base.top - up.top).toBeCloseTo(MARK_DROP, 6);
-    expect(base.bottom - up.bottom).toBeCloseTo(MARK_DROP, 6);
-    expect(up.bottom).toBeLessThanOrEqual(MARK_ROW);           // the row of 30 px, as before
-    expect(inkTop(withLyric).top).toBeCloseTo(up.top, 6);
-    for (const lowered of [chordHidden, bothOff, lyricOnRest]) expect(inkTop(lowered).top).toBeCloseTo(base.top, 6);
-    expect(base.height).toBe(up.height);
-    expect(base.height).toBe(SHEET.systemHeight + markRow(marked()));
-    expect(base.shift).toBe(up.shift);
-    // about 30 px above the staff instead of about 75 (the staff starts at the row plus staffTop)
-    expect(base.shift + SHEET.staffTop - base.bottom).toBeGreaterThan(25);
-    expect(base.shift + SHEET.staffTop - base.bottom).toBeLessThan(40);
-    expect(up.shift + SHEET.staffTop - up.bottom).toBeGreaterThan(70);
+    const withAll = marked();
+    withAll.chords[withAll.score[0].ev[1].id] = parseChord('Am7', 0);
+    withAll.score[1].ev[0].l = 'one';
+    withAll.score[1].volta = '1';
+    for (const doc of [withChord, withLyric, withAll]) {
+      const other = ink(doc);
+      expect(other.top).toBeCloseTo(bareSheet.top, 6);                 // the same place: no drop
+      expect(other.bottom).toBeCloseTo(bareSheet.bottom, 6);
+      expect(other.bottom).toBeLessThanOrEqual(BAND_HEIGHT.marks);
+    }
+    // directly above the headroom: the row ends where the headroom begins, 15 px above the staff at least
+    expect(bareSheet.stack.staffTop - bareSheet.stack.bands.headroom).toBe(BAND_HEIGHT.marks);
+    expect(bareSheet.stack.staffTop - bareSheet.bottom).toBeGreaterThanOrEqual(bareSheet.stack.bands.headroom);
+    expect(bareSheet.stack.staffTop - bareSheet.bottom).toBeLessThan(25);
+    expect(ink(withAll).stack.staffTop - ink(withAll).bottom).toBeGreaterThan(70);
   });
 
-  it('lowered marks overlap no ending bracket, triplet mark or note, also with high notes on ledger lines', () => {
+  it('the marks overlap no ending bracket, triplet mark or note, also with high notes on ledger lines', () => {
     const high: BarSpec = { ev: [[81, 12], [84, 12], [83, 12], [84, 12]], rs: true, segno: true };
     const tripletBar: BarSpec = { ev: [[84, 4], [82, 4], [83, 4], [72, 12], [74, 12], [76, 12]], volta: '1', fine: true, toCoda: true, jump: 'dsCoda' };
     const doc = mkDoc([high, tripletBar, bar({ volta: '2', coda: true })]);
@@ -214,7 +207,7 @@ describe('jump marks on the sheet', () => {
       others.push({ x1: num(t, 'x') - 5, x2: num(t, 'x') + 5, y1: num(t, 'y') - 9, y2: num(t, 'y') });
       for (const p of m.querySelectorAll('[data-tuplet-bracket]')) others.push(pathBox(p.getAttribute('d')!));
     }
-    // the notes (up to C6, three ledger lines; a head higher than that keeps the marks in the top row): a head and, above the staff, its ledger lines, 10 px either side of the event
+    // the notes (up to C6, three ledger lines; the headroom grows with them): a head and, above the staff, its ledger lines, 10 px either side of the event
     const notes = layout.systems[0].bars.flatMap(b => b.events).map(e => ({ x1: e.x - 10, x2: e.x + 10, y1: e.y - 5 }));
     for (const m of drawn.map(inkOf)) {
       for (const o of others) expect(m.y2, 'a mark ends above an ending bracket or a triplet mark').toBeLessThan(o.y1 + shift);

@@ -5,8 +5,8 @@ import { sampleDoc } from '../domain/fixture';
 import { ORDER } from '../domain/instruments';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { InstId } from '../domain/types';
-import { layoutSheet } from '../render/layout';
 import { Paper } from '../render/Paper';
+import { layoutSheet } from '../render/sheetLayout';
 
 /** Dev-only preview of the sheet renderer: /dev/sheet?inst=<id>&shift=<n>. */
 export default function DevSheet() {

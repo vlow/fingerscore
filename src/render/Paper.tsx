@@ -2,8 +2,8 @@ import { Fragment, useMemo, type ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import type { Doc } from '../domain/types';
 import { usePaper } from '../state/theme';
-import { markRow, type SheetLayout } from './layout';
-import { sheetMarkDrop } from './markDrop';
+import type { SheetLayout } from './layout';
+import type { BandForce } from './sheetLayout';
 import styles from './Paper.module.css';
 import { SystemView, tieSegments, type UnderChart } from './SystemView';
 
@@ -16,8 +16,11 @@ export interface PaperProps {
   /** Play mode: the headings are plain text and nothing on the paper can be clicked, selected or edited. */
   readOnly?: boolean;
   renderUnderChart?: UnderChart;   // slot for the alt-fingering pill (Task 20)
-  /** Bands drawn although their Show toggle is off (Lyrics and Chords mode); display only, not printed. */
-  forceShow?: { lyrics?: boolean; chords?: boolean };
+  /**
+   * Bands drawn although their Show toggle is off (Lyrics and Chords mode); display only, not printed. The same value goes
+   * to `layoutSheet`, which stacks the band even where the sheet has nothing to draw in it.
+   */
+  forceShow?: BandForce;
   /** HTML directly below system i (the editing panels); not printed. */
   renderUnderSystem?(systemIndex: number): ReactNode;
 }
@@ -34,7 +37,6 @@ export function Paper(p: PaperProps): JSX.Element {
     () => (forcedLyrics || forcedChords ? { ...doc.show, lyrics: doc.show.lyrics || forcedLyrics, chords: doc.show.chords || forcedChords } : doc.show),
     [doc.show, forcedLyrics, forcedChords],
   );
-  const drop = useMemo(() => (markRow(doc) > 0 ? sheetMarkDrop(doc, derived, layout, show, ties) : 0), [doc, derived, layout, show, ties]);
   return (
     <article className={`paper ${styles.paper}`} data-testid="paper" data-paper={paper}
       data-forced-lyrics={forcedLyrics ? '' : undefined} data-forced-chords={forcedChords ? '' : undefined}>
@@ -61,7 +63,7 @@ export function Paper(p: PaperProps): JSX.Element {
         const under = p.readOnly ? null : p.renderUnderSystem?.(s.index);
         return (
           <Fragment key={s.index}>
-            <SystemView doc={doc} show={show} derived={derived} system={s} beams={layout.beams} tuplets={layout.tuplets} ties={ties[s.index]} markDrop={drop}
+            <SystemView doc={doc} show={show} derived={derived} system={s} beams={layout.beams} tuplets={layout.tuplets} ties={ties[s.index]}
               playingId={p.playingId} selectedId={p.readOnly ? null : p.selectedId ?? null} onSelect={p.onSelect} readOnly={p.readOnly} lastSystem={s.index === last}
               renderUnderChart={p.readOnly ? undefined : p.renderUnderChart} />
             {under != null && under !== false && <div className={styles.underSystem} data-under-system="" data-print-hide="">{under}</div>}

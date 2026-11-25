@@ -265,7 +265,7 @@ test('A08 Play mode: only the score, → and Space turn by 88 % of the screen, a
   await expect.poll(top).toBeGreaterThan(height * 0.88 - 2);
   expect(await top()).toBeLessThan(height * 0.88 + 2);
 
-  // Four bars of 4/4 at ♩ = 100 are 9.6 s. One system is 290 units tall, drawn at the play mode's zoom.
+  // Four bars of 4/4 at ♩ = 100 are 9.6 s. One system is as tall as the layout's stack makes it (276 units for this sheet: chords and lyrics, no ending or mark), drawn at the play mode's zoom.
   const zoom = Number(await page.getByTestId('play-zoom').evaluate(el => getComputedStyle(el).zoom));
   await page.keyboard.press('a');
   await expect(region.getByRole('button', { name: 'Pause' })).toHaveAttribute('aria-pressed', 'true');
@@ -276,7 +276,9 @@ test('A08 Play mode: only the score, → and Space turn by 88 % of the screen, a
     await new Promise(resolve => setTimeout(resolve, 3000));
     return (el.scrollTop - y0) / ((performance.now() - t0) / 1000);
   });
-  const expected = (290 * zoom) / 9.6;
+  const systemUnits = Number(await region.getByTestId('system').first().getAttribute('height'));
+  expect(systemUnits).toBe(276);   // 290 before: this sheet has chords and lyrics but no ending
+  const expected = (systemUnits * zoom) / 9.6;
   // The same band as play-mode.spec.ts: 0.6 to 1.5 times the expected pace.
   expect(pixelsPerSecond).toBeGreaterThan(expected * 0.6);
   expect(pixelsPerSecond).toBeLessThan(expected * 1.5);

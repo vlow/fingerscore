@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { JUMP_TEXT } from '../domain/jumps';
 import type { Bar } from '../domain/types';
 import { Glyph, GLYPH_SCALE, glyphInk } from './Glyph';
-import type { SystemLayout } from './layout';
+import type { SystemBars } from './layout';
 import { TEXT_EM_PER_CHAR } from './lyrics';
 import { FONT } from './NoteView';
 import { usePalette } from './palette';
@@ -107,7 +107,7 @@ function widthOf(kind: MarkKind, b: Bar, px: number): number {
  * edge and reaches left past the barline: never into the clef of the first bar or over a mark of the bar before.
  * Only then, if even that run does not fit, texts shrink further (down to 6 px).
  */
-export function planMarks(system: SystemLayout, score: Bar[]): PlacedMark[] {
+export function planMarks(system: SystemBars, score: Bar[]): PlacedMark[] {
   const out: PlacedMark[] = [];
   let taken = 0;                        // right end of what the bar before has put on the row
   system.bars.forEach((bar, i) => {
@@ -148,16 +148,14 @@ export function planMarks(system: SystemLayout, score: Bar[]): PlacedMark[] {
 }
 
 /**
- * The jump marks of one system, in the row above it (y from 0 to the row's height, see `markRow`), placed by `planMarks`.
- * `drop` moves the marks down (see `markDrop`).
+ * The jump marks of one system, in the row at its top (y from 0 to `BAND_HEIGHT.marks`), placed by `planMarks`.
  * Every element carries `data-jump` (the PDF keeps it; `data-mark` would be deleted from the PDF and hidden in print).
  */
-export function JumpMarks(p: { system: SystemLayout; score: Bar[]; drop?: number }): JSX.Element {
+export function JumpMarks(p: { system: SystemBars; score: Bar[] }): JSX.Element {
   const pal = usePalette();
   useMarkFace();
-  const drop = p.drop ?? 0;
-  const textY = TEXT_Y + drop;
-  const signY = SIGN_BASELINE + drop;
+  const textY = TEXT_Y;
+  const signY = SIGN_BASELINE;
   return (
     <>
       {planMarks(p.system, p.score).map(m => {

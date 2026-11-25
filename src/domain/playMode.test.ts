@@ -1,6 +1,6 @@
 import { derive } from './derive';
 import { DEFAULT_PREFS } from './transpose';
-import { layoutSheet } from '../render/layout';
+import { layoutSheet } from '../render/sheetLayout';
 import { mkDoc, type BarSpec } from '../test/helpers';
 import {
   READ_AT, SPEED, clampSpeed, fullLineBeats, leadIn, systemAt, systemBeats, fitZoom, shownZoom, zoomBelow, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget,
@@ -50,8 +50,8 @@ describe('play mode maths', () => {
   });
 
   it('scrolls one zoomed system per line time', () => {
-    expect(scrollSpeed(16, 100, 100, 125)).toBeCloseTo((290 * 1.25) / 9.6);
-    expect(scrollSpeed(0, 100, 100, 125)).toBe(0);
+    expect(scrollSpeed(16, 100, 100, 125, 290)).toBeCloseTo((290 * 1.25) / 9.6);
+    expect(scrollSpeed(0, 100, 100, 125, 290)).toBe(0);
     // a sheet with marks has taller systems: one system per line time at the layout's height
     expect(scrollSpeed(16, 100, 100, 125, 320)).toBeCloseTo((320 * 1.25) / 9.6);
   });

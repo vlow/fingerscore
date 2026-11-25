@@ -4,7 +4,7 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { fullLineBeats, scrollSpeed, speedLabel, systemBeats } from '../domain/playMode';
 import { DEFAULT_PREFS } from '../domain/transpose';
-import { layoutSheet } from '../render/layout';
+import { layoutSheet } from '../render/sheetLayout';
 import { initTheme } from '../state/theme';
 import PlayMode from './PlayMode';
 
@@ -271,7 +271,7 @@ describe('PlayMode', () => {
     fireEvent.keyDown(o.region, { key: 'a' });
     frame(now);
     const beats = systemBeats(o.doc, o.layout.systems);
-    const pace = beats.slice(0, 2).map(b => scrollSpeed(b, o.doc.tempo, 100, 125)).sort((a, b) => a - b);
+    const pace = beats.slice(0, 2).map(b => scrollSpeed(b, o.doc.tempo, 100, 125, o.layout.systemHeight)).sort((a, b) => a - b);
     return { beats, slow: pace[0], fast: pace[1] };
   }
   const readout = () => screen.getByRole('slider', { name: 'Auto-scroll speed' }).nextElementSibling!.textContent!;
@@ -297,13 +297,13 @@ describe('PlayMode', () => {
   it('paces every line by its own beats: a short last line does not hurry the others', () => {
     const o = open();
     const { beats } = startAuto(o);
-    // Put the reading line in the fourth line (lines are 290 px × 1.25 apart; jsdom measures nothing).
+    // Put the reading line in the fourth line (lines are the layout's system height × 1.25 apart; jsdom measures nothing).
     run(15000);   // past the wait
     o.scroller.scrollTop = 1000 - 350 + 100;
     const from = o.scroller.scrollTop;
-    const at = Math.floor((from + 350) / 362.5);
+    const at = Math.floor((from + 350) / (o.layout.systemHeight * 1.25));
     run(1000);
-    const expected = scrollSpeed(beats[at], o.doc.tempo, 100, 125);
+    const expected = scrollSpeed(beats[at], o.doc.tempo, 100, 125, o.layout.systemHeight);
     expect(Math.abs(o.scroller.scrollTop - from - expected)).toBeLessThanOrEqual(1.5);
     expect(beats[beats.length - 1]).toBeLessThan(beats[at]);   // the sample ends on a short line
   });

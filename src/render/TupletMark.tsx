@@ -1,7 +1,7 @@
 import type { DerivedEvent } from '../domain/derive';
 import { notatedLength } from '../domain/triplets';
 import { glyphInk } from './Glyph';
-import { SHEET, type BeamGroup, type TupletMark } from './layout';
+import { BAND_HEIGHT, MIN_HEADROOM, SHEET, type BeamGroup, type TupletMark } from './layout';
 import { ACCIDENTAL_GAP, FONT, STEM, stemUp, yOfPos } from './NoteView';
 import { usePalette } from './palette';
 
@@ -28,6 +28,8 @@ const STEP = 3;           // how far a mark moves out to find clear space
 const MAX_STEPS = 14;
 const REST_HALF_H = 12;
 const CHART_LIMIT = SHEET.chartY - CLEAR;
+/** Staff frame: the mark above a bar with an ending stays below the bracket's lane (the minimum headroom), one without may use the lane. */
+const TUPLET_LIMIT = SHEET.staffTop - MIN_HEADROOM;
 const STAFF_LINES = [0, 1, 2, 3, 4].map(i => SHEET.staffTop + 10 * i + 0.5);
 
 /** Ink of one event: head, accidental, ledger lines, stem, flags (a beamed event's stem reaches its beam tip). */
@@ -126,7 +128,7 @@ export function placeTuplet(p: TupletProps): { chosen: Candidate; cx: number } {
   const beam = mark.beamed ? p.beamOf.get(mark.ids[0]) : undefined;
   const beamUp = beam ? beamGeometry(notesOf(beam)).up : true;
   const preferred: 'above' | 'below' = mark.beamed ? (beamUp ? 'above' : 'below') : 'above';
-  const limit = p.volta ? SHEET.voltaY + 14 : SHEET.voltaY;
+  const limit = p.volta ? TUPLET_LIMIT : TUPLET_LIMIT - BAND_HEIGHT.endings;
 
   const candidate = (side: 'above' | 'below', k: number): Candidate & { ok: boolean } => {
     const out = side === 'above' ? -1 : 1;

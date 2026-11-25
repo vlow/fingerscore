@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { derive } from '../domain/derive';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { mkDoc, type EvSpec } from '../test/helpers';
-import { layoutSheet } from './layout';
+import { layoutSheet } from './sheetLayout';
 import { Paper } from './Paper';
 
 /** `bars` bars of 4/4, each 24 triplet sixteenths: eight groups of three. */

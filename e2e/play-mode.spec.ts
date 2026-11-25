@@ -41,7 +41,7 @@ test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ p
   await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBe(0);
 
   // Auto-scroll first lets the music come down to the reading line (35 % of the screen), then moves at the pace
-  // the readout names: one zoomed line (290 px × 1.25) in that many seconds.
+  // the readout names: one zoomed line (the system's height × 1.25) in that many seconds.
   const label = await region.getByText(/1 line \/ \d+ s$/).textContent();
   const lineSeconds = Number(/(\d+) s$/.exec(label!)![1]);
   expect(lineSeconds).toBe(10);   // four bars of 4/4 at ♩ = 100: 9.6 s
@@ -54,7 +54,9 @@ test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ p
   const start = await scroller.evaluate(el => el.scrollTop);
   await page.waitForTimeout(2000);
   const moved = (await scroller.evaluate(el => el.scrollTop)) - start;
-  const expected = (290 * 1.25 / 9.6) * 2;
+  const systemUnits = Number(await region.getByTestId('system').first().getAttribute('height'));
+  expect(systemUnits).toBe(276);   // 290 before: this sheet has chords and lyrics but no ending
+  const expected = (systemUnits * 1.25 / 9.6) * 2;
   expect(moved).toBeGreaterThan(expected * 0.6);
   expect(moved).toBeLessThan(expected * 1.5);
 

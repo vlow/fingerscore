@@ -5,16 +5,16 @@ exports[`layout of sheets by the bands they use > all bands, every mark, a note 
   "boxes": [
     [
       "860",
-      "320",
-      "0 0 860 320",
+      "334",
+      "0 0 860 334",
     ],
     [
       "860",
-      "320",
-      "0 0 860 320",
+      "334",
+      "0 0 860 334",
     ],
   ],
-  "digest": "09e8059408554461941cd770b392f884921a8bed83cc4e91109bf56a9b471436",
+  "digest": "6e969d643cb07ed4b21b55911d90de244b9856f5c3a9f8c3ed59877eb3393431",
   "systems": 2,
 }
 `;
@@ -30,7 +30,7 @@ exports[`layout of sheets by the bands they use > all bands, every mark, a note 
       [],
       [],
     ],
-    "height": 640,
+    "height": 668,
     "systems": [
       {
         "barNumber": null,
@@ -208,7 +208,7 @@ exports[`layout of sheets by the bands they use > all bands, every mark, a note 
         ],
         "headerWidth": 42,
         "showTimeSig": false,
-        "y": 320,
+        "y": 334,
       },
     ],
     "tuplets": [
@@ -220,7 +220,7 @@ exports[`layout of sheets by the bands they use > all bands, every mark, a note 
       [],
     ],
   },
-  "systemHeight": 320,
+  "systemHeight": 334,
 }
 `;
 
@@ -453,16 +453,16 @@ exports[`layout of sheets by the bands they use > bare with every mark: drawn ma
   "boxes": [
     [
       "860",
-      "320",
-      "0 0 860 320",
+      "260",
+      "0 0 860 260",
     ],
     [
       "860",
-      "320",
-      "0 0 860 320",
+      "260",
+      "0 0 860 260",
     ],
   ],
-  "digest": "fb7d1ae9e10c33c0f6a24391253aac596ee2967bf821fc3d24884c30758ba7cb",
+  "digest": "2d6a393e79ab2ffab8d58ee0e1c9b52ac63de3022ef011859fe77e14926f86ac",
   "systems": 2,
 }
 `;
@@ -478,7 +478,7 @@ exports[`layout of sheets by the bands they use > bare with every mark: layout n
       [],
       [],
     ],
-    "height": 640,
+    "height": 520,
     "systems": [
       {
         "barNumber": null,
@@ -656,7 +656,7 @@ exports[`layout of sheets by the bands they use > bare with every mark: layout n
         ],
         "headerWidth": 42,
         "showTimeSig": false,
-        "y": 320,
+        "y": 260,
       },
     ],
     "tuplets": [
@@ -668,7 +668,7 @@ exports[`layout of sheets by the bands they use > bare with every mark: layout n
       [],
     ],
   },
-  "systemHeight": 320,
+  "systemHeight": 260,
 }
 `;
 
@@ -677,16 +677,16 @@ exports[`layout of sheets by the bands they use > bare: drawn markup 1`] = `
   "boxes": [
     [
       "860",
-      "290",
-      "0 0 860 290",
+      "230",
+      "0 0 860 230",
     ],
     [
       "860",
-      "290",
-      "0 0 860 290",
+      "230",
+      "0 0 860 230",
     ],
   ],
-  "digest": "b6cda250f575aea7e8400de02d1252fb510784443ad521a403ee7648c0c6e1c6",
+  "digest": "d1ea1f536643c76f5bb6f91d7237dceaf2cfbb7ea684c2651944f50f905d9276",
   "systems": 2,
 }
 `;
@@ -702,7 +702,7 @@ exports[`layout of sheets by the bands they use > bare: layout numbers and syste
       [],
       [],
     ],
-    "height": 580,
+    "height": 460,
     "systems": [
       {
         "barNumber": null,
@@ -880,7 +880,7 @@ exports[`layout of sheets by the bands they use > bare: layout numbers and syste
         ],
         "headerWidth": 42,
         "showTimeSig": false,
-        "y": 290,
+        "y": 230,
       },
     ],
     "tuplets": [
@@ -892,7 +892,7 @@ exports[`layout of sheets by the bands they use > bare: layout numbers and syste
       [],
     ],
   },
-  "systemHeight": 290,
+  "systemHeight": 230,
 }
 `;
 
@@ -901,16 +901,16 @@ exports[`layout of sheets by the bands they use > chords and lyrics, no endings:
   "boxes": [
     [
       "860",
-      "290",
-      "0 0 860 290",
+      "276",
+      "0 0 860 276",
     ],
     [
       "860",
-      "290",
-      "0 0 860 290",
+      "276",
+      "0 0 860 276",
     ],
   ],
-  "digest": "cf3bf70e840a2ddadbd89fdae0ffad838c314aa2c4ea64b02531ed1ac78e4f56",
+  "digest": "1b05f50f9e5b02853072798dc2ba776d93acdd20e2e31de35f267430dfa61de5",
   "systems": 2,
 }
 `;
@@ -926,7 +926,7 @@ exports[`layout of sheets by the bands they use > chords and lyrics, no endings:
       [],
       [],
     ],
-    "height": 580,
+    "height": 552,
     "systems": [
       {
         "barNumber": null,
@@ -1104,7 +1104,7 @@ exports[`layout of sheets by the bands they use > chords and lyrics, no endings:
         ],
         "headerWidth": 42,
         "showTimeSig": false,
-        "y": 290,
+        "y": 276,
       },
     ],
     "tuplets": [
@@ -1116,7 +1116,7 @@ exports[`layout of sheets by the bands they use > chords and lyrics, no endings:
       [],
     ],
   },
-  "systemHeight": 290,
+  "systemHeight": 276,
 }
 `;
 
@@ -1125,16 +1125,16 @@ exports[`layout of sheets by the bands they use > lyrics only: drawn markup 1`] 
   "boxes": [
     [
       "860",
-      "290",
-      "0 0 860 290",
+      "254",
+      "0 0 860 254",
     ],
     [
       "860",
-      "290",
-      "0 0 860 290",
+      "254",
+      "0 0 860 254",
     ],
   ],
-  "digest": "6c9e2590d7737c60cd1e12a6d58505abb92fddda14477e22bc8ae32626941d61",
+  "digest": "a4d4b190f753098ccbc14f89be10058a7333a8b848966b99afc11cfd6c6ef86c",
   "systems": 2,
 }
 `;
@@ -1150,7 +1150,7 @@ exports[`layout of sheets by the bands they use > lyrics only: layout numbers an
       [],
       [],
     ],
-    "height": 580,
+    "height": 508,
     "systems": [
       {
         "barNumber": null,
@@ -1328,7 +1328,7 @@ exports[`layout of sheets by the bands they use > lyrics only: layout numbers an
         ],
         "headerWidth": 42,
         "showTimeSig": false,
-        "y": 290,
+        "y": 254,
       },
     ],
     "tuplets": [
@@ -1340,6 +1340,6 @@ exports[`layout of sheets by the bands they use > lyrics only: layout numbers an
       [],
     ],
   },
-  "systemHeight": 290,
+  "systemHeight": 254,
 }
 `;

@@ -3,7 +3,8 @@ import { sampleDoc } from '../domain/fixture';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import type { TimeSig } from '../domain/types';
 import { bar44of, bar68of, mkDoc, sixteenthBar, type BarSpec, type EvSpec } from '../test/helpers';
-import { SHEET, headerWidth, layoutSheet, markRow } from './layout';
+import { SHEET, headerWidth } from './layout';
+import { layoutSheet } from './sheetLayout';
 
 describe('layoutSheet', () => {
   it('plain 4/4 song: four equal bars per system as in the prototype', () => {
@@ -141,32 +142,24 @@ describe('layoutSheet', () => {
   });
 });
 
-describe('the row for jump marks', () => {
+describe('the jump marks row', () => {
   const plain = () => sampleDoc('xc');
   const marked = () => { const doc = plain(); doc.score[6] = { ...doc.score[6], segno: true }; return doc; };
   const run = (doc: ReturnType<typeof plain>) => layoutSheet(doc, derive(doc, DEFAULT_PREFS));
 
-  it('is 0 for a sheet without marks and the same height for every mark', () => {
-    expect(markRow(plain())).toBe(0);
+  it('is 0 for a sheet without marks and 30 for every mark', () => {
+    expect(run(plain()).stack.bands.marks).toBe(0);
     const kinds = [{ segno: true }, { coda: true }, { fine: true }, { toCoda: true }, { jump: 'dc' }] as const;
     for (const k of kinds) {
       const doc = plain(); doc.score[2] = { ...doc.score[2], ...k };
-      expect(markRow(doc), JSON.stringify(k)).toBeGreaterThan(0);
-      expect(markRow(doc)).toBe(markRow(marked()));
+      expect(run(doc).stack.bands.marks, JSON.stringify(k)).toBe(30);
     }
   });
-  it('a sheet without marks has the system height of today', () => {
-    const L = run(plain());
-    expect(L.systemHeight).toBe(SHEET.systemHeight);
-    expect(L.height).toBe(L.systems.length * SHEET.systemHeight);
-    L.systems.forEach((s, i) => expect(s.y).toBe(i * SHEET.systemHeight));
-  });
   it('a sheet with one mark: every system is taller by the row, all the same height; the bars keep their x', () => {
-    const a = run(plain()); const b = run(marked()); const row = markRow(marked());
-    expect(row).toBeGreaterThan(0);
-    expect(b.systemHeight).toBe(SHEET.systemHeight + row);
+    const a = run(plain()); const b = run(marked());
+    expect(b.systemHeight).toBe(a.systemHeight + 30);
     expect(b.systems).toHaveLength(a.systems.length);
-    expect(b.height).toBe(b.systems.length * (SHEET.systemHeight + row));
+    expect(b.height).toBe(b.systems.length * b.systemHeight);
     b.systems.forEach((s, i) => {
       expect(s.y).toBe(i * b.systemHeight);
       expect(s.bars.map(x => [x.x, x.width, x.events])).toEqual(a.systems[i].bars.map(x => [x.x, x.width, x.events]));

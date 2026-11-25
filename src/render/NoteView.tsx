@@ -5,7 +5,7 @@ import type { Doc } from '../domain/types';
 import { FingeringChart, MissingChart } from './FingeringChart';
 import { Glyph, glyphInk, type GlyphName } from './Glyph';
 import { notatedLength } from '../domain/triplets';
-import { SHEET } from './layout';
+import { SHEET, type Stack } from './layout';
 import { LYRIC_FONT_PX, TEXT_EM_PER_CHAR } from './lyrics';
 import { usePalette, type Palette } from './palette';
 
@@ -19,10 +19,10 @@ const MARKER_MAX = 30;
  * The selected event's column: light teal with a teal outline. SystemView draws it beneath the
  * staff so staff lines and glyphs stay visible; the playing highlight is drawn above it.
  */
-export function SelectedMarker(p: { x: number; columnWidth: number }): JSX.Element {
+export function SelectedMarker(p: { x: number; columnWidth: number; top: number }): JSX.Element {
   const pal = usePalette();
   const w = Math.min(MARKER_MAX, p.columnWidth);
-  return <rect data-mark="selected" x={p.x - w / 2} y={0.75} width={w} height={COLUMN_BOTTOM - 0.75} rx={6}
+  return <rect data-mark="selected" x={p.x - w / 2} y={p.top + 0.75} width={w} height={COLUMN_BOTTOM - p.top - 0.75} rx={6}
     fill={pal.selection} stroke={pal.chord} strokeWidth={1.5} />;
 }
 export const CHORD_FONT_PX = 13;
@@ -110,9 +110,9 @@ function wavy(x: number, y: number, width: number): string {
   return d;
 }
 
-function Chord(p: { text: string; ok: boolean; x: number; textLength?: number; raise: boolean }) {
+function Chord(p: { text: string; ok: boolean; x: number; y: number; textLength?: number; raise: boolean }) {
   const pal = usePalette();
-  const y = SHEET.chordY + 13;
+  const y = p.y + 13;
   const common = {
     x: p.x, y, textAnchor: 'middle' as const, fontSize: CHORD_FONT_PX, fontWeight: 700, fontFamily: FONT,
     ...(p.textLength === undefined ? {} : { textLength: p.textLength, lengthAdjust: 'spacingAndGlyphs' as const }),
@@ -144,6 +144,8 @@ export interface TextSpot { x: number; textLength?: number }
 export interface NoteViewProps {
   ev: DerivedEvent; x: number; y: number; lyricAt?: TextSpot; chordAt?: TextSpot;
   inst: Instrument; chartStyle: Doc['chartStyle']; show: Doc['show'];
+  /** The stack's lanes (staff frame): where the chord symbol, the lyric and the playing highlight go. */
+  frame: Stack['frame'];
   playing: boolean; selected: boolean; beamed: boolean; fullBarRest: boolean;
 }
 
@@ -154,12 +156,12 @@ export function NoteView(p: NoteViewProps): JSX.Element {
   return (
     <g data-ev={ev.id} data-state={ev.state} data-tied={ev.tiedFrom ? '' : undefined}
       data-playing={p.playing ? 'true' : undefined} data-selected={p.selected ? 'true' : undefined}>
-      {p.playing && <rect data-mark="playing" x={x - 12} y={0} width={24} height={150} rx={6} fill={pal.playing} />}
+      {p.playing && <rect data-mark="playing" x={x - 12} y={p.frame.columnTop} width={24} height={150 - p.frame.columnTop} rx={6} fill={pal.playing} />}
       {show.chords && ev.chord !== null && (
-        <Chord text={ev.chord} ok={ev.chordOk} x={p.chordAt?.x ?? x} textLength={p.chordAt?.textLength} raise={show.raiseExtensions} />
+        <Chord text={ev.chord} ok={ev.chordOk} x={p.chordAt?.x ?? x} y={p.frame.chordY} textLength={p.chordAt?.textLength} raise={show.raiseExtensions} />
       )}
       {show.lyrics && !ev.rest && ev.lyric !== '' && (
-        <text data-lyric="" x={p.lyricAt?.x ?? x} y={SHEET.lyricY + 12} textAnchor="middle" fontSize={LYRIC_FONT_PX} fontFamily={FONT} fill={pal.lyric}
+        <text data-lyric="" x={p.lyricAt?.x ?? x} y={p.frame.lyricY + 12} textAnchor="middle" fontSize={LYRIC_FONT_PX} fontFamily={FONT} fill={pal.lyric}
           {...(p.lyricAt?.textLength === undefined ? {} : { textLength: p.lyricAt.textLength, lengthAdjust: 'spacingAndGlyphs' })}>
           {ev.lyric}
         </text>

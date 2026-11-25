@@ -5,16 +5,16 @@ exports[`a sheet without marks keeps its layout > repeat, endings, triplet, chor
   "boxes": [
     [
       "860",
-      "290",
-      "0 0 860 290",
+      "303",
+      "0 0 860 303",
     ],
     [
       "860",
-      "290",
-      "0 0 860 290",
+      "303",
+      "0 0 860 303",
     ],
   ],
-  "digest": "b21f7aee77ca08e96a5bb5993397855bf0d61a4cbb6290b57ccf93c6d877b891",
+  "digest": "6f2e7984d7ae87323c7f3ad9b8b6fe7e0c0c863b92164ee6c30180b9deffe4c0",
   "systems": 2,
 }
 `;
@@ -52,7 +52,7 @@ exports[`a sheet without marks keeps its layout > repeat, endings, triplet, chor
       },
     ],
   ],
-  "height": 580,
+  "height": 606,
   "systems": [
     {
       "barNumber": null,
@@ -218,7 +218,7 @@ exports[`a sheet without marks keeps its layout > repeat, endings, triplet, chor
       ],
       "headerWidth": 42,
       "showTimeSig": false,
-      "y": 290,
+      "y": 303,
     },
   ],
   "tuplets": [
