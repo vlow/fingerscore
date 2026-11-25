@@ -11,7 +11,7 @@ import { Paper } from './Paper';
 import { pathBox, placedBox, type Box } from './pathBox';
 import { systemPlacement } from './placed';
 import { tieSegments } from './SystemView';
-import { eventInk, placeTuplet } from './TupletMark';
+import { beamGeometry, eventInk, placeTuplet } from './TupletMark';
 
 /** The top of the lowered row's margin, in the system's own coordinates (below the row). */
 const LIMIT = MARK_DROP + DROP_MARGIN;
@@ -78,26 +78,37 @@ describe('sheetMarkDrop: anything the notes draw decides', () => {
     expect(dropOf(sheet([[84, 24], [84, 24]]))).toBe(MARK_DROP);   // the same notes untied
   });
 
-  it('a triplet mark that the renderer places above never comes nearer than 46 px: the margin edge is 48, so it is placed below instead', () => {
+  it('a triplet mark placed above because no side fits can sit inside the row while all other ink stays under the margin', () => {
+    // a beamed eighth triplet with one very low note: below does not fit, so the mark stays above its preferred place
+    for (const high of [76]) {
+      const doc = sheet([[40, 4], [high, 4], [40, 4]]);
+      const d = derive(doc, DEFAULT_PREFS);
+      const layout = layoutSheet(doc, d);
+      const s = layout.systems[0];
+      const { placed, byId, beamOf } = systemPlacement(d, s, layout.beams);
+      const mark = placeTuplet({ mark: layout.tuplets[0][0], byId, beamOf, marks: layout.tuplets[0], barIds: s.bars[0].events.map(e => e.id), volta: false });
+      const ink = Math.min(...placed.flatMap(n => eventInk(n, undefined).map(b => b.y1)), ...[...beamOf.values()].map(g => Math.min(...g.ids.map(i => byId.get(i)!.y)) - 30));
+      expect(mark.chosen.side, `high ${high}`).toBe('above');
+      expect(mark.chosen.y1, 'the mark is in the row').toBeLessThanOrEqual(LIMIT);
+      expect(ink, 'the rest of the notes is under the margin').toBeGreaterThan(LIMIT);
+      expect(dropOf(doc)).toBe(0);
+    }
+  });
+
+  it('a triplet mark that fits above stays under 46 px, so the row is lowered', () => {
     const doc = sheet([[74, 4], [64, 4], [64, 4]]);
     const d = derive(doc, DEFAULT_PREFS);
     const layout = layoutSheet(doc, d);
     const s = layout.systems[0];
-    const { placed, byId, beamOf, groups } = systemPlacement(d, s, layout.beams);
-    expect(layout.tuplets[0][0].beamed).toBe(true);
-    const others = Math.min(...placed.flatMap(n => eventInk(n, undefined).map(b => b.y1)));
-    const tip = Math.min(...placed.map(n => n.y)) - 30;
-    expect(groups).toHaveLength(1);
-    expect(beamOf.size).toBe(3);
-    expect(others).toBeGreaterThan(LIMIT);
-    expect(tip).toBeGreaterThan(LIMIT);
+    const { byId, beamOf } = systemPlacement(d, s, layout.beams);
     const mark = placeTuplet({ mark: layout.tuplets[0][0], byId, beamOf, marks: layout.tuplets[0], barIds: s.bars[0].events.map(e => e.id), volta: false });
     expect(mark.chosen.side).toBe('below');       // above would put the digit at 41, in the band
     expect(dropOf(doc)).toBe(MARK_DROP);
   });
 
-  it('a dotted note and a rest do not reach the row at ordinary pitches', () => {
-    expect(dropOf(sheet([[72, 18], [60, 6]]))).toBe(MARK_DROP);
+  it('a dot keeps the top row: a dotted C6 has its dot top at the limit, a plain C6 (head top 50) is lowered', () => {
+    expect(dropOf(sheet([[84, 12], [60, 12]]))).toBe(MARK_DROP);
+    expect(dropOf(sheet([[84, 18], [60, 6]]))).toBe(0);
   });
 
   it('one element anywhere keeps the top row for the whole sheet', () => {
@@ -150,41 +161,63 @@ describe('a lowered row meets nothing the notes draw', () => {
   function bar(): EvSpec[] {
     const out: EvSpec[] = [];
     for (let beat = 0; beat < 4; beat++) {
-      switch (rnd(6)) {
+      switch (rnd(7)) {
         case 0: out.push([pitch(), 12]); break;
         case 1: out.push([pitch(), 6], [pitch(), 6]); break;
         case 2: out.push([pitch(), 3], [pitch(), 3], [pitch(), 3], [pitch(), 3]); break;
         case 3: out.push([pitch(), 4], [pitch(), 4], [pitch(), 4]); break;
         case 4: out.push([pitch(), 9], [pitch(), 3]); break;
+        case 5: out.push([pitch(), 6], [0, 6]); break;       // a lone eighth keeps its flag
         default: out.push([0, 12]);
       }
     }
     return out.map((e, i) => (i + 1 < out.length && e[0] !== 0 && out[i + 1][0] === e[0] && rnd(2) === 0 ? [e[0], e[1], { tie: true }] as EvSpec : e));
   }
 
-  it('over a few hundred random sheets without chords and lyrics, no lowered row touches a note, stem, beam, flag, dot, tie or triplet mark', () => {
-    let lowered = 0;
-    let top = 0;
-    for (let run = 0; run < 300; run++) {
-      ceiling = 62 + rnd(34);
+  const stats = { sheets: 0, lowered: 0, top: 0, groupsUp: 0, groupsDown: 0, ties: 0, dots: 0, triplets: 0, ledgerAbove: 0, flags: 0 };
+
+  /** `count` random sheets: each lowered one is checked box by box; every sheet adds to the statistics. */
+  function check(count: number): void {
+    for (let run = 0; run < count; run++) {
+      ceiling = 70 + rnd(18);
       const doc = mkDoc([{ ev: bar(), segno: true }, { ev: bar() }, { ev: bar(), jump: 'dc' }]);
       const d = derive(doc, DEFAULT_PREFS);
       const layout = layoutSheet(doc, d);
-      const { container } = render(<PaletteProvider value={SCREEN}><Paper doc={doc} derived={d} layout={layout} playingId={null} selectedId={null} /></PaletteProvider>);
+      const { container, unmount } = render(<PaletteProvider value={SCREEN}><Paper doc={doc} derived={d} layout={layout} playingId={null} selectedId={null} /></PaletteProvider>);
       const row = markRow(doc);
       const drop = sheetMarkDrop(doc, d, layout, doc.show, tieSegments(d, layout));
-      if (drop === 0) { top++; container.remove(); continue; }
-      lowered++;
-      const texts = Array.from(container.querySelectorAll('[data-jump]'));
-      expect(texts.length).toBeGreaterThan(0);
+      stats.sheets++;
+      if (drop === 0) { stats.top++; unmount(); continue; }
+      stats.lowered++;
+      expect(container.querySelectorAll('[data-jump]').length).toBeGreaterThan(0);
+      for (const system of layout.systems) {
+        const { byId, groups } = systemPlacement(d, system, layout.beams);
+        for (const g of groups) beamGeometry(g.ids.map(i => byId.get(i)!)).up ? stats.groupsUp++ : stats.groupsDown++;
+      }
+      stats.ties += container.querySelectorAll('[data-tie]').length;
+      stats.dots += container.querySelectorAll('[data-dot]').length;
+      stats.triplets += container.querySelectorAll('[data-tuplet]').length;
+      stats.flags += container.querySelectorAll('[data-flag]').length;
+      stats.ledgerAbove += Array.from(container.querySelectorAll('[data-ledger]')).filter(e => num(e, 'y') < 75).length;
       // the lowered row, with its margin, in the system's drawn coordinates: from MARK_DROP to MARK_ROW + MARK_DROP + margin
       container.querySelectorAll('svg[data-testid="system"]').forEach(svg => {
         for (const b of noteBoxes(svg, row)) {
           expect(b.y1 >= MARK_ROW + MARK_DROP + DROP_MARGIN || b.y2 <= MARK_DROP, `run ${run}: a note element at y ${b.y1} to ${b.y2} meets the lowered row`).toBe(true);
         }
       });
+      unmount();
     }
-    expect(lowered).toBeGreaterThan(30);
-    expect(top).toBeGreaterThan(30);
+  }
+
+  // Four cases of 30 sheets (about 0.3 s each alone; the explicit timeout leaves room for a run with coverage).
+  for (let part = 1; part <= 4; part++) {
+    it(`random sheets without chords and lyrics, part ${part} of 4: no lowered row touches a note, stem, beam, flag, dot, tie or triplet mark`, () => check(30), 60_000);
+  }
+
+  it('the random sheets are not vacuous: both placements and every kind of element occur among the lowered ones', () => {
+    expect(stats.sheets).toBe(120);
+    expect(stats.lowered).toBeGreaterThan(20);
+    expect(stats.top).toBeGreaterThan(20);
+    for (const k of ['groupsUp', 'groupsDown', 'ties', 'dots', 'triplets', 'flags', 'ledgerAbove'] as const) expect(stats[k], k).toBeGreaterThan(0);
   });
 });

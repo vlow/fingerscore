@@ -5,8 +5,8 @@ import { DROP_MARGIN, layoutSheet, MARK_DROP } from './layout';
 import { sheetMarkDrop } from './markDrop';
 import { tieSegments } from './SystemView';
 
-// The renderer never puts a triplet mark above a note nearer than 46 px to the system's top, and the row's margin
-// ends at 48, so no real sheet has a mark in the way. The decision still has to ask the mark, so this one answers 40.
+// The boundary of the decision: a triplet mark whose box ends at 48 (the margin edge) is in the way, one at 49 is not.
+// (A real mark in the row is in markDrop.test.tsx.)
 const reach = vi.hoisted(() => ({ y1: 100 }));
 vi.mock('./TupletMark', async importActual => {
   const actual = await importActual<typeof import('./TupletMark')>();
