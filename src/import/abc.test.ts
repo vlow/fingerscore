@@ -18,6 +18,11 @@ describe('parseAbc', () => {
     expect(midis(s)).toEqual([60, 62, 64, 65]);
   });
 
+  it('reads the title from the first T: line', async () => {
+    expect((await parse('X:1\nT:Evening  Steps\nT:A second line\nK:C\nCDEF|')).title).toBe('Evening Steps');
+    expect((await parse(BASIC)).title).toBe('');
+  });
+
   it('reads notes, durations, track name and format', async () => {
     const s = await parse(BASIC);
     expect(s.format).toBe('ABC');

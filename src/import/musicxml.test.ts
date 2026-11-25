@@ -276,4 +276,22 @@ describe('parseMusicXml', () => {
       expect([doc.originalTonicPc, doc.originalMode]).toEqual([0, 'major']);
     });
   });
+
+  describe('title', () => {
+    const titled = (header: string) => new TextEncoder().encode(
+      `<?xml version="1.0"?><score-partwise version="3.1">${header}<part-list><score-part id="P1"><part-name>P</part-name></score-part></part-list>` +
+      `<part id="P1"><measure number="1"><attributes><divisions>1</divisions></attributes>${n('C', 5, 4)}</measure></part></score-partwise>`);
+    const title = async (header: string) => (await parseMusicXml('t.musicxml', titled(header))).title;
+
+    it('reads the work title first, then the movement title, then the title credit', async () => {
+      expect(await title('<work><work-title>Work</work-title></work><movement-title>Movement</movement-title>')).toBe('Work');
+      expect(await title('<work><work-title> </work-title></work><movement-title>Movement</movement-title>')).toBe('Movement');
+      expect(await title('<credit page="1"><credit-type>composer</credit-type><credit-words>Someone</credit-words></credit>' +
+        '<credit page="1"><credit-type>title</credit-type><credit-words>Credited</credit-words></credit>')).toBe('Credited');
+    });
+
+    it('is empty when the file names none', async () => {
+      expect(await title('')).toBe('');
+    });
+  });
 });

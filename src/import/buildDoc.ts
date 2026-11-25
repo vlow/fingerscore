@@ -120,7 +120,7 @@ export function buildDoc(song: ParsedSong, o: BuildOptions): Doc {
     fingering: {},
     chords,
     imported: { lyrics: importedLyrics, chords: importedChords },
-    title: titleFrom(song.file),
+    title: song.title || titleFrom(song.file),
     subtitle: '',
     chartStyle: 'compact',
     recorderSystem: 'baroque',

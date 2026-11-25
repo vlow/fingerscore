@@ -1,6 +1,7 @@
 import { Midi } from '@tonejs/midi';
-import { parseMidi as parseMidiEvents } from 'midi-file';
+import { parseMidi as parseMidiEvents, type MidiEvent } from 'midi-file';
 import { songTimeSig } from './meter';
+import { fileTitle } from './title';
 import { ImportError, type ParsedSong, type ParsedTrack } from './types';
 
 const PERCUSSION_CHANNEL = 9;
@@ -21,9 +22,8 @@ function cleanLyric(raw: string): string | null {
 }
 
 /** Lyric and text meta events per midi-file track, in quarter notes. Not index-aligned with @tonejs/midi tracks. */
-function readTextLists(bytes: Uint8Array, ppq: number): TextLists[] {
-  const data = parseMidiEvents(bytes);
-  return data.tracks.map(events => {
+function readTextLists(rawTracks: MidiEvent[][], ppq: number): TextLists[] {
+  return rawTracks.map(events => {
     const out: TextLists = { lyrics: [], texts: [] };
     let tick = 0;
     for (const ev of events) {
@@ -34,6 +34,17 @@ function readTextLists(bytes: Uint8Array, ppq: number): TextLists[] {
     }
     return out;
   });
+}
+
+/**
+ * The name of the first track names the sequence (Standard MIDI File spec). A first track with notes is a format 0
+ * file or a track named for its instrument, so only a note-less first track gives the title. @tonejs/midi drops
+ * such a track, so this reads the midi-file events.
+ */
+function readTitle(rawTracks: MidiEvent[][]): string {
+  const first = rawTracks[0] ?? [];
+  if (first.some(ev => ev.type === 'noteOn')) return '';
+  return fileTitle(first.find(ev => ev.type === 'trackName')?.text);
 }
 
 /** @tonejs/midi names the MAJOR key of the signature's sharps/flats, even when `scale` is minor. */
@@ -80,11 +91,13 @@ function attachLyrics(tracks: ParsedTrack[], lists: TextLists[]): void {
 export function parseMidi(file: string, bytes: Uint8Array): ParsedSong {
   const unreadable = new ImportError(`"${file}" could not be read as a MIDI file.`);
   let midi: Midi;
+  let rawTracks: MidiEvent[][];
   let perTrack: TextLists[];
   try {
     midi = new Midi(bytes);
     if (!Number.isFinite(midi.header.ppq) || midi.header.ppq <= 0) throw unreadable;   // SMPTE timing
-    perTrack = readTextLists(bytes, midi.header.ppq);
+    rawTracks = parseMidiEvents(bytes).tracks;
+    perTrack = readTextLists(rawTracks, midi.header.ppq);
   } catch {
     throw unreadable;
   }
@@ -139,5 +152,5 @@ export function parseMidi(file: string, bytes: Uint8Array): ParsedSong {
     t.notes = t.notes.filter(n => n.start >= -ONSET_TOLERANCE);
   }
 
-  return { file, format: 'MIDI', timeSig, tempo, key, pickup, marks: [], dropped: [], tracks };
+  return { file, format: 'MIDI', title: readTitle(rawTracks), timeSig, tempo, key, pickup, marks: [], dropped: [], tracks };
 }

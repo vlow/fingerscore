@@ -60,7 +60,7 @@ declare module 'abcjs/src/parse/abc_parse' {
 
   export interface AbcTune {
     lines: { staff?: AbcStaff[] }[];
-    metaText: { tempo?: { duration?: number[]; bpm?: number } };
+    metaText: { title?: string; tempo?: { duration?: number[]; bpm?: number } };
   }
 
   export default class Parse {

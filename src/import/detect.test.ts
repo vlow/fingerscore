@@ -8,7 +8,7 @@ import type { ParsedSong, RawNote } from './types';
 
 const demo = () => parseMidi('Auld_Lang_Syne.mid', new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid')));
 const nt = (start: number, dur: number, midi: number): RawNote => ({ start, dur, midi });
-const song = (tracks: ParsedSong['tracks']): ParsedSong => ({ file: 'x.mid', format: 'MIDI', timeSig: [4, 4], tempo: 120, key: null, pickup: 0, marks: [], dropped: [], tracks });
+const song = (tracks: ParsedSong['tracks']): ParsedSong => ({ file: 'x.mid', format: 'MIDI', title: '', timeSig: [4, 4], tempo: 120, key: null, pickup: 0, marks: [], dropped: [], tracks });
 const trk = (id: string, notes: RawNote[], o: Partial<ParsedSong['tracks'][number]> = {}) =>
   ({ id, name: id, instrument: '', channel: 1, percussion: false, notes, lyrics: [], chords: [], ...o });
 

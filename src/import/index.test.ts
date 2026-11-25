@@ -14,7 +14,7 @@ const tr = (id: string, p: Partial<ParsedTrack>): ParsedTrack => ({
 const line = (start: number, ...pitches: number[]) => pitches.map((midi, k) => ({ start: start + k, dur: 1, midi }));
 const chord = (start: number, ...pitches: number[]) => pitches.map(midi => ({ start, dur: 2, midi }));
 const song = (tracks: ParsedTrack[]): ParsedSong => ({
-  file: 'x.musicxml', format: 'MusicXML', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [], dropped: [], tracks,
+  file: 'x.musicxml', format: 'MusicXML', title: '', timeSig: [4, 4], tempo: 100, key: null, pickup: 0, marks: [], dropped: [], tracks,
 });
 
 describe('defaultBuildOptions', () => {

@@ -17,6 +17,7 @@ export interface ParsedMark {
 
 export interface ParsedSong {
   file: string; format: 'MIDI' | 'MusicXML' | 'MuseScore' | 'ABC'; timeSig: TimeSig; tempo: number;
+  title: string;                                    // the song title the file states, '' = none
   key: { tonicPc: number; mode: Mode | null } | null;   // mode null: signature only; tonicPc is its major tonic
   pickup: number;                                   // quarter notes in the pickup bar, 0 = none
   marks: ParsedMark[];                              // by bar index incl. pickup
