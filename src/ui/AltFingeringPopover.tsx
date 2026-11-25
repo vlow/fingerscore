@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { FingeringOption } from '../domain/fingerings';
 import type { Instrument } from '../domain/instruments';
@@ -45,13 +45,20 @@ export default function AltFingeringPopover(p: Props) {
     setPlaced(place({ width, height }));
   }, []);   // measured once, when the popover opens
 
-  useEffect(() => {
+  // Layout effects, not passive ones: they run in the commit, before the popover can be painted, so from the moment it is
+  // seen the focus is in it and Escape and an outside click close it. A passive effect runs a moment later (on a slow
+  // machine tens of milliseconds), and a key pressed in between would reach nothing.
+  // `closing` is set when the popover has asked to be closed: an effect that runs again after that (React's development
+  // mode runs every effect twice, the second time late) must not take the focus back from the pill.
+  const closing = useRef(false);
+  useLayoutEffect(() => {
+    if (closing.current) return;
     ref.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(true); }
+      if (e.key === 'Escape') { e.preventDefault(); closing.current = true; onClose(true); }
     };
     const onDown = (e: PointerEvent | MouseEvent) => {
       const t = e.target as Node | null;
@@ -59,6 +66,7 @@ export default function AltFingeringPopover(p: Props) {
       const interactive = t instanceof Element && t.closest(INTERACTIVE) !== null;
       // A click on plain content returns the focus to the pill; keep the browser from moving it to the body after.
       if (!interactive) e.preventDefault();
+      closing.current = true;
       onClose(!interactive);
     };
     document.addEventListener('keydown', onKey);

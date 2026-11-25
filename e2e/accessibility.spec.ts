@@ -392,6 +392,10 @@ async function notesAndLengths(page: Page): Promise<string[]> {
 }
 
 test('keyboard only: from the instrument to play mode without a mouse', async ({ page }) => {
+  // E2E_CPU_RATE=6 runs the test on a CPU six times slower, as a slow machine does (a way to look for races).
+  if (process.env.E2E_CPU_RATE) await (await page.context().newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.E2E_CPU_RATE) });
+  // E2E_CPU_RATE=6 runs the test on a CPU six times slower, as a slow machine does (a way to look for races).
+  if (process.env.E2E_CPU_RATE) await (await page.context().newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.E2E_CPU_RATE) });
   test.setTimeout(120_000);
   await page.goto('/');
   await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });

@@ -128,7 +128,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   }, [measure]);
 
   // The keys work from the first moment, and everything else on the page is out of reach while play mode is open.
-  useEffect(() => {
+  // A layout effect: it runs in the commit, so an Escape pressed when the overlay first shows is not lost to the page below.
+  useLayoutEffect(() => {
     const region = regionRef.current;
     if (!region) return;
     region.focus();
