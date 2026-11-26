@@ -18,6 +18,12 @@ days="${3:-30}"
 if [[ ! -d "$site/assets" ]]; then echo "prune-assets: $site/assets is not a folder." >&2; exit 2; fi
 newest="$(find "$releases" -maxdepth 1 -name '*.txt' -type f 2>/dev/null | sort | tail -n 1)"
 if [[ -z "$newest" ]]; then echo "prune-assets: no release list in $releases; nothing is deleted." >&2; exit 2; fi
+# The deploy copies the list after the files. An index.html newer than the newest list means the list of the release
+# now live is missing (a failed or skipped copy): the newest list would then delete the live release's new files.
+if [[ -f "$site/index.html" && "$site/index.html" -nt "$newest" ]]; then
+  echo "prune-assets: $site/index.html is newer than the newest release list ($newest). Copy this release's list first; nothing is deleted." >&2
+  exit 2
+fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

@@ -5,7 +5,7 @@
 ## 1. Goals
 
 - A returning visitor after an unchanged deploy downloads `index.html` at most (a 304 when it is unchanged).
-- A deploy that changes only app code leaves React, React DOM and the router at the same file name, so returning visitors keep them.
+- A deploy that changes only app code leaves React, React DOM and the router at the same file name, so returning visitors keep them. A dependency change can still rename it (5.1).
 - Every text file goes out precompressed: brotli at quality 11 when the browser accepts it, else gzip at level 9. The server compresses nothing at request time.
 - One nginx configuration in the repository serves the app: cache headers, precompressed files, the history fallback. CI tests that configuration, not a stand-in.
 - The same setup works unchanged behind Cloudflare's free plan, and without it.
@@ -46,7 +46,7 @@ Brotli 11 sends the shell 25 % smaller than nginx's default gzip.
 
 `vite.config.ts` sets `build.rolldownOptions.output.codeSplitting.groups` with one group, `vendor`. It matches the shell's packages only: `react`, `react-dom`, `scheduler`, `react-router`, `react-router-dom`, `@remix-run/router`. A group that matched all of `node_modules` would pull jsPDF and the file readers into the shell.
 
-The vendor chunk imports no app code, so its content hash, and with it its file name, changes only when one of those packages changes. `vendor-*.js` joins the shell layer of `bundle-layers`; the shell budget is unchanged, because the bytes only move between files.
+The vendor chunk imports no app code, so a change to the app's own code leaves its name as it is. It does import Rolldown's runtime chunk, which holds the helpers the whole build uses, so its name also changes when another dependency brings or drops a helper (adding or removing jszip, a MIDI library) and with an upgrade of Rolldown, Vite or the React plugin. Those changes are rare; a full fix is outside what code-splitting groups allow. `vendor-*.js` joins the shell layer of `bundle-layers`; the shell budget is unchanged, because the bytes only move between files.
 
 A test builds twice, with a one-line change in `src/shell/Footer.tsx` in between, and checks that `vendor-*.js` keeps its name and `index-*.js` changes.
 

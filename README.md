@@ -366,9 +366,21 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ### Deploy
 
-Each deploy is three steps, run from the checkout after `npm run build`. `<host>` is the server, `<site>` the folder nginx serves, and `<releases>` a folder beside it for the release lists.
+Each deploy is four steps, run from the checkout after `npm run build`. `<host>` is the server, `<site>` the folder nginx serves, and `<releases>` a folder beside it for the release lists. Neither path may contain a space.
 
-Copy the build. Without `--delete`, so a tab opened before the deploy still finds its old files:
+Once, before the first deploy, create the releases folder:
+
+```bash
+ssh <host> mkdir -p <releases>
+```
+
+Copy the hashed files first. A visitor who gets the new `index.html` must find its files already there:
+
+```bash
+rsync -r --checksum dist/assets/ <host>:<site>/assets/
+```
+
+Then the rest, `index.html` included. Neither copy uses `--delete`, so a tab opened before the deploy still finds its old files:
 
 ```bash
 rsync -r --checksum dist/ <host>:<site>/
@@ -380,10 +392,16 @@ Record which files this release uses:
 scp build-report/release-files.txt <host>:<releases>/$(date -u +%Y%m%dT%H%M%SZ).txt
 ```
 
-Delete files no release of the last 30 days uses. Add `--dry-run` first to see the list:
+Delete the files no release of the last 30 days uses. The script stops without deleting anything when the newest list is older than the live `index.html`, which happens when the step before failed:
 
 ```bash
 ssh <host> 'bash -s' -- <site> <releases> < deploy/prune-assets.sh
+```
+
+To see the list first without deleting:
+
+```bash
+ssh <host> 'bash -s -- --dry-run' <site> <releases> < deploy/prune-assets.sh
 ```
 
 ### Cloudflare (optional)

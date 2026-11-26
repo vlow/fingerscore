@@ -90,3 +90,13 @@ it('refuses to run without any release list', () => {
   expect(r.status).toBe(2);
   expect(has('a.js')).toBe(true);
 });
+
+it('refuses when the site changed after the newest list (a skipped or failed list copy)', () => {
+  asset('old.js'); asset('new.js');
+  release('20261126T000000Z', 1, ['old.js']);
+  writeFileSync(join(site, 'index.html'), '<!doctype html>');
+  const r = run(site, releases);
+  expect(r.status).toBe(2);
+  expect(r.stderr).toContain('index.html');
+  expect(has('new.js')).toBe(true);
+});
