@@ -1,36 +1,31 @@
 import type { Doc } from '../domain/types';
+import { FakeAudioContext, type FakeNode, type NodeKind } from '../test/fakeAudio';
 import { createPlayer, previewTrack, stopPreview } from './player';
+import { PRESETS } from './presets';
 
-class FakeNode {
-  stop = vi.fn();
-  disconnect = vi.fn();
-  start = vi.fn();
-  type = '';
-  frequency = { value: 0 };
-  gain = { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() };
-  onended: (() => void) | null = null;
-  connect<T>(next: T): T { return next; }
+const contexts: FakeAudioContext[] = [];
+class RecordingContext extends FakeAudioContext {
+  constructor() { super(); contexts.push(this); }
 }
 
-const oscillators: FakeNode[] = [];
-
-class FakeAudioContext {
-  currentTime = 0;
-  destination = new FakeNode();
-  resume = vi.fn(async () => undefined);
-  createOscillator() { const o = new FakeNode(); oscillators.push(o); return o; }
-  createGain() { return new FakeNode(); }
-  createBiquadFilter() { return new FakeNode(); }
+const seen = new Set<FakeNode>();
+/** Main oscillators (one per note) created since the last call. */
+function newNotes(): FakeNode[] {
+  const fresh = contexts.flatMap(c => c.of('oscillator')).filter(o => o.wave !== null && !seen.has(o));
+  fresh.forEach(o => seen.add(o));
+  return fresh;
 }
+const all = (kind: NodeKind) => contexts.flatMap(c => c.of(kind));
 
-beforeAll(() => vi.stubGlobal('AudioContext', FakeAudioContext));
+beforeAll(() => vi.stubGlobal('AudioContext', RecordingContext));
 afterAll(() => vi.unstubAllGlobals());
 
 const notes = [{ start: 1, dur: 1, midi: 60 }, { start: 2, dur: 1, midi: 62 }, { start: 30, dur: 1, midi: 64 }];
 
 it('previewTrack plays the notes inside the window and a second call stops the first', () => {
+  newNotes();
   previewTrack(notes, 120, 8);           // 0.5 s per quarter: the note at 30 starts after 14.5 s
-  const first = oscillators.splice(0);
+  const first = newNotes();
   expect(first).toHaveLength(2);
   expect(first[0].frequency.value).toBeCloseTo(261.63, 2);
   expect(first[0].start).toHaveBeenCalledWith(0.05);   // leading silence skipped: first note starts right away
@@ -38,14 +33,14 @@ it('previewTrack plays the notes inside the window and a second call stops the f
 
   previewTrack(notes, 120, 8);
   first.forEach(o => expect(o.disconnect).toHaveBeenCalled());
-  oscillators.forEach(o => expect(o.disconnect).not.toHaveBeenCalled());
-  expect(oscillators).toHaveLength(2);
+  const second = newNotes();
+  second.forEach(o => expect(o.disconnect).not.toHaveBeenCalled());
+  expect(second).toHaveLength(2);
 });
 
 it('previewTrack reports its natural end once, and not when it is stopped', () => {
   vi.useFakeTimers();
   try {
-    oscillators.splice(0);
     const done = vi.fn();
     previewTrack(notes, 120, 8, done);      // last sounding note ends 1 s after the start
     vi.advanceTimersByTime(900);
@@ -79,4 +74,50 @@ it('plays every highlight mark and then ends, also when the end timer runs befor
   } finally {
     vi.useRealTimers();
   }
+});
+
+const doc = (inst: string, tempo = 100) => ({ inst, tempo }) as Doc;
+const marksOf = (ns: { evId: string; start: number }[]) => ns.map(({ evId, start }) => ({ evId, start }));
+
+it('plays the instrument family preset', () => {
+  const player = createPlayer();
+  const ns = [{ evId: 'a', start: 0, dur: 12, midi: 60 }];
+  player.play({ notes: ns, marks: marksOf(ns), totalTicks: 12 }, doc('cl'), () => undefined);
+  const ctx = contexts[contexts.length - 1];
+  const imag = ctx.waves[ctx.waves.length - 1].imag;
+  expect(Array.from(imag.subarray(1))).toEqual(PRESETS.Clarinet.harmonics.map(Math.fround));
+  player.stop();
+});
+
+it('a note that follows another with no gap starts softer; one after a rest does not', () => {
+  const player = createPlayer();
+  const ns = [[0, 12], [12, 12], [30, 12]].map(([start, dur], i) => ({ evId: `n${i}`, start, dur, midi: 60 }));
+  const before = all('biquad').length;
+  // Fast enough that the scheduler's lookahead queues all three notes at once.
+  player.play({ notes: ns, marks: marksOf(ns), totalTicks: 42 }, doc('asax', 1000), () => undefined);
+  const breaths = all('biquad').slice(before).filter(b => b.type === 'bandpass').map(b => (b.outputs[0] as FakeNode).gain.peak());
+  expect(breaths).toHaveLength(3);
+  expect(breaths[1]).toBeLessThan(breaths[0]);
+  expect(breaths[2]).toBe(breaths[0]);
+  player.stop();
+});
+
+it('stop silences the breath noise too', () => {
+  const player = createPlayer();
+  const ns = [{ evId: 'a', start: 0, dur: 48, midi: 60 }];
+  const before = all('source').length;
+  player.play({ notes: ns, marks: marksOf(ns), totalTicks: 48 }, doc('fl'), () => undefined);
+  const noise = all('source').slice(before);
+  expect(noise).toHaveLength(1);
+  player.stop();
+  expect(noise[0].stop).toHaveBeenCalledWith();
+});
+
+it('previewTrack plays every note of a chord', () => {
+  newNotes();
+  previewTrack([60, 64, 67].map(midi => ({ start: 0, dur: 1, midi })), 120, 8);
+  const chord = newNotes();
+  expect(chord).toHaveLength(3);
+  chord.forEach(o => expect(o.start).toHaveBeenCalledWith(0.05));
+  stopPreview();
 });
