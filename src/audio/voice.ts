@@ -1,6 +1,5 @@
 // One note of a wind instrument: a waveform from the preset's harmonics through a lowpass that starts bright and
-// settles, breath noise that is loud on the attack, and a vibrato that fades in on longer notes.
-import { fillNoise } from './output';
+// settles, and a vibrato that fades in on longer notes.
 import type { Preset } from './presets';
 
 export interface Voice {
@@ -10,15 +9,12 @@ export interface Voice {
 
 export const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
-const NOISE_SECONDS = 2;
 const TAIL = 0.02;            // sources run this long past the end, so the release reaches zero
 const VIBRATO_MIN_HOLD = 0.15; // a note gets vibrato only when it lasts this long past the vibrato delay
 const TREMOLO = 0.05;          // the vibrato also moves the level by this share
-const CONNECTED_BREATH = 0.4;  // a note that follows another with no gap: share of the breath burst
-const CONNECTED_BRIGHT = 0.3;  // ... and share of the filter's attack brightness
+const CONNECTED_BRIGHT = 0.3;  // a note that follows another with no gap: share of the filter's attack brightness
 
 const waves = new WeakMap<BaseAudioContext, Map<Preset, PeriodicWave>>();
-const noises = new WeakMap<BaseAudioContext, AudioBuffer>();
 
 function waveFor(ctx: BaseAudioContext, p: Preset): PeriodicWave {
   let known = waves.get(ctx);
@@ -33,16 +29,6 @@ function waveFor(ctx: BaseAudioContext, p: Preset): PeriodicWave {
     known.set(p, wave);
   }
   return wave;
-}
-
-function noiseFor(ctx: BaseAudioContext): AudioBuffer {
-  let buf = noises.get(ctx);
-  if (!buf) {
-    buf = ctx.createBuffer(1, NOISE_SECONDS * ctx.sampleRate, ctx.sampleRate);
-    fillNoise(buf.getChannelData(0), 0x2545f491);
-    noises.set(ctx, buf);
-  }
-  return buf;
 }
 
 export function playVoice(
@@ -73,25 +59,6 @@ export function playVoice(
   amp.gain.linearRampToValueAtTime(0, end);
   osc.connect(lp).connect(amp);
   sources.push(osc);
-
-  // Breath: looping noise → bandpass → its own envelope, loud on the attack.
-  const noise = track(ctx.createBufferSource());
-  noise.buffer = noiseFor(ctx);
-  noise.loop = true;
-  const bp = track(ctx.createBiquadFilter());
-  bp.type = 'bandpass';
-  bp.frequency.value = Math.min(p.breath.freq, nyquist);
-  bp.Q.value = p.breath.q;
-  const breath = track(ctx.createGain());
-  const burst = p.breath.attackLevel * (connected ? CONNECTED_BREATH : 1);
-  const settled = Math.min(start + p.attack * 2, releaseStart);
-  breath.gain.setValueAtTime(0, start);
-  breath.gain.linearRampToValueAtTime(burst, attackEnd);
-  breath.gain.linearRampToValueAtTime(p.breath.level, settled);
-  breath.gain.setValueAtTime(p.breath.level, releaseStart);
-  breath.gain.linearRampToValueAtTime(0, end);
-  noise.connect(bp).connect(breath).connect(out);
-  sources.push(noise);
 
   // Vibrato: one slow sine on the pitch (cents) and, a little, on the level; it fades in after the delay.
   // The level part scales the envelope's output instead of adding to it, so the release still ends in silence.

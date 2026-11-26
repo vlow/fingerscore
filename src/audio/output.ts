@@ -12,7 +12,7 @@ const outputs = new WeakMap<BaseAudioContext, AudioNode>();
  * Fills `data` with white noise in [-1, 1). A seeded generator (xorshift32), not Math.random: the noise needs no
  * unpredictability, and the same seed gives the same sound.
  */
-export function fillNoise(data: Float32Array, seed: number): void {
+function fillNoise(data: Float32Array, seed: number): void {
   let x = seed | 0 || 1;
   for (let i = 0; i < data.length; i++) {
     x ^= x << 13;

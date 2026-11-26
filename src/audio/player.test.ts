@@ -95,22 +95,23 @@ it('a note that follows another with no gap starts softer; one after a rest does
   const before = all('biquad').length;
   // Fast enough that the scheduler's lookahead queues all three notes at once.
   player.play({ notes: ns, marks: marksOf(ns), totalTicks: 42 }, doc('asax', 1000), () => undefined);
-  const breaths = all('biquad').slice(before).filter(b => b.type === 'bandpass').map(b => (b.outputs[0] as FakeNode).gain.peak());
-  expect(breaths).toHaveLength(3);
-  expect(breaths[1]).toBeLessThan(breaths[0]);
-  expect(breaths[2]).toBe(breaths[0]);
+  const brightness = all('biquad').slice(before).filter(b => b.type === 'lowpass' && b.frequency.log.length > 0)   // a note's filter, not the reverb's fixed one
+    .map(b => b.frequency.log[0][1]);
+  expect(brightness).toHaveLength(3);
+  expect(brightness[1]).toBeLessThan(brightness[0]);
+  expect(brightness[2]).toBe(brightness[0]);
   player.stop();
 });
 
-it('stop silences the breath noise too', () => {
+it('stop silences a sounding note and its vibrato at once', () => {
   const player = createPlayer();
   const ns = [{ evId: 'a', start: 0, dur: 48, midi: 60 }];
-  const before = all('source').length;
+  const before = all('oscillator').length;
   player.play({ notes: ns, marks: marksOf(ns), totalTicks: 48 }, doc('fl'), () => undefined);
-  const noise = all('source').slice(before);
-  expect(noise).toHaveLength(1);
+  const oscillators = all('oscillator').slice(before);
+  expect(oscillators).toHaveLength(2);   // the tone and the vibrato
   player.stop();
-  expect(noise[0].stop).toHaveBeenCalledWith();
+  for (const o of oscillators) expect(o.stop).toHaveBeenCalledWith();
 });
 
 it('previewTrack plays every note of a chord', () => {

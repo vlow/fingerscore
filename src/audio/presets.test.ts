@@ -27,8 +27,3 @@ it.each(all)('%s is well-formed', (_, p) => {
   expect(p.gain).toBeGreaterThan(0);
   expect(p.gain).toBeLessThanOrEqual(0.3);
 });
-
-it.each(all)('%s has no held breath, only a touch on the attack: the tone, not the air, carries the note', (_, p) => {
-  expect(p.breath.level).toBe(0);
-  expect(p.breath.attackLevel).toBeLessThanOrEqual(0.01);
-});

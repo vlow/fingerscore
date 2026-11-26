@@ -39,29 +39,30 @@ The change fails, even when it works, if:
 **`src/audio/voice.ts`** builds one note. Inputs: the output node, a preset, MIDI pitch, start and end time, and whether the note follows the previous one with no gap. It returns a handle the player can stop. One note is:
 
 - an oscillator with a `PeriodicWave` built from the preset's harmonic amplitudes, cached per context and preset;
-- breath: a looping white-noise buffer through a bandpass filter, loud on the attack, lower while the note holds;
 - vibrato: an LFO on the oscillator's detune and a little on its gain, faded in after a delay, only on notes long enough to reach it;
 - a lowpass filter whose cutoff starts above the preset's base and settles to it over the attack;
 - an amplitude envelope (attack, hold, release) as today.
 
-**Presets** (`src/audio/presets.ts`) are plain objects: harmonics, breath level and band, vibrato rate, depth in cents, delay and fade, filter base and attack peak, attack and release times, gain. Starting points, to tune by ear:
+**Presets** (`src/audio/presets.ts`) are plain objects: harmonics, vibrato rate, depth in cents, delay and fade, filter base and attack peak, attack and release times, gain. Starting points, to tune by ear:
 
-| Family | Harmonics | Breath | Vibrato |
-|---|---|---|---|
-| Saxophone | all harmonics, falling about 1/n, bright | medium | 5.5 Hz, 12 cents |
-| Xaphoon | like the saxophone, darker | higher | 5.5 Hz, 10 cents |
-| Clarinet | odd harmonics strong, even weak | low | none |
-| Flute | near sine, some 2nd and 3rd | high | 5 Hz, 15 cents |
-| Recorder | near sine, weak upper | short attack "chiff", low after | none |
-| Preview (neutral) | soft, few harmonics | low | none |
+| Family | Harmonics | Vibrato |
+|---|---|---|
+| Saxophone | all harmonics, falling about 1/n, bright | 5.5 Hz, 12 cents |
+| Xaphoon | like the saxophone, darker | 5.5 Hz, 10 cents |
+| Clarinet | odd harmonics strong, even weak | none |
+| Flute | near sine, some 2nd and 3rd | 5 Hz, 15 cents |
+| Recorder | near sine, weak upper | none |
+| Preview (neutral) | soft, few harmonics | none |
 
 No preset goes above 15 cents of vibrato depth or starts vibrato earlier than 0.25 s.
 
-Tuned by ear after the test versions: no breath while a note holds, only a burst of at most 0.01 on the attack; vibrato no deeper than 6 cents; reverb at 6 % wet, fed only what lies below 2.5 kHz. `presets.test.ts` and `output.test.ts` hold these limits.
+Tuned by ear after the test versions: vibrato no deeper than 6 cents; reverb at 6 % wet, fed only what lies below 2.5 kHz. `presets.test.ts` and `output.test.ts` hold these limits.
 
-**Back-to-back notes.** When a note starts where the previous one ends, its attack is softer: a shorter breath burst and a lower filter peak. This sounds like tonguing within a phrase. No pitch glide: without slur marks it would smear every note change.
+**Back-to-back notes.** When a note starts where the previous one ends, its attack is softer: a lower filter peak. This sounds like tonguing within a phrase. No pitch glide: without slur marks it would smear every note change.
 
 **Shared output** (one per AudioContext): every voice feeds a dry path and a send to a `ConvolverNode`. The convolver's impulse is generated noise decaying over about 1.2 s; the wet level is low (6 %, after tuning). Both paths feed a `DynamicsCompressorNode` set as a limiter, then the destination.
+
+**No breath noise.** The first version added filtered noise for breath. Listening showed it as unwanted air, so it was removed: a note is tone only.
 
 **Player changes.** `schedule()` and `previewTrack` call the voice instead of building nodes. The player keeps voice handles instead of oscillators. The scheduler, marks and end handling stay as they are.
 

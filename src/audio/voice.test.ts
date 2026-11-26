@@ -10,8 +10,7 @@ function setup() {
   const main = () => ctx.of('oscillator').filter(o => o.wave !== null);
   const lfos = () => ctx.of('oscillator').filter(o => o.wave === null);
   const lowpass = () => ctx.of('biquad').filter(b => b.type === 'lowpass');
-  const breathGain = () => ctx.of('biquad').filter(b => b.type === 'bandpass').map(b => b.outputs[0] as FakeNode);
-  return { ctx, out, play, main, lfos, lowpass, breathGain };
+  return { ctx, out, play, main, lfos, lowpass };
 }
 
 it('plays the pitch with the preset waveform, built once per preset and context', () => {
@@ -25,13 +24,11 @@ it('plays the pitch with the preset waveform, built once per preset and context'
   expect(Array.from(ctx.waves[0].imag.subarray(1, 4))).toEqual(PRESETS.Saxophone.harmonics.slice(0, 3).map(Math.fround));
 });
 
-it('adds looping breath noise for the length of the note', () => {
+it('is tone only: no breath noise', () => {
   const { ctx, play } = setup();
-  play();
-  const [noise] = ctx.of('source');
-  expect(noise.loop).toBe(true);
-  expect(noise.start.mock.calls[0][0]).toBe(1);
-  expect(noise.stop.mock.calls[0][0]).toBeGreaterThanOrEqual(3);
+  play(PRESETS.Flute);
+  expect(ctx.of('source')).toHaveLength(0);
+  expect(ctx.of('biquad').map(b => b.type)).toEqual(['lowpass']);
 });
 
 describe('vibrato', () => {
@@ -68,12 +65,11 @@ describe('vibrato', () => {
   });
 });
 
-it('a connected note starts softer: less breath, a darker filter', () => {
+it('a connected note starts softer: a darker filter', () => {
   const free = setup();
   free.play(PRESETS.Saxophone, 1, 3, false);
   const tied = setup();
   tied.play(PRESETS.Saxophone, 1, 3, true);
-  expect(tied.breathGain()[0].gain.peak()).toBeLessThan(free.breathGain()[0].gain.peak());
   expect(tied.lowpass()[0].frequency.log[0][1]).toBeLessThan(free.lowpass()[0].frequency.log[0][1]);
 });
 
