@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { bundleLayers } from './scripts/bundle-layers/plugin';
+import { vendorChunking } from './scripts/vendor-chunk';
 
 // jsPDF imports html2canvas, dompurify and canvg only for doc.html() and addSvgAsImage, which the app never calls.
 // Left alone, the build ships a chunk for each (about 380 kB). They resolve to an empty module instead.
@@ -22,6 +23,8 @@ export default defineConfig({
     include: ['abcjs/src/parse/abc_parse', 'jszip', '@tonejs/midi', 'midi-file', 'jspdf', 'svg2pdf.js'],
     rolldownOptions: { plugins: [stubUnusedPdfLibraries] },
   },
+  // React, React DOM and the router in a chunk whose name only their versions change (scripts/vendor-chunk.ts).
+  build: { rolldownOptions: { output: { codeSplitting: vendorChunking } } },
   server: { port: 5173, strictPort: true },
   test: {
     globals: true,
