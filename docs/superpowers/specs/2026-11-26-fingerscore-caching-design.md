@@ -71,13 +71,13 @@ It skips a file when its compressed form would save less than 5 %. `woff2`, `png
 | `/index.html` and the history fallback | `no-cache` | The browser revalidates each visit; an unchanged file costs a 304. |
 | Other files in `public/` (icons, manifest, the demo MIDI, the notices) | `public, max-age=86400` | Not hashed: a changed icon shows within a day. |
 
-For every location: `brotli_static on; gzip_static on; gzip_vary on;` (`Vary: Accept-Encoding`, so caches keep the forms apart). `etag on` (the default) for the 304s. The history fallback: `try_files $uri $uri/ /index.html`.
+For every location: `brotli_static on; gzip_static on; gzip_vary on;` (`Vary: Accept-Encoding`, so caches keep the forms apart). `etag on` (the default) for the 304s. The history fallback: `try_files $uri /index.html`. No `$uri/`: a folder such as `/demo/` would answer 403 instead of the app.
 
 For a server without `ngx_brotli`, the file names the one line to drop. nginx then sends gzip only.
 
 ### 5.4 Tabs open across a deploy
 
-A tab loaded before a deploy still runs the old `index.html` and asks for the old chunk names. If the deploy deleted them, the tab shows the reload notice. The README's copy step keeps old hashed files: `rsync` without `--delete` for `assets/`, and a prune of files older than 30 days. Old files cost disk space only. Nobody downloads them except a tab that needs them.
+A tab loaded before a deploy still runs the old `index.html` and asks for the old chunk names. If the deploy deleted them, the tab shows the reload notice. The README's copy step keeps old hashed files: `rsync` without `--delete`, then `deploy/prune-assets.sh`. The build lists each release's files (`build-report/release-files.txt`), and each deploy keeps that list. The prune deletes a file only when no list of the last 30 days names it, and never one the newest list names. Pruning by the files' own age would delete a vendor file that stayed unchanged for 30 days while every page still needs it. Old files cost disk space only. Nobody downloads them except a tab that needs them.
 
 ### 5.5 Behind Cloudflare's free plan
 
