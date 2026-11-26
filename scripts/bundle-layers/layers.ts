@@ -76,7 +76,8 @@ export function computeLayers(chunks: ChunkNode[], routeModules: Record<string, 
     }
     return out;
   };
-  const minus = (a: Set<string>, ...bs: Set<string>[]) => [...a].filter(f => !bs.some(b => b.has(f))).sort();
+  const byName = (x: string, y: string) => x.localeCompare(y);
+  const minus = (a: Set<string>, ...bs: Set<string>[]) => [...a].filter(f => !bs.some(b => b.has(f))).sort(byName);
 
   const entry = chunks.find(c => c.isEntry);
   if (!entry) throw new Error('bundle-layers: the bundle has no entry chunk.');
@@ -107,7 +108,7 @@ export function computeLayers(chunks: ChunkNode[], routeModules: Record<string, 
     features[featureKey(c)] = { entry: c.file, files: minus(closure(c), shell, ...loaders) };
   }
 
-  return { shell: { files: [...shell].sort(), outside }, routes, features };
+  return { shell: { files: [...shell].sort(byName), outside }, routes, features };
 }
 
 /** A stable name for a feature: its facade module, else its first own script module (a chunk shared by two pages). */

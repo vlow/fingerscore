@@ -25,4 +25,5 @@ const render = () => createRoot(document.getElementById('root')!).render(
 // The current page's code and styles are already on their way (the preload script of index.html, written by
 // scripts/bundle-layers). Waiting for them means the first render shows the styled page, not the header above an empty
 // main area. A page that cannot load renders anyway and shows the reload notice.
-Promise.all([routeModule(location.pathname).load().catch(() => {}), stylesheetsReady()]).finally(render);
+// Neither promise rejects (the page load's failure is caught, a failed stylesheet resolves), so nothing is left to handle.
+void Promise.all([routeModule(location.pathname).load().catch(() => {}), stylesheetsReady()]).finally(render);
