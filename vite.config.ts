@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { bundleLayers } from './scripts/bundle-layers/plugin';
+import { precompress } from './scripts/precompress/precompress';
 import { vendorChunking } from './scripts/vendor-chunk';
 
 // jsPDF imports html2canvas, dompurify and canvg only for doc.html() and addSvgAsImage, which the app never calls.
@@ -16,7 +17,7 @@ const stubUnusedPdfLibraries = {
 };
 
 export default defineConfig({
-  plugins: [stubUnusedPdfLibraries, react(), bundleLayers()],
+  plugins: [stubUnusedPdfLibraries, react(), bundleLayers(), precompress()],
   // Parsers and the PDF code load on demand. Without this the dev server finds their libraries on first use,
   // re-optimises them and reloads the page, which breaks a first import (and a cold end-to-end run).
   optimizeDeps: {
