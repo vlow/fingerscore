@@ -1,8 +1,10 @@
 import { inst } from '../domain/instruments';
-import type { Family } from '../domain/instruments';
 import { ticksToSeconds, type Schedule } from '../domain/playback';
 import type { Doc } from '../domain/types';
 import type { RawNote } from '../import/types';
+import { outputFor } from './output';
+import { PRESETS, PREVIEW_PRESET } from './presets';
+import { playVoice, type Voice } from './voice';
 
 export interface Player {
   play(s: Schedule, doc: Doc, onEvent: (evId: string | null) => void): void;
@@ -10,27 +12,21 @@ export interface Player {
   readonly playing: boolean;
 }
 
-const TIMBRE: Record<Family, { type: OscillatorType; cutoff: number }> = {
-  Saxophone: { type: 'sawtooth', cutoff: 2200 },
-  Xaphoon: { type: 'sawtooth', cutoff: 1500 },
-  Clarinet: { type: 'square', cutoff: 1500 },
-  Flute: { type: 'sine', cutoff: 4000 },
-  Recorder: { type: 'triangle', cutoff: 3000 },
-};
-
-const ATTACK = 0.025;
-const RELEASE = 0.06;
-const PEAK = 0.22;
 const LOOKAHEAD = 0.5;  // seconds scheduled ahead
 const TICK_MS = 100;    // scheduler interval
 
-const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+/**
+ * Seconds from rendering a sample to hearing it: the context's own buffering plus the output device's (Bluetooth
+ * headphones add a few hundred ms). Highlights wait this long, so they move with the sound. Read anew for each mark,
+ * since the output device can change during playback; a browser that does not report it counts as 0.
+ */
+const heardDelay = (c: AudioContext) => (c.baseLatency ?? 0) + (c.outputLatency ?? 0);
 
 export function createPlayer(): Player {
   let ctx: AudioContext | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
   let eventTimers: ReturnType<typeof setTimeout>[] = [];
-  let nodes: OscillatorNode[] = [];
+  let voices: Voice[] = [];
   let playing = false;
   let notify: ((evId: string | null) => void) | null = null;
 
@@ -39,11 +35,8 @@ export function createPlayer(): Player {
     timer = null;
     eventTimers.forEach(clearTimeout);
     eventTimers = [];
-    for (const o of nodes) {
-      try { o.stop(); } catch { /* already stopped */ }
-      o.disconnect();
-    }
-    nodes = [];
+    for (const v of voices) v.stop();
+    voices = [];
   }
 
   function stop() {
@@ -59,7 +52,8 @@ export function createPlayer(): Player {
     ctx ??= new AudioContext();
     const c = ctx;
     void c.resume();
-    const { type, cutoff } = TIMBRE[inst(doc.inst).group];
+    const preset = PRESETS[inst(doc.inst).group];
+    const out = outputFor(c);
     const t0 = c.currentTime + 0.08;
     const secs = (ticks: number) => ticksToSeconds(ticks, doc.tempo);
     const endAt = t0 + secs(s.totalTicks);
@@ -68,25 +62,15 @@ export function createPlayer(): Player {
     playing = true;
     notify = onEvent;
 
+    // A note that starts where the one before it ends is played as part of the phrase, with a softer attack.
+    let prevEnd = -1;
     function schedule(n: Schedule['notes'][number]) {
       const start = t0 + secs(n.start);
       const end = start + secs(n.dur);
-      const osc = c.createOscillator();
-      const lp = c.createBiquadFilter();
-      const gain = c.createGain();
-      osc.type = type;
-      osc.frequency.value = hz(n.midi);
-      lp.type = 'lowpass';
-      lp.frequency.value = cutoff;
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(PEAK, start + ATTACK);
-      gain.gain.setValueAtTime(PEAK, Math.max(start + ATTACK, end - RELEASE));
-      gain.gain.linearRampToValueAtTime(0, end);
-      osc.connect(lp).connect(gain).connect(c.destination);
-      osc.start(start);
-      osc.stop(end + 0.02);
-      nodes.push(osc);
-      osc.onended = () => { nodes = nodes.filter(x => x !== osc); };
+      const connected = n.start === prevEnd;
+      prevEnd = n.start + n.dur;
+      const v = playVoice(c, out, preset, n.midi, start, end, connected, () => { voices = voices.filter(x => x !== v); });
+      voices.push(v);
     }
 
     // Marks cover the whole timeline (every note chain and every rest), so the highlight moves
@@ -94,7 +78,7 @@ export function createPlayer(): Player {
     let fired = 0;
     function scheduleMark(m: Schedule['marks'][number], late = false) {
       const at = t0 + secs(m.start);
-      const wait = late ? 0 : Math.max(0, (at - c.currentTime) * 1000);
+      const wait = late ? 0 : Math.max(0, (at + heardDelay(c) - c.currentTime) * 1000);
       eventTimers.push(setTimeout(() => { fired++; if (playing) onEvent(m.evId); }, wait));
     }
 
@@ -127,7 +111,7 @@ export function createPlayer(): Player {
       notify?.(null);
       notify = null;
     }
-    eventTimers.push(setTimeout(end, Math.max(0, (endAt - c.currentTime) * 1000 + 100)));
+    eventTimers.push(setTimeout(end, Math.max(0, (endAt + heardDelay(c) - c.currentTime) * 1000 + 100)));
   }
 
   return { play, stop, get playing() { return playing; } };
@@ -135,22 +119,19 @@ export function createPlayer(): Player {
 
 // Track preview on the Tracks page: one shared context, one preview at a time.
 let previewCtx: AudioContext | null = null;
-let previewNodes: OscillatorNode[] = [];
+let previewVoices: Voice[] = [];
 let previewTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Stops the running track preview, if any. */
 export function stopPreview(): void {
   if (previewTimer) clearTimeout(previewTimer);
   previewTimer = null;
-  for (const o of previewNodes) {
-    try { o.stop(); } catch { /* already stopped */ }
-    o.disconnect();
-  }
-  previewNodes = [];
+  for (const v of previewVoices) v.stop();
+  previewVoices = [];
 }
 
 /**
- * Plays the first `seconds` of a track (positions in quarter notes) with a neutral timbre. Replaces any running preview.
+ * Plays the first `seconds` of a track (positions in quarter notes) with the neutral preview preset. Replaces any running preview.
  * `onDone` fires when the preview has played to its end; it does not fire when the preview is stopped or replaced.
  */
 export function previewTrack(notes: RawNote[], tempo: number, seconds: number, onDone?: () => void): void {
@@ -162,27 +143,16 @@ export function previewTrack(notes: RawNote[], tempo: number, seconds: number, o
   const secPerQuarter = 60 / tempo;
   const from = Math.min(...notes.map(n => n.start));   // skip leading silence
   const t0 = c.currentTime + 0.05;
-  const peak = PEAK / 2;                               // chords add up
+  const out = outputFor(c);
   let lastEnd = t0;
   for (const n of notes) {
     const start = t0 + (n.start - from) * secPerQuarter;
     if (start >= t0 + seconds) continue;
     const end = Math.min(start + n.dur * secPerQuarter, t0 + seconds);
-    if (end - start < ATTACK) continue;
+    if (end - start < PREVIEW_PRESET.attack) continue;
     lastEnd = Math.max(lastEnd, end);
-    const osc = c.createOscillator();
-    const gain = c.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = hz(n.midi);
-    gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(peak, start + ATTACK);
-    gain.gain.setValueAtTime(peak, Math.max(start + ATTACK, end - RELEASE));
-    gain.gain.linearRampToValueAtTime(0, end);
-    osc.connect(gain).connect(c.destination);
-    osc.start(start);
-    osc.stop(end + 0.02);
-    osc.onended = () => { previewNodes = previewNodes.filter(x => x !== osc); };
-    previewNodes.push(osc);
+    const v = playVoice(c, out, PREVIEW_PRESET, n.midi, start, end, false, () => { previewVoices = previewVoices.filter(x => x !== v); });
+    previewVoices.push(v);
   }
   previewTimer = setTimeout(() => { previewTimer = null; onDone?.(); }, Math.max(0, (lastEnd - c.currentTime) * 1000 + 50));
 }
