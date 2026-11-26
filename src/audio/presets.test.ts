@@ -2,8 +2,8 @@ import { PRESETS, PREVIEW_PRESET, type Preset } from './presets';
 
 const all: [string, Preset][] = [...Object.entries(PRESETS), ['Preview', PREVIEW_PRESET]];
 
-it.each(all)('%s keeps pitch clear: vibrato at most 15 cents, not before 0.25 s', (_, p) => {
-  expect(p.vibrato.depth).toBeLessThanOrEqual(15);
+it.each(all)('%s keeps pitch clear: vibrato at most 6 cents, not before 0.25 s', (_, p) => {
+  expect(p.vibrato.depth).toBeLessThanOrEqual(6);
   if (p.vibrato.depth > 0) expect(p.vibrato.delay).toBeGreaterThanOrEqual(0.25);
 });
 
@@ -26,4 +26,9 @@ it.each(all)('%s is well-formed', (_, p) => {
   expect(p.release).toBeGreaterThan(0);
   expect(p.gain).toBeGreaterThan(0);
   expect(p.gain).toBeLessThanOrEqual(0.3);
+});
+
+it.each(all)('%s keeps breath to a trace: the tone, not the air, carries the note', (_, p) => {
+  expect(p.breath.level).toBeLessThanOrEqual(0.004);
+  expect(p.breath.attackLevel).toBeLessThanOrEqual(0.02);
 });

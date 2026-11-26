@@ -57,6 +57,8 @@ The change fails, even when it works, if:
 
 No preset goes above 15 cents of vibrato depth or starts vibrato earlier than 0.25 s.
 
+Tuned by ear after the first test version: breath is kept to a trace (hold level at most 0.004, attack burst at most 0.02), and vibrato goes no deeper than 6 cents. `presets.test.ts` holds both limits.
+
 **Back-to-back notes.** When a note starts where the previous one ends, its attack is softer: a shorter breath burst and a lower filter peak. This sounds like tonguing within a phrase. No pitch glide: without slur marks it would smear every note change.
 
 **Shared output** (one per AudioContext): every voice feeds a dry path and a send to a `ConvolverNode`. The convolver's impulse is generated noise decaying over about 1.2 s; the wet level is low (around 15 %). Both paths feed a `DynamicsCompressorNode` set as a limiter, then the destination.
