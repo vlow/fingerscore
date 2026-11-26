@@ -298,7 +298,7 @@ npm run check:release  # before publishing: build, bundle budget, package list, 
 npm run icons      # regenerate favicon.ico and the app icons in public/ from brand/
 ```
 
-`npm run test:e2e` attaches to a dev server on port 5173 or starts its own. If Playwright reports a missing browser, run `npx playwright install chromium` once.
+`npm run test:e2e` starts its own dev server from this checkout on port 5179; it never reuses a running one, so `npm run dev` on 5173 can stay open. If port 5179 is taken, the run stops with an error. If Playwright reports a missing browser, run `npx playwright install chromium` once.
 
 ### Server rule for history routing
 

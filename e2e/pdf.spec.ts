@@ -71,9 +71,11 @@ test('a Cyrillic lyric gives the unsupported-characters message and no download'
 });
 
 test('a PDF chunk that fails to load shows the load message; the next click loads it', async ({ page }) => {
+  // Offline until the message shows: the prefetch when the menu focuses Download PDF fails too, and so does the click.
+  let offline = true;
   let blocked = 0;
   await page.route('**/src/pdf/sheetPdf.ts*', route => {
-    if (blocked === 0) { blocked++; return route.abort(); }
+    if (offline) { blocked++; return route.abort(); }
     return route.continue();
   });
   await openSample(page);
@@ -81,10 +83,29 @@ test('a PDF chunk that fails to load shows the load message; the next click load
   await fileMenu(page);
   await page.getByRole('menuitem', { name: 'Download PDF' }).click();
   await expect(page.getByRole('alert')).toHaveText(LOAD_FAILED);
-  expect(blocked).toBe(1);
+  expect(blocked).toBeGreaterThanOrEqual(1);
   expect(downloads()).toBe(0);
+  offline = false;
 
   await fileMenu(page);
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('menuitem', { name: 'Download PDF' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe('auld-lang-syne-alto-sax.pdf');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('opening the File menu prefetches the PDF chunk; a failed prefetch stays silent and the click loads it', async ({ page }) => {
+  let blocked = 0;
+  await page.route('**/src/pdf/sheetPdf.ts*', route => {
+    if (blocked === 0) { blocked++; return route.abort(); }
+    return route.continue();
+  });
+  await openSample(page);
+  await fileMenu(page);
+  await expect.poll(() => blocked).toBe(1);
+  await expect(page.getByRole('alert')).toHaveCount(0);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('menuitem', { name: 'Download PDF' }).click(),
