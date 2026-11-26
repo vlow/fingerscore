@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { derive } from '../domain/derive';
 import { locate } from '../domain/edit';
@@ -15,7 +15,8 @@ import Banners from '../ui/Banners';
 import FileMenu from '../ui/FileMenu';
 import JumpNotice from '../ui/JumpNotice';
 import KeyBridge from '../ui/KeyBridge';
-import { LoadBoundary } from '../ui/LoadBoundary';
+import { intentProps, lazyModule, lazyView } from '../shell/lazy';
+import { sheetPdfModule } from '../pdf/request';
 import { ModeSwitch } from '../ui/ModeSwitch';
 import PageBar from '../ui/PageBar';
 import RangeMeter from '../ui/RangeMeter';
@@ -36,7 +37,7 @@ import HoldView from './sheet/HoldView';
 import { usePrinting } from './sheet/usePrinting';
 import { paperDescription } from './sheet/paperDescription';
 import { usePlayback } from './sheet/usePlayback';
-import { PLAY_MODE_LOAD_FAILED, usePlayModeLoad } from './sheet/usePlayModeLoad';
+import { PLAY_MODE_LOAD_FAILED, playModeModule, usePlayModeLoad } from './sheet/usePlayModeLoad';
 import { useSelection } from './sheet/useSelection';
 import { useSheetKeys } from './sheet/useSheetKeys';
 import '../styles/print.css';
@@ -44,7 +45,7 @@ import s from './SheetPage.module.css';
 
 // The bulk card loads on demand; the side column shows nothing in its place until it has arrived, and a reload
 // notice when it cannot arrive.
-const BulkCard = lazy(() => import('../ui/BulkCard'));
+const BulkCard = lazyView(lazyModule(() => import('../ui/BulkCard').then(m => m.default)), { compact: true });
 
 const SIMPLIFIED = 'Rhythm simplified: notes shorter than a sixteenth and tuplets other than triplets were rounded.';
 const SHEET_LABEL = 'Sheet music. Arrow keys select a note, Enter listens from it.';
@@ -127,7 +128,7 @@ function Sheet({ doc }: { doc: Doc }) {
   const [performing, setPerforming] = useState(false);
   const descriptionId = useId();
   const playModeButton = useRef<HTMLButtonElement>(null);
-  const { View: PlayMode, failed: playModeFailed, request: enterPlayMode } = usePlayModeLoad(() => {
+  const { value: PlayMode, failed: playModeFailed, request: enterPlayMode } = usePlayModeLoad(() => {
     stopPlay();
     closeAlt(false);
     changeMode('view', false);
@@ -202,7 +203,7 @@ function Sheet({ doc }: { doc: Doc }) {
               <UndoRedo canUndo={undoable} canRedo={redoable} onUndo={() => travel('undo')} onRedo={() => travel('redo')}
                 onFocusLost={focusSheet} />
               <SaveControls status={status} error={saveError} onSave={save} />
-              <FileMenu entries={entries} currentId={libraryId} onPdf={() => void downloadPdf()} pdfBusy={pdfBusy} onPrint={print} onDownload={download}
+              <FileMenu entries={entries} currentId={libraryId} onPdf={() => void downloadPdf()} pdfIntent={intentProps(sheetPdfModule)} pdfBusy={pdfBusy} onPrint={print} onDownload={download}
                 onOpenFile={file => void openFile(file)} onNew={() => navigate('/')} onOpen={openSaved} onDelete={deleteSaved}
                 onOpenMenu={() => setLibraryChanged(n => n + 1)} />
             </div>
@@ -262,11 +263,7 @@ function Sheet({ doc }: { doc: Doc }) {
           </Card>
 
           <Card heading={<h2 id="text-h" className={s.cardTitle}>Lyrics &amp; chords</h2>} labelledBy="text-h">
-            <LoadBoundary compact>
-              <Suspense fallback={null}>
-                <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
-              </Suspense>
-            </LoadBoundary>
+            <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
           </Card>
 
           <Card heading={<h2 id="show-h" className={s.cardTitle}>Show on sheet</h2>} labelledBy="show-h">
@@ -281,13 +278,13 @@ function Sheet({ doc }: { doc: Doc }) {
           </div>
           {/* The handler catches keys that bubble up from the controls inside; the div itself is not a control. */}
           <div role="presentation" className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
-            <ModeSwitch mode={mode} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
+            <ModeSwitch mode={mode} onIntent={preloadPanel} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
             <div className={s.toolbarEnd}>
               {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
               {playModeFailed && <p role="alert" className={s.playError}>{PLAY_MODE_LOAD_FAILED}</p>}
               {altLoadFailed && <p role="alert" className={s.playError}>{ALT_LOAD_FAILED}</p>}
               <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')}
-                onPlayMode={enterPlayMode} playModeRef={playModeButton} />
+                onPlayMode={enterPlayMode} playModeIntent={intentProps(playModeModule)} playModeRef={playModeButton} />
             </div>
           </div>
           {!performing && <JumpNotice problems={problems} dropped={doc.source.dropped ?? []} />}

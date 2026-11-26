@@ -3,11 +3,14 @@ import { timeAgo } from '../domain/timeAgo';
 import type { LibraryEntry } from '../state/library';
 import RightsNotice from './RightsNotice';
 import s from './FileMenu.module.css';
+import type { IntentProps } from '../shell/lazy';
 
 interface Props {
   entries: LibraryEntry[];
   currentId: string | null;
   onPdf(): void;
+  /** Starts loading the PDF engine when the pointer enters or focus arrives on Download PDF. */
+  pdfIntent?: IntentProps;
   /** A PDF is being prepared: the entry reads "Preparing PDF…" and is disabled. */
   pdfBusy: boolean;
   onPrint(): void;
@@ -121,7 +124,7 @@ export default function FileMenu(p: Props) {
       {open && (
         <div ref={menuRef} id={menuId} role="menu" aria-label="File" tabIndex={-1} className={s.menu} onKeyDown={onMenuKey}>
           <div role="group" aria-label="File actions" className={s.actions}>
-            <button type="button" role="menuitem" tabIndex={-1} className={`${s.action} ${s.primary}`} data-primary="" disabled={p.pdfBusy} onClick={choose(p.onPdf)}>
+            <button type="button" role="menuitem" tabIndex={-1} className={`${s.action} ${s.primary}`} data-primary="" disabled={p.pdfBusy} {...p.pdfIntent} onClick={choose(p.onPdf)}>
               <Icon d={DOWN} />{p.pdfBusy ? 'Preparing PDF…' : 'Download PDF'}
             </button>
             <button type="button" role="menuitem" tabIndex={-1} className={s.action} onClick={choose(p.onPrint)}>

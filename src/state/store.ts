@@ -5,7 +5,7 @@ import type { Doc, InstId } from '../domain/types';
 import type { ParsedSong } from '../import/types';
 import { canonical, validateDoc } from '../domain/persistence';
 import { getEntry, saveEntry } from './library';
-import { readJSON, remove, writeJSON } from './storage';
+import { readJSON, remove, writeJSON } from '../shell/storage';
 
 const KEY_INST = 'fingerscore.inst';
 const KEY_PREFS = 'fingerscore.prefs';

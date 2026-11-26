@@ -2,10 +2,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import App from './App';
-import { useApp } from './state/store';
+import { useApp } from '../state/store';
 
 // The Tracks page's chunk fails to load; the Scales page loads.
-vi.mock('./pages/Tracks', () => {
+vi.mock('../pages/Tracks', () => {
   throw new Error('Failed to fetch dynamically imported module');
 });
 

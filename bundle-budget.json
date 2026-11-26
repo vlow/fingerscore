@@ -1,0 +1,29 @@
+{
+  "shell": 61440,
+  "routeDefault": 81920,
+  "featureDefault": 5120,
+  "routes": {
+    "/": 39936,
+    "/sheet": 81920,
+    "/tracks": 36864,
+    "/scales": 61440,
+    "/terms": 2048,
+    "/imprint": 3072,
+    "/privacy": 3072,
+    "/about": 3072
+  },
+  "features": {
+    "src/ui/AltFingeringPopover.tsx": 2048,
+    "src/ui/BulkCard.tsx": 3072,
+    "src/ui/ChordPanel.tsx": 4096,
+    "src/ui/LyricPanel.tsx": 4096,
+    "src/ui/NotePanel.tsx": 4096,
+    "src/ui/PlayMode.tsx": 5120,
+    "src/import/abc.ts": 62464,
+    "src/import/midi.ts": 12288,
+    "src/import/mscz.ts": 37888,
+    "src/import/musicxml.ts": 37888,
+    "src/pdf/scalePdf.ts": 167936,
+    "src/pdf/sheetPdf.ts": 168960
+  }
+}

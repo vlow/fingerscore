@@ -14,7 +14,7 @@ How to use it: decide or do an item, then delete it or move it to "Closed" at th
 | 4 | Must Imprint and Privacy also exist in German? The site is English only. | The lawyer. | — |
 | 5 | Is a phone number published in the Imprint? | The owner, with the lawyer. | `operator.ts`, field `phone` |
 | 6 | The footer and About show a GitHub link only when an address is set. | The owner sets it or leaves it empty. | `src/content/repository.ts` |
-| 7 | Hosting under a sub-path needs a Vite `base` and a router `basename`; neither is set. The host must answer unknown paths with `index.html`. | Where the site will live. | `vite.config.ts`, `src/main.tsx`; README "Hosting" |
+| 7 | Hosting under a sub-path needs a Vite `base` and a router `basename`; neither is set. The host must answer unknown paths with `index.html`. | Where the site will live. | `vite.config.ts`, `src/shell/main.tsx`; README "Hosting" |
 | 8 | Trademark clearance for the name and the logo. | The owner. | — |
 | 9 | No test with a real screen reader and none on a real phone. Automated checks run in Chromium only. | One session with VoiceOver, one on a phone. | README "Checks → Not tested" |
 
@@ -24,7 +24,7 @@ Each of these was made during a build so that work could continue. Reversing one
 
 | # | Decision | Why it was made | Where |
 |---|---|---|---|
-| 10 | The footer reads "Your sheets are stored in your browser, not on a server." The handoff said "Nothing is stored on the server." | The host keeps request logs, which the Privacy page states. | `src/ui/Footer.tsx` |
+| 10 | The footer reads "Your sheets are stored in your browser, not on a server." The handoff said "Nothing is stored on the server." | The host keeps request logs, which the Privacy page states. | `src/shell/Footer.tsx` |
 | 11 | Terms, section Fingerings: "The fingerings are taken from published fingering charts." | The earlier wording read as if the drawings were copied. | `src/pages/Terms.tsx` |
 | 12 | "Terms of Use" in the File menu is a menu entry reached with the arrow keys; Tab closes the menu. | A paragraph inside a menu is invisible to a screen reader, and the accessibility scan allows no exemption. | `src/ui/FileMenu.tsx`, `RightsNotice.tsx` |
 | 13 | Alternate-fingering marks on the sheet have a 24 px click area, not the handoff's 36 px, and sit 26 px apart where notes are close. | At 36 px a mark moved under the neighbouring note. | `src/ui/AltPill.module.css`, `src/render/pillSpread.ts` |
@@ -34,7 +34,7 @@ Each of these was made during a build so that work could continue. Reversing one
 | 17 | A MusicXML "D.S." without words, in a file that has both a Fine and a "To Coda", becomes a plain D.S. | The file does not say which is meant. | `src/import/jumpMarks.ts` |
 | 18 | Headroom above the staff is as tall as the highest thing any note draws, plus 4 px. Sheets with very high notes, and sheets with triplet marks above their notes (about 13 px per system), are taller than before. | Notes no longer run into lyrics or brackets. | `src/render/sheetLayout.ts`, `src/render/ink.ts` |
 | 19 | With four or five jump marks in one narrow bar, their text can shrink below 10 px, down to 6 px. | Small text beats overlapping text, and such a bar is one the notice already names as wrong. | `src/render/JumpMarks.tsx` |
-| 20 | The alternate-fingering popover loads on the first click on a mark, to stay inside the start budget. | The alternative was to load the jump marks' drawing late, which shows. | `src/pages/sheet/useAltFingering.tsx` |
+| 20 | The alternate-fingering popover loads on the first click on a mark, as a feature chunk of its own (README "Bundle layers"). | Prefetch on hover would remove the wait; the pill has no intent handler yet. | `src/pages/sheet/useAltFingering.tsx` |
 
 ## 3. Trial choices
 
@@ -53,7 +53,7 @@ Each of these was made during a build so that work could continue. Reversing one
 | 26 | The song title comes from the file name. | **In progress:** branch `claude/song-title-extraction-607074` holds one commit, "imports take the song title from the file, else the file name". It is not merged. | `src/import/buildDoc.ts` |
 | 27 | MuseScore 1 files are refused. | The owner parked the licensing question. | `src/import/mscz.ts` |
 | 28 | Chord symbols with raised extensions overlap when chords sit close, on screen and in the PDF. | `MIN_CONDENSE` sets how far text is squeezed. | `src/render/lyrics.ts` |
-| 29 | A performance pass. The handoff's build order named one; none was done. | The start budget and the PDF timing tests exist. | — |
+| 29 | A performance pass. The handoff's build order named one; none was done. | The per-layer bundle budgets and the PDF timing tests exist. | — |
 | 30 | Fingering tables other than the Xaphoon's are not signed off by players. The sheet's legend says "fingering data: draft". | A player of each instrument checks the table. | `docs/fingering-gaps.md`; README "Fingering data status" |
 | 31 | A real MuseScore file with a D.S. jump has not been seen. The owner's sample files hold "D.C. al Coda". | The reader expects `jumpTo` = `segno`, which follows from the marker's label. | `src/import/mscz/shared.ts` |
 
@@ -61,7 +61,6 @@ Each of these was made during a build so that work could continue. Reversing one
 
 | # | Open point | Notes | Where |
 |---|---|---|---|
-| 32 | The start budget is nearly used up: 409,079 of 410,000 bytes load at page start, so 921 remain. | The ready lever: load the jump marks' drawing and its two glyphs on first use, about 7,000 bytes, at the price of marks appearing a moment after the sheet. Raising the limit is the owner's decision. | `scripts/check-bundle.mjs`, `src/render/JumpMarks.tsx` |
 | 33 | One wall-clock test ("300 bars of triplet sixteenths take less than twice the time of 150 bars") does not skip its budget in the coverage run, unlike two similar tests. It failed twice in local coverage runs under load and passes on the pipeline. | Use `instrumented` as the other two do. | `src/render/scaling.test.tsx`, `src/test/timing.ts` |
 | 34 | Holding the reader's place when the sheet's height changes is tested in Chromium only. Firefox adjusts scroll on its own and could correct twice. | Try it in Firefox and Safari. | `src/pages/sheet/HoldView.tsx` |
 | 35 | Printing while Lyrics or Chords mode is on relies on the browser's `beforeprint` event to drop the forced band. If a browser fires it late, the page prints with an empty band in every system. | Tested with dispatched events, not a real print dialog. | `src/pages/sheet/usePrinting.ts` |

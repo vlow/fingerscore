@@ -1,0 +1,58 @@
+// Zero-violation rule: fails when SonarCloud lists any open issue on a branch, whatever the quality gate's thresholds
+// allow. Runs in the sonar job of .github/workflows/ci.yml after the scan, with no npm install: plain Node, no packages.
+// Usage: SONAR_BRANCH=<branch> [SONAR_TOKEN=<token>] node scripts/check-sonar.mjs
+import { pathToFileURL } from 'node:url';
+
+const HOST = 'https://sonarcloud.io';
+const PROJECT = 'vlow_fingerscore';
+const PAGE = 100;
+
+/** A branch name fit for the log: anything but letters, digits and . / - _ becomes _, so no input can forge a line. */
+export function loggable(name) {
+  return name.replace(/[^\w./-]/g, '_');
+}
+
+/** Text from the server, fit for the log: control characters, line breaks included, become spaces. */
+function plain(text) {
+  return String(text).replace(/[\r\n\u0000-\u001f\u007f]/g, ' ');
+}
+
+/** One line per issue, as the log shows it; a last line counts the issues past the first page. */
+export function describeIssues({ total, issues }) {
+  const lines = issues.map(i => {
+    const file = i.component.slice(i.component.indexOf(':') + 1);
+    const at = Number.isInteger(i.line) ? `:${i.line}` : '';
+    return plain(`${i.type} ${i.severity} ${i.rule} ${file}${at} ${i.message}`);
+  });
+  const more = Number(total) - issues.length;
+  if (more > 0) lines.push(`… and ${more} more`);
+  return lines;
+}
+
+async function main() {
+  const branch = process.env.SONAR_BRANCH;
+  if (!branch) {
+    console.error('check-sonar: set SONAR_BRANCH to the analysed branch.');
+    process.exit(2);
+  }
+  const url = `${HOST}/api/issues/search?componentKeys=${PROJECT}&branch=${encodeURIComponent(branch)}&resolved=false&ps=${PAGE}`;
+  const headers = process.env.SONAR_TOKEN ? { Authorization: `Bearer ${process.env.SONAR_TOKEN}` } : {};
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    console.error(`check-sonar: SonarCloud answered ${res.status} for ${url}`);
+    process.exit(2);
+  }
+  const body = await res.json();
+  const name = loggable(branch);
+  const lines = describeIssues(body);
+  if (lines.length === 0) {
+    console.log(`check-sonar: no open issues on ${name}.`);
+    return;
+  }
+  console.error(`check-sonar: ${Number(body.total)} open issue(s) on ${name}. The rule is zero:`);
+  for (const l of lines) console.error(`  ${l}`);
+  console.error(`  ${HOST}/project/issues?id=${PROJECT}&branch=${encodeURIComponent(branch)}&resolved=false`);
+  process.exit(1);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();

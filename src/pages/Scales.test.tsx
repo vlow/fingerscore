@@ -1,16 +1,16 @@
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import App from '../App';
+import App from '../shell/App';
 import { sampleDoc } from '../domain/fixture';
 import { buildScale, scaleFingerings } from '../domain/scales';
 import { PdfError } from '../pdf/errors';
-import { requestScalePdf } from '../pdf/request';
+import { requestScalePdf, scalePdfModule } from '../pdf/request';
 import { useApp } from '../state/store';
 import type { ScalePdfInput } from '../pdf/scalePdf';
 import Scales from './Scales';
 
-vi.mock('../pdf/request', () => ({ requestScalePdf: vi.fn(async () => {}) }));
+vi.mock('../pdf/request', () => ({ requestScalePdf: vi.fn(async () => {}), scalePdfModule: { prefetch: vi.fn() } }));
 
 const user = userEvent.setup();
 
@@ -376,6 +376,13 @@ it('six accidentals: F♯ and G♭ are separate keys, and the choice is remember
 describe('Download PDF', () => {
   const pdfButton = () => screen.getByRole('button', { name: /^(Download PDF|Preparing PDF…)$/ });
   const lastInput = () => vi.mocked(requestScalePdf).mock.calls[0][0] as ScalePdfInput;
+
+  it('focusing Download PDF prefetches the engine once', () => {
+    renderScales();
+    vi.mocked(scalePdfModule.prefetch).mockClear();
+    fireEvent.focus(pdfButton());
+    expect(scalePdfModule.prefetch).toHaveBeenCalledTimes(1);
+  });
 
   it('has a primary Download PDF and a plain Print button', () => {
     renderScales();

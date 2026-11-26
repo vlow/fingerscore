@@ -1,4 +1,5 @@
 import type { Ref } from 'react';
+import type { IntentProps } from '../shell/lazy';
 import s from './Transport.module.css';
 
 interface Props {
@@ -8,16 +9,18 @@ interface Props {
   onToggle(): void; onTempo(tempo: number): void;
   /** Opens play mode (SPEC §11a); the ref is where the focus returns on the way out. */
   onPlayMode(): void; playModeRef?: Ref<HTMLButtonElement>;
+  /** Starts loading play mode when the pointer enters or focus arrives. */
+  playModeIntent?: IntentProps;
 }
 
 export const TEMPO_MIN = 40;
 export const TEMPO_MAX = 200;
 
 /** Play mode (SPEC §11a) and the playback controls (SPEC §11): Listen (or Listen from selected)/Stop and the tempo slider. */
-export default function Transport({ playing, fromSelected = false, tempo, onToggle, onTempo, onPlayMode, playModeRef }: Props) {
+export default function Transport({ playing, fromSelected = false, tempo, onToggle, onTempo, onPlayMode, playModeRef, playModeIntent }: Props) {
   return (
     <div role="group" aria-label="Playback" className={s.transport}>
-      <button ref={playModeRef} type="button" className={s.playMode} title="Show only the score, with page turning and auto-scroll. Dark mode is easier on the eyes on stage." onClick={onPlayMode}>
+      <button ref={playModeRef} type="button" {...playModeIntent} className={s.playMode} title="Show only the score, with page turning and auto-scroll. Dark mode is easier on the eyes on stage." onClick={onPlayMode}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M4 4h16v11H4z" /><path d="M12 15v5" /><path d="M8 20h8" />
         </svg>

@@ -1,4 +1,4 @@
-import { useTheme, type Theme } from '../state/theme';
+import { useTheme, type Theme } from './theme';
 import RadioMenu, { type RadioMenuChoice } from './RadioMenu';
 import s from './ThemeMenu.module.css';
 

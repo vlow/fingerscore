@@ -1,24 +1,26 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, type KeyboardEvent, type MouseEvent, type RefObject } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, type KeyboardEvent, type MouseEvent, type RefObject } from 'react';
 import type { Derived } from '../../domain/derive';
 import type { Doc } from '../../domain/types';
 import { SHEET, type SheetLayout } from '../../render/layout';
-import { LoadBoundary } from '../../ui/LoadBoundary';
+import { lazyComponent, lazyModule } from '../../shell/lazy';
+import { LoadBoundary } from '../../shell/LoadBoundary';
 import type { Mode } from '../../ui/ModeSwitch';
 import s from '../SheetPage.module.css';
 
 // The panels load on demand: the first switch into an edit mode fetches its panel (see preloadPanel).
-const loaders = {
-  notes: () => import('../../ui/NotePanel'),
-  lyrics: () => import('../../ui/LyricPanel'),
-  chords: () => import('../../ui/ChordPanel'),
+export const panelModules = {
+  notes: lazyModule(() => import('../../ui/NotePanel').then(m => m.default)),
+  lyrics: lazyModule(() => import('../../ui/LyricPanel').then(m => m.default)),
+  chords: lazyModule(() => import('../../ui/ChordPanel').then(m => m.default)),
 };
-const NotePanel = lazy(loaders.notes);
-const LyricPanel = lazy(loaders.lyrics);
-const ChordPanel = lazy(loaders.chords);
+// The panel slot places its own Suspense (a hidden box of the panel's size) and boundary.
+const NotePanel = lazyComponent(panelModules.notes);
+const LyricPanel = lazyComponent(panelModules.lyrics);
+const ChordPanel = lazyComponent(panelModules.chords);
 
 /** Starts loading a mode's panel, so the first click on a note does not wait on the network. */
 export function preloadPanel(mode: Mode): void {
-  if (mode !== 'view') loaders[mode]().catch(() => {});   // a failed load shows the reload notice when the panel renders
+  if (mode !== 'view') panelModules[mode].prefetch();   // a failed load shows the reload notice when the panel renders
 }
 
 const PANEL: Record<Exclude<Mode, 'view'>, string> = { notes: 'Edit notes panel', lyrics: 'Lyrics panel', chords: 'Chords panel' };

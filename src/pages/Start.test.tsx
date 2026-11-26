@@ -8,7 +8,7 @@ import { serializeFile, serializeLibrary } from '../domain/persistence';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { FULL_MESSAGE, listEntries, saveEntry } from '../state/library';
 import { useApp } from '../state/store';
-import { ToastHost } from '../ui/Toast';
+import { ToastHost } from '../shell/Toast';
 import Start from './Start';
 
 const demoBytes = () => new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid'));

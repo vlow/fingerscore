@@ -1,4 +1,4 @@
-import { showToast } from '../ui/Toast';
+import { showToast } from '../shell/Toast';
 import { deleteEntry, getEntry, restoreEntry, writeFailureMessage, type LibraryEntry } from './library';
 import { useApp } from './store';
 

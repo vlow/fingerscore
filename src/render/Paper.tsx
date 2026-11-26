@@ -1,7 +1,7 @@
 import { Fragment, useMemo, type ReactNode } from 'react';
 import type { Derived } from '../domain/derive';
 import type { Doc } from '../domain/types';
-import { usePaper } from '../state/theme';
+import { usePaper } from '../shell/theme';
 import type { SheetLayout } from './layout';
 import type { BandForce } from './sheetLayout';
 import styles from './Paper.module.css';

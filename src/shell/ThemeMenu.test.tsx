@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { initTheme } from '../state/theme';
+import { initTheme } from './theme';
 import ThemeMenu from './ThemeMenu';
 
 const button = (name: string) => screen.getByRole('button', { name });

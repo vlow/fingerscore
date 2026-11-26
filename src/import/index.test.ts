@@ -3,7 +3,7 @@ import { DEFAULT_PREFS } from '../domain/transpose';
 import { ACCEPT, defaultBuildOptions, FORMATS, parseFile } from './index';
 import { parseMidi } from './midi';
 import * as midiModule from './midi';
-import { LOAD_FAILED } from '../loadFailed';
+import { LOAD_FAILED } from '../shell/loadFailed';
 import { ImportError, type ParsedSong, type ParsedTrack } from './types';
 
 const demo = () => parseMidi('Auld_Lang_Syne.mid', new Uint8Array(readFileSync('public/demo/Auld_Lang_Syne.mid')));

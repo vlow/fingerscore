@@ -5,6 +5,7 @@ import type { Family } from '../domain/instruments';
 import { familyCounts, SORTS, viewEntries, type SortBy, type ViewOptions } from '../domain/libraryView';
 import { importedMessage, importMessage, LIBRARY_FILE_NAME, readImport, serializeLibrary } from '../domain/persistence';
 import { timeAgo } from '../domain/timeAgo';
+import { routeIntent } from '../shell/routes';
 import { deleteWithUndo } from '../state/deleteWithUndo';
 import { addSheets, listEntries, saveEntry, type LibraryEntry } from '../state/library';
 import { downloadText } from './download';
@@ -81,8 +82,8 @@ function Actions({ entry, confirming, binRef, onAsk, onKeep, onDelete }: Actions
   if (confirming) return <ConfirmDelete title={entry.title} onDelete={onDelete} onKeep={onKeep} />;
   return (
     <>
-      <Link to={sheetUrl(entry.id)} className={s.openLink} aria-label={`Open ${entry.title}`}>Open</Link>
-      <Link to={playUrl(entry.id)} className={s.playLink} aria-label={`Play ${entry.title}`} title="Open in Play mode">
+      <Link to={sheetUrl(entry.id)} {...routeIntent('/sheet')} className={s.openLink} aria-label={`Open ${entry.title}`}>Open</Link>
+      <Link to={playUrl(entry.id)} {...routeIntent('/sheet')} className={s.playLink} aria-label={`Play ${entry.title}`} title="Open in Play mode">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
         Play
       </Link>
@@ -244,7 +245,7 @@ export default function Gallery({ version = 0, emptyFocus, open = false, onOpenC
         <ul className={s.bars}>
           {shown.map(e => (
             <li key={e.id} className={s.bar}>
-              <Link to={sheetUrl(e.id)} className={s.barOpen} title={e.title} ref={linkRef(e.id)}>
+              <Link to={sheetUrl(e.id)} {...routeIntent('/sheet')} className={s.barOpen} title={e.title} ref={linkRef(e.id)}>
                 <strong className={s.title}>{e.title}</strong>
                 <Incipit entry={e} />
                 <span className={s.meta} title={`${e.inst} · ${timeAgo(e.savedAt, now)}`}>{e.inst} · {timeAgo(e.savedAt, now)}</span>

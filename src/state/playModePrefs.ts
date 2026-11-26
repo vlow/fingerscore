@@ -1,5 +1,5 @@
 import { clampSpeed, clampZoom } from '../domain/playMode';
-import { readJSON, writeJSON } from './storage';
+import { readJSON, writeJSON } from '../shell/storage';
 
 const KEY = 'fingerscore.playmode';
 

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { bundleLayers } from './scripts/bundle-layers/plugin';
 
 // jsPDF imports html2canvas, dompurify and canvg only for doc.html() and addSvgAsImage, which the app never calls.
 // Left alone, the build ships a chunk for each (about 380 kB). They resolve to an empty module instead.
@@ -14,7 +15,7 @@ const stubUnusedPdfLibraries = {
 };
 
 export default defineConfig({
-  plugins: [stubUnusedPdfLibraries, react()],
+  plugins: [stubUnusedPdfLibraries, react(), bundleLayers()],
   // Parsers and the PDF code load on demand. Without this the dev server finds their libraries on first use,
   // re-optimises them and reloads the page, which breaks a first import (and a cold end-to-end run).
   optimizeDeps: {
@@ -25,7 +26,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
     setupFiles: ['./src/test-setup.ts'],
     // Tells src/test/timing.ts that the code is instrumented, so tests skip their wall-clock budgets.
     env: process.argv.includes('--coverage') ? { COVERAGE: '1' } : {},

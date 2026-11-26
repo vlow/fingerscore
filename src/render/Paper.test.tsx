@@ -1,5 +1,5 @@
 import { act, render, screen, fireEvent } from '@testing-library/react';
-import { initTheme } from '../state/theme';
+import { initTheme } from '../shell/theme';
 import { Paper } from './Paper';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
