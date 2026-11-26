@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { BASE_URL } from './base';
 
 test('production build: Download PDF fetches six hashed fonts from the app, nothing leaves the origin, no dev hook', async ({ page }) => {
   const requests: { url: string; status: number }[] = [];
@@ -13,7 +14,7 @@ test('production build: Download PDF fetches six hashed fonts from the app, noth
   expect(download.suggestedFilename()).toBe('auld-lang-syne-alto-sax.pdf');
   expect(readFileSync((await download.path())!).subarray(0, 4).toString('latin1')).toBe('%PDF');
 
-  expect(requests.filter(r => !r.url.startsWith('http://localhost:4179/')), 'requests that leave the origin').toEqual([]);
+  expect(requests.filter(r => !r.url.startsWith(`${BASE_URL}/`)), 'requests that leave the origin').toEqual([]);
   const fonts = requests.filter(r => r.url.endsWith('.ttf'));
   expect(fonts.map(r => new URL(r.url).pathname).sort()).toHaveLength(6);
   for (const f of fonts) {
