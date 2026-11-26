@@ -12,13 +12,20 @@ export function loggable(name) {
   return name.replace(/[^\w./-]/g, '_');
 }
 
+/** Text from the server, fit for the log: control characters, line breaks included, become spaces. */
+function plain(text) {
+  return String(text).replace(/[\r\n\u0000-\u001f\u007f]/g, ' ');
+}
+
 /** One line per issue, as the log shows it; a last line counts the issues past the first page. */
 export function describeIssues({ total, issues }) {
   const lines = issues.map(i => {
     const file = i.component.slice(i.component.indexOf(':') + 1);
-    return `${i.type} ${i.severity} ${i.rule} ${file}${i.line ? `:${i.line}` : ''} ${i.message}`;
+    const at = Number.isInteger(i.line) ? `:${i.line}` : '';
+    return plain(`${i.type} ${i.severity} ${i.rule} ${file}${at} ${i.message}`);
   });
-  if (total > issues.length) lines.push(`… and ${total - issues.length} more`);
+  const more = Number(total) - issues.length;
+  if (more > 0) lines.push(`… and ${more} more`);
   return lines;
 }
 
@@ -42,7 +49,7 @@ async function main() {
     console.log(`check-sonar: no open issues on ${name}.`);
     return;
   }
-  console.error(`check-sonar: ${body.total} open issue(s) on ${name}. The rule is zero:`);
+  console.error(`check-sonar: ${Number(body.total)} open issue(s) on ${name}. The rule is zero:`);
   for (const l of lines) console.error(`  ${l}`);
   console.error(`  ${HOST}/project/issues?id=${PROJECT}&branch=${encodeURIComponent(branch)}&resolved=false`);
   process.exit(1);

@@ -28,3 +28,11 @@ it('loggable keeps a branch name and replaces anything else, line breaks include
   expect(loggable('claude/bundle-size-performance-20141b')).toBe('claude/bundle-size-performance-20141b');
   expect(loggable('main\ncheck-sonar: no open issues')).toBe('main_check-sonar__no_open_issues');
 });
+
+it('takes no line break or control character from the server into the log', () => {
+  const [line] = describeIssues({
+    total: 1,
+    issues: [{ rule: 'r\nx', severity: 'MAJOR', type: 'BUG', component: 'k:f.ts', line: 3, message: 'one\r\ncheck-sonar: no open issues\u001b[0m' }],
+  });
+  expect(line).toBe('BUG MAJOR r x f.ts:3 one  check-sonar: no open issues [0m');
+});
