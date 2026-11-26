@@ -2,9 +2,9 @@
 // at once do not distort. Built once per AudioContext.
 
 export const REVERB_SECONDS = 1.2;
-export const REVERB_WET = 0.06;
-/** The reverb hears only what is below this: a dark room adds body, not air. */
-const REVERB_LOWPASS = 2500;
+export const REVERB_WET = 0.15;
+/** The reverb hears only what is below this: like a real room, it swallows the top highs. */
+const REVERB_LOWPASS = 5000;
 
 const outputs = new WeakMap<BaseAudioContext, AudioNode>();
 

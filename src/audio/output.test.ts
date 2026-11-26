@@ -22,13 +22,13 @@ it('routes dry and reverb into a limiter on the destination', () => {
   expect(reverb.outputs).toEqual([limiter]);
 });
 
-it('keeps the room dry and dark, so it adds no air: little reverb, and none of the highs', () => {
+it('gives the notes a noticeable room that softens only the top highs', () => {
   const ctx = new FakeAudioContext();
   outputFor(asCtx(ctx));
-  expect(REVERB_WET).toBeLessThanOrEqual(0.06);
+  expect(REVERB_WET).toBe(0.15);
   const [darken] = ctx.of('biquad');
   expect(darken.type).toBe('lowpass');
-  expect(darken.frequency.value).toBeLessThanOrEqual(2500);
+  expect(darken.frequency.value).toBe(5000);
 });
 
 it('the reverb impulse is stereo and decays over 1.2 s', () => {

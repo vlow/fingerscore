@@ -56,11 +56,11 @@ The change fails, even when it works, if:
 
 No preset goes above 15 cents of vibrato depth or starts vibrato earlier than 0.25 s.
 
-Tuned by ear after the test versions: vibrato no deeper than 6 cents; reverb at 6 % wet, fed only what lies below 2.5 kHz. `presets.test.ts` and `output.test.ts` hold these limits.
+Tuned by ear after the test versions: vibrato no deeper than 6 cents; reverb at 15 % wet, fed only what lies below 5 kHz (it was 6 % and 2.5 kHz while breath noise still made it hiss). `presets.test.ts` and `output.test.ts` hold these limits.
 
 **Back-to-back notes.** When a note starts where the previous one ends, its attack is softer: a lower filter peak. This sounds like tonguing within a phrase. No pitch glide: without slur marks it would smear every note change.
 
-**Shared output** (one per AudioContext): every voice feeds a dry path and a send to a `ConvolverNode`. The convolver's impulse is generated noise decaying over about 1.2 s; the wet level is low (6 %, after tuning). Both paths feed a `DynamicsCompressorNode` set as a limiter, then the destination.
+**Shared output** (one per AudioContext): every voice feeds a dry path and a send to a `ConvolverNode`. The convolver's impulse is generated noise decaying over about 1.2 s; the wet level is 15 %, and the reverb hears only what lies below 5 kHz. Both paths feed a `DynamicsCompressorNode` set as a limiter, then the destination.
 
 **No breath noise.** The first version added filtered noise for breath. Listening showed it as unwanted air, so it was removed: a note is tone only.
 
