@@ -279,7 +279,7 @@ There is no exclusion from any rule. Run one state with `npx playwright test e2e
 
 ### SonarCloud: zero open issues
 
-`main` has no open SonarCloud issue, and nothing merges into it with one. The free plan's quality gate cannot be set to zero, so the repository keeps the rule itself. Every push runs the SonarCloud job: it fails when the quality gate fails, and then `scripts/check-sonar.mjs` fails it on any open issue of the pushed branch, of any type or severity. Check a branch by hand with `SONAR_BRANCH=<branch> node scripts/check-sonar.mjs`. Push, check and fix until it prints `no open issues`; `CLAUDE.md` gives the loop and what counts as a way around it.
+`main` has no open SonarCloud issue, and nothing merges into it with one. The free plan's quality gate cannot be set to zero, so the repository keeps the rule itself. Every push runs the SonarCloud job: it fails when the quality gate fails, and then `scripts/check-sonar.mjs` fails it on any open issue of the pushed branch, of any type or severity. Check a branch by hand with `SONAR_BRANCH=<branch> node scripts/check-sonar.mjs`. Push, check and fix until it prints `no open issues`. An issue whose fix would make the code harder to maintain or to read is proposed to the owner as "won't fix", with the reason; `CLAUDE.md` gives the loop and the exception.
 
 ### Not tested
 
