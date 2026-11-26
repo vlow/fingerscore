@@ -13,7 +13,7 @@ const outputs = new WeakMap<BaseAudioContext, AudioNode>();
  * unpredictability, and the same seed gives the same sound.
  */
 function fillNoise(data: Float32Array, seed: number): void {
-  let x = seed | 0 || 1;
+  let x = Math.trunc(seed) || 1;   // the shifts below work on its 32-bit integer value
   for (let i = 0; i < data.length; i++) {
     x ^= x << 13;
     x ^= x >>> 17;
