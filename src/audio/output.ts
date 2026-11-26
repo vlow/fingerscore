@@ -2,7 +2,9 @@
 // at once do not distort. Built once per AudioContext.
 
 export const REVERB_SECONDS = 1.2;
-export const REVERB_WET = 0.15;
+export const REVERB_WET = 0.06;
+/** The reverb hears only what is below this: a dark room adds body, not air. */
+const REVERB_LOWPASS = 2500;
 
 const outputs = new WeakMap<BaseAudioContext, AudioNode>();
 
@@ -46,9 +48,13 @@ export function outputFor(ctx: BaseAudioContext): AudioNode {
   const reverb = ctx.createConvolver();
   reverb.buffer = impulse(ctx);
   reverb.connect(limiter);
+  const darken = ctx.createBiquadFilter();
+  darken.type = 'lowpass';
+  darken.frequency.value = REVERB_LOWPASS;
+  darken.connect(reverb);
   const wet = ctx.createGain();
   wet.gain.value = REVERB_WET;
-  wet.connect(reverb);
+  wet.connect(darken);
 
   const input = ctx.createGain();
   input.gain.value = 1;

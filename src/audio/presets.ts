@@ -23,7 +23,7 @@ const series = (count: number, f: (n: number) => number) => Array.from({ length:
 
 const SAXOPHONE: Preset = {
   harmonics: series(12, n => 1 / n),
-  breath: { level: 0.003, attackLevel: 0.015, freq: 2500, q: 1 },
+  breath: { level: 0, attackLevel: 0.01, freq: 2500, q: 1 },
   vibrato: { rate: 5.5, depth: 5, delay: 0.3, fade: 0.3 },
   filter: { base: 2400, peak: 4000, settle: 0.12 },
   attack: 0.03,
@@ -36,28 +36,28 @@ export const PRESETS: Record<Family, Preset> = {
   Xaphoon: {
     ...SAXOPHONE,
     harmonics: series(12, n => 1 / n ** 1.3),
-    breath: { ...SAXOPHONE.breath, level: 0.004, attackLevel: 0.02 },
+    breath: { ...SAXOPHONE.breath, level: 0, attackLevel: 0.01 },
     vibrato: { ...SAXOPHONE.vibrato, depth: 4 },
     filter: { ...SAXOPHONE.filter, base: 1600, peak: 2800 },
   },
   Clarinet: {
     ...SAXOPHONE,
     harmonics: series(11, n => (n % 2 === 1 ? 1 : 0.15) / n),
-    breath: { ...SAXOPHONE.breath, level: 0.002, attackLevel: 0.01 },
+    breath: { ...SAXOPHONE.breath, level: 0, attackLevel: 0.01 },
     vibrato: NO_VIBRATO,
     filter: { ...SAXOPHONE.filter, base: 1800, peak: 3000 },
   },
   Flute: {
     ...SAXOPHONE,
     harmonics: [1, 0.25, 0.12, 0.04],
-    breath: { level: 0.004, attackLevel: 0.02, freq: 3000, q: 0.7 },
+    breath: { level: 0, attackLevel: 0.01, freq: 3000, q: 0.7 },
     vibrato: { rate: 5, depth: 6, delay: 0.25, fade: 0.3 },
     filter: { ...SAXOPHONE.filter, base: 4000, peak: 6000 },
   },
   Recorder: {
     ...SAXOPHONE,
     harmonics: [1, 0.15, 0.08],
-    breath: { level: 0.002, attackLevel: 0.02, freq: 3500, q: 2 },
+    breath: { level: 0, attackLevel: 0.01, freq: 3500, q: 2 },
     vibrato: NO_VIBRATO,
     filter: { base: 3500, peak: 5000, settle: 0.05 },
   },
@@ -67,7 +67,7 @@ export const PRESETS: Record<Family, Preset> = {
 export const PREVIEW_PRESET: Preset = {
   ...SAXOPHONE,
   harmonics: [1, 0.3, 0.1],
-  breath: { ...SAXOPHONE.breath, level: 0.002, attackLevel: 0.01 },
+  breath: { ...SAXOPHONE.breath, level: 0, attackLevel: 0.01 },
   vibrato: NO_VIBRATO,
   filter: { ...SAXOPHONE.filter, base: 3000, peak: 3500 },
   gain: 0.11,
