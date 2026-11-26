@@ -121,3 +121,26 @@ it('previewTrack plays every note of a chord', () => {
   chord.forEach(o => expect(o.start).toHaveBeenCalledWith(0.05));
   stopPreview();
 });
+
+it('highlights a note when it is heard, not when it is rendered: output latency delays marks and the end', () => {
+  // 210 ms between rendering a sample and hearing it, as with Bluetooth headphones.
+  class LatentContext extends RecordingContext { baseLatency = 0.01; outputLatency = 0.2; }
+  vi.stubGlobal('AudioContext', LatentContext);
+  vi.useFakeTimers();
+  try {
+    const ns = [{ evId: 'e0', start: 0, dur: 24, midi: 60 }];
+    const seen: (string | null)[] = [];
+    createPlayer().play({ notes: ns, marks: marksOf(ns), totalTicks: 24 }, doc('asax'), id => seen.push(id));
+    vi.advanceTimersByTime(280);        // the note sounds 80 ms after play; it is heard 210 ms after that
+    expect(seen).toEqual([]);
+    vi.advanceTimersByTime(20);
+    expect(seen).toEqual(['e0']);
+    vi.advanceTimersByTime(1280);       // 1.2 s of music, 100 ms of margin, then the latency: the end is due at 1590 ms
+    expect(seen).toEqual(['e0']);
+    vi.advanceTimersByTime(20);
+    expect(seen).toEqual(['e0', null]);
+  } finally {
+    vi.useRealTimers();
+    vi.stubGlobal('AudioContext', RecordingContext);
+  }
+});

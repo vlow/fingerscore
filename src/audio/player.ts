@@ -15,6 +15,13 @@ export interface Player {
 const LOOKAHEAD = 0.5;  // seconds scheduled ahead
 const TICK_MS = 100;    // scheduler interval
 
+/**
+ * Seconds from rendering a sample to hearing it: the context's own buffering plus the output device's (Bluetooth
+ * headphones add a few hundred ms). Highlights wait this long, so they move with the sound. Read anew for each mark,
+ * since the output device can change during playback; a browser that does not report it counts as 0.
+ */
+const heardDelay = (c: AudioContext) => (c.baseLatency ?? 0) + (c.outputLatency ?? 0);
+
 export function createPlayer(): Player {
   let ctx: AudioContext | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -71,7 +78,7 @@ export function createPlayer(): Player {
     let fired = 0;
     function scheduleMark(m: Schedule['marks'][number], late = false) {
       const at = t0 + secs(m.start);
-      const wait = late ? 0 : Math.max(0, (at - c.currentTime) * 1000);
+      const wait = late ? 0 : Math.max(0, (at + heardDelay(c) - c.currentTime) * 1000);
       eventTimers.push(setTimeout(() => { fired++; if (playing) onEvent(m.evId); }, wait));
     }
 
@@ -104,7 +111,7 @@ export function createPlayer(): Player {
       notify?.(null);
       notify = null;
     }
-    eventTimers.push(setTimeout(end, Math.max(0, (endAt - c.currentTime) * 1000 + 100)));
+    eventTimers.push(setTimeout(end, Math.max(0, (endAt + heardDelay(c) - c.currentTime) * 1000 + 100)));
   }
 
   return { play, stop, get playing() { return playing; } };

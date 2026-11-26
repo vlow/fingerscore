@@ -53,6 +53,8 @@ export interface FakeWave { real: Float32Array; imag: Float32Array }
 export class FakeAudioContext {
   currentTime = 0;
   sampleRate = 48000;
+  baseLatency = 0;
+  outputLatency = 0;
   readonly destination = new FakeNode('destination');
   readonly created: FakeNode[] = [];
   readonly waves: FakeWave[] = [];
