@@ -7,6 +7,11 @@ const HOST = 'https://sonarcloud.io';
 const PROJECT = 'vlow_fingerscore';
 const PAGE = 100;
 
+/** A branch name fit for the log: anything but letters, digits and . / - _ becomes _, so no input can forge a line. */
+export function loggable(name) {
+  return name.replace(/[^\w./-]/g, '_');
+}
+
 /** One line per issue, as the log shows it; a last line counts the issues past the first page. */
 export function describeIssues({ total, issues }) {
   const lines = issues.map(i => {
@@ -31,12 +36,13 @@ async function main() {
     process.exit(2);
   }
   const body = await res.json();
+  const name = loggable(branch);
   const lines = describeIssues(body);
   if (lines.length === 0) {
-    console.log(`check-sonar: no open issues on ${branch}.`);
+    console.log(`check-sonar: no open issues on ${name}.`);
     return;
   }
-  console.error(`check-sonar: ${body.total} open issue(s) on ${branch}. The rule is zero:`);
+  console.error(`check-sonar: ${body.total} open issue(s) on ${name}. The rule is zero:`);
   for (const l of lines) console.error(`  ${l}`);
   console.error(`  ${HOST}/project/issues?id=${PROJECT}&branch=${encodeURIComponent(branch)}&resolved=false`);
   process.exit(1);

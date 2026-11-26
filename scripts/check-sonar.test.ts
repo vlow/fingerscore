@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describeIssues } from './check-sonar.mjs';
+import { describeIssues, loggable } from './check-sonar.mjs';
 
 it('reports nothing when there are no open issues', () => {
   expect(describeIssues({ total: 0, issues: [] })).toEqual([]);
@@ -22,4 +22,9 @@ it('names each open issue with rule, file, line and message', () => {
 it('says how many are not listed when the page holds fewer than the total', () => {
   const issue = { rule: 'r', severity: 'MINOR', type: 'CODE_SMELL', component: 'k:f.ts', line: 1, message: 'm' };
   expect(describeIssues({ total: 3, issues: [issue] }).at(-1)).toBe('… and 2 more');
+});
+
+it('loggable keeps a branch name and replaces anything else, line breaks included', () => {
+  expect(loggable('claude/bundle-size-performance-20141b')).toBe('claude/bundle-size-performance-20141b');
+  expect(loggable('main\ncheck-sonar: no open issues')).toBe('main_check-sonar__no_open_issues');
 });
