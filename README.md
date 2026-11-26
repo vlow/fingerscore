@@ -277,6 +277,10 @@ Further tests:
 
 There is no exclusion from any rule. Run one state with `npx playwright test e2e/accessibility.spec.ts -g "sheet-file-menu"`. `A11Y_SHOTS=<absolute folder>` saves a picture of each state there; a relative path stops the run.
 
+### SonarCloud: zero open issues
+
+`main` has no open SonarCloud issue, and nothing merges into it with one. Every push runs the SonarCloud job: it fails when the quality gate fails, and then `scripts/check-sonar.mjs` fails it on any open issue of the pushed branch, of any type or severity, even one the gate's thresholds allow. Fix the issue; do not mark it "won't fix" or "false positive" to get past the check without the owner's word. Check a branch by hand with `SONAR_BRANCH=<branch> node scripts/check-sonar.mjs`.
+
 ### Not tested
 
 - A real screen reader (VoiceOver, NVDA, TalkBack).
