@@ -304,10 +304,6 @@ npm run icons      # regenerate favicon.ico and the app icons in public/ from br
 
 `npm run test:e2e` starts its own dev server from this checkout on port 5179; it never reuses a running one, so `npm run dev` on 5173 can stay open. If port 5179 is taken, the run stops with an error. If Playwright reports a missing browser, run `npx playwright install chromium` once.
 
-### Server rule for history routing
-
-The app uses real paths (`/tracks`, `/sheet`). The server must serve `index.html` for them. nginx: `try_files $uri /index.html;`.
-
 ## Fingering data status
 
 Every fingering comes from published charts. Where charts print different fingerings for a note, the first is the standard one and the others are offered as alternates, unless the evidence shows a variant is probably wrong. Where no fingering is sourced, the app shows no chart for that note. It never guesses.
@@ -342,5 +338,78 @@ Do these steps before the site goes public.
 1. Fill in `src/content/operator.ts`. Every value that starts with `TODO:` is a placeholder. There are eleven: name, address, email, phone, responsibleForContent, hostName, hostAddress, logRetention, aboutLead, authorBio and story. The repository address is optional and lives in `src/content/repository.ts`; set it there once the repository is public.
 2. Have a lawyer read the Terms, Privacy and Imprint pages. Ask whether the notice at the start-page drop zone, in the library view of "Your sheets" (beside Import…) and in the File menu is enough, and whether German versions are needed.
 3. Run `npm run check:release`. It builds the app, checks the bundle budget, compares `third-party-packages.json` with the build, and lists every placeholder that is left. It exits 1 until all eleven are filled in.
-4. Configure the host to answer unknown paths with `index.html` (see "Server rule for history routing").
+4. Set up nginx and deploy, as below.
 5. Host the app at the root of a domain. A sub-path such as `example.org/fingerscore/` needs a Vite `base` and a router `basename`. Neither is set.
+
+### nginx
+
+The app is static files. nginx serves them with the rules in `deploy/nginx/fingerscore-locations.conf`, which CI's `nginx` job tests on every push:
+
+- **Hashed files under `/assets/`:** cached for a year (`immutable`). A missing one is a 404.
+- **`index.html`:** checked on every visit; unchanged, it costs a 304. The app's paths (`/sheet`, `/tracks`, …) answer with it.
+- **Other files** (icons, the manifest, the demo song): cached for a day.
+- **Compression:** the build writes a brotli and a gzip copy of every text file. nginx sends the smallest one the browser accepts and compresses nothing itself.
+
+Install nginx and the brotli module from Ubuntu's or Debian's archive:
+
+```bash
+sudo apt install nginx libnginx-mod-http-brotli-static
+```
+
+Without the module, delete the `brotli_static` line in `fingerscore-locations.conf`; nginx then sends gzip.
+
+Copy `deploy/nginx/fingerscore-locations.conf` to `/etc/nginx/` and `deploy/nginx/fingerscore.conf` to `/etc/nginx/sites-enabled/`. Fill in its `TODO:` lines (domain, certificate, site folder), then:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Deploy
+
+Each deploy is four steps, run from the checkout after `npm run build`. `<host>` is the server, `<site>` the folder nginx serves, and `<releases>` a folder beside it for the release lists. Neither path may contain a space.
+
+Once, before the first deploy, create the releases folder:
+
+```bash
+ssh <host> mkdir -p <releases>
+```
+
+Copy the hashed files first. A visitor who gets the new `index.html` must find its files already there:
+
+```bash
+rsync -r --checksum dist/assets/ <host>:<site>/assets/
+```
+
+Then the rest, `index.html` included. Neither copy uses `--delete`, so a tab opened before the deploy still finds its old files:
+
+```bash
+rsync -r --checksum dist/ <host>:<site>/
+```
+
+Record which files this release uses:
+
+```bash
+scp build-report/release-files.txt <host>:<releases>/$(date -u +%Y%m%dT%H%M%SZ).txt
+```
+
+Delete the files no release of the last 30 days uses. The script stops without deleting anything when the newest list is older than the live `index.html`, which happens when the step before failed:
+
+```bash
+ssh <host> 'bash -s' -- <site> <releases> < deploy/prune-assets.sh
+```
+
+To see the list first without deleting:
+
+```bash
+ssh <host> 'bash -s -- --dry-run' <site> <releases> < deploy/prune-assets.sh
+```
+
+### Cloudflare (optional)
+
+The free plan can sit in front of nginx with no change here. It caches `.js`, `.css` and font files at its edge and passes `index.html` through to nginx, so the server mostly answers 304s. Leave "Browser Cache TTL" at "Respect Existing Headers".
+
+Check once the domain is live, replacing `<domain>` and `<vendor file>` (the `vendor-*.js` name in `dist/assets/`):
+
+1. `curl -sI -H 'Accept-Encoding: br' https://<domain>/assets/<vendor file>`, twice. The second answer shows `cf-cache-status: HIT`, `content-encoding: br` and `cache-control: public, max-age=31536000, immutable`.
+2. `curl -sI https://<domain>/` shows `cf-cache-status: DYNAMIC` or `BYPASS`, and `cache-control: no-cache`.
+3. Read the free plan's current terms on bandwidth. Cloudflare's CDN terms restrict video and other large files, not a site's scripts and fonts; this was not confirmed against the plan's bandwidth limits.

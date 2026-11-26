@@ -1,6 +1,6 @@
 name: CI
 
-# Every push runs three jobs in order: build and tests, Trivy, SonarCloud. Each waits for the one before it.
+# Every push runs four jobs in order: build and tests, nginx, Trivy, SonarCloud. Each waits for the one before it.
 # A push of a version tag (v*) also runs the release check.
 on:
   push:
@@ -63,6 +63,15 @@ jobs:
           path: coverage/lcov.info
           if-no-files-found: error
           retention-days: 1
+      - name: Keep the build for the nginx job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build
+          path: |
+            dist
+            build-report
+          if-no-files-found: error
+          retention-days: 1
       - name: Keep the Playwright traces of a failed run
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -72,9 +81,47 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # The build served by nginx with the site's own rules (deploy/nginx): the production end-to-end tests and the
+  # header tests run against it, so a change to the configuration is tested before it reaches the server.
+  nginx:
+    name: nginx
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: build
+      # Ubuntu's own packages, as on the site. The workers run as www-data, which cannot read the runner's home,
+      # so the build is copied to /var/www.
+      - name: Serve the build with nginx
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx libnginx-mod-http-brotli-static gettext-base
+          sudo mkdir -p /var/www/fingerscore
+          sudo cp -r dist/. /var/www/fingerscore/
+          LISTEN=127.0.0.1:8080 DIST=/var/www/fingerscore REPO=$PWD envsubst '$LISTEN $DIST $REPO' \
+            < deploy/nginx/ci.conf | sudo tee /etc/nginx/sites-enabled/default > /dev/null
+          sudo nginx -t
+          sudo systemctl restart nginx
+      - name: The site's own server block loads (deploy/nginx/fingerscore.conf)
+        run: sudo deploy/nginx/check-site-conf.sh "$PWD"
+      - name: Install the Playwright browser
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: End-to-end and header tests against nginx
+        run: npm run test:e2e:preview
+        env:
+          E2E_BASE_URL: http://127.0.0.1:8080
+
   trivy:
     name: Trivy
-    needs: build
+    needs: [build, nginx]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
