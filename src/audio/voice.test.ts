@@ -1,4 +1,4 @@
-import { asCtx, FakeAudioContext, FakeNode } from '../test/fakeAudio';
+import { asCtx, FakeAudioContext, FakeNode, type FakeParam } from '../test/fakeAudio';
 import { PRESETS } from './presets';
 import { playVoice } from './voice';
 
@@ -43,6 +43,16 @@ describe('vibrato', () => {
     const { delay, fade, depth: cents } = PRESETS.Saxophone.vibrato;
     expect(depth.gain.log).toContainEqual(['set', 0, 1 + delay]);
     expect(depth.gain.log).toContainEqual(['linear', cents, 1 + delay + fade]);
+  });
+
+  it('scales the level instead of adding to it, so the release still reaches silence', () => {
+    const { play, lfos } = setup();
+    play();
+    const targets = lfos()[0].outputs.flatMap(g => (g as FakeNode).outputs) as FakeParam[];
+    const tremolo = targets.find(t => t.log !== undefined && t.connectedFrom.length > 0 && t.log.length === 0 && t.value === 1);
+    expect(tremolo).toBeDefined();
+    // Nothing from the LFO lands on a param that carries the note's envelope.
+    for (const t of targets) expect(t.log.some(([m, v]) => m === 'linear' && v === 0)).toBe(false);
   });
 
   it('is left out on a short note', () => {

@@ -13,7 +13,7 @@ export const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 const NOISE_SECONDS = 2;
 const TAIL = 0.02;            // sources run this long past the end, so the release reaches zero
 const VIBRATO_MIN_HOLD = 0.15; // a note gets vibrato only when it lasts this long past the vibrato delay
-const TREMOLO = 0.05;          // the vibrato also moves the level by this share of the peak
+const TREMOLO = 0.05;          // the vibrato also moves the level by this share
 const CONNECTED_BREATH = 0.4;  // a note that follows another with no gap: share of the breath burst
 const CONNECTED_BRIGHT = 0.3;  // ... and share of the filter's attack brightness
 
@@ -22,7 +22,10 @@ const noises = new WeakMap<BaseAudioContext, AudioBuffer>();
 
 function waveFor(ctx: BaseAudioContext, p: Preset): PeriodicWave {
   let known = waves.get(ctx);
-  if (!known) waves.set(ctx, (known = new Map()));
+  if (!known) {
+    known = new Map();
+    waves.set(ctx, known);
+  }
   let wave = known.get(p);
   if (!wave) {
     const imag = Float32Array.from([0, ...p.harmonics]);
@@ -68,7 +71,7 @@ export function playVoice(
   amp.gain.linearRampToValueAtTime(p.gain, attackEnd);
   amp.gain.setValueAtTime(p.gain, releaseStart);
   amp.gain.linearRampToValueAtTime(0, end);
-  osc.connect(lp).connect(amp).connect(out);
+  osc.connect(lp).connect(amp);
   sources.push(osc);
 
   // Breath: looping noise → bandpass → its own envelope, loud on the attack.
@@ -91,7 +94,9 @@ export function playVoice(
   sources.push(noise);
 
   // Vibrato: one slow sine on the pitch (cents) and, a little, on the level; it fades in after the delay.
+  // The level part scales the envelope's output instead of adding to it, so the release still ends in silence.
   const v = p.vibrato;
+  let toneOut: AudioNode = amp;
   if (v.depth > 0 && end - start >= v.delay + VIBRATO_MIN_HOLD) {
     const lfo = track(ctx.createOscillator());
     lfo.type = 'sine';
@@ -104,11 +109,16 @@ export function playVoice(
     const pitch = track(ctx.createGain());
     fadeIn(pitch, v.depth);
     lfo.connect(pitch).connect(osc.detune);
+    const tremolo = track(ctx.createGain());
+    tremolo.gain.value = 1;
+    amp.connect(tremolo);
+    toneOut = tremolo;
     const level = track(ctx.createGain());
-    fadeIn(level, p.gain * TREMOLO);
-    lfo.connect(level).connect(amp.gain);
+    fadeIn(level, TREMOLO);
+    lfo.connect(level).connect(tremolo.gain);
     sources.push(lfo);
   }
+  toneOut.connect(out);
 
   for (const s of sources) {
     s.start(start);

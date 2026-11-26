@@ -8,7 +8,7 @@ export class FakeParam {
   setValueAtTime = vi.fn((v: number, t: number) => { this.log.push(['set', v, t]); return this; });
   linearRampToValueAtTime = vi.fn((v: number, t: number) => { this.log.push(['linear', v, t]); return this; });
   exponentialRampToValueAtTime = vi.fn((v: number, t: number) => { this.log.push(['exp', v, t]); return this; });
-  setTargetAtTime = vi.fn((v: number, t: number, _c: number) => { this.log.push(['target', v, t]); return this; });
+  setTargetAtTime = vi.fn((v: number, t: number) => { this.log.push(['target', v, t]); return this; });
   /** Every value this param is set or ramped to, `value` included. */
   values(): number[] { return [this.value, ...this.log.map(c => c[1])]; }
   /** Highest value reached by automation. */
