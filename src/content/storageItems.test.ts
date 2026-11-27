@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { STORAGE_ITEMS } from './storageItems';
 
 const SRC = join(__dirname, '..');
-const KEY_PATTERN = /^fingerscore\.[a-z0-9.]+$/;
-const QUOTED = /(['"])(fingerscore\.[a-z0-9.]+)\1/g;
+const KEY_PATTERN = /^fingerscore\.[A-Za-z0-9.]+$/;
+const QUOTED = /(['"])(fingerscore\.[A-Za-z0-9.]+)\1/g;
 
 // Literals that match the pattern and are not storage keys.
 const NOT_KEYS: Record<string, string> = {
