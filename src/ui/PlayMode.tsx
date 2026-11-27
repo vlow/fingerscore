@@ -2,19 +2,23 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom';
 import type { Derived } from '../domain/derive';
 import {
-  READ_AT, SPEED, ZOOM, edgeTarget, fitZoom, fullLineBeats, leadIn, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom, systemAt,
-  systemBeats, turnTarget, zoomBelow,
+  READ_AT, ZOOM, clampTempo, edgeTarget, fitZoom, fullLineBeats, leadIn, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom,
+  systemAt, systemBeats, tempoRange, turnTarget, zoomBelow,
 } from '../domain/playMode';
+import { createMetronome, type Metronome } from '../audio/metronome';
 import type { Doc } from '../domain/types';
 import type { SheetLayout } from '../render/layout';
 import { Paper } from '../render/Paper';
+import { listEntries } from '../state/library';
 import { readPlayModePrefs, writePlayModePrefs } from '../state/playModePrefs';
+import { readPlayTempo, writePlayTempo } from '../state/playTempos';
 import { KeyCaps } from './KeyCaps';
 import PaperChoice from './PaperChoice';
 import { GROUPS, isApple, keysOf } from './shortcuts';
 import s from './PlayMode.module.css';
 
-interface Props { doc: Doc; derived: Derived; layout: SheetLayout; onExit(): void }
+/** `sheetId` is the open sheet's library id, or null while it is not saved: Play mode keeps its tempo under it. */
+interface Props { doc: Doc; derived: Derived; layout: SheetLayout; sheetId: string | null; onExit(): void }
 
 const PLAY_KEYS = GROUPS.find(g => g.id === 'play')?.rows ?? [];
 
@@ -91,8 +95,13 @@ function useWakeLock(): void {
  * the screen edges, the arrow keys, Page Up/Down and Space (a page-turner pedal sends those); the sheet can scroll
  * by itself at the speed of the music. Nothing here changes the document.
  */
-export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.Element {
+export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Props): JSX.Element {
   const [prefs, setPrefs] = useState(readPlayModePrefs);
+  // Play mode's own tempo for this sheet: it paces the scroll and the metronome. The sheet's tempo stays as it is.
+  const [bpm, setBpm] = useState(() => clampTempo(readPlayTempo(sheetId), doc.tempo));
+  const range = tempoRange(doc.tempo);
+  const [clicking, setClicking] = useState(false);
+  const metronome = useRef<Metronome | null>(null);
   const [auto, setAuto] = useState(false);
   const [help, setHelp] = useState(false);
   const [page, setPage] = useState({ n: 1, of: 1 });
@@ -106,8 +115,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
 
   const beats = useMemo(() => systemBeats(doc, layout.systems), [doc, layout]);
   // The running scroll reads its pace here, so the slider, the zoom and the tempo apply without a restart.
-  const pace = useRef({ beats, tempo: doc.tempo, speed: prefs.speed, zoom, systemHeight: layout.systemHeight });
-  pace.current = { beats, tempo: doc.tempo, speed: prefs.speed, zoom, systemHeight: layout.systemHeight };
+  const pace = useRef({ beats, bpm, zoom, systemHeight: layout.systemHeight });
+  pace.current = { beats, bpm, zoom, systemHeight: layout.systemHeight };
   // Where the lines are in the scrolled content: the top of the first one and the distance to the next.
   const lines = useRef({ firstTop: 0, pitch: 0 });
   // Auto-scroll waits while the music comes down from the top of the screen to the reading line: how far it has
@@ -117,12 +126,27 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
 
   useWakeLock();
 
-  const change = (patch: Partial<typeof prefs>) => {
-    const next = { ...prefs, ...patch };
-    if (next.zoom === prefs.zoom && next.speed === prefs.speed) return;
-    setPrefs(next);
-    writePlayModePrefs(next);
+  const changeZoom = (next: number) => {
+    if (next === prefs.zoom) return;
+    setPrefs({ zoom: next });
+    writePlayModePrefs({ zoom: next });
   };
+
+  function changeTempo(next: number) {
+    setBpm(next);
+    writePlayTempo(sheetId, next, new Set(listEntries().map(e => e.id)));
+    metronome.current?.setTempo(next);
+  }
+
+  function toggleMetronome() {
+    const m = (metronome.current ??= createMetronome());
+    if (m.running) m.stop();
+    else m.start(bpm, doc.timeSig);
+    setClicking(m.running);
+  }
+
+  // The metronome falls silent with Play mode.
+  useEffect(() => () => metronome.current?.stop(), []);
 
   // Where a page turn is scrolling to. A second turn before it arrives (a pedal pressed twice) counts from there,
   // not from wherever the smooth scroll happens to be; the page number shows that page from the start of the turn.
@@ -184,7 +208,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
       const p = pace.current;
       const pitch = lines.current.pitch > 0 ? lines.current.pitch : (p.systemHeight * p.zoom) / 100;
       const at = systemAt(el.scrollTop + READ_AT * el.clientHeight, lines.current.firstTop, pitch, p.beats.length);
-      const speed = scrollSpeed(p.beats[at] ?? 0, p.tempo, p.speed, p.zoom, p.systemHeight);
+      const speed = scrollSpeed(p.beats[at] ?? 0, p.bpm, p.zoom, p.systemHeight);
       const moved = last === null ? 0 : (speed * Math.min(ts - last, MAX_FRAME_MS)) / 1000;
       last = ts;
       const wait = leadIn(el.clientHeight) - travelled.current;
@@ -245,8 +269,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     if (e.detail > 0) regionRef.current?.focus();
   }
 
-  function larger() { if (canGrow) change({ zoom: stepZoom(prefs.zoom, 1) }); }
-  function smaller() { if (canShrink) change({ zoom: zoomBelow(zoom) }); }
+  function larger() { if (canGrow) changeZoom(stepZoom(prefs.zoom, 1)); }
+  function smaller() { if (canShrink) changeZoom(zoomBelow(zoom)); }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === 'Escape') { e.preventDefault(); if (help) setHelp(false); else onExit(); return; }
@@ -256,7 +280,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     // The slider keeps its arrows; a focused button keeps Space and Enter.
     if (from?.closest('input') && SLIDER_KEYS.has(e.key)) return;
     const onButton = !!from?.closest('button');
-    const handled = ['ArrowRight', 'ArrowDown', 'PageDown', 'ArrowLeft', 'ArrowUp', 'PageUp', 'Home', 'End', 'a', 'A', '+', '=', '-', '−'];
+    const handled = ['ArrowRight', 'ArrowDown', 'PageDown', 'ArrowLeft', 'ArrowUp', 'PageUp', 'Home', 'End', 'a', 'A', 'm', 'M', '+', '=', '-', '−'];
     // A held key, or a foot resting on the pedal, counts once.
     if (e.repeat && (handled.includes(e.key) || (e.key === ' ' && !onButton))) { e.preventDefault(); return; }
     switch (e.key) {
@@ -271,6 +295,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
       case 'Home': turn('first'); break;
       case 'End': turn('last'); break;
       case 'a': case 'A': setAuto(on => !on); break;
+      case 'm': case 'M': toggleMetronome(); break;
       case '+': case '=': larger(); break;
       case '-': case '−': smaller(); break;
       default: return;
@@ -317,11 +342,16 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
           {auto ? 'Pause' : 'Auto-scroll'}
         </button>
         <label className={s.speed}>
-          Speed
-          <input type="range" className={s.slider} aria-label="Auto-scroll speed" min={SPEED.min} max={SPEED.max} step={SPEED.step}
-            value={prefs.speed} onChange={e => change({ speed: Number(e.target.value) })} />
-          <span className={s.readout}>{speedLabel(fullLineBeats(beats), doc.tempo, prefs.speed, startsIn)}</span>
+          Tempo
+          <input type="range" className={s.slider} aria-label="Tempo" min={range.min} max={range.max} step={1}
+            value={bpm} onChange={e => changeTempo(Number(e.target.value))} />
+          <span className={s.readout}>{speedLabel(fullLineBeats(beats), bpm, doc.tempo, startsIn)}</span>
         </label>
+        <button type="button" className={`${s.btn} ${clicking ? s.on : ''}`} aria-pressed={clicking} aria-keyshortcuts="M"
+          title="Metronome (M)" onClick={toggleMetronome}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 3h6l4 18H5z" /><path d="m12 15 5-9" /></svg>
+          Metronome
+        </button>
         <span aria-hidden="true" className={s.rule} />
         <button type="button" className={s.btn} aria-label="A− Smaller" title="Smaller (−)" aria-disabled={!canShrink}
           onClick={smaller}>A−</button>

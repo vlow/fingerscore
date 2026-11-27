@@ -13,7 +13,7 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Draws the sheet and a fingering chart under every note, in compact or full key map style. Recorders come in baroque and German systems.
 - Offers alternate fingerings where published charts list them. You pick one per note.
 - Plays the sheet aloud: Listen and Stop, tempo slider, repeats, first and second endings, jump marks, highlight on the current note.
-- Play mode for playing from the screen: only the sheet, full screen. Pages turn with the arrow keys, Space, Page Up/Down (a Bluetooth pedal sends these), the toolbar or a tap on the screen edge. Home and End, or the outer toolbar buttons, go to the first and last page. Auto-scroll (A) keeps the music about a third down the screen at the pace of the tempo; the speed slider goes from 25 % to 150 %. A− and A+ set the size; the sheet is never wider than the screen. The screen stays awake. ? lists the keys. Esc exits.
+- Play mode for playing from the screen: only the sheet, full screen. Pages turn with the arrow keys, Space, Page Up/Down (a Bluetooth pedal sends these), the toolbar or a tap on the screen edge. Home and End, or the outer toolbar buttons, go to the first and last page. Auto-scroll (A) keeps the music about a third down the screen at the pace of the tempo. Play mode has its own tempo in BPM, from 25 % to 150 % of the sheet's tempo (within 20–300): it paces the scroll and the metronome (M), which clicks every beat and accents the first of the bar (dotted quarters in 6/8, halves in 2/2). Play mode remembers the tempo for each sheet on this device (`fingerscore.playtempo`) and never changes the sheet; Listen keeps the sheet's tempo. A− and A+ set the size; the sheet is never wider than the screen. The screen stays awake. ? lists the keys. Esc exits.
 - Shows jump marks: Segno, Coda, Fine, "To Coda" and the six jumps D.C., D.C. al Fine, D.C. al Coda, D.S., D.S. al Fine and D.S. al Coda. Reads them from MusicXML, MuseScore and ABC, plays the form they name, edits them with undo, and names marks that do not add up in a notice. See "Jump marks" below.
 - Downloads the sheet as a PDF (File, then Download PDF). See "PDF" below.
 - Prints the sheet (A4, paper only) through the browser's print dialog.
@@ -81,6 +81,7 @@ A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chord
 | ← / → | Every mode, sheet focused | Previous or next note or rest (View and Lyrics skip tied notes; Lyrics also skips rests) |
 | Home / End | Every mode, sheet focused | First or last note or rest |
 | Home / End | Play mode | First or last page |
+| M | Play mode | Metronome on or off |
 | Enter, Space | Every mode, sheet focused | Listen from the selection, or stop playback |
 | Esc | Every mode | Clear the selection |
 | ↑ / ↓ | Edit notes, sheet focused | Semitone up or down |

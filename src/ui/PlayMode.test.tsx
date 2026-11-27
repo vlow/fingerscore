@@ -2,13 +2,16 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
-import { fullLineBeats, scrollSpeed, speedLabel, systemBeats } from '../domain/playMode';
+import { fullLineBeats, scrollSpeed, speedLabel, systemBeats, tempoRange } from '../domain/playMode';
+import { forgetUnsavedTempo, readPlayTempo } from '../state/playTempos';
+import { FakeAudioContext, type FakeNode } from '../test/fakeAudio';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { layoutSheet } from '../render/sheetLayout';
 import { initTheme } from '../shell/theme';
 import PlayMode from './PlayMode';
 
 const KEY = 'fingerscore.playmode';
+const TEMPO_KEY = 'fingerscore.playtempo';
 
 /** Animation frames run by hand: frame(ms) calls the callbacks queued so far with that timestamp. */
 let frames = new Map<number, FrameRequestCallback>();
@@ -24,8 +27,17 @@ function run(ms: number) {
   for (let t = 0; t < ms; t += 100) frame(now += 100);
 }
 
+/** The last audio context Play mode made, for the metronome tests. */
+let audio: FakeAudioContext | null = null;
+class RecordingContext extends FakeAudioContext {
+  constructor() { super(); audio = this; }
+}
+
 beforeEach(() => {
   window.localStorage.clear();
+  forgetUnsavedTempo();
+  audio = null;
+  vi.stubGlobal('AudioContext', RecordingContext);
   frames = new Map();
   now = 0;
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { frames.set(nextFrame, cb); return nextFrame++; });
@@ -36,11 +48,11 @@ afterEach(() => {
   Reflect.deleteProperty(navigator, 'wakeLock');
 });
 
-function open(onExit = vi.fn()) {
+function open(onExit = vi.fn(), sheetId: string | null = null) {
   const doc = sampleDoc('asax');
   const derived = derive(doc, DEFAULT_PREFS);
   const layout = layoutSheet(doc, derived);
-  const view = render(<PlayMode doc={doc} derived={derived} layout={layout} onExit={onExit} />);
+  const view = render(<PlayMode doc={doc} derived={derived} layout={layout} sheetId={sheetId} onExit={onExit} />);
   const region = screen.getByRole('region', { name: 'Play mode' });
   const scroller = screen.getByTestId('play-scroller');
   const scrollTo = vi.fn();
@@ -222,10 +234,10 @@ describe('PlayMode', () => {
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
   });
 
-  it('keeps Home and End for the speed slider', () => {
+  it('keeps Home and End for the tempo slider', () => {
     const { scroller, scrollTo } = open();
     size(scroller, 2760, 1000, 880);
-    fireEvent.keyDown(screen.getByRole('slider', { name: 'Auto-scroll speed' }), { key: 'End' });
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Tempo' }), { key: 'End' });
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
@@ -252,19 +264,19 @@ describe('PlayMode', () => {
     expect(zoomOf()).toBe('1.25');
     fireEvent.keyDown(region, { key: '+' });
     expect(zoomOf()).toBe('1.5');
-    expect(stored()).toEqual({ zoom: 150, speed: 100 });
+    expect(stored()).toEqual({ zoom: 150 });
     fireEvent.keyDown(region, { key: '-' });
     fireEvent.keyDown(region, { key: '-' });
     expect(zoomOf()).toBe('1');
     await user.click(screen.getByRole('button', { name: 'A+ Larger' }));
     expect(zoomOf()).toBe('1.25');
     await user.click(screen.getByRole('button', { name: 'A− Smaller' }));
-    expect(stored()).toEqual({ zoom: 100, speed: 100 });
+    expect(stored()).toEqual({ zoom: 100 });
   });
 
   it('keeps A+ focusable at the largest size, so the keys go on working', async () => {
     const user = userEvent.setup();
-    window.localStorage.setItem(KEY, JSON.stringify({ zoom: 175, speed: 100 }));
+    window.localStorage.setItem(KEY, JSON.stringify({ zoom: 175 }));
     const { onExit } = open();
     const larger = screen.getByRole('button', { name: 'A+ Larger' });
     await user.click(larger);
@@ -290,7 +302,7 @@ describe('PlayMode', () => {
     // Smaller steps from what is on screen, to the next size on the grid.
     await user.click(screen.getByRole('button', { name: 'A− Smaller' }));
     expect(zoomOf()).toBe('1');
-    expect(stored()).toEqual({ zoom: 100, speed: 100 });
+    expect(stored()).toEqual({ zoom: 100 });
     expect(larger).toHaveAttribute('aria-disabled', 'false');
     // A wider screen shows the chosen size again.
     Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 1600 });
@@ -313,18 +325,38 @@ describe('PlayMode', () => {
     expect(Number(zoomOf())).toBeGreaterThan(1);
   });
 
-  it('opens with the stored size and speed', () => {
-    window.localStorage.setItem(KEY, JSON.stringify({ zoom: 175, speed: 60 }));
+  it('opens with the stored size', () => {
+    window.localStorage.setItem(KEY, JSON.stringify({ zoom: 175 }));
     open();
     expect(zoomOf()).toBe('1.75');
-    expect(screen.getByRole('slider', { name: 'Auto-scroll speed' })).toHaveValue('60');
   });
 
-  it.each(['{"zoom":999,"speed":"x"}', 'not json', '[]', 'null'])('falls back to the defaults for stored %s', raw => {
+  it.each(['{"zoom":999}', 'not json', '[]', 'null'])('falls back to the default size for stored %s', raw => {
     window.localStorage.setItem(KEY, raw);
     open();
     expect(zoomOf()).toBe('1.25');
-    expect(screen.getByRole('slider', { name: 'Auto-scroll speed' })).toHaveValue('100');
+  });
+
+  it('opens at the sheet’s tempo when the sheet has none stored', () => {
+    const { doc } = open(vi.fn(), 's1');
+    expect(screen.getByRole('slider', { name: 'Tempo' })).toHaveValue(String(doc.tempo));
+    expect(readout()).toMatch(new RegExp(`^♩ = ${doc.tempo} · 100% · `));
+  });
+
+  it('opens at the stored tempo of this sheet, kept in the sheet’s range', () => {
+    window.localStorage.setItem(TEMPO_KEY, JSON.stringify({ s1: 999, s2: 70 }));
+    const { doc } = open(vi.fn(), 's1');
+    expect(screen.getByRole('slider', { name: 'Tempo' })).toHaveValue(String(tempoRange(doc.tempo).max));
+  });
+
+  it('stores a tempo change for this sheet and leaves the sheet alone', () => {
+    const { doc } = open(vi.fn(), 's1');
+    const before = JSON.stringify(doc);
+    const bpm = Math.round(doc.tempo * 0.8);
+    fireEvent.change(screen.getByRole('slider', { name: 'Tempo' }), { target: { value: String(bpm) } });
+    expect(readPlayTempo('s1')).toBe(bpm);
+    expect(readout()).toMatch(new RegExp(`^♩ = ${bpm} · 80% · `));
+    expect(JSON.stringify(doc)).toBe(before);
   });
 
   /** Starts auto-scroll on a tall sheet and returns the pace (px/s at 100 %) of the first two lines, slowest first. */
@@ -333,10 +365,10 @@ describe('PlayMode', () => {
     fireEvent.keyDown(o.region, { key: 'a' });
     frame(now);
     const beats = systemBeats(o.doc, o.layout.systems);
-    const pace = beats.slice(0, 2).map(b => scrollSpeed(b, o.doc.tempo, 100, 125, o.layout.systemHeight)).sort((a, b) => a - b);
+    const pace = beats.slice(0, 2).map(b => scrollSpeed(b, o.doc.tempo, 125, o.layout.systemHeight)).sort((a, b) => a - b);
     return { beats, slow: pace[0], fast: pace[1] };
   }
-  const readout = () => screen.getByRole('slider', { name: 'Auto-scroll speed' }).nextElementSibling!.textContent!;
+  const readout = () => screen.getByRole('slider', { name: 'Tempo' }).nextElementSibling!.textContent!;
 
   it('waits until the music is 35 % down the screen, then scrolls at the pace of the music', () => {
     const o = open();
@@ -346,9 +378,9 @@ describe('PlayMode', () => {
     const wait = 350 / fast;
     run(Math.floor(wait - 1) * 1000);
     expect(o.scroller.scrollTop).toBe(0);
-    expect(readout()).toMatch(/^100% · starts in \d+ s$/);
+    expect(readout()).toMatch(/^♩ = 100 · 100% · starts in \d+ s$/);
     run(Math.ceil(350 / slow - Math.floor(wait - 1)) * 1000);
-    expect(readout()).toMatch(/^100% · 1 line \/ \d+ s$/);
+    expect(readout()).toMatch(/^♩ = 100 · 100% · 1 line \/ \d+ s$/);
     // From here the sheet moves as fast as the music: 3 s of it.
     const from = o.scroller.scrollTop;
     run(3000);
@@ -365,7 +397,7 @@ describe('PlayMode', () => {
     const from = o.scroller.scrollTop;
     const at = Math.floor((from + 350) / (o.layout.systemHeight * 1.25));
     run(1000);
-    const expected = scrollSpeed(beats[at], o.doc.tempo, 100, 125, o.layout.systemHeight);
+    const expected = scrollSpeed(beats[at], o.doc.tempo, 125, o.layout.systemHeight);
     expect(Math.abs(o.scroller.scrollTop - from - expected)).toBeLessThanOrEqual(1.5);
     expect(beats[beats.length - 1]).toBeLessThan(beats[at]);   // the sample ends on a short line
   });
@@ -409,31 +441,32 @@ describe('PlayMode', () => {
     expect(screen.getByRole('button', { name: 'Auto-scroll' })).toBeInTheDocument();
   });
 
-  it('shows the time of a full line and follows the speed slider', () => {
+  it('shows the time of a full line and follows the tempo slider', () => {
     const o = open();
     const full = fullLineBeats(systemBeats(o.doc, o.layout.systems));
-    expect(readout()).toBe(speedLabel(full, o.doc.tempo, 100));
-    const slider = screen.getByRole('slider', { name: 'Auto-scroll speed' });
-    expect(slider).toHaveAttribute('min', '25');
-    expect(slider).toHaveAttribute('max', '150');
+    const half = o.doc.tempo / 2;
+    expect(readout()).toBe(speedLabel(full, o.doc.tempo, o.doc.tempo));
+    const slider = screen.getByRole('slider', { name: 'Tempo' });
+    expect(slider).toHaveAttribute('min', String(tempoRange(o.doc.tempo).min));
+    expect(slider).toHaveAttribute('max', String(tempoRange(o.doc.tempo).max));
     // A running scroll takes the new speed without a restart.
     startAuto(o);
     run(60000);
     let from = o.scroller.scrollTop;
     run(2000);
     const before = o.scroller.scrollTop - from;
-    fireEvent.change(slider, { target: { value: '50' } });
-    expect(readout()).toBe(speedLabel(full, o.doc.tempo, 50));
-    expect(stored()).toEqual({ zoom: 125, speed: 50 });
+    fireEvent.change(slider, { target: { value: String(half) } });
+    expect(readout()).toBe(speedLabel(full, half, o.doc.tempo));
+    expect(readPlayTempo(null)).toBe(half);
     from = o.scroller.scrollTop;
     run(2000);
     expect(Math.abs((o.scroller.scrollTop - from) * 2 - before)).toBeLessThanOrEqual(4);
   });
 
-  it('leaves the arrow keys to the speed slider, and Space to a focused button', () => {
+  it('leaves the arrow keys to the tempo slider, and Space to a focused button', () => {
     const { scroller, scrollTo } = open();
     size(scroller, 2760, 1000);
-    fireEvent.keyDown(screen.getByRole('slider', { name: 'Auto-scroll speed' }), { key: 'ArrowRight' });
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Tempo' }), { key: 'ArrowRight' });
     fireEvent.keyDown(screen.getByRole('button', { name: 'A+ Larger' }), { key: ' ' });
     expect(scrollTo).not.toHaveBeenCalled();
   });
@@ -441,7 +474,7 @@ describe('PlayMode', () => {
   it('turns with Page Down and Space from the slider: a pedal works wherever the focus is', () => {
     const { scroller, scrollTo } = open();
     size(scroller, 2760, 1000);
-    const slider = screen.getByRole('slider', { name: 'Auto-scroll speed' });
+    const slider = screen.getByRole('slider', { name: 'Tempo' });
     fireEvent.keyDown(slider, { key: 'PageDown' });
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 880, behavior: 'smooth' });
     fireEvent.keyDown(slider, { key: 'a' });
@@ -481,9 +514,78 @@ describe('PlayMode', () => {
     expect(o.scroller.scrollTop - from).toBeLessThan(10);
   });
 
+  describe('metronome', () => {
+    beforeEach(() => { vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] }); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    const button = () => screen.getByRole('button', { name: 'Metronome' });
+    const clicks = (): FakeNode[] => audio?.of('oscillator') ?? [];
+    /** Plays `seconds` of audio-clock time; the metronome's scheduler runs as it would. */
+    function advance(seconds: number) {
+      for (let t = 0; t < seconds - 1e-9; t += 0.005) {
+        if (audio) audio.currentTime += 0.005;
+        act(() => { vi.advanceTimersByTime(5); });
+      }
+    }
+
+    it('turns on and off with the button and with M, once per press', async () => {
+      const { region } = open();
+      expect(button()).toHaveAttribute('aria-pressed', 'false');
+      expect(button()).toHaveAttribute('aria-keyshortcuts', 'M');
+      expect(button()).toHaveAttribute('title', 'Metronome (M)');
+      fireEvent.click(button());
+      expect(button()).toHaveAttribute('aria-pressed', 'true');
+      expect(clicks().length).toBeGreaterThan(0);
+      fireEvent.keyDown(region, { key: 'm' });
+      expect(button()).toHaveAttribute('aria-pressed', 'false');
+      fireEvent.keyDown(region, { key: 'M' });
+      expect(button()).toHaveAttribute('aria-pressed', 'true');
+      fireEvent.keyDown(region, { key: 'M', repeat: true });
+      expect(button()).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('turns on with M from the tempo slider and from a focused button', () => {
+      open();
+      fireEvent.keyDown(screen.getByRole('slider', { name: 'Tempo' }), { key: 'm' });
+      expect(button()).toHaveAttribute('aria-pressed', 'true');
+      fireEvent.keyDown(screen.getByRole('button', { name: 'A+ Larger' }), { key: 'm' });
+      expect(button()).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('clicks at the Play mode tempo and takes a change at the next beat', () => {
+      const { region, doc } = open();
+      fireEvent.keyDown(region, { key: 'm' });
+      const beat = 60 / doc.tempo;
+      advance(beat + 0.01);
+      const starts = () => clicks().map(o => o.start.mock.calls[0][0] as number);
+      expect(starts()[1] - starts()[0]).toBeCloseTo(beat, 3);
+      const half = doc.tempo / 2;
+      fireEvent.change(screen.getByRole('slider', { name: 'Tempo' }), { target: { value: String(half) } });
+      advance(2 * beat + 0.2);
+      expect(starts()[2] - starts()[1]).toBeCloseTo(2 * beat, 3);
+    });
+
+    it('falls silent when Play mode closes', () => {
+      const { region, unmount } = open();
+      fireEvent.keyDown(region, { key: 'm' });
+      const made = clicks().length;
+      unmount();
+      for (const o of clicks()) expect(o.stop).toHaveBeenCalledWith();
+      advance(2);
+      expect(clicks()).toHaveLength(made);
+    });
+
+    it('lists M in the Play mode keys card', () => {
+      const { region } = open();
+      fireEvent.keyDown(region, { key: '?' });
+      const card = screen.getByRole('dialog', { name: 'Play mode keys' });
+      expect(card).toHaveTextContent('Metronome on or off');
+    });
+  });
+
   it('exits with Esc from the slider too', () => {
     const { onExit } = open();
-    fireEvent.keyDown(screen.getByRole('slider', { name: 'Auto-scroll speed' }), { key: 'Escape' });
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Tempo' }), { key: 'Escape' });
     expect(onExit).toHaveBeenCalledTimes(1);
   });
 

@@ -174,7 +174,7 @@ function Sheet({ doc }: { doc: Doc }) {
 
   return (
     <div className={s.page}>
-      {performing && PlayMode && <PlayMode doc={doc} derived={derived} layout={layout} onExit={() => setPerforming(false)} />}
+      {performing && PlayMode && <PlayMode doc={doc} derived={derived} layout={layout} sheetId={libraryId} onExit={() => setPerforming(false)} />}
       <div data-print-hide="">
         <PageBar
           left={
