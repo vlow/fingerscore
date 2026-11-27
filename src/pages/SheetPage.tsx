@@ -6,6 +6,7 @@ import { hasSatellites } from '../domain/fingerings';
 import { FAMILIES, familyMembers } from '../domain/instruments';
 import { jumpProblems } from '../domain/jumps';
 import { keySignature, spell } from '../domain/keys';
+import { sheetLines } from '../domain/playMode';
 import type { Doc } from '../domain/types';
 import { usableTracks } from '../import/melody';
 import { Paper } from '../render/Paper';
@@ -39,7 +40,7 @@ import HoldView from './sheet/HoldView';
 import { usePrinting } from './sheet/usePrinting';
 import { paperDescription } from './sheet/paperDescription';
 import { usePlayback } from './sheet/usePlayback';
-import { PLAY_MODE_LOAD_FAILED, playModeModule, usePlayModeLoad } from './sheet/usePlayModeLoad';
+import { PLAY_MODE_LOAD_FAILED, playModeModule, usePlayModeLoad } from '../ui/usePlayModeLoad';
 import { useSelection } from './sheet/useSelection';
 import { useHasKeyboard, useKeysPanel } from './sheet/useKeysPanel';
 import { FINGERING_LOAD_FAILED, useFingeringPanel } from './sheet/useFingeringPanel';
@@ -102,6 +103,7 @@ function Sheet({ doc }: { doc: Doc }) {
   const printing = usePrinting();
   const force = useMemo(() => ({ lyrics: mode === 'lyrics' && !printing, chords: mode === 'chords' && !printing }), [mode, printing]);
   const layout = useMemo(() => layoutSheet(doc, derived, force), [doc, derived, force]);
+  const playLines = useMemo(() => sheetLines(doc, layout.systems, layout.systemHeight), [doc, layout]);
   const { playerRef, playing, playingId, playError, togglePlay, stopPlay } = usePlayback(doc, selectedId);
   // The popover's "Show on instrument" opens the Fingering panel, which is set up further down.
   const showOnInstrument = useRef<(id: string) => void>(() => {});
@@ -204,7 +206,11 @@ function Sheet({ doc }: { doc: Doc }) {
 
   return (
     <div className={s.page}>
-      {performing && PlayMode && <PlayMode doc={doc} derived={derived} layout={layout} onExit={() => setPerforming(false)} />}
+      {performing && PlayMode && (
+        <PlayMode lines={playLines} tempo={doc.tempo} onExit={() => setPerforming(false)}>
+          <Paper doc={doc} derived={derived} layout={layout} playingId={null} readOnly />
+        </PlayMode>
+      )}
       <div data-print-hide="">
         <PageBar
           left={

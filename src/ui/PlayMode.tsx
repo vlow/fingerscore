@@ -1,20 +1,20 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import type { Derived } from '../domain/derive';
 import {
-  READ_AT, SPEED, ZOOM, fitZoom, fullLineBeats, leadIn, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom, systemAt,
-  systemBeats, turnTarget, zoomBelow,
+  READ_AT, SPEED, ZOOM, edgeTarget, fitZoom, fullLineBeats, leadIn, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom, systemAt,
+  turnTarget, zoomBelow, type PlayLine,
 } from '../domain/playMode';
-import type { Doc } from '../domain/types';
-import type { SheetLayout } from '../render/layout';
-import { Paper } from '../render/Paper';
 import { readPlayModePrefs, writePlayModePrefs } from '../state/playModePrefs';
 import { KeyCaps } from './KeyCaps';
 import PaperChoice from './PaperChoice';
 import { GROUPS, isApple, keysOf } from './shortcuts';
 import s from './PlayMode.module.css';
 
-interface Props { doc: Doc; derived: Derived; layout: SheetLayout; onExit(): void }
+/**
+ * What Play mode shows (`children`, read-only, as wide as the paper) and how auto-scroll paces it: one entry of `lines`
+ * per element marked `data-play-line` in the content, top to bottom, and the tempo the beats count at.
+ */
+interface Props { lines: PlayLine[]; tempo: number; children: ReactNode; onExit(): void }
 
 const PLAY_KEYS = GROUPS.find(g => g.id === 'play')?.rows ?? [];
 
@@ -87,11 +87,11 @@ function useWakeLock(): void {
 }
 
 /**
- * Play mode (SPEC §11a): the sheet alone on the whole screen, for playing from it. Pages turn with the toolbar,
+ * Play mode (SPEC §11a): the music alone on the whole screen, for playing from it: a sheet, or a scale. Pages turn with the toolbar,
  * the screen edges, the arrow keys, Page Up/Down and Space (a page-turner pedal sends those); the sheet can scroll
  * by itself at the speed of the music. Nothing here changes the document.
  */
-export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.Element {
+export default function PlayMode({ lines: playLines, tempo, children, onExit }: Props): JSX.Element {
   const [prefs, setPrefs] = useState(readPlayModePrefs);
   const [auto, setAuto] = useState(false);
   const [help, setHelp] = useState(false);
@@ -104,10 +104,10 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const beats = useMemo(() => systemBeats(doc, layout.systems), [doc, layout]);
+  const beats = useMemo(() => playLines.map(l => l.beats), [playLines]);
   // The running scroll reads its pace here, so the slider, the zoom and the tempo apply without a restart.
-  const pace = useRef({ beats, tempo: doc.tempo, speed: prefs.speed, zoom, systemHeight: layout.systemHeight });
-  pace.current = { beats, tempo: doc.tempo, speed: prefs.speed, zoom, systemHeight: layout.systemHeight };
+  const pace = useRef({ lines: playLines, tempo, speed: prefs.speed, zoom });
+  pace.current = { lines: playLines, tempo, speed: prefs.speed, zoom };
   // Where the lines are in the scrolled content: the top of the first one and the distance to the next.
   const lines = useRef({ firstTop: 0, pitch: 0 });
   // Auto-scroll waits while the music comes down from the top of the screen to the reading line: how far it has
@@ -131,7 +131,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   const measure = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const systems = el.querySelectorAll('[data-testid="system"]');
+    const systems = el.querySelectorAll('[data-play-line]');
     if (systems.length > 0) {
       const top = (sys: Element) => sys.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
       const firstTop = top(systems[0]);
@@ -143,8 +143,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     setPage(prev => (prev.n === next.n && prev.of === next.of ? prev : next));
   }, []);
 
-  // The page count depends on the zoom, the sheet and the window.
-  useLayoutEffect(measure, [measure, zoom, layout]);
+  // The page count depends on the zoom, the music and the window.
+  useLayoutEffect(measure, [measure, zoom, playLines]);
   // The width to fit depends on the window alone, and is read only when the window changes: the zoom it leads to
   // must never be a reason to read it again. (The scroller always shows its scrollbar, so the zoom cannot change
   // the width either; a width that followed the zoom would flip between two sizes without end.)
@@ -182,9 +182,10 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
       if (el.scrollTop + el.clientHeight >= el.scrollHeight - END_SLACK) { setAuto(false); return; }
       // The pace of the line the player reads: every line passes in the time its own beats take.
       const p = pace.current;
-      const pitch = lines.current.pitch > 0 ? lines.current.pitch : (p.systemHeight * p.zoom) / 100;
-      const at = systemAt(el.scrollTop + READ_AT * el.clientHeight, lines.current.firstTop, pitch, p.beats.length);
-      const speed = scrollSpeed(p.beats[at] ?? 0, p.tempo, p.speed, p.zoom, p.systemHeight);
+      const pitch = lines.current.pitch > 0 ? lines.current.pitch : ((p.lines[0]?.height ?? 0) * p.zoom) / 100;
+      const at = systemAt(el.scrollTop + READ_AT * el.clientHeight, lines.current.firstTop, pitch, p.lines.length);
+      const line = p.lines[at];
+      const speed = line ? scrollSpeed(line.beats, p.tempo, p.speed, p.zoom, line.height) : 0;
       const moved = last === null ? 0 : (speed * Math.min(ts - last, MAX_FRAME_MS)) / 1000;
       last = ts;
       const wait = leadIn(el.clientHeight) - travelled.current;
@@ -210,14 +211,15 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     measure();
   }
 
-  function turn(dir: 1 | -1) {
+  /** A page turn (`dir` 1 or -1), or a jump to the first or the last page (`'first'`, `'last'`). */
+  function turn(dir: 1 | -1 | 'first' | 'last') {
     const el = scrollerRef.current;
     if (!el) return;
     // While auto-scroll runs the turn is a jump: the next auto-scroll frame would cancel a smooth scroll.
     const smooth = !auto && !prefersReducedMotion();
     const pending = goingTo.current;
     const from = pending && smooth && performance.now() - pending.since < TURN_MS ? pending.top : el.scrollTop;
-    const top = turnTarget(from, el.scrollHeight, el.clientHeight, dir);
+    const top = typeof dir === 'number' ? turnTarget(from, el.scrollHeight, el.clientHeight, dir) : edgeTarget(el.scrollHeight, el.clientHeight, dir);
     if (top === from) return;
     goingTo.current = smooth ? { top, since: performance.now() } : null;
     // After a turn the player reads from the top of the new page: auto-scroll waits again.
@@ -255,7 +257,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     // The slider keeps its arrows; a focused button keeps Space and Enter.
     if (from?.closest('input') && SLIDER_KEYS.has(e.key)) return;
     const onButton = !!from?.closest('button');
-    const handled = ['ArrowRight', 'ArrowDown', 'PageDown', 'ArrowLeft', 'ArrowUp', 'PageUp', 'a', 'A', '+', '=', '-', '−'];
+    const handled = ['ArrowRight', 'ArrowDown', 'PageDown', 'ArrowLeft', 'ArrowUp', 'PageUp', 'Home', 'End', 'a', 'A', '+', '=', '-', '−'];
     // A held key, or a foot resting on the pedal, counts once.
     if (e.repeat && (handled.includes(e.key) || (e.key === ' ' && !onButton))) { e.preventDefault(); return; }
     switch (e.key) {
@@ -267,6 +269,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
         return;
       case 'ArrowRight': case 'ArrowDown': case 'PageDown': turn(1); break;
       case 'ArrowLeft': case 'ArrowUp': case 'PageUp': turn(-1); break;
+      case 'Home': turn('first'); break;
+      case 'End': turn('last'); break;
       case 'a': case 'A': setAuto(on => !on); break;
       case '+': case '=': larger(); break;
       case '-': case '−': smaller(); break;
@@ -282,7 +286,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
         onWheel={() => { goingTo.current = null; }} onTouchMove={() => { goingTo.current = null; }} onClick={onTap}>
         <div className={s.pad}>
           <div data-testid="play-zoom" className={s.zoomed} style={{ zoom: zoom / 100 }}>
-            <Paper doc={doc} derived={derived} layout={layout} playingId={null} readOnly />
+            {children}
           </div>
         </div>
       </div>
@@ -293,12 +297,20 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
           Exit
         </button>
         <span aria-hidden="true" className={s.rule} />
+        <button type="button" className={s.btn} aria-label="First page" aria-keyshortcuts="Home" title="First page (Home)"
+          aria-disabled={page.n <= 1} onClick={() => turn('first')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 5v14" /><path d="m17 18-6-6 6-6" /></svg>
+        </button>
         <button type="button" className={s.btn} aria-label="Previous page" title="Previous page (←, Page Up)" onClick={() => turn(-1)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </button>
         <span aria-live="polite" className={s.page}>Page {page.n} / {page.of}</span>
         <button type="button" className={s.btn} aria-label="Next page" title="Next page (→, Space, Page Down)" onClick={() => turn(1)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+        <button type="button" className={s.btn} aria-label="Last page" aria-keyshortcuts="End" title="Last page (End)"
+          aria-disabled={page.n >= page.of} onClick={() => turn('last')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 5v14" /><path d="m7 18 6-6-6-6" /></svg>
         </button>
         <span aria-hidden="true" className={s.rule} />
         <button type="button" className={`${s.btn} ${auto ? s.on : ''}`} aria-pressed={auto} title="Auto-scroll (A)" onClick={() => setAuto(on => !on)}>
@@ -309,7 +321,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
           Speed
           <input type="range" className={s.slider} aria-label="Auto-scroll speed" min={SPEED.min} max={SPEED.max} step={SPEED.step}
             value={prefs.speed} onChange={e => change({ speed: Number(e.target.value) })} />
-          <span className={s.readout}>{speedLabel(fullLineBeats(beats), doc.tempo, prefs.speed, startsIn)}</span>
+          <span className={s.readout}>{speedLabel(fullLineBeats(beats), tempo, prefs.speed, startsIn)}</span>
         </label>
         <span aria-hidden="true" className={s.rule} />
         <button type="button" className={s.btn} aria-label="A− Smaller" title="Smaller (−)" aria-disabled={!canShrink}

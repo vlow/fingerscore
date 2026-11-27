@@ -20,6 +20,17 @@ export function systemBeats(doc: Doc, systems: SystemLayout[]): number[] {
   return systems.map(sys => sys.bars.reduce((sum, b) => sum + doc.score[b.bar].cap, 0) / TPQ);
 }
 
+/** One line of what Play mode shows: its quarter-note beats and its drawn height at 100 % (CSS pixels). */
+export interface PlayLine { beats: number; height: number }
+
+/** A sheet's lines: one per system, all of the layout's system height. */
+export function sheetLines(doc: Doc, systems: SystemLayout[], systemHeight: number): PlayLine[] {
+  return systemBeats(doc, systems).map(beats => ({ beats, height: systemHeight }));
+}
+
+/** A scale has no tempo: auto-scroll reads one note per beat at this tempo, so a full line of 15 notes takes 15 s. */
+export const SCALE_TEMPO = 60;
+
 /** The beats of a full line, for the readout: a short last line or a pickup does not count. */
 export function fullLineBeats(beats: number[]): number {
   return beats.length ? Math.max(...beats) : 0;
@@ -41,13 +52,10 @@ export function lineSeconds(beats: number, tempo: number, speed: number): number
   return (beats * 60) / tempo / (speed / 100);
 }
 
-/**
- * Auto-scroll speed in CSS pixels per second: one zoomed system per line time. `systemHeight` is the layout's
- * (`SheetLayout.systemHeight`: it depends on the bands the sheet uses).
- */
-export function scrollSpeed(beats: number, tempo: number, speed: number, zoom: number, systemHeight: number): number {
+/** Auto-scroll speed in CSS pixels per second: one zoomed line per line time. `height` is the line's at 100 %. */
+export function scrollSpeed(beats: number, tempo: number, speed: number, zoom: number, height: number): number {
   if (beats <= 0) return 0;
-  return (systemHeight * zoom) / 100 / lineSeconds(beats, tempo, speed);
+  return (height * zoom) / 100 / lineSeconds(beats, tempo, speed);
 }
 
 /** A rest of the sheet shorter than this share of a turn is no page of its own: the page before ends at the end. */
@@ -89,6 +97,11 @@ export function turnTarget(scrollTop: number, scrollHeight: number, clientHeight
   if (dir === 1) return starts.find(start => start > scrollTop + SLACK) ?? end;
   const before = starts.filter(start => start < scrollTop - SLACK);
   return before.length > 0 ? before[before.length - 1] : 0;
+}
+
+/** The scrollTop of the first or the last page: the top, or the end of the scroll. */
+export function edgeTarget(scrollHeight: number, clientHeight: number, edge: 'first' | 'last'): number {
+  return edge === 'first' ? 0 : Math.max(0, scrollHeight - clientHeight);
 }
 
 export function stepZoom(zoom: number, dir: 1 | -1): number {

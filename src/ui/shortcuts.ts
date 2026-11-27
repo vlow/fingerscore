@@ -70,6 +70,7 @@ export const GROUPS: Group[] = [
   { id: 'play', title: 'Play mode', sub: 'full screen', rows: [
     { id: 'pn', label: 'Next page', syn: 'turn pedal forward', keys: [k('→'), 'or', k('Space'), 'or', k('PgDn')] },
     { id: 'pp', label: 'Previous page', syn: 'turn pedal back', keys: [k('←'), 'or', k('PgUp')] },
+    { id: 'edge', label: 'First or last page', syn: 'start beginning end top bottom skip go to', keys: [k('Home'), '/', k('End')] },
     { id: 'auto', label: 'Auto-scroll on or off', syn: 'scroll speed', keys: [k('A')] },
     { id: 'zoom', label: 'Larger or smaller (like A+ and A−)', syn: 'zoom size bigger plus minus equals', keys: [k('+'), '/', k('−')] },
     { id: 'phelp', label: 'Show or hide these keys', syn: 'help shortcuts', keys: [k('?')] },
