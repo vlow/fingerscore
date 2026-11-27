@@ -139,3 +139,53 @@ it('says so when a note has no sourced fingering, and presses nothing', () => {
   expect(within(view()).getByText('No sourced fingering for this note. fingerscore never guesses.')).toBeInTheDocument();
   expect(press()).toEqual([]);
 });
+
+describe('range strip', () => {
+  const strip = () => screen.getByRole('group', { name: 'Notes of the range' });
+  const shownNotes = () => within(strip()).getAllByRole('button').map(b => b.textContent);
+
+  it('lists the whole range while unmeasured, marks alternates and extended notes, and picks a note', async () => {
+    renderAt('?inst=asax&note=Bb4');
+    expect(shownNotes()).toHaveLength(39); // B♭3 … C7
+    expect(within(strip()).getByRole('button', { name: 'B♭4, more than one fingering' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(strip()).getByRole('button', { name: /^C7, .*extended$/ })).toBeInTheDocument();
+    await user.click(within(strip()).getByRole('button', { name: /^D5/ }));
+    expect(note()).toBe('D5');
+    expect(address()).toBe('?inst=asax&note=D5');
+  });
+
+  describe('narrower than the range', () => {
+    const original = globalThis.ResizeObserver;
+    beforeEach(() => {
+      // Ten notes of 36 px fit in 360 px.
+      globalThis.ResizeObserver = class {
+        constructor(private readonly report: ResizeObserverCallback) {}
+        observe() { this.report([{ contentRect: { width: 360 } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+        unobserve() {}
+        disconnect() {}
+      } as unknown as typeof ResizeObserver;
+    });
+    afterEach(() => { globalThis.ResizeObserver = original; });
+
+    it('shows what fits around the note, names the rest as page buttons, and follows a note chosen elsewhere', async () => {
+      renderAt('?inst=asax&note=Bb3');
+      expect(shownNotes()).toEqual(['B♭3', 'B3', 'C4', 'D♭4', 'D4', 'E♭4', 'E4', 'F4', 'G♭4', 'G4']);
+      expect(screen.queryByRole('button', { name: /^Show lower notes/ })).toBeNull();
+      await user.click(screen.getByRole('button', { name: 'Show higher notes, A♭4 – C7' }));
+      expect(shownNotes()[0]).toBe('G♭4'); // eight notes on: a screenful of ten minus two
+      expect(screen.getByRole('button', { name: 'Show lower notes, B♭3 – F4' })).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Octave up' }));
+      expect(note()).toBe('B♭4');
+      await user.type(screen.getByRole('textbox', { name: 'Type a note' }), 'C7{Enter}');
+      expect(shownNotes()[shownNotes().length - 1]).toBe('C7');
+      fireEvent.wheel(strip(), { deltaX: -80 });
+      expect(shownNotes()[shownNotes().length - 1]).toBe('B♭6');
+    });
+  });
+});
+
+it('draws the staff with the chosen note and a picker caption', () => {
+  renderAt('?inst=asax&note=Bb4');
+  expect(screen.getByRole('img', { name: /^Staff showing B♭4\./ })).toBeInTheDocument();
+  expect(screen.getByText(/Shaded: outside the range of the instrument\./)).toBeInTheDocument();
+});

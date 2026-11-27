@@ -12,6 +12,8 @@ import { isApple } from '../ui/shortcuts';
 import { readNote } from '../domain/noteText';
 import { defaultNote, inRange, readAddress, writeAddress, type FingeringsState } from './fingerings/address';
 import { NamePicker } from './fingerings/NamePicker';
+import { RangeStrip } from './fingerings/RangeStrip';
+import { StaffPicker } from './fingerings/StaffPicker';
 import { readSoprano, writeSoprano } from './fingerings/prefs';
 import s from './Fingerings.module.css';
 
@@ -40,6 +42,7 @@ export default function Fingerings() {
   const alt = st.alt < options.length ? st.alt : 0;
   const option = options[alt] ?? null;
   const mod = isApple() ? '⌘' : 'Ctrl';
+  const range = useMemo(() => Array.from({ length: i.ext - i.lo + 1 }, (_, k) => i.lo + k), [i.lo, i.ext]);
 
   const show = (patch: Partial<FingeringsState>) => {
     const next = { ...st, alt, ...patch };
@@ -89,9 +92,13 @@ export default function Fingerings() {
         </div>
       </div>
 
+      <RangeStrip notes={range} current={st.note} onPick={pickNote}
+        hasAlternates={n => optionsFor(st.inst, n, st.system).length > 1} extended={n => n > i.hi} />
+
       <div className={s.grid}>
         <aside className={s.picker} aria-label="Choose a note">
           <h2 className={s.cardTitle}>Note as you read it</h2>
+          <StaffPicker pitch={st.note} lo={i.lo} hi={i.ext} onPick={pickNote} />
           <NamePicker pitch={st.note} lo={i.lo} hi={i.ext} instName={displayName(i)} mod={mod} onPick={pickNote} />
           <p className={s.keysHint}>↑ ↓ semitone · {mod} ↑ ↓ octave · A – G note name</p>
 

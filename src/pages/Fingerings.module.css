@@ -217,6 +217,117 @@
   font-weight: 700;
 }
 
+/* Range strip: one row that never wraps; the line under it pages the row. */
+.strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* As wide as the page, not as its notes: the strip measures this width to decide how many notes fit. */
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-card);
+  background: var(--c-surface);
+}
+
+.stripHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.stripRow {
+  display: flex;
+  min-width: 0;
+  gap: 2px;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.stripNote {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 36px;
+  min-height: 44px;
+  padding: 2px 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stripNote:hover {
+  border-color: var(--c-border-strong);
+}
+
+.stripExt {
+  background: var(--c-warning-bg);
+}
+
+.stripNote[aria-pressed='true'] {
+  border-color: var(--c-selected-bg);
+  background: var(--c-selected-bg);
+  color: var(--c-selected-fg);
+}
+
+.dot,
+.noDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.dot {
+  background: currentColor;
+}
+
+.stripPages {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pageButton {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Staff picker. */
+.staff {
+  margin: 0;
+}
+
+.staff svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  border-radius: var(--radius);
+  background: var(--c-paper);
+}
+
+.staff figcaption {
+  margin-top: 6px;
+}
+
 @media (max-width: 899px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
