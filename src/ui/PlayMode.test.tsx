@@ -192,6 +192,43 @@ describe('PlayMode', () => {
     expect(region.querySelector('[data-turn]')).toBeNull();
   });
 
+  it('goes to the first and the last page with Home, End and the toolbar, and marks the button at its end', async () => {
+    const user = userEvent.setup();
+    const { region, scroller, scrollTo } = open();
+    size(scroller, 2760, 1000, 880);
+    const first = screen.getByRole('button', { name: 'First page' });
+    const last = screen.getByRole('button', { name: 'Last page' });
+    expect(first).toHaveAttribute('aria-keyshortcuts', 'Home');
+    expect(last).toHaveAttribute('aria-keyshortcuts', 'End');
+    expect(first).toHaveAttribute('aria-disabled', 'false');
+    expect(last).toHaveAttribute('aria-disabled', 'false');
+    fireEvent.keyDown(region, { key: 'End' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'smooth' });
+    expect(screen.getByText('Page 3 / 3')).toBeInTheDocument();
+    size(scroller, 2760, 1000, 1760);
+    expect(last).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.keyDown(region, { key: 'Home' });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
+    size(scroller, 2760, 1000, 0);
+    expect(first).toHaveAttribute('aria-disabled', 'true');
+    scrollTo.mockClear();
+    await user.click(first);
+    expect(scrollTo).not.toHaveBeenCalled();
+    await user.click(last);
+    expect(region).toHaveFocus();
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'smooth' });
+    size(scroller, 2760, 1000, 1760);
+    await user.click(first);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
+  });
+
+  it('keeps Home and End for the speed slider', () => {
+    const { scroller, scrollTo } = open();
+    size(scroller, 2760, 1000, 880);
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Auto-scroll speed' }), { key: 'End' });
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
   it('does nothing on a turn when the sheet fits the screen', () => {
     const { region, scroller, scrollTo } = open();
     size(scroller, 900, 1000);

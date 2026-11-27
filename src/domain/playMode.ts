@@ -91,6 +91,11 @@ export function turnTarget(scrollTop: number, scrollHeight: number, clientHeight
   return before.length > 0 ? before[before.length - 1] : 0;
 }
 
+/** The scrollTop of the first or the last page: the top, or the end of the scroll. */
+export function edgeTarget(scrollHeight: number, clientHeight: number, edge: 'first' | 'last'): number {
+  return edge === 'first' ? 0 : Math.max(0, scrollHeight - clientHeight);
+}
+
 export function stepZoom(zoom: number, dir: 1 | -1): number {
   return Math.max(ZOOM.min, Math.min(ZOOM.max, zoom + dir * ZOOM.step));
 }
