@@ -4,6 +4,7 @@ import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
 import { fullLineBeats, scrollSpeed, speedLabel, systemBeats, tempoRange } from '../domain/playMode';
 import { forgetUnsavedTempo, readPlayTempo } from '../state/playTempos';
+import { WARMUP_SECONDS } from '../audio/metronome';
 import { FakeAudioContext, type FakeNode } from '../test/fakeAudio';
 import { DEFAULT_PREFS } from '../domain/transpose';
 import { layoutSheet } from '../render/sheetLayout';
@@ -535,6 +536,7 @@ describe('PlayMode', () => {
       expect(button()).toHaveAttribute('title', 'Metronome (M)');
       fireEvent.click(button());
       expect(button()).toHaveAttribute('aria-pressed', 'true');
+      advance(WARMUP_SECONDS + 0.05);
       expect(clicks().length).toBeGreaterThan(0);
       fireEvent.keyDown(region, { key: 'm' });
       expect(button()).toHaveAttribute('aria-pressed', 'false');
@@ -556,7 +558,7 @@ describe('PlayMode', () => {
       const { region, doc } = open();
       fireEvent.keyDown(region, { key: 'm' });
       const beat = 60 / doc.tempo;
-      advance(beat + 0.01);
+      advance(WARMUP_SECONDS + 0.03 + beat + 0.01);
       const starts = () => clicks().map(o => o.start.mock.calls[0][0] as number);
       expect(starts()[1] - starts()[0]).toBeCloseTo(beat, 3);
       const half = doc.tempo / 2;

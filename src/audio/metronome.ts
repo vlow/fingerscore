@@ -21,6 +21,12 @@ const LOOKAHEAD = 0.1;
 const TICK_MS = 25;
 /** The first click, and a click after a tempo change that is already overdue, comes this long from now. */
 const LEAD = 0.05;
+/**
+ * On a new audio context the output is still waking up when its clock starts: the first part of the sound is lost,
+ * and Bluetooth headphones lose more. Beat 1 waits this long there, so the bar starts on 1. A context that has run
+ * before keeps the output awake and starts after LEAD.
+ */
+export const WARMUP_SECONDS = 0.3;
 
 export function createMetronome(): Metronome {
   let ctx: AudioContext | null = null;
@@ -30,6 +36,8 @@ export function createMetronome(): Metronome {
   let beat = 0;          // the beat of the bar the next click falls on, from 0
   let next = 0;          // audio-clock time of the next click
   let last: number | null = null;
+  // A new context: beat 1 is placed once its clock has moved past this time, WARMUP_SECONDS later.
+  let waitPast: number | null = null;
   let live: OscillatorNode[] = [];
 
   const interval = () => (60 / bpm) * pattern.quarters;
@@ -52,6 +60,11 @@ export function createMetronome(): Metronome {
   function pump() {
     const c = ctx;
     if (!c) return;
+    if (waitPast !== null) {
+      if (c.currentTime <= waitPast) return;
+      next = c.currentTime + WARMUP_SECONDS;
+      waitPast = null;
+    }
     while (next < c.currentTime + LOOKAHEAD) {
       click(c, next, beat === 0);
       last = next;
@@ -66,17 +79,20 @@ export function createMetronome(): Metronome {
     for (const o of live) o.stop();
     live = [];
     last = null;
+    waitPast = null;
   }
 
   return {
     start(tempo, timeSig) {
       stop();
+      const fresh = ctx === null;
       ctx ??= new AudioContext();
       void ctx.resume();
       bpm = tempo;
       pattern = beatPattern(timeSig);
       beat = 0;
       next = ctx.currentTime + LEAD;
+      if (fresh) waitPast = ctx.currentTime;
       pump();
       timer = setInterval(pump, TICK_MS);
     },

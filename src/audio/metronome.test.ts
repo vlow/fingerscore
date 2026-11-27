@@ -1,5 +1,5 @@
 import { FakeAudioContext, type FakeNode } from '../test/fakeAudio';
-import { ACCENT_HZ, BEAT_HZ, createMetronome } from './metronome';
+import { ACCENT_HZ, BEAT_HZ, WARMUP_SECONDS, createMetronome, type Metronome } from './metronome';
 
 let ctx: FakeAudioContext | null = null;
 class RecordingContext extends FakeAudioContext {
@@ -27,9 +27,41 @@ const clicks = (): FakeNode[] => ctx!.of('oscillator');
 const startsAt = () => clicks().map(o => Number((o.start.mock.calls[0][0] as number).toFixed(3)));
 const pitches = () => clicks().map(o => o.frequency.value);
 
+/**
+ * A metronome whose audio context has already run once, its clock back at 0 and nothing recorded: the state after
+ * a first start and stop. The tests below that time clicks from 0 start from here.
+ */
+function warm(): Metronome {
+  const m = createMetronome();
+  m.start(120, [4, 4]);
+  advance(0.03);
+  m.stop();
+  ctx!.created.length = 0;
+  ctx!.currentTime = 0;
+  return m;
+}
+
 describe('metronome', () => {
-  it('clicks every beat, accenting the first of each bar', () => {
+  it('waits for a new audio context’s clock to run, then gives the output time to wake before beat 1', () => {
     const m = createMetronome();
+    m.start(120, [4, 4]);
+    vi.advanceTimersByTime(200);   // the device has not started: the clock stands still
+    expect(clicks()).toHaveLength(0);
+    advance(WARMUP_SECONDS + 0.1);
+    expect(clicks().length).toBeGreaterThan(0);
+    expect(startsAt()[0]).toBeCloseTo(0.025 + WARMUP_SECONDS, 3);   // the first tick that sees the clock run
+    expect(pitches()[0]).toBe(ACCENT_HZ);
+  });
+
+  it('starts at once on an audio context that already runs', () => {
+    const m = warm();
+    m.start(120, [4, 4]);
+    expect(startsAt()).toEqual([0.05]);
+    expect(pitches()).toEqual([ACCENT_HZ]);
+  });
+
+  it('clicks every beat, accenting the first of each bar', () => {
+    const m = warm();
     m.start(120, [3, 4]);
     expect(m.running).toBe(true);
     advance(1.5);
@@ -38,20 +70,20 @@ describe('metronome', () => {
   });
 
   it('clicks dotted quarters in 6/8', () => {
-    createMetronome().start(120, [6, 8]);
+    warm().start(120, [6, 8]);
     advance(1.6);
     expect(startsAt()).toEqual([0.05, 0.8, 1.55]);
     expect(pitches()).toEqual([ACCENT_HZ, BEAT_HZ, ACCENT_HZ]);
   });
 
   it('clicks halves in 2/2', () => {
-    createMetronome().start(120, [2, 2]);
+    warm().start(120, [2, 2]);
     advance(2.1);
     expect(startsAt()).toEqual([0.05, 1.05, 2.05]);
   });
 
   it('takes a new tempo at the next beat without catching up', () => {
-    const m = createMetronome();
+    const m = warm();
     m.start(120, [4, 4]);
     advance(0.6);
     expect(startsAt()).toEqual([0.05, 0.55]);
@@ -62,7 +94,7 @@ describe('metronome', () => {
   });
 
   it('starts the next beat soon when the new interval is already over', () => {
-    const m = createMetronome();
+    const m = warm();
     m.start(60, [4, 4]);
     advance(0.9);   // clicks at 0.05, next due at 1.05
     m.setTempo(240); // 0.05 + 0.25 is past: the next click comes shortly
@@ -71,7 +103,7 @@ describe('metronome', () => {
   });
 
   it('falls silent at once when stopped', () => {
-    const m = createMetronome();
+    const m = warm();
     m.start(120, [4, 4]);
     advance(0.52);   // 0.55 is already queued
     const queued = clicks().length;
@@ -83,7 +115,7 @@ describe('metronome', () => {
   });
 
   it('starts again on beat 1 after a stop', () => {
-    const m = createMetronome();
+    const m = warm();
     m.start(120, [4, 4]);
     advance(0.6);
     m.stop();
@@ -94,7 +126,7 @@ describe('metronome', () => {
   });
 
   it('lets go of its audio context when disposed', () => {
-    const m = createMetronome();
+    const m = warm();
     m.start(120, [4, 4]);
     advance(0.2);
     m.dispose();
