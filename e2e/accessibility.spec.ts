@@ -185,7 +185,15 @@ async function smallTargets(page: Page): Promise<TargetResult> {
       const labels = (el as HTMLInputElement).labels ? [...(el as HTMLInputElement).labels!] : [];
       const boxes = () => [el, ...labels].map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
       if (boxes().length === 0 || el.getBoundingClientRect().width === 0) continue;
-      const outside = () => boxes().some(r => r.bottom < 0 || r.top < 0 || r.bottom > innerHeight || r.right < 0 || r.left < 0 || r.right > innerWidth);
+      // Outside the window, or cut off by a scrolling container (the paper beside the open shortcuts panel): a person scrolls to it first.
+      let scroller = el.parentElement;
+      while (scroller && !/auto|scroll|hidden/.test(getComputedStyle(scroller).overflowX)) scroller = scroller.parentElement;
+      const clipped = (r: DOMRect) => {
+        if (!scroller) return false;
+        const c = scroller.getBoundingClientRect();
+        return r.left < c.left || r.right > c.right;
+      };
+      const outside = () => boxes().some(r => r.bottom < 0 || r.top < 0 || r.bottom > innerHeight || r.right < 0 || r.left < 0 || r.right > innerWidth || clipped(r));
       if (outside()) {
         // Centre it vertically; scroll sideways only as far as needed, so that a scrolled container does not clip its neighbours.
         el.scrollIntoView({ block: 'center', inline: 'nearest' });

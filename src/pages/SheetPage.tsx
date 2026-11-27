@@ -14,6 +14,7 @@ import { canRedo, canUndo, useApp } from '../state/store';
 import Banners from '../ui/Banners';
 import FileMenu from '../ui/FileMenu';
 import JumpNotice from '../ui/JumpNotice';
+import { KeysButton, KeysPanel } from '../ui/KeysPanel';
 import KeyBridge from '../ui/KeyBridge';
 import { intentProps, lazyModule, lazyView } from '../shell/lazy';
 import { sheetPdfModule } from '../pdf/request';
@@ -25,6 +26,7 @@ import PaperChoice from '../ui/PaperChoice';
 import ShowToggles from '../ui/ShowToggles';
 import Steps from '../ui/Steps';
 import Transport from '../ui/Transport';
+import { isApple } from '../ui/shortcuts';
 import { UndoRedo } from '../ui/UndoRedo';
 import { useSheetShortcuts } from '../ui/useSheetShortcuts';
 import Card from './sheet/Card';
@@ -39,6 +41,7 @@ import { paperDescription } from './sheet/paperDescription';
 import { usePlayback } from './sheet/usePlayback';
 import { PLAY_MODE_LOAD_FAILED, playModeModule, usePlayModeLoad } from './sheet/usePlayModeLoad';
 import { useSelection } from './sheet/useSelection';
+import { useHasKeyboard, useKeysPanel } from './sheet/useKeysPanel';
 import { useSheetKeys } from './sheet/useSheetKeys';
 import '../styles/print.css';
 import s from './SheetPage.module.css';
@@ -146,6 +149,10 @@ function Sheet({ doc }: { doc: Doc }) {
     wasPerforming.current = performing;
   }, [performing]);
 
+  const hasKeyboard = useHasKeyboard();
+  const apple = useMemo(isApple, []);
+  const keys = useKeysPanel({ mode, performing, paperRef });
+
   useSheetShortcuts({
     onSave: () => { if (!performing) save(); },
     onUndo: () => { if (!performing) travel('undo'); },
@@ -202,6 +209,7 @@ function Sheet({ doc }: { doc: Doc }) {
             <div className={s.barRight}>
               <UndoRedo canUndo={undoable} canRedo={redoable} onUndo={() => travel('undo')} onRedo={() => travel('redo')}
                 onFocusLost={focusSheet} />
+              {hasKeyboard && <KeysButton ref={keys.buttonRef} open={keys.open} onToggle={keys.toggleFromButton} />}
               <SaveControls status={status} error={saveError} onSave={save} />
               <FileMenu entries={entries} currentId={libraryId} onPdf={() => void downloadPdf()} pdfIntent={intentProps(sheetPdfModule)} pdfBusy={pdfBusy} onPrint={print} onDownload={download}
                 onOpenFile={file => void openFile(file)} onNew={() => navigate('/')} onOpen={openSaved} onDelete={deleteSaved}
@@ -212,96 +220,101 @@ function Sheet({ doc }: { doc: Doc }) {
         {fileError && <p role="alert" className={s.fileError}>{fileError}</p>}
       </div>
 
-      <div className={s.body}>
-        <aside className={s.side} data-print-hide="">
-          <Card heading={<h2 id="detected-h" className={s.cardTitle}>Detected in file</h2>} labelledBy="detected-h">
-            <dl className={s.facts}>
-              <div><dt>Key (concert)</dt><dd>{derived.originalKey}</dd></div>
-              <div><dt>Range</dt><dd>{origRange}</dd></div>
-              <div><dt>Time</dt><dd>{doc.timeSig[0]}/{doc.timeSig[1]}</dd></div>
-              <div><dt>Tempo</dt><dd>♩ = {doc.tempo}</dd></div>
-              <div><dt>Track</dt><dd>{doc.source.track}</dd></div>
-            </dl>
-            {doc.source.simplified && <p className={s.notice}>{SIMPLIFIED}</p>}
-          </Card>
+      <div className={s.row}>
+        <div className={s.body}>
+          <aside className={s.side} data-print-hide="">
+            <Card heading={<h2 id="detected-h" className={s.cardTitle}>Detected in file</h2>} labelledBy="detected-h">
+              <dl className={s.facts}>
+                <div><dt>Key (concert)</dt><dd>{derived.originalKey}</dd></div>
+                <div><dt>Range</dt><dd>{origRange}</dd></div>
+                <div><dt>Time</dt><dd>{doc.timeSig[0]}/{doc.timeSig[1]}</dd></div>
+                <div><dt>Tempo</dt><dd>♩ = {doc.tempo}</dd></div>
+                <div><dt>Track</dt><dd>{doc.source.track}</dd></div>
+              </dl>
+              {doc.source.simplified && <p className={s.notice}>{SIMPLIFIED}</p>}
+            </Card>
 
-          <Card heading={<label htmlFor="inst" className={`${s.cardTitle} ${s.cardLabel}`}>Fingerings for</label>}>
-            <select id="inst" className={s.select} value={doc.inst} onChange={e => setInstrument(e.target.value as Doc['inst'])}>
-              {FAMILIES.map(f => (
-                <optgroup key={f} label={f}>
-                  {familyMembers(f).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </optgroup>
-              ))}
-            </select>
-            {hasSatellites(i.kind) && (
-              <Toggle label="Fingering chart style" value={doc.chartStyle} onPick={v => patchDoc({ chartStyle: v })}
-                options={[{ value: 'compact', name: 'Compact', sub: 'only keys in use' }, { value: 'full', name: 'Full key map', sub: 'every key, ghosted' }]} />
-            )}
-            {i.kind === 'rec' && (
-              <Toggle label="Recorder fingering system" value={doc.recorderSystem} onPick={v => patchDoc({ recorderSystem: v })}
-                options={[{ value: 'baroque', name: 'Baroque fingering' }, { value: 'german', name: 'German fingering' }]} />
-            )}
-            {withAlternates > 0 && doc.show.fingerings && (
-              <div className={s.alts}>
-                <span>
-                  {withAlternates} {withAlternates === 1 ? 'note has' : 'notes have'} alternate fingerings · {overridden} changed by you
-                </span>
-                {overridden > 0 && (
-                  <button type="button" className={s.small} onClick={() => { closeAlt(false); resetFingerings(); }}>Reset all to auto</button>
-                )}
+            <Card heading={<label htmlFor="inst" className={`${s.cardTitle} ${s.cardLabel}`}>Fingerings for</label>}>
+              <select id="inst" className={s.select} value={doc.inst} onChange={e => setInstrument(e.target.value as Doc['inst'])}>
+                {FAMILIES.map(f => (
+                  <optgroup key={f} label={f}>
+                    {familyMembers(f).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              {hasSatellites(i.kind) && (
+                <Toggle label="Fingering chart style" value={doc.chartStyle} onPick={v => patchDoc({ chartStyle: v })}
+                  options={[{ value: 'compact', name: 'Compact', sub: 'only keys in use' }, { value: 'full', name: 'Full key map', sub: 'every key, ghosted' }]} />
+              )}
+              {i.kind === 'rec' && (
+                <Toggle label="Recorder fingering system" value={doc.recorderSystem} onPick={v => patchDoc({ recorderSystem: v })}
+                  options={[{ value: 'baroque', name: 'Baroque fingering' }, { value: 'german', name: 'German fingering' }]} />
+              )}
+              {withAlternates > 0 && doc.show.fingerings && (
+                <div className={s.alts}>
+                  <span>
+                    {withAlternates} {withAlternates === 1 ? 'note has' : 'notes have'} alternate fingerings · {overridden} changed by you
+                  </span>
+                  {overridden > 0 && (
+                    <button type="button" className={s.small} onClick={() => { closeAlt(false); resetFingerings(); }}>Reset all to auto</button>
+                  )}
+                </div>
+              )}
+            </Card>
+
+            <Card heading={<h2 id="key-h" className={s.cardTitle}>Key &amp; transposition</h2>} labelledBy="key-h"
+              badge={derived.isSuggested && <span className={s.badge}>Suggested</span>}>
+              <KeyBridge doc={doc} derived={derived} onShift={setShift} />
+            </Card>
+
+            <Card heading={<h2 id="range-h" className={s.cardTitle}>Range check</h2>} labelledBy="range-h">
+              <RangeMeter derived={derived} />
+            </Card>
+
+            <Card heading={<h2 id="text-h" className={s.cardTitle}>Lyrics &amp; chords</h2>} labelledBy="text-h">
+              <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
+            </Card>
+
+            <Card heading={<h2 id="show-h" className={s.cardTitle}>Show on sheet</h2>} labelledBy="show-h">
+              <ShowToggles show={doc.show} onChange={show => patchDoc({ show })} />
+              <PaperChoice variant="card" />
+            </Card>
+          </aside>
+
+          <div className={s.main}>
+            <div data-print-hide="" className={s.banners}>
+              <Banners doc={doc} derived={derived} onShift={setShift} />
+            </div>
+            {/* The handler catches keys that bubble up from the controls inside; the div itself is not a control. */}
+            <div role="presentation" className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
+              <ModeSwitch mode={mode} keys={hasKeyboard ? { apple } : undefined} onIntent={preloadPanel} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
+              <div className={s.toolbarEnd}>
+                {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
+                {playModeFailed && <p role="alert" className={s.playError}>{PLAY_MODE_LOAD_FAILED}</p>}
+                {altLoadFailed && <p role="alert" className={s.playError}>{ALT_LOAD_FAILED}</p>}
+                <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')}
+                  onPlayMode={enterPlayMode} playModeIntent={intentProps(playModeModule)} playModeRef={playModeButton} />
               </div>
-            )}
-          </Card>
-
-          <Card heading={<h2 id="key-h" className={s.cardTitle}>Key &amp; transposition</h2>} labelledBy="key-h"
-            badge={derived.isSuggested && <span className={s.badge}>Suggested</span>}>
-            <KeyBridge doc={doc} derived={derived} onShift={setShift} />
-          </Card>
-
-          <Card heading={<h2 id="range-h" className={s.cardTitle}>Range check</h2>} labelledBy="range-h">
-            <RangeMeter derived={derived} />
-          </Card>
-
-          <Card heading={<h2 id="text-h" className={s.cardTitle}>Lyrics &amp; chords</h2>} labelledBy="text-h">
-            <BulkCard doc={doc} selectedId={selectedId} onEdit={applyTextEdit} />
-          </Card>
-
-          <Card heading={<h2 id="show-h" className={s.cardTitle}>Show on sheet</h2>} labelledBy="show-h">
-            <ShowToggles show={doc.show} onChange={show => patchDoc({ show })} />
-            <PaperChoice variant="card" />
-          </Card>
-        </aside>
-
-        <div className={s.main}>
-          <div data-print-hide="" className={s.banners}>
-            <Banners doc={doc} derived={derived} onShift={setShift} />
-          </div>
-          {/* The handler catches keys that bubble up from the controls inside; the div itself is not a control. */}
-          <div role="presentation" className={s.toolbar} data-print-hide="" onKeyDown={onToolbarKey}>
-            <ModeSwitch mode={mode} onIntent={preloadPanel} onMode={(m, byClick) => { preloadPanel(m); changeMode(m, byClick); }} />
-            <div className={s.toolbarEnd}>
-              {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
-              {playModeFailed && <p role="alert" className={s.playError}>{PLAY_MODE_LOAD_FAILED}</p>}
-              {altLoadFailed && <p role="alert" className={s.playError}>{ALT_LOAD_FAILED}</p>}
-              <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')}
-                onPlayMode={enterPlayMode} playModeIntent={intentProps(playModeModule)} playModeRef={playModeButton} />
+            </div>
+            {!performing && <JumpNotice problems={problems} dropped={doc.source.dropped ?? []} />}
+            {/* Outside the group it describes: a description inside its own element is read twice. */}
+            <p id={descriptionId} className={s.srOnly}>{paperDescription(doc, derived)}</p>
+            {/* Focusable on purpose: a scrolling area must be reachable by keyboard, and the sheet keys act from here. */}
+            <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL} // NOSONAR typescript:S6845
+              aria-describedby={descriptionId} onKeyDown={onSheetKey}>
+              <HoldView paper={paperRef} systemHeight={layout.systemHeight} selectedId={selectedId} />
+              <p role="status" className={s.srOnly} aria-live="polite">{announcement}</p>
+              <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}
+                selectedId={selectedId} onSelect={id => select(id)}
+                onTitle={title => patchDoc({ title }, 'title')} onSubtitle={subtitle => patchDoc({ subtitle }, 'subtitle')}
+                renderUnderChart={renderUnderChart}
+                forceShow={force} renderUnderSystem={renderUnderSystem} />
             </div>
           </div>
-          {!performing && <JumpNotice problems={problems} dropped={doc.source.dropped ?? []} />}
-          {/* Outside the group it describes: a description inside its own element is read twice. */}
-          <p id={descriptionId} className={s.srOnly}>{paperDescription(doc, derived)}</p>
-          {/* Focusable on purpose: a scrolling area must be reachable by keyboard, and the sheet keys act from here. */}
-          <div ref={paperRef} className={s.paperScroll} data-print-paper="" tabIndex={0} role="group" aria-label={SHEET_LABEL} // NOSONAR typescript:S6845
-            aria-describedby={descriptionId} onKeyDown={onSheetKey}>
-            <HoldView paper={paperRef} systemHeight={layout.systemHeight} selectedId={selectedId} />
-            <p role="status" className={s.srOnly} aria-live="polite">{announcement}</p>
-            <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}
-              selectedId={selectedId} onSelect={id => select(id)}
-              onTitle={title => patchDoc({ title }, 'title')} onSubtitle={subtitle => patchDoc({ subtitle }, 'subtitle')}
-              renderUnderChart={renderUnderChart}
-              forceShow={force} renderUnderSystem={renderUnderSystem} />
-          </div>
         </div>
+        {hasKeyboard && keys.open && (
+          <KeysPanel mode={mode} apple={apple} flash={keys.flash} searchRef={keys.searchRef} onClose={keys.close} />
+        )}
       </div>
     </div>
   );

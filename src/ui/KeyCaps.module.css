@@ -1,0 +1,79 @@
+/* Key caps, after the keyboard shortcuts concept (KeyboardShortcuts.dc.html). */
+.caps {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.combo {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 3px;
+  font: inherit;
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid var(--c-border-strong);
+  border-bottom: 2px solid var(--c-kbd-edge);
+  border-radius: 6px;
+  background: var(--c-raised);
+  color: var(--c-text);
+  font-family: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sm {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 11px;
+}
+
+.md {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.lg {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.sep,
+.plus {
+  padding: 3px 2px 0;
+  color: var(--c-muted);
+  font-size: 11.5px;
+}
+
+.withCap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cap {
+  color: var(--c-muted);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}

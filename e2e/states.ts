@@ -170,11 +170,31 @@ const RAW: AppState[] = [
     },
   },
   {
+    // The keyboard shortcuts panel, docked beside the sheet, with Edit notes as the current group.
+    id: 'sheet-keys-panel',
+    landmark: page => page.getByRole('complementary', { name: 'Keyboard shortcuts' }),
+    open: async page => {
+      await sheet(page);
+      await mode(page, 'Edit notes');
+      await page.getByRole('group', { name: /^Sheet music/ }).focus();
+      await page.keyboard.press('?');
+    },
+  },
+  {
     id: 'play-mode',
     landmark: page => page.getByRole('region', { name: 'Play mode' }),
     open: async page => {
       await sheet(page);
       await page.getByRole('button', { name: 'Play mode' }).click();
+    },
+  },
+  {
+    id: 'play-mode-keys',
+    landmark: page => page.getByRole('dialog', { name: 'Play mode keys' }),
+    open: async page => {
+      await sheet(page);
+      await page.getByRole('button', { name: 'Play mode' }).click();
+      await page.getByRole('button', { name: '? Keyboard shortcuts' }).click();
     },
   },
   {
