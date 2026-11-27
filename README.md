@@ -18,6 +18,7 @@ Version 1 answered one question: does the path from a song file to a playable, p
 - Downloads the sheet as a PDF (File, then Download PDF). See "PDF" below.
 - Prints the sheet (A4, paper only) through the browser's print dialog.
 - Shows scales with fingerings on a Scales page, linked from the header. Pick an instrument and one of eight scales (major, natural, harmonic and melodic minor, major and minor pentatonic, blues, chromatic) in any of twelve keys; the key with six accidentals comes in both spellings (F♯ and G♭ major, D♯ and E♭ minor). Choose one octave, two octaves or the whole range, up or up and down. Letters follow the scale degrees, except that a double sharp or double flat is written as the plain neighbouring note (A♮ instead of B𝄫). On transposing instruments you name keys by what you read or by what sounds. Notes with more than one fingering get the same "⇅" pill as on a sheet: pick another fingering and the neighbouring notes adapt; "Reset all to auto" undoes your picks, and a change of instrument, scale, key, range, direction or recorder system clears them. Optional: alternate fingerings under each note, note names. Download the scale as a PDF (A4 or Letter, by browser region, like the sheet PDF) or print it (A4, the scale only, with your picks). The page remembers your settings and picks in this browser.
+- Shows any note on a Fingerings page (/fingerings), linked from the header: the fingering chart beside drawings of the instrument from two sides, chosen so that no part of the instrument hides a key. Pointing at a key in the chart, on a drawing or in the "Press" list highlights it everywhere and names it; a click pins it, Esc unpins it. Pick the note by its letter, ♭ ♮ ♯ and octave, by typing a name (C, F♯5, Bb4, or German names such as Fis and Bes), or with the keys; every sourced alternate is listed with its chart. The soprano saxophone comes straight or curved. The address holds the instrument, note and fingering, so a link opens on that note.
 - Has four text pages, linked from the footer: Terms (/terms), Imprint (/imprint), Privacy (/privacy) and About (/about). Their personal details come from `src/content/operator.ts`, which holds the owner's details. A notice at the start-page drop zone, in the library view of "Your sheets" (beside Import…) and in the File menu links to Terms.
 - Covers 12 instruments: Xaphoon, saxophones, clarinet, flutes, recorders.
 - Ships a sample song, Auld Lang Syne. Regenerate it with `npm run demo`.
@@ -95,10 +96,14 @@ A mode switch above the sheet has four modes: View, Edit notes, Lyrics and Chord
 | Enter, Tab | Lyric or Chord field | Next note (Lyrics) or next event (Chords) |
 | Shift+Tab | Lyric or Chord field | Previous note or event; at the first one, back to the sheet |
 | Esc | Lyric or Chord field | Clear the selection |
+| ↑ / ↓ | Fingerings page, not in the text field | Semitone up or down |
+| Ctrl/⌘+↑ / ↓ | Fingerings page, not in the text field | Octave up or down |
+| A–G | Fingerings page, not in the text field | That note name, nearest to the current note |
+| Esc | Fingerings page | Unpin the highlighted key |
 
 The Edit notes keys follow the key's position on layouts without Latin letters, and on French AZERTY the digits and the dot work with Shift.
 
-On a device with a keyboard, the page bar has a Keys button and the hint under the mode switch names the mode's most useful keys. The button, or ?, opens a panel that lists every shortcut, Play mode's included, with the keys of the platform (⌘ on a Mac, Ctrl elsewhere). On screens 1024 px and wider it docks beside the sheet; below, it is a drawer, and below 768 px a bottom sheet. The group of the current mode is marked "Now". A search field finds a shortcut by action or key name. While the panel is open, pressing a shortcut runs it and lights its row. The panel stays open or closed across visits (`fingerscore.keysPanel`). ? does nothing while you type in a field. In Play mode, ? or the ? button shows a card with the Play mode keys; ? or Esc closes it.
+On a device with a keyboard, the page bar has a Keys button and the hint under the mode switch names the mode's most useful keys. The button, or ?, opens a panel that lists every shortcut, Play mode's and the Fingerings page's included, with the keys of the platform (⌘ on a Mac, Ctrl elsewhere). On screens 1024 px and wider it docks beside the sheet; below, it is a drawer, and below 768 px a bottom sheet. The group of the current mode is marked "Now". A search field finds a shortcut by action or key name. While the panel is open, pressing a shortcut runs it and lights its row. The panel stays open or closed across visits (`fingerscore.keysPanel`). ? does nothing while you type in a field. In Play mode, ? or the ? button shows a card with the Play mode keys; ? or Esc closes it.
 
 ### Triplets
 
@@ -254,7 +259,7 @@ npx playwright test e2e/acceptance.spec.ts -g "A05"
 |---|---|
 | D01 | A first visit on a dark system is dark when the page has loaded; the page follows the system live; on a light system the sheet is white |
 | D02 | Light and Dark from the header survive a reload and override the system; System follows it again |
-| D03 | In dark mode none of the 23 states shows a colour that only the light theme has |
+| D03 | In dark mode none of the 24 states shows a colour that only the light theme has |
 | D04 | The sheet is on Night paper; Dimmed and Sepia apply at once and survive a reload; a paper change is no edit; Play mode and Scales use the same paper |
 | D05 | The PDF made in dark mode has the colours of the one made in light mode; print shows white paper and dark notes on all three papers, also under System on a dark system |
 | D06 | The accessibility scan passes on the sheet with out-of-range notes on Night, Dimmed and Sepia paper, and on Play mode and Scales on Dimmed and Sepia |
@@ -263,7 +268,7 @@ The theme is System, Light or Dark. System is the default and follows the device
 
 ### Accessibility: `e2e/accessibility.spec.ts`
 
-The file has 128 tests and takes about 109 s on a laptop (test times add up to 107.2 s in one full run). Each of 23 states is opened from empty storage: start (empty, one saved sheet, library, refusal), Tracks, the sheet in View, Edit notes with a note selected, Edit notes with the jump notice (a D.S. without a Segno), Lyrics and Chords, the out-of-range banner, the alternate-fingering popover, the File menu and the PDF message, the keyboard shortcuts panel, Play mode and its keys card, Scales (default and popover), and the four text pages. Every state gets:
+The file has 133 tests and takes about 109 s on a laptop (test times add up to 107.2 s in one full run). Each of 24 states is opened from empty storage: start (empty, one saved sheet, library, refusal), Tracks, the sheet in View, Edit notes with a note selected, Edit notes with the jump notice (a D.S. without a Segno), Lyrics and Chords, the out-of-range banner, the alternate-fingering popover, the File menu and the PDF message, the keyboard shortcuts panel, Play mode and its keys card, Scales (default and popover), the Fingerings page, and the four text pages. Every state gets:
 
 - **Scan:** axe-core with the rule sets `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa`, once in light mode and once in dark mode. Zero findings are required.
 - **Target size:** 36 × 36 px for every control, 44 × 44 px for primary actions and the header navigation. The test measures the area that takes the click, by asking the browser which element sits at four points near the corners of the required box. A link inside a sentence is exempt; a menu item is not. On the paper, a note and an alternate-fingering pill are held to 24 px: a pill must stay under its note, and pills where notes sit close are 26 px apart, so a larger click area would reach the next pill. A note must be at least 24 px high. Its width follows the note spacing: it measured 31 px at the narrowest, once, on the sample, and the test asserts at least 16 px wide and 24 px high.

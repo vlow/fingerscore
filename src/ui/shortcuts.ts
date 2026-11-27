@@ -20,7 +20,7 @@ export interface Shortcut {
   macKeys?: Part[];
 }
 
-export type GroupId = 'sheet' | 'move' | 'notes' | 'text' | 'play';
+export type GroupId = 'sheet' | 'move' | 'notes' | 'text' | 'play' | 'fingerings';
 
 export interface Group {
   id: GroupId;
@@ -74,6 +74,13 @@ export const GROUPS: Group[] = [
     { id: 'zoom', label: 'Larger or smaller (like A+ and A−)', syn: 'zoom size bigger plus minus equals', keys: [k('+'), '/', k('−')] },
     { id: 'phelp', label: 'Show or hide these keys', syn: 'help shortcuts', keys: [k('?')] },
     { id: 'pesc', label: 'Leave Play mode', syn: 'exit escape', keys: [k('Esc')] },
+  ] },
+  // The Fingerings page has no shortcuts panel, so rowFor does not light these rows; they are listed here with the rest.
+  { id: 'fingerings', title: 'Fingerings page', sub: 'not in the text field', rows: [
+    { id: 'fsemi', label: 'Semitone up or down', syn: 'pitch higher lower arrow note', keys: [k('↑'), '/', k('↓')] },
+    { id: 'foct', label: 'Octave up or down', syn: 'pitch octave note', keys: [k('Mod', '↑'), '/', k('Mod', '↓')] },
+    { id: 'fletter', label: 'That note name, nearest to the current note', syn: 'pitch letter name note', keys: [k('A'), '–', k('G')] },
+    { id: 'fesc', label: 'Unpin the highlighted key', syn: 'escape highlight', keys: [k('Esc')] },
   ] },
 ];
 

@@ -1,0 +1,141 @@
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { useApp } from '../state/store';
+import Fingerings from './Fingerings';
+
+const user = userEvent.setup();
+
+function Address() {
+  return <output data-testid="address">{useLocation().search}</output>;
+}
+
+const renderAt = (query: string) => render(
+  <MemoryRouter initialEntries={[`/fingerings${query}`]}>
+    <Routes><Route path="/fingerings" element={<><Fingerings /><Address /></>} /></Routes>
+  </MemoryRouter>,
+);
+
+const view = () => screen.getByRole('region', { name: /^Fingering for / });
+const note = () => within(view()).getAllByRole('paragraph')[0].textContent;
+const address = () => screen.getByTestId('address').textContent;
+const info = () => within(view()).getByRole('status').textContent;
+/** The Press section: the keys the fingering holds down. */
+const pressSection = () => screen.queryByRole('heading', { name: 'Press' })?.parentElement ?? null;
+const press = () => { const p = pressSection(); return p ? within(p).queryAllByRole('listitem').map(li => li.textContent) : []; };
+/** A key's button in the Press list (the chart's and drawings' keys are buttons too). */
+const pressButton = (name: RegExp) => within(pressSection()!).getByRole('button', { name });
+
+beforeEach(() => {
+  localStorage.clear();
+  useApp.setState({ instId: 'asax' });
+});
+
+it('opens on the note of the address, with the keys to press and every sourced fingering', () => {
+  renderAt('?inst=asax&note=Bb4');
+  expect(screen.getByRole('heading', { level: 1, name: 'Fingerings' })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'for instrument' })).toHaveValue('asax');
+  expect(note()).toBe('B♭4');
+  expect(within(view()).getByText('written · sounds D♭4')).toBeInTheDocument();
+  expect(press()).toEqual(['B keyleft index · pressed', 'A keyleft middle · pressed', 'Side B♭right index, side · pressed']);
+  const alternates = within(screen.getByRole('complementary', { name: 'Choose a note' })).getAllByRole('button', { name: /^(Standard|Alternate)/ });
+  expect(alternates.map(b => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
+});
+
+it('opens on the preferred instrument and its written C5 without an address', () => {
+  useApp.setState({ instId: 'cl' });
+  renderAt('');
+  expect(screen.getByRole('combobox', { name: 'for instrument' })).toHaveValue('cl');
+  expect(note()).toBe('C5');
+});
+
+it('shows a picked alternate, names it and keeps it in the address', async () => {
+  renderAt('?inst=asax&note=Bb4');
+  await user.click(within(screen.getByRole('complementary', { name: 'Choose a note' })).getByRole('button', { name: /^Alternate 1/ }));
+  expect(within(view()).getByText('Alternate 1')).toBeInTheDocument();
+  expect(address()).toBe('?inst=asax&note=Bb4&alt=2');
+  expect(press()).toContain('Bis B♭left index · pressed');
+});
+
+it('highlights a key from the press list in the chart and on the drawing, and pins it until Esc', async () => {
+  renderAt('?inst=asax&note=Bb4');
+  await user.hover(pressButton(/Side B♭/));
+  expect(info()).toBe('Side B♭ · right index, side · pressed');
+  // The chart's key and both drawings' key show the accent ring.
+  expect(document.querySelectorAll('[data-key="sBb"] [stroke-width="0.9"], [data-key="sBb"] [stroke-width="3"]').length).toBeGreaterThanOrEqual(2);
+  await user.click(pressButton(/Side B♭/));
+  await user.unhover(pressButton(/Side B♭/));
+  expect(info()).toBe('Side B♭ · right index, side · pressed');
+  await user.keyboard('{Escape}');
+  expect(info()).toMatch(/^Point at a key/);
+});
+
+it('reaches every key from the keyboard through the All keys list; the chart and drawings are pointer-only', async () => {
+  renderAt('?inst=asax&note=Bb4');
+  // The chart's and drawings' keys sit too close together to be controls: no button role, no tab stop.
+  expect(document.querySelectorAll('[data-key][role], [data-key][tabindex]')).toHaveLength(0);
+  const all = screen.getByText('All keys of the alto saxophone').closest('details')!;
+  await user.click(screen.getByText('All keys of the alto saxophone'));
+  const buttons = within(all).getAllByRole('button');
+  expect(buttons).toHaveLength(23);
+  await user.tab();
+  fireEvent.focus(within(all).getByRole('button', { name: /^Palm D/ }));
+  expect(info()).toBe('Palm D · left palm');
+  fireEvent.focus(within(all).getByRole('button', { name: /^B key/ }));
+  expect(info()).toBe('B key · left index · pressed');
+});
+
+it('changes the note with the keys, not while typing', async () => {
+  renderAt('?inst=asax&note=Bb4');
+  fireEvent.keyDown(window, { key: 'ArrowUp' });
+  expect(note()).toBe('B4');
+  fireEvent.keyDown(window, { key: 'ArrowDown', ctrlKey: true });
+  expect(note()).toBe('B3');
+  fireEvent.keyDown(window, { key: 'e' });
+  expect(note()).toBe('E4');
+  fireEvent.keyDown(window, { key: 'ArrowDown', ctrlKey: true });
+  expect(note()).toBe('E4'); // E3 is below the alto's range
+  await user.click(screen.getByRole('textbox', { name: 'Type a note' }));
+  await user.keyboard('g');
+  expect(note()).toBe('E4');
+});
+
+it('reads a typed note name, and says when it cannot', async () => {
+  renderAt('?inst=asax&note=Bb4');
+  const field = screen.getByRole('textbox', { name: 'Type a note' });
+  await user.type(field, 'Fis5{Enter}');
+  expect(note()).toBe('G♭5');
+  await user.type(field, 'C2{Enter}');
+  expect(screen.getByRole('alert')).toHaveTextContent('That note is outside the range of the Alto sax in E♭.');
+  await user.clear(field);
+  await user.type(field, 'Q{Enter}');
+  expect(screen.getByRole('alert')).toHaveTextContent('Type a note name such as C, F♯5, Bb or Fis.');
+});
+
+it('picks a note by letter, accidental and octave; a note out of range is not offered', async () => {
+  renderAt('?inst=asax&note=Bb4');
+  await user.click(screen.getByRole('button', { name: 'E' }));
+  expect(note()).toBe('E4');
+  await user.click(screen.getByRole('button', { name: 'Flat' }));
+  expect(note()).toBe('E♭4');
+  await user.click(screen.getByRole('button', { name: 'Octave up' }));
+  expect(note()).toBe('E♭5');
+  renderAt('?inst=asax&note=B3');
+  const downs = screen.getAllByRole('button', { name: 'Octave down' });
+  expect(downs[downs.length - 1]).toBeDisabled();
+});
+
+it('offers the soprano saxophone straight or curved and remembers the choice', async () => {
+  renderAt('?inst=ssax&note=C5');
+  expect(screen.getByRole('group', { name: /^Soprano saxophone: front/ })).toBeInTheDocument();
+  await user.click(screen.getByRole('radio', { name: 'Curved' }));
+  expect(screen.getByRole('group', { name: /^Curved soprano saxophone/ })).toBeInTheDocument();
+  expect(address()).toBe('?inst=ssax&note=C5&shape=curved');
+  expect(JSON.parse(localStorage.getItem('fingerscore.fingerings')!)).toEqual({ soprano: 'curved' });
+});
+
+it('says so when a note has no sourced fingering, and presses nothing', () => {
+  renderAt('?inst=ssax&note=Bb6'); // a documented gap (fingering-gaps.json)
+  expect(within(view()).getByText('No sourced fingering for this note. fingerscore never guesses.')).toBeInTheDocument();
+  expect(press()).toEqual([]);
+});

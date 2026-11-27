@@ -23,6 +23,9 @@ export default function Header() {
         <Link to="/scales" {...routeIntent('/scales')} className="nav-link" aria-current={pathname === '/scales' ? 'page' : undefined}>
           Scales
         </Link>
+        <Link to="/fingerings" {...routeIntent('/fingerings')} className="nav-link" aria-current={pathname === '/fingerings' ? 'page' : undefined}>
+          Fingerings
+        </Link>
       </nav>
       <ThemeMenu />
     </header>

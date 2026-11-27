@@ -18,7 +18,7 @@ it('a cold /sheet with a stored sheet renders the sheet', async () => {
   expect(screen.getByTestId('paper')).toBeInTheDocument();
 });
 
-it.each([['About', '/about'], ['Scales', '/scales']])('focusing the %s link prefetches its page', (name, path) => {
+it.each([['About', '/about'], ['Scales', '/scales'], ['Fingerings', '/fingerings']])('focusing the %s link prefetches its page', (name, path) => {
   const prefetch = vi.spyOn(routeModule(path), 'prefetch');
   render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>);
   screen.getByRole('link', { name }).focus();

@@ -1,0 +1,233 @@
+/* The Fingerings page (design 4.2): a page bar, the note picker on the left, the fingering on the right. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.forLabel {
+  color: var(--c-muted);
+  font-size: 16px;
+}
+
+.select,
+.input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-card);
+  background: var(--c-surface);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+
+.cardTitle:first-child {
+  margin-top: 0;
+}
+
+.count {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--c-raised);
+  color: var(--c-text);
+  letter-spacing: 0;
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pickButton {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pickButton:hover:not(:disabled) {
+  border-color: var(--c-accent);
+}
+
+.pickButton[aria-pressed='true'] {
+  border-color: var(--c-selected-bg);
+  background: var(--c-selected-bg);
+  color: var(--c-selected-fg);
+}
+
+.pickButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.octave {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.octaveLabel {
+  min-width: 6em;
+  text-align: center;
+  font-weight: 600;
+}
+
+.type {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.typeRow {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.error {
+  margin: 0;
+  color: var(--c-error);
+  font-size: 14px;
+}
+
+.keysHint,
+.muted {
+  margin: 0;
+  color: var(--c-muted);
+  font-size: 13px;
+}
+
+.alts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.alt[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent-tint);
+}
+
+.mini {
+  flex: none;
+  width: 26px;
+  height: auto;
+}
+
+.altText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.altName {
+  font-weight: 700;
+}
+
+@media (max-width: 899px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

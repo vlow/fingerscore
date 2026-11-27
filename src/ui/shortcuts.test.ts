@@ -4,8 +4,8 @@ const press = (key: string, init: KeyboardEventInit = {}) => new KeyboardEvent('
 const group = (id: string) => GROUPS.find(g => g.id === id)!;
 
 describe('the shortcut list', () => {
-  it('has five groups in a fixed order and unique row ids', () => {
-    expect(GROUPS.map(g => g.id)).toEqual(['sheet', 'move', 'notes', 'text', 'play']);
+  it('has six groups in a fixed order and unique row ids', () => {
+    expect(GROUPS.map(g => g.id)).toEqual(['sheet', 'move', 'notes', 'text', 'play', 'fingerings']);
     const ids = GROUPS.flatMap(g => g.rows.map(r => r.id));
     expect(new Set(ids).size).toBe(ids.length);
   });

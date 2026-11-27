@@ -2520,7 +2520,8 @@ describe('keyboard shortcuts panel', () => {
     const search = within(panel()!).getByRole('searchbox', { name: 'Find a key or action' });
     await waitFor(() => expect(search).toHaveFocus());
     await user.keyboard('oct');
-    expect(within(panel()!).getAllByRole('listitem').map(li => li.querySelector('span')!.textContent)).toEqual(['Octave up or down']);
+    // Edit notes and the Fingerings page each have an octave row.
+    expect(within(panel()!).getAllByRole('listitem').map(li => li.querySelector('span')!.textContent)).toEqual(['Octave up or down', 'Octave up or down']);
     await user.clear(search);
     await user.keyboard('zzz');
     expect(within(panel()!).getByText(/No shortcut matches “zzz”/)).toBeInTheDocument();

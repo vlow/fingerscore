@@ -214,6 +214,11 @@ const RAW: AppState[] = [
       await altPopover(page);
     },
   },
+  {
+    id: 'fingerings',
+    landmark: page => page.getByRole('region', { name: /^Fingering for / }),
+    open: page => clean(page, '/fingerings?inst=asax&note=Bb4'),
+  },
   { id: 'about', landmark: heading('Why I made fingerscore'), open: page => clean(page, '/about') },
   { id: 'imprint', landmark: heading('Imprint'), open: page => clean(page, '/imprint') },
   { id: 'privacy', landmark: heading('Privacy'), open: page => clean(page, '/privacy') },
