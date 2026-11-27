@@ -10,6 +10,7 @@ export const STORAGE_ITEMS: StorageItem[] = [
   { key: 'fingerscore.inst', where: 'local', label: 'the instrument you chose' },
   { key: 'fingerscore.prefs', where: 'local', label: 'your display settings' },
   { key: 'fingerscore.playmode', where: 'local', label: 'your play-mode settings' },
+  { key: 'fingerscore.playtempo', where: 'local', label: 'the play-mode tempo of each sheet' },
   { key: 'fingerscore.theme', where: 'local', label: 'the colour theme you chose' },
   { key: 'fingerscore.paper', where: 'local', label: 'the paper colour you chose for dark mode' },
   { key: 'fingerscore.scales', where: 'local', label: 'your last scale choice' },

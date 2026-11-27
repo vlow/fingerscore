@@ -109,10 +109,13 @@
   white-space: nowrap;
 }
 
+/* On a phone the readout goes onto its own line; its width is fixed, so that never changes while the slider moves. */
 .speed {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 0 8px;
   padding: 0 6px;
   font-size: 13px;
   white-space: nowrap;
@@ -125,8 +128,14 @@
   accent-color: var(--c-accent);
 }
 
+/*
+ * A fixed width, wide enough for the longest readout ("♩ = 300 · 150% · starts in 999 s"), and digits of one width:
+ * the toolbar is centred, so a readout that grew or shrank with the tempo would move every control while the slider
+ * is dragged.
+ */
 .readout {
-  min-width: 116px;
+  width: 200px;
+  font-variant-numeric: tabular-nums;
   color: var(--c-muted);
 }
 

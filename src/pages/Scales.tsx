@@ -207,7 +207,7 @@ export default function Scales() {
   return (
     <div className={s.page}>
       {performing && PlayMode && (
-        <PlayMode lines={playLines} tempo={SCALE_TEMPO} onExit={() => setPerforming(false)}>
+        <PlayMode lines={playLines} tempo={SCALE_TEMPO} timeSig={[4, 4]} onExit={() => setPerforming(false)}>
           <ScalePaper caption={caption} staff={staff} />
         </PlayMode>
       )}

@@ -59,6 +59,7 @@ export class FakeAudioContext {
   readonly created: FakeNode[] = [];
   readonly waves: FakeWave[] = [];
   resume = vi.fn(async () => undefined);
+  close = vi.fn(async () => undefined);
   private make(kind: NodeKind) { const n = new FakeNode(kind); this.created.push(n); return n; }
   createOscillator() { return this.make('oscillator'); }
   createGain() { return this.make('gain'); }
