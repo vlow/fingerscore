@@ -2455,3 +2455,126 @@ describe('jump marks: the Bar section and the notice', () => {
     expect(current().score.map(b => b.fine)).toEqual(current().score.map((_b, i) => (i === k ? true : undefined)));
   });
 });
+
+describe('keyboard shortcuts panel', () => {
+  const panel = () => screen.queryByRole('complementary', { name: 'Keyboard shortcuts' });
+  const keysButton = () => screen.queryByRole('button', { name: 'Keys' });
+  const sheet = () => screen.getByRole('group', { name: /Sheet music/ });
+  const nowGroup = () => panel()!.querySelector('section[class*="now"] h3')?.textContent;
+  const row = (id: string) => panel()!.querySelector(`[data-row="${id}"]`)!;
+
+  it('shows the Keys button and the key hints only once a key was pressed (no fine pointer here)', async () => {
+    open('asax');
+    expect(keysButton()).toBeNull();
+    expect(screen.getByText('Click a note to choose where playback starts.')).toBeInTheDocument();
+    sheet().focus();
+    await user.keyboard('{Shift}');
+    expect(keysButton()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Click a note to choose where playback starts.')).toBeNull();
+    expect(screen.getByText('all keys')).toBeInTheDocument();
+  });
+
+  it('? opens and closes it from the sheet, keeps the focus there, and remembers the state', async () => {
+    const view = open('asax');
+    sheet().focus();
+    await user.keyboard('?');
+    expect(panel()).not.toBeNull();
+    expect(sheet()).toHaveFocus();
+    expect(keysButton()).toHaveAttribute('aria-expanded', 'true');
+    expect(localStorage.getItem('fingerscore.keysPanel')).toBe('open');
+    view.unmount();
+    open('asax');
+    sheet().focus();
+    await user.keyboard('{Shift}');
+    expect(panel()).not.toBeNull();
+    await user.keyboard('?');
+    expect(panel()).toBeNull();
+    expect(localStorage.getItem('fingerscore.keysPanel')).toBe('closed');
+  });
+
+  it('? in a text field is typed, not a shortcut', async () => {
+    open('asax');
+    const title = screen.getByRole('textbox', { name: 'Sheet title' });
+    await user.click(title);
+    await user.keyboard('?');
+    expect(panel()).toBeNull();
+    expect(title).toHaveValue(`${sampleDoc('asax').title}?`);
+  });
+
+  it('marks the group of the current mode as Now', async () => {
+    open('asax');
+    sheet().focus();
+    await user.keyboard('?');
+    expect(nowGroup()).toBe('Move and listen');
+    await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
+    expect(nowGroup()).toBe('Edit notes');
+    await user.click(screen.getByRole('radio', { name: 'Chords' }));
+    expect(nowGroup()).toBe('Lyrics and Chords');
+  });
+
+  it('the Keys button opens it with the focus in the search; Esc there closes it, back on the button', async () => {
+    open('asax');
+    sheet().focus();
+    await user.keyboard('{Shift}');
+    await user.click(keysButton()!);
+    const search = within(panel()!).getByRole('searchbox', { name: 'Find a key or action' });
+    await waitFor(() => expect(search).toHaveFocus());
+    await user.keyboard('oct');
+    expect(within(panel()!).getAllByRole('listitem').map(li => li.querySelector('span')!.textContent)).toEqual(['Octave up or down']);
+    await user.clear(search);
+    await user.keyboard('zzz');
+    expect(within(panel()!).getByText(/No shortcut matches “zzz”/)).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(panel()).toBeNull();
+    expect(keysButton()).toHaveFocus();
+  });
+
+  it('the close button closes it and gives the focus to the Keys button', async () => {
+    open('asax');
+    sheet().focus();
+    await user.keyboard('?');
+    await user.click(within(panel()!).getByRole('button', { name: 'Close' }));
+    expect(panel()).toBeNull();
+    expect(keysButton()).toHaveFocus();
+  });
+
+  it('lights up the row of a key pressed on the sheet, and lets it go', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      open('asax');
+      sheet().focus();
+      await user.keyboard('?');
+      await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
+      const note = sampleDoc('asax').score.flatMap(b => b.ev).find(e => !e.r)!;
+      await user.click(document.querySelector(`[data-hit="${note.id}"]`)!);
+      sheet().focus();
+      await user.keyboard('t');
+      expect(row('tie').className).toMatch(/flash/);
+      expect(row('semi').className).not.toMatch(/flash/);
+      await user.keyboard('{ArrowUp}');
+      expect(row('semi').className).toMatch(/flash/);
+      expect(row('tie').className).not.toMatch(/flash/);
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(row('semi').className).not.toMatch(/flash/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('? in Play mode shows its own keys card, and Esc closes the card before Play mode', async () => {
+    open('asax');
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    const region = await screen.findByRole('region', { name: 'Play mode' });
+    await user.keyboard('?');
+    const card = within(region).getByRole('dialog', { name: 'Play mode keys' });
+    expect(within(card).getByText('Next page')).toBeInTheDocument();
+    expect(panel()).toBeNull();
+    await user.keyboard('{Escape}');
+    expect(within(region).queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Play mode' })).toBe(region);
+    await user.click(within(region).getByRole('button', { name: '? Keyboard shortcuts' }));
+    expect(within(region).getByRole('dialog', { name: 'Play mode keys' })).toBeInTheDocument();
+    await user.keyboard('?');
+    expect(within(region).queryByRole('dialog')).toBeNull();
+  });
+});

@@ -1,4 +1,6 @@
 import { useRef, type KeyboardEvent } from 'react';
+import { KeyHints } from './KeyCaps';
+import { modeHints } from './shortcuts';
 import s from './ModeSwitch.module.css';
 
 export type Mode = 'view' | 'notes' | 'lyrics' | 'chords';
@@ -13,8 +15,11 @@ const MODES: { mode: Mode; name: string; hint: string }[] = [
 /**
  * The editing mode (design 4.2): a segmented control with one line of hint below. A radio group:
  * one tab stop, arrow keys move the choice and the focus. onMode says whether the choice came from a click.
+ * On a device with a keyboard (keys set) the hint names the mode's most useful keys instead.
  */
-export function ModeSwitch(p: { mode: Mode; onMode(m: Mode, byClick: boolean): void; onIntent?(m: Mode): void }): JSX.Element {
+export function ModeSwitch(p: {
+  mode: Mode; onMode(m: Mode, byClick: boolean): void; onIntent?(m: Mode): void; keys?: { apple: boolean };
+}): JSX.Element {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const at = MODES.findIndex(m => m.mode === p.mode);
 
@@ -40,7 +45,7 @@ export function ModeSwitch(p: { mode: Mode; onMode(m: Mode, byClick: boolean): v
           </button>
         ))}
       </div>
-      <p className={s.hint}>{MODES[at].hint}</p>
+      <p className={s.hint}>{p.keys ? <KeyHints hints={modeHints(p.mode)} apple={p.keys.apple} /> : MODES[at].hint}</p>
     </div>
   );
 }

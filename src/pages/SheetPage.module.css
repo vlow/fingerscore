@@ -287,9 +287,13 @@
   font-size: 13px;
 }
 
-/* The paper keeps its printed width and scrolls inside this container on narrow screens. */
+/*
+ * The paper keeps its printed width and scrolls inside this container on narrow screens, and beside the open shortcuts
+ * panel. A note or pill scrolled into view keeps 24 px from the edge, so its click area is not cut off.
+ */
 .paperScroll {
   overflow-x: auto;
+  scroll-padding-inline: 24px;
   padding-bottom: 8px;
   border-radius: 6px;
 }
@@ -339,4 +343,22 @@
   border-radius: 12px;
   background: var(--c-surface);
   box-shadow: 0 12px 32px var(--c-shadow);
+}
+
+/* The sheet and, when open, the keyboard shortcuts panel docked on its right. */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.row > .body {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media print {
+  .row {
+    display: block;
+  }
 }

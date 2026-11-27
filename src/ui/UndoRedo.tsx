@@ -1,12 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { isApple } from './shortcuts';
 import s from './UndoRedo.module.css';
-
-/** Apple keyboards name the modifier ⌘; everyone else Ctrl. */
-function modifier(): string {
-  const nav = typeof navigator === 'undefined' ? null : navigator;
-  const platform = (nav as (Navigator & { userAgentData?: { platform?: string } }) | null)?.userAgentData?.platform ?? nav?.platform ?? '';
-  return /mac|iphone|ipad|ipod/i.test(platform) ? '⌘' : 'Ctrl';
-}
 
 interface Props {
   canUndo: boolean; canRedo: boolean; onUndo(): void; onRedo(): void;
@@ -16,7 +10,7 @@ interface Props {
 
 /** ↶ ↷ in the page bar (design 4.6): 44 × 44, disabled at 40% opacity, the shortcut in the tooltip. */
 export function UndoRedo(p: Props): JSX.Element {
-  const mod = modifier();
+  const mod = isApple() ? '⌘' : 'Ctrl';
   const undoRef = useRef<HTMLButtonElement | null>(null);
   const redoRef = useRef<HTMLButtonElement | null>(null);
   const lost = p.onFocusLost;

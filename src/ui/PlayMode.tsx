@@ -9,10 +9,35 @@ import type { Doc } from '../domain/types';
 import type { SheetLayout } from '../render/layout';
 import { Paper } from '../render/Paper';
 import { readPlayModePrefs, writePlayModePrefs } from '../state/playModePrefs';
+import { KeyCaps } from './KeyCaps';
 import PaperChoice from './PaperChoice';
+import { GROUPS, isApple, keysOf } from './shortcuts';
 import s from './PlayMode.module.css';
 
 interface Props { doc: Doc; derived: Derived; layout: SheetLayout; onExit(): void }
+
+const PLAY_KEYS = GROUPS.find(g => g.id === 'play')?.rows ?? [];
+
+/** The Play mode keys in a card over the sheet, large enough to read from a music stand. Not modal: the keys keep working. */
+function KeysCard({ onClose }: { onClose(): void }): JSX.Element {
+  const apple = useMemo(isApple, []);
+  return (
+    <div role="dialog" aria-label="Play mode keys" className={s.keysCard}>
+      <div className={s.keysHead}>
+        <h2 className={s.keysTitle}>Play mode keys</h2>
+        <button type="button" className={s.keysClose} aria-label="Close" title="Close (? or Esc)" onClick={onClose}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <ul className={s.keysRows}>
+        {PLAY_KEYS.map(r => (
+          <li key={r.id} className={s.keysRow}><span>{r.label}</span><KeyCaps parts={keysOf(r, apple)} apple={apple} size="lg" /></li>
+        ))}
+      </ul>
+      <p className={s.keysNote}>= works as +, so no Shift is needed on US keyboards. A page-turn pedal sends Page Up and Page Down: it works out of the box.</p>
+    </div>
+  );
+}
 
 /** The scroll has reached the end when less than this many pixels are left. */
 const END_SLACK = 2;
@@ -69,6 +94,7 @@ function useWakeLock(): void {
 export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.Element {
   const [prefs, setPrefs] = useState(readPlayModePrefs);
   const [auto, setAuto] = useState(false);
+  const [help, setHelp] = useState(false);
   const [page, setPage] = useState({ n: 1, of: 1 });
   // The paper is never wider than the screen: the chosen zoom is kept, a narrow screen shows less of it.
   const [fit, setFit] = useState(Infinity);
@@ -219,8 +245,9 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
   function smaller() { if (canShrink) change({ zoom: zoomBelow(zoom) }); }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === 'Escape') { e.preventDefault(); onExit(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); if (help) setHelp(false); else onExit(); return; }
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === '?') { e.preventDefault(); setHelp(on => !on); return; }
     const from = e.target instanceof Element ? e.target : null;
     // The slider keeps its arrows; a focused button keeps Space and Enter.
     if (from?.closest('input') && SLIDER_KEYS.has(e.key)) return;
@@ -287,7 +314,10 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
         <button type="button" className={s.btn} aria-label="A+ Larger" title="Larger (+)" aria-disabled={!canGrow}
           onClick={larger}>A+</button>
         <PaperChoice variant="toolbar" buttonClassName={s.btn} />
+        <button type="button" className={`${s.btn} ${help ? s.on : ''}`} aria-label="? Keyboard shortcuts" aria-expanded={help}
+          aria-keyshortcuts="?" title="Keyboard shortcuts (?)" onClick={() => setHelp(on => !on)}>?</button>
       </div>
+      {help && <KeysCard onClose={() => { setHelp(false); regionRef.current?.focus(); }} />}
     </div>,
     document.body,
   );
