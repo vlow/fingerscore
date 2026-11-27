@@ -34,3 +34,13 @@ it('has no GitHub link when the repository address is empty', () => {
   renderFooter('');
   expect(screen.queryByRole('link', { name: /github/i })).toBeNull();
 });
+
+it('shows a release as its version and commit', () => {
+  render(<MemoryRouter><Footer repositoryUrl="" build={{ commit: 'a1b2c3d', version: '1.3.1', release: true }} /></MemoryRouter>);
+  expect(document.querySelector('.footer-brand')).toHaveTextContent('1.3.1 · a1b2c3d');
+});
+
+it('shows a build after a release as a dev build based on that version', () => {
+  render(<MemoryRouter><Footer repositoryUrl="" build={{ commit: 'a1b2c3d', version: '1.3.1', release: false }} /></MemoryRouter>);
+  expect(document.querySelector('.footer-brand')).toHaveTextContent('dev based on 1.3.1 · a1b2c3d');
+});

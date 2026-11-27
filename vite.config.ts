@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { readBuildInfo } from './scripts/build-info';
 import { bundleLayers } from './scripts/bundle-layers/plugin';
 import { precompress } from './scripts/precompress/precompress';
 import { vendorChunking } from './scripts/vendor-chunk';
@@ -18,6 +19,8 @@ const stubUnusedPdfLibraries = {
 
 export default defineConfig({
   plugins: [stubUnusedPdfLibraries, react(), bundleLayers(), precompress()],
+  // The commit and version tag the footer shows (src/shell/buildInfo.ts).
+  define: { __BUILD_INFO__: JSON.stringify(readBuildInfo()) },
   // Parsers and the PDF code load on demand. Without this the dev server finds their libraries on first use,
   // re-optimises them and reloads the page, which breaks a first import (and a cold end-to-end run).
   optimizeDeps: {
