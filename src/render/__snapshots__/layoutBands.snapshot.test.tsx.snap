@@ -14,7 +14,7 @@ exports[`layout of sheets by the bands they use > all bands, every mark, a note 
       "0 0 860 334",
     ],
   ],
-  "digest": "6e969d643cb07ed4b21b55911d90de244b9856f5c3a9f8c3ed59877eb3393431",
+  "digest": "f308da31ffc1d5290db358958e2b425a57a3ea7a3b803d56cea9182acdc43f3e",
   "systems": 2,
 }
 `;
@@ -238,7 +238,7 @@ exports[`layout of sheets by the bands they use > all bands, no high note: drawn
       "0 0 860 290",
     ],
   ],
-  "digest": "7377946da54d3510a6d14139e1f1b747be98453f8b6e559a521e6f1f8116c39e",
+  "digest": "0c698dfe6399ba33f17c7d0e1035cf78b31e591bc9531dc28bb43221a5327d74",
   "systems": 2,
 }
 `;
@@ -462,7 +462,7 @@ exports[`layout of sheets by the bands they use > bare with every mark: drawn ma
       "0 0 860 260",
     ],
   ],
-  "digest": "2d6a393e79ab2ffab8d58ee0e1c9b52ac63de3022ef011859fe77e14926f86ac",
+  "digest": "6c2a9f91232199e67c33def36d944198f66f951a808f127f57a7c2142b81ec7c",
   "systems": 2,
 }
 `;
@@ -686,7 +686,7 @@ exports[`layout of sheets by the bands they use > bare: drawn markup 1`] = `
       "0 0 860 236",
     ],
   ],
-  "digest": "1a83a26b1c00e09fca0343e361a95ff4d4e2625939208ed68341d10679e0c359",
+  "digest": "dcaca073961e2470447b1ece0c436b217247c984b7185f9623e29105d22aeaeb",
   "systems": 2,
 }
 `;
@@ -910,7 +910,7 @@ exports[`layout of sheets by the bands they use > chords and lyrics, no endings:
       "0 0 860 276",
     ],
   ],
-  "digest": "1b05f50f9e5b02853072798dc2ba776d93acdd20e2e31de35f267430dfa61de5",
+  "digest": "4093627d84161b87ee38e86724eeb4824e93b844c7faa2ef494786595a137a18",
   "systems": 2,
 }
 `;
@@ -1134,7 +1134,7 @@ exports[`layout of sheets by the bands they use > lyrics only: drawn markup 1`] 
       "0 0 860 254",
     ],
   ],
-  "digest": "a4d4b190f753098ccbc14f89be10058a7333a8b848966b99afc11cfd6c6ef86c",
+  "digest": "684c40de7e06aae0ba22b72aba3989a45d59ad9a7e3abbf013718a038c198238",
   "systems": 2,
 }
 `;

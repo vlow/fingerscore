@@ -2,11 +2,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { derive } from '../domain/derive';
 import { sampleDoc } from '../domain/fixture';
-import { fullLineBeats, scrollSpeed, speedLabel, systemBeats, tempoRange } from '../domain/playMode';
+import { fullLineBeats, scrollSpeed, sheetLines, speedLabel, systemBeats, tempoRange } from '../domain/playMode';
 import { forgetUnsavedTempo, readPlayTempo } from '../state/playTempos';
 import { WARMUP_SECONDS } from '../audio/metronome';
 import { FakeAudioContext, type FakeNode } from '../test/fakeAudio';
 import { DEFAULT_PREFS } from '../domain/transpose';
+import { Paper } from '../render/Paper';
 import { layoutSheet } from '../render/sheetLayout';
 import { initTheme } from '../shell/theme';
 import PlayMode from './PlayMode';
@@ -53,7 +54,12 @@ function open(onExit = vi.fn(), sheetId: string | null = null) {
   const doc = sampleDoc('asax');
   const derived = derive(doc, DEFAULT_PREFS);
   const layout = layoutSheet(doc, derived);
-  const view = render(<PlayMode doc={doc} derived={derived} layout={layout} sheetId={sheetId} onExit={onExit} />);
+  const lines = sheetLines(doc, layout.systems, layout.systemHeight);
+  const view = render(
+    <PlayMode lines={lines} tempo={doc.tempo} timeSig={doc.timeSig} sheetId={sheetId} onExit={onExit}>
+      <Paper doc={doc} derived={derived} layout={layout} playingId={null} readOnly />
+    </PlayMode>,
+  );
   const region = screen.getByRole('region', { name: 'Play mode' });
   const scroller = screen.getByTestId('play-scroller');
   const scrollTo = vi.fn();

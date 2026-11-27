@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import type { Derived } from '../domain/derive';
 import {
   READ_AT, ZOOM, clampTempo, edgeTarget, fitZoom, fullLineBeats, leadIn, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom,
-  systemAt, systemBeats, tempoRange, turnTarget, zoomBelow,
+  systemAt, tempoRange, turnTarget, zoomBelow, type PlayLine,
 } from '../domain/playMode';
+import type { TimeSig } from '../domain/types';
 import { createMetronome, type Metronome } from '../audio/metronome';
-import type { Doc } from '../domain/types';
-import type { SheetLayout } from '../render/layout';
-import { Paper } from '../render/Paper';
 import { listEntries } from '../state/library';
 import { readPlayModePrefs, writePlayModePrefs } from '../state/playModePrefs';
 import { readPlayTempo, writePlayTempo } from '../state/playTempos';
@@ -17,8 +14,14 @@ import PaperChoice from './PaperChoice';
 import { GROUPS, isApple, keysOf } from './shortcuts';
 import s from './PlayMode.module.css';
 
-/** `sheetId` is the open sheet's library id, or null while it is not saved: Play mode keeps its tempo under it. */
-interface Props { doc: Doc; derived: Derived; layout: SheetLayout; sheetId: string | null; onExit(): void }
+/**
+ * What Play mode shows (`children`, read-only, as wide as the paper) and how auto-scroll paces it: one entry of `lines`
+ * per element marked `data-play-line` in the content, top to bottom, and the tempo the beats count at. `tempo` and
+ * `timeSig` also set where Play mode's own tempo starts and how the metronome counts. With `sheetId` (the open
+ * sheet's library id, or null while it is not saved) Play mode remembers its tempo for that sheet; without it, the
+ * tempo starts at `tempo` every time.
+ */
+interface Props { lines: PlayLine[]; tempo: number; timeSig: TimeSig; sheetId?: string | null; children: ReactNode; onExit(): void }
 
 const PLAY_KEYS = GROUPS.find(g => g.id === 'play')?.rows ?? [];
 
@@ -91,15 +94,15 @@ function useWakeLock(): void {
 }
 
 /**
- * Play mode (SPEC §11a): the sheet alone on the whole screen, for playing from it. Pages turn with the toolbar,
+ * Play mode (SPEC §11a): the music alone on the whole screen, for playing from it: a sheet, or a scale. Pages turn with the toolbar,
  * the screen edges, the arrow keys, Page Up/Down and Space (a page-turner pedal sends those); the sheet can scroll
  * by itself at the speed of the music. Nothing here changes the document.
  */
-export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Props): JSX.Element {
+export default function PlayMode({ lines: playLines, tempo, timeSig, sheetId, children, onExit }: Props): JSX.Element {
   const [prefs, setPrefs] = useState(readPlayModePrefs);
   // Play mode's own tempo for this sheet: it paces the scroll and the metronome. The sheet's tempo stays as it is.
-  const [bpm, setBpm] = useState(() => clampTempo(readPlayTempo(sheetId), doc.tempo));
-  const range = tempoRange(doc.tempo);
+  const [bpm, setBpm] = useState(() => clampTempo(sheetId === undefined ? null : readPlayTempo(sheetId), tempo));
+  const range = tempoRange(tempo);
   const [clicking, setClicking] = useState(false);
   const metronome = useRef<Metronome | null>(null);
   const [auto, setAuto] = useState(false);
@@ -113,10 +116,10 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const beats = useMemo(() => systemBeats(doc, layout.systems), [doc, layout]);
+  const beats = useMemo(() => playLines.map(l => l.beats), [playLines]);
   // The running scroll reads its pace here, so the slider, the zoom and the tempo apply without a restart.
-  const pace = useRef({ beats, bpm, zoom, systemHeight: layout.systemHeight });
-  pace.current = { beats, bpm, zoom, systemHeight: layout.systemHeight };
+  const pace = useRef({ lines: playLines, bpm, zoom });
+  pace.current = { lines: playLines, bpm, zoom };
   // Where the lines are in the scrolled content: the top of the first one and the distance to the next.
   const lines = useRef({ firstTop: 0, pitch: 0 });
   // Auto-scroll waits while the music comes down from the top of the screen to the reading line: how far it has
@@ -134,7 +137,7 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
 
   function changeTempo(next: number) {
     setBpm(next);
-    writePlayTempo(sheetId, next, new Set(listEntries().map(e => e.id)));
+    if (sheetId !== undefined) writePlayTempo(sheetId, next, new Set(listEntries().map(e => e.id)));
     metronome.current?.setTempo(next);
   }
 
@@ -142,7 +145,7 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
     metronome.current ??= createMetronome();
     const m = metronome.current;
     if (m.running) m.stop();
-    else m.start(bpm, doc.timeSig);
+    else m.start(bpm, timeSig);
     setClicking(m.running);
   }
 
@@ -156,7 +159,7 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
   const measure = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const systems = el.querySelectorAll('[data-testid="system"]');
+    const systems = el.querySelectorAll('[data-play-line]');
     if (systems.length > 0) {
       const top = (sys: Element) => sys.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
       const firstTop = top(systems[0]);
@@ -168,8 +171,8 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
     setPage(prev => (prev.n === next.n && prev.of === next.of ? prev : next));
   }, []);
 
-  // The page count depends on the zoom, the sheet and the window.
-  useLayoutEffect(measure, [measure, zoom, layout]);
+  // The page count depends on the zoom, the music and the window.
+  useLayoutEffect(measure, [measure, zoom, playLines]);
   // The width to fit depends on the window alone, and is read only when the window changes: the zoom it leads to
   // must never be a reason to read it again. (The scroller always shows its scrollbar, so the zoom cannot change
   // the width either; a width that followed the zoom would flip between two sizes without end.)
@@ -207,9 +210,10 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
       if (el.scrollTop + el.clientHeight >= el.scrollHeight - END_SLACK) { setAuto(false); return; }
       // The pace of the line the player reads: every line passes in the time its own beats take.
       const p = pace.current;
-      const pitch = lines.current.pitch > 0 ? lines.current.pitch : (p.systemHeight * p.zoom) / 100;
-      const at = systemAt(el.scrollTop + READ_AT * el.clientHeight, lines.current.firstTop, pitch, p.beats.length);
-      const speed = scrollSpeed(p.beats[at] ?? 0, p.bpm, p.zoom, p.systemHeight);
+      const pitch = lines.current.pitch > 0 ? lines.current.pitch : ((p.lines[0]?.height ?? 0) * p.zoom) / 100;
+      const at = systemAt(el.scrollTop + READ_AT * el.clientHeight, lines.current.firstTop, pitch, p.lines.length);
+      const line = p.lines[at];
+      const speed = line ? scrollSpeed(line.beats, p.bpm, p.zoom, line.height) : 0;
       const moved = last === null ? 0 : (speed * Math.min(ts - last, MAX_FRAME_MS)) / 1000;
       last = ts;
       const wait = leadIn(el.clientHeight) - travelled.current;
@@ -311,7 +315,7 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
         onWheel={() => { goingTo.current = null; }} onTouchMove={() => { goingTo.current = null; }} onClick={onTap}>
         <div className={s.pad}>
           <div data-testid="play-zoom" className={s.zoomed} style={{ zoom: zoom / 100 }}>
-            <Paper doc={doc} derived={derived} layout={layout} playingId={null} readOnly />
+            {children}
           </div>
         </div>
       </div>
@@ -346,7 +350,7 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
           Tempo
           <input type="range" className={s.slider} aria-label="Tempo" min={range.min} max={range.max} step={1}
             value={bpm} onChange={e => changeTempo(Number(e.target.value))} />
-          <span className={s.readout}>{speedLabel(fullLineBeats(beats), bpm, doc.tempo, startsIn)}</span>
+          <span className={s.readout}>{speedLabel(fullLineBeats(beats), bpm, tempo, startsIn)}</span>
         </label>
         <button type="button" className={`${s.btn} ${clicking ? s.on : ''}`} aria-pressed={clicking} aria-keyshortcuts="M"
           title="Metronome (M)" onClick={toggleMetronome}>

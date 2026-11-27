@@ -160,6 +160,60 @@ it('only the scale section is marked for print', () => {
   expect(screen.getByRole('button', { name: 'Download PDF' }).closest('[data-print-hide]')).not.toBeNull();
 });
 
+describe('Play mode', () => {
+  it('shows the scale alone, paced one note per beat, and Esc returns to the button', async () => {
+    renderScales();
+    const button = screen.getByRole('button', { name: 'Play mode' });
+    expect(button.closest('[data-print-hide]')).not.toBeNull();
+    await user.click(button);
+    const region = await screen.findByRole('region', { name: 'Play mode' });
+    const sheet = within(region).getByRole('region', { name: 'Scale' });
+    expect(within(sheet).getByRole('heading', { level: 2 })).toHaveTextContent(screen.getAllByRole('heading', { level: 2 })[0].textContent!);
+    expect(sheet).not.toHaveAttribute('data-print-scale');
+    expect(region.querySelectorAll('[data-note]')).toHaveLength(8);
+    expect(region.querySelectorAll('[data-play-line]')).toHaveLength(1);
+    expect(within(region).getByText('♩ = 60 · 100% · 1 line / 8 s')).toBeInTheDocument();
+    expect(within(region).getByText('Page 1 / 1')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('region', { name: 'Play mode' })).toBeNull();
+    expect(button).toHaveFocus();
+  });
+
+  it('starts the tempo at 60 on every visit and stores none', async () => {
+    renderScales();
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    const region = await screen.findByRole('region', { name: 'Play mode' });
+    const slider = within(region).getByRole('slider', { name: 'Tempo' });
+    expect(slider).toHaveValue('60');
+    expect(slider).toHaveAttribute('min', '20');
+    expect(slider).toHaveAttribute('max', '90');
+    fireEvent.change(slider, { target: { value: '45' } });
+    expect(within(region).getByText('♩ = 45 · 75% · 1 line / 11 s')).toBeInTheDocument();
+    expect(localStorage.getItem('fingerscore.playtempo')).toBeNull();
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    const again = await screen.findByRole('region', { name: 'Play mode' });
+    expect(within(again).getByRole('slider', { name: 'Tempo' })).toHaveValue('60');
+  });
+
+  it('keeps the picks and drops the pills', async () => {
+    localStorage.setItem('fingerscore.scales', JSON.stringify({ inst: 'asax', scale: 'maj', tonicPc: 5, showAlternates: false }));
+    renderScales();
+    const page = screen.getAllByRole('region', { name: 'Scale' })[0];
+    const pill = within(page).getAllByRole('button', { name: /⇅/ })[0];
+    await user.click(pill);
+    const dialog = screen.getByRole('dialog');
+    const other = within(dialog).getAllByRole('button').find(b => !/auto/.test(b.textContent!))!;
+    await user.click(other);
+    const options = () => [...page.querySelectorAll('[data-chart]')].map(c => c.getAttribute('data-option'));
+    const picked = options();
+    await user.click(screen.getByRole('button', { name: 'Play mode' }));
+    const region = await screen.findByRole('region', { name: 'Play mode' });
+    expect([...region.querySelectorAll('[data-chart]')].map(c => c.getAttribute('data-option'))).toEqual(picked);
+    expect(within(region).queryAllByRole('button', { name: /⇅/ })).toHaveLength(0);
+  });
+});
+
 it('radiogroups work with arrow keys', async () => {
   renderScales();
   screen.getByRole('radio', { name: '1 octave' }).focus();

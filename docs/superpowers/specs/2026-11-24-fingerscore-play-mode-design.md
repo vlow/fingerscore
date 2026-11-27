@@ -18,7 +18,7 @@ A player reads the sheet from a tablet on a music stand or from a laptop while p
 4. The paper zooms from 75% to 200%. The screen stays awake.
 5. The audio button reads "Listen" so nobody confuses it with play mode.
 
-**Non-goals:** auto-scroll that follows repeats (the music jumps back, the scroll keeps going); a cursor that follows the notes; audio in play mode; a metronome; play mode on the scales page.
+**Non-goals:** auto-scroll that follows repeats (the music jumps back, the scroll keeps going); a cursor that follows the notes; audio in play mode; a metronome. (Play mode on the scales page was a non-goal here; `2026-11-27-fingerscore-scales-play-mode-design.md` adds it.)
 
 **Anti-goals**
 

@@ -14,7 +14,7 @@ exports[`a sheet without marks keeps its layout > repeat, endings, triplet, chor
       "0 0 860 303",
     ],
   ],
-  "digest": "6f2e7984d7ae87323c7f3ad9b8b6fe7e0c0c863b92164ee6c30180b9deffe4c0",
+  "digest": "f1d2ff54cec782591b52f1e20e9831c098be6577b44be0d2d174ecb91a4be98d",
   "systems": 2,
 }
 `;
@@ -270,7 +270,7 @@ exports[`a sheet without marks keeps its layout > sample document: drawn markup 
       "0 0 860 290",
     ],
   ],
-  "digest": "314e9b3dc485d8e5fc835a1641a72fce1801651f981304a596ddf75669aaeaa0",
+  "digest": "d45494b801618fa3ea92c570f46dba5d7b5cbe8cc0390c1bce3edf167338d4a2",
   "systems": 5,
 }
 `;

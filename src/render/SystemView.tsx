@@ -233,7 +233,7 @@ export function SystemView(p: SystemViewProps): JSX.Element {
 
   return (
     <div className={styles.system} style={height === FULL_HEIGHT ? undefined : { height }}>
-      <svg data-testid="system" width={SHEET.systemWidth} height={height}
+      <svg data-testid="system" data-play-line="" width={SHEET.systemWidth} height={height}
         viewBox={`0 0 ${SHEET.systemWidth} ${height}`} aria-hidden="true">
         {stack.bands.marks > 0 && <JumpMarks system={system} score={doc.score} />}
         {stack.shift !== 0 ? <g transform={`translate(0 ${stack.shift})`}>{drawing}</g> : drawing}

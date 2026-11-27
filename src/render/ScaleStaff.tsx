@@ -108,7 +108,7 @@ function ScaleLine(p: LineProps) {
 
   const slot = p.renderUnderChart;
   return (
-    <div className={styles.lineBox} data-line-box="" style={{ width: WIDTH, height }}>
+    <div className={styles.lineBox} data-line-box="" data-play-line="" style={{ width: WIDTH, height }}>
       <p className={styles.srOnly}>{p.notes.map(n => n.note.spelled.name + (n.note.state === 'ext' ? ' (extended)' : '')).join(', ')}</p>
       <svg data-testid="scale-line" aria-hidden="true" className={styles.line}
         width={WIDTH} height={height} viewBox={`0 ${top} ${WIDTH} ${height}`}>
@@ -176,20 +176,20 @@ export interface ScaleStaffProps {
   renderUnderChart?: ScaleChartSlot;
 }
 
-/** The lines of a scale in order, each with its drawn height in units and a function that renders it; the page and the PDF both use these. */
-export function scaleLines(p: ScaleStaffProps): { height: number; render(): JSX.Element }[] {
+/** The lines of a scale in order, each with its drawn height in units, its number of notes and a function that renders it; the page, Play mode and the PDF use these. */
+export function scaleLines(p: ScaleStaffProps): { height: number; notes: number; render(): JSX.Element }[] {
   const kind = instrument(p.inst).kind;
   // The sheet's chooser over the whole sequence, the picks as fixed points; a note without options breaks the run.
   const fingerings = scaleFingerings(p.inst, p.scale.notes, p.recorderSystem, p.overrides ?? {});
   const placed: Placed[] = p.scale.notes.map((note, index) => ({ note, index, ...fingerings[index] }));
-  const lines: { height: number; render(): JSX.Element }[] = [];
+  const lines: { height: number; notes: number; render(): JSX.Element }[] = [];
   for (let i = 0; i < placed.length; i += NOTES_PER_LINE) {
     const line = lines.length;
     const props: LineProps = {
       notes: placed.slice(i, i + NOTES_PER_LINE), sig: p.scale.sig, last: i + NOTES_PER_LINE >= placed.length, kind, chartStyle: p.chartStyle,
       showNames: p.showNames, showAlternates: p.showAlternates, line, renderUnderChart: p.renderUnderChart,
     };
-    lines.push({ height: layoutLine(props).height, render: () => <ScaleLine {...props} /> });
+    lines.push({ height: layoutLine(props).height, notes: props.notes.length, render: () => <ScaleLine {...props} /> });
   }
   return lines;
 }
