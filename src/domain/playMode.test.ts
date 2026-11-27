@@ -3,8 +3,9 @@ import { DEFAULT_PREFS } from './transpose';
 import { layoutSheet } from '../render/sheetLayout';
 import { mkDoc, type BarSpec } from '../test/helpers';
 import {
-  READ_AT, SPEED, clampSpeed, fullLineBeats, leadIn, systemAt, systemBeats, fitZoom, shownZoom, zoomBelow, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget,
+  READ_AT, beatPattern, clampTempo, fullLineBeats, leadIn, systemAt, systemBeats, fitZoom, shownZoom, zoomBelow, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, tempoRange, turnTarget,
 } from './playMode';
+import type { TimeSig } from './types';
 
 const bars = (n: number, ticks: number): BarSpec[] => Array.from({ length: n }, () => ({ ev: [[67, ticks]] }));
 
@@ -40,20 +41,39 @@ describe('play mode maths', () => {
     expect(leadIn(0)).toBe(0);
   });
 
-  it('offers more room to slow down than to speed up', () => {
-    expect(SPEED).toEqual({ min: 25, max: 150, step: 5, initial: 100 });
+  it('limits the tempo to 25–150 % of the sheet, within 20–300', () => {
+    expect(tempoRange(120)).toEqual({ min: 30, max: 180 });
+    expect(tempoRange(60)).toEqual({ min: 20, max: 90 });
+    expect(tempoRange(240)).toEqual({ min: 60, max: 300 });
   });
 
-  it('gives a line 9.6 s at ♩ = 100 and 100 %, twice that at 50 %', () => {
-    expect(lineSeconds(16, 100, 100)).toBeCloseTo(9.6);
-    expect(lineSeconds(16, 100, 50)).toBeCloseTo(19.2);
+  it('clamps a stored tempo', () => {
+    expect(clampTempo(96, 120)).toBe(96);
+    expect(clampTempo(96.4, 120)).toBe(96);
+    expect(clampTempo(500, 120)).toBe(180);
+    expect(clampTempo(5, 120)).toBe(30);
+    expect(clampTempo('x', 120)).toBe(120);
+    expect(clampTempo(null, 120)).toBe(120);
+    expect(clampTempo(NaN, 120)).toBe(120);
   });
 
-  it('scrolls one zoomed system per line time', () => {
-    expect(scrollSpeed(16, 100, 100, 125, 290)).toBeCloseTo((290 * 1.25) / 9.6);
-    expect(scrollSpeed(0, 100, 100, 125, 290)).toBe(0);
+  it('gives a line 9.6 s at ♩ = 100, twice that at ♩ = 50', () => {
+    expect(lineSeconds(16, 100)).toBeCloseTo(9.6);
+    expect(lineSeconds(16, 50)).toBeCloseTo(19.2);
+  });
+
+  it('scrolls one zoomed system per line time at the BPM', () => {
+    expect(scrollSpeed(16, 100, 125, 290)).toBeCloseTo((290 * 1.25) / 9.6);
+    expect(scrollSpeed(16, 50, 125, 290)).toBeCloseTo((290 * 1.25) / 19.2);
+    expect(scrollSpeed(0, 100, 125, 290)).toBe(0);
     // a sheet with marks has taller systems: one system per line time at the layout's height
-    expect(scrollSpeed(16, 100, 100, 125, 320)).toBeCloseTo((320 * 1.25) / 9.6);
+    expect(scrollSpeed(16, 100, 125, 320)).toBeCloseTo((320 * 1.25) / 9.6);
+  });
+
+  it.each([
+    [[4, 4], 4, 1], [[3, 4], 3, 1], [[2, 4], 2, 1], [[6, 8], 2, 1.5], [[2, 2], 2, 2],
+  ] as const)('counts %j in %i beats of %f quarters', (ts, perBar, quarters) => {
+    expect(beatPattern(ts as unknown as TimeSig)).toEqual({ perBar, quarters });
   });
 
   it('counts pages of 88 % of the visible height', () => {
@@ -158,16 +178,12 @@ describe('play mode maths', () => {
     expect(clampZoom('x')).toBe(125);
     expect(clampZoom(300)).toBe(125);
     expect(clampZoom(150)).toBe(150);
-    expect(clampSpeed(NaN)).toBe(100);
-    expect(clampSpeed(20)).toBe(100);
-    expect(clampSpeed(25)).toBe(25);
-    expect(clampSpeed(200)).toBe(100);
-    expect(clampSpeed(125)).toBe(125);
   });
 
-  it('labels the speed', () => {
-    expect(speedLabel(16, 100, 100)).toBe('100% · 1 line / 10 s');
-    expect(speedLabel(16, 100, 50)).toBe('50% · 1 line / 19 s');
-    expect(speedLabel(16, 100, 100, 7.2)).toBe('100% · starts in 8 s');
+  it('labels the tempo with its share of the sheet tempo', () => {
+    expect(speedLabel(16, 100, 100)).toBe('♩ = 100 · 100% · 1 line / 10 s');
+    expect(speedLabel(16, 96, 120)).toBe('♩ = 96 · 80% · 1 line / 10 s');
+    expect(speedLabel(16, 50, 100)).toBe('♩ = 50 · 50% · 1 line / 19 s');
+    expect(speedLabel(16, 96, 120, 7.2)).toBe('♩ = 96 · 80% · starts in 8 s');
   });
 });

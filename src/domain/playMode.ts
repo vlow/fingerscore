@@ -1,11 +1,14 @@
 import { SHEET, type SystemLayout } from '../render/layout';
 import { TPQ } from './time';
-import type { Doc } from './types';
+import type { Doc, TimeSig } from './types';
 
-/** Play mode (SPEC §11a): paper zoom and auto-scroll speed factor, both in percent. */
+/** Play mode (SPEC §11a): paper zoom in percent. */
 export const ZOOM = { min: 75, max: 200, step: 25, initial: 125 } as const;
-/** 100 % is the pace of the music. Players slow the scroll down far more often than they speed it up. */
-export const SPEED = { min: 25, max: 150, step: 5, initial: 100 } as const;
+/**
+ * Play mode's tempo, as shares of the sheet's tempo and in BPM. Players slow down far more often than they speed
+ * up; the floor and ceiling keep a metronome sensible on very slow or very fast sheets.
+ */
+export const TEMPO = { minShare: 0.25, maxShare: 1.5, floor: 20, ceiling: 300 } as const;
 /** A page turn moves by this share of the visible height, so 12 % of the last page stays in view. */
 export const TURN = 0.88;
 
@@ -36,18 +39,18 @@ export function leadIn(clientHeight: number): number {
   return READ_AT * Math.max(0, clientHeight);
 }
 
-/** Seconds one line takes at this tempo and speed factor (percent). */
-export function lineSeconds(beats: number, tempo: number, speed: number): number {
-  return (beats * 60) / tempo / (speed / 100);
+/** Seconds one line takes at this tempo (quarter notes per minute). */
+export function lineSeconds(beats: number, bpm: number): number {
+  return (beats * 60) / bpm;
 }
 
 /**
  * Auto-scroll speed in CSS pixels per second: one zoomed system per line time. `systemHeight` is the layout's
  * (`SheetLayout.systemHeight`: it depends on the bands the sheet uses).
  */
-export function scrollSpeed(beats: number, tempo: number, speed: number, zoom: number, systemHeight: number): number {
+export function scrollSpeed(beats: number, bpm: number, zoom: number, systemHeight: number): number {
   if (beats <= 0) return 0;
-  return (systemHeight * zoom) / 100 / lineSeconds(beats, tempo, speed);
+  return (systemHeight * zoom) / 100 / lineSeconds(beats, bpm);
 }
 
 /** A rest of the sheet shorter than this share of a turn is no page of its own: the page before ends at the end. */
@@ -118,17 +121,47 @@ export function zoomBelow(shown: number): number {
   return Math.max(ZOOM.min, (Math.ceil(shown / ZOOM.step - 1e-9) - 1) * ZOOM.step);
 }
 
-function inRange(v: unknown, r: { min: number; max: number; initial: number }): number {
-  return typeof v === 'number' && Number.isFinite(v) && v >= r.min && v <= r.max ? v : r.initial;
+/** A stored zoom, or the default when it is not a number in range. */
+export function clampZoom(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= ZOOM.min && v <= ZOOM.max ? v : ZOOM.initial;
 }
 
-/** A stored zoom, or the default when it is not a number in range. */
-export const clampZoom = (v: unknown): number => inRange(v, ZOOM);
-/** A stored speed factor, or the default when it is not a number in range. */
-export const clampSpeed = (v: unknown): number => inRange(v, SPEED);
+/** The whole BPMs Play mode offers for a sheet at this tempo. */
+export function tempoRange(sheetTempo: number): { min: number; max: number } {
+  return {
+    min: Math.max(TEMPO.floor, Math.round(sheetTempo * TEMPO.minShare)),
+    max: Math.min(TEMPO.ceiling, Math.round(sheetTempo * TEMPO.maxShare)),
+  };
+}
 
-/** The readout next to the speed slider: "100% · 1 line / 10 s", or "100% · starts in 8 s" while auto-scroll waits. */
-export function speedLabel(beats: number, tempo: number, speed: number, startsIn: number | null = null): string {
-  if (startsIn !== null) return `${speed}% · starts in ${Math.ceil(startsIn)} s`;
-  return `${speed}% · 1 line / ${Math.round(lineSeconds(beats, tempo, speed))} s`;
+/** A stored Play mode tempo, rounded and kept in the sheet's range; the sheet's own tempo when there is none. */
+export function clampTempo(v: unknown, sheetTempo: number): number {
+  const { min, max } = tempoRange(sheetTempo);
+  const bpm = typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : sheetTempo;
+  return Math.max(min, Math.min(max, bpm));
+}
+
+/** The Play mode tempo as a share of the sheet's tempo, in whole percent. */
+export function percentOf(bpm: number, sheetTempo: number): number {
+  return Math.round((bpm / sheetTempo) * 100);
+}
+
+/**
+ * The readout next to the tempo slider: "♩ = 96 · 80% · 1 line / 10 s", or "♩ = 96 · 80% · starts in 8 s" while
+ * auto-scroll waits.
+ */
+export function speedLabel(beats: number, bpm: number, sheetTempo: number, startsIn: number | null = null): string {
+  const head = `♩ = ${bpm} · ${percentOf(bpm, sheetTempo)}%`;
+  if (startsIn !== null) return `${head} · starts in ${Math.ceil(startsIn)} s`;
+  return `${head} · 1 line / ${Math.round(lineSeconds(beats, bpm))} s`;
+}
+
+/**
+ * How a metronome counts a bar: beats per bar and quarter notes per beat. Compound 6/8 counts two dotted quarters,
+ * cut time 2/2 two halves.
+ */
+export function beatPattern(timeSig: TimeSig): { perBar: number; quarters: number } {
+  const [top, bottom] = timeSig;
+  if (bottom === 8) return { perBar: top / 3, quarters: 1.5 };
+  return { perBar: top, quarters: 4 / bottom };
 }
