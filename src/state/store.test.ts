@@ -8,6 +8,7 @@ import { DEFAULT_PREFS, rankShifts, scoringPitches } from '../domain/transpose';
 import type { ParsedSong } from '../import/types';
 import { readJSON } from '../shell/storage';
 import { BLOCKED_MESSAGE, deleteEntry, listEntries } from './library';
+import { forgetUnsavedTempo, readPlayTempo, writePlayTempo } from './playTempos';
 import { canRedo, canUndo, HISTORY_LIMIT, hydrate, saveStatus, setClock, useApp } from './store';
 
 const best = (d: ReturnType<typeof sampleDoc>, prefs = DEFAULT_PREFS) =>
@@ -21,6 +22,25 @@ beforeEach(() => {
 });
 
 afterEach(() => { setClock(Date.now); });
+
+describe('Play mode tempo of an unsaved sheet', () => {
+  beforeEach(() => forgetUnsavedTempo());
+
+  it('carries over to the sheet’s first save', () => {
+    useApp.getState().openUnsaved(sampleDoc('asax'), 'song.mid');
+    writePlayTempo(null, 88, new Set());
+    expect(useApp.getState().saveSheet()).toBe(true);
+    expect(readPlayTempo(useApp.getState().libraryId)).toBe(88);
+    expect(readPlayTempo(null)).toBeNull();
+  });
+
+  it('is forgotten when another sheet opens', () => {
+    useApp.getState().openUnsaved(sampleDoc('asax'), 'one.mid');
+    writePlayTempo(null, 88, new Set());
+    useApp.getState().openUnsaved(sampleDoc('asax'), 'two.mid');
+    expect(readPlayTempo(null)).toBeNull();
+  });
+});
 
 describe('store', () => {
   it('changing the instrument re-picks the shift and clears overrides', () => {

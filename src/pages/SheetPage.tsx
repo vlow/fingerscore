@@ -177,7 +177,7 @@ function Sheet({ doc }: { doc: Doc }) {
   return (
     <div className={s.page}>
       {performing && PlayMode && (
-        <PlayMode lines={playLines} tempo={doc.tempo} onExit={() => setPerforming(false)}>
+        <PlayMode lines={playLines} tempo={doc.tempo} timeSig={doc.timeSig} sheetId={libraryId} onExit={() => setPerforming(false)}>
           <Paper doc={doc} derived={derived} layout={layout} playingId={null} readOnly />
         </PlayMode>
       )}
