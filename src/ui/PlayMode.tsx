@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom';
 import type { Derived } from '../domain/derive';
 import {
-  READ_AT, SPEED, ZOOM, fitZoom, fullLineBeats, leadIn, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom, systemAt,
+  READ_AT, SPEED, ZOOM, edgeTarget, fitZoom, fullLineBeats, leadIn, pageCount, pageNumber, scrollSpeed, shownZoom, speedLabel, stepZoom, systemAt,
   systemBeats, turnTarget, zoomBelow,
 } from '../domain/playMode';
 import type { Doc } from '../domain/types';
@@ -210,14 +210,15 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     measure();
   }
 
-  function turn(dir: 1 | -1) {
+  /** A page turn (`dir` 1 or -1), or a jump to the first or the last page (`'first'`, `'last'`). */
+  function turn(dir: 1 | -1 | 'first' | 'last') {
     const el = scrollerRef.current;
     if (!el) return;
     // While auto-scroll runs the turn is a jump: the next auto-scroll frame would cancel a smooth scroll.
     const smooth = !auto && !prefersReducedMotion();
     const pending = goingTo.current;
     const from = pending && smooth && performance.now() - pending.since < TURN_MS ? pending.top : el.scrollTop;
-    const top = turnTarget(from, el.scrollHeight, el.clientHeight, dir);
+    const top = typeof dir === 'number' ? turnTarget(from, el.scrollHeight, el.clientHeight, dir) : edgeTarget(el.scrollHeight, el.clientHeight, dir);
     if (top === from) return;
     goingTo.current = smooth ? { top, since: performance.now() } : null;
     // After a turn the player reads from the top of the new page: auto-scroll waits again.
@@ -255,7 +256,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     // The slider keeps its arrows; a focused button keeps Space and Enter.
     if (from?.closest('input') && SLIDER_KEYS.has(e.key)) return;
     const onButton = !!from?.closest('button');
-    const handled = ['ArrowRight', 'ArrowDown', 'PageDown', 'ArrowLeft', 'ArrowUp', 'PageUp', 'a', 'A', '+', '=', '-', '−'];
+    const handled = ['ArrowRight', 'ArrowDown', 'PageDown', 'ArrowLeft', 'ArrowUp', 'PageUp', 'Home', 'End', 'a', 'A', '+', '=', '-', '−'];
     // A held key, or a foot resting on the pedal, counts once.
     if (e.repeat && (handled.includes(e.key) || (e.key === ' ' && !onButton))) { e.preventDefault(); return; }
     switch (e.key) {
@@ -267,6 +268,8 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
         return;
       case 'ArrowRight': case 'ArrowDown': case 'PageDown': turn(1); break;
       case 'ArrowLeft': case 'ArrowUp': case 'PageUp': turn(-1); break;
+      case 'Home': turn('first'); break;
+      case 'End': turn('last'); break;
       case 'a': case 'A': setAuto(on => !on); break;
       case '+': case '=': larger(); break;
       case '-': case '−': smaller(); break;
@@ -293,12 +296,20 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
           Exit
         </button>
         <span aria-hidden="true" className={s.rule} />
+        <button type="button" className={s.btn} aria-label="First page" aria-keyshortcuts="Home" title="First page (Home)"
+          aria-disabled={page.n <= 1} onClick={() => turn('first')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 5v14" /><path d="m17 18-6-6 6-6" /></svg>
+        </button>
         <button type="button" className={s.btn} aria-label="Previous page" title="Previous page (←, Page Up)" onClick={() => turn(-1)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </button>
         <span aria-live="polite" className={s.page}>Page {page.n} / {page.of}</span>
         <button type="button" className={s.btn} aria-label="Next page" title="Next page (→, Space, Page Down)" onClick={() => turn(1)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+        <button type="button" className={s.btn} aria-label="Last page" aria-keyshortcuts="End" title="Last page (End)"
+          aria-disabled={page.n >= page.of} onClick={() => turn('last')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 5v14" /><path d="m7 18 6-6-6-6" /></svg>
         </button>
         <span aria-hidden="true" className={s.rule} />
         <button type="button" className={`${s.btn} ${auto ? s.on : ''}`} aria-pressed={auto} title="Auto-scroll (A)" onClick={() => setAuto(on => !on)}>
