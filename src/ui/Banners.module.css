@@ -92,3 +92,14 @@
 .fixExt:hover {
   background: var(--c-warning-bg);
 }
+
+/* "Show fingerings": the Fingerings page on the highest note the banner names. */
+.link {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  min-height: 36px;
+  padding: 0 4px;
+  color: inherit;
+  font-weight: 700;
+}

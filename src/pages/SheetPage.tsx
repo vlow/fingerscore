@@ -43,7 +43,7 @@ import { usePlayback } from './sheet/usePlayback';
 import { PLAY_MODE_LOAD_FAILED, playModeModule, usePlayModeLoad } from '../ui/usePlayModeLoad';
 import { useSelection } from './sheet/useSelection';
 import { useHasKeyboard, useKeysPanel } from './sheet/useKeysPanel';
-import { FINGERING_LOAD_FAILED, useFingeringPanel } from './sheet/useFingeringPanel';
+import { FINGERING_LOAD_FAILED, FingeringButton, useFingeringKey, useFingeringPanel } from '../ui/fingering/useFingeringPanel';
 import { useSheetKeys } from './sheet/useSheetKeys';
 import '../styles/print.css';
 import s from './SheetPage.module.css';
@@ -175,6 +175,17 @@ function Sheet({ doc }: { doc: Doc }) {
     fingering.close();
     paperRef.current?.focus();
   };
+  // The Fingering button and I: the panel opens on the selected note, else on its last note, else on the first note.
+  const toggleFingering = () => {
+    if (fingering.wanted) { fingering.close(); return; }
+    const selected = selectedId === null ? undefined : derived.byId[selectedId];
+    const id = (selected && !selected.tiedFrom ? selected.id : null) ?? fingeringId ?? derived.events.find(e => !e.rest && !e.tiedFrom)?.id;
+    if (id === undefined) return;
+    setFingeringId(id);
+    keys.hide();
+    fingering.show();
+  };
+  useFingeringKey(!performing, toggleFingering);
   useEffect(() => {
     const ev = selectedId === null ? undefined : derived.byId[selectedId];
     if (ev && !ev.tiedFrom) setFingeringId(ev.id);
@@ -182,7 +193,7 @@ function Sheet({ doc }: { doc: Doc }) {
   const { close: hideFingering } = fingering;
   useEffect(() => { if (keys.open) hideFingering(); }, [keys.open, hideFingering]);
   const panelNotes = useMemo(() => derived.events.filter(e => !e.tiedFrom).map(e => ({
-    id: e.id, written: e.written, rest: e.rest, bar: e.bar + firstBar, options: e.options, chosen: e.chosen, auto: e.auto,
+    id: e.id, written: e.written, name: e.spelled.name, rest: e.rest, bar: e.bar + firstBar, options: e.options, chosen: e.chosen, auto: e.auto,
   })), [derived, firstBar]);
 
   useSheetShortcuts({
@@ -245,6 +256,7 @@ function Sheet({ doc }: { doc: Doc }) {
             <div className={s.barRight}>
               <UndoRedo canUndo={undoable} canRedo={redoable} onUndo={() => travel('undo')} onRedo={() => travel('redo')}
                 onFocusLost={focusSheet} />
+              <FingeringButton open={fingering.wanted} onToggle={toggleFingering} />
               {hasKeyboard && <KeysButton ref={keys.buttonRef} open={keys.open} onToggle={keys.toggleFromButton} />}
               <SaveControls status={status} error={saveError} onSave={save} />
               <FileMenu entries={entries} currentId={libraryId} onPdf={() => void downloadPdf()} pdfIntent={intentProps(sheetPdfModule)} pdfBusy={pdfBusy} onPrint={print} onDownload={download}

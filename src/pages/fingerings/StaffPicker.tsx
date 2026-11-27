@@ -23,7 +23,8 @@ export function StaffPicker(p: { pitch: number; lo: number; hi: number; onPick(p
   const pal = usePalette();
   const svg = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<number | null>(null);
-  const { low, high } = shownPositions(p.lo, p.hi);
+  // The staff reaches the note too when an address names one outside the range.
+  const { low, high } = shownPositions(Math.min(p.lo, p.pitch), Math.max(p.hi, p.pitch));
   const top = yOfPos(high) - 14;
   const bottom = yOfPos(low) + 14;
   const fits = (pos: number) => {

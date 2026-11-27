@@ -128,6 +128,8 @@ Four steps, one commit each, in one pull request (the owner's decision of 2026-1
 4. The soprano shape is a stored preference, not a setting of the sheet.
 5. The hint "Click a fingering chart…" shows in the sheet's hint line under the mode switch, not as a banner.
 6. On the sheet the panel follows the selection and uses the sheet's existing ← → keys, rather than keys of its own that would clash with them. The mockup's "skip rests" holds for the panel's ‹ › buttons; the keys keep stopping on rests, as they do today.
+7. **Added in the build (step 4):** a "Fingering" button in the page bar of the sheet and the Scales page, and the key I on both, open and close the panel. A chart click is pointer-only and the popover link only exists for notes with alternates, so without them the panel had no way in from the keyboard (WCAG 2.1.1); a learner also opens it often, which CLAUDE.md asks a shortcut for. I is unused on the sheet in every mode.
+8. **Added in the build (step 4):** the Fingerings page's address takes a note up to two octaves outside the range, so the red range banner's link can open the page on a note the sheet marks red; the page then says there is no sourced fingering.
 
 ## 8. Open points
 

@@ -64,7 +64,7 @@ function OptionName(p: { text: string; x: number; y: number; maxChars: number })
 
 interface LineProps {
   notes: Placed[]; sig: number; last: boolean; kind: Instrument['kind']; chartStyle: 'compact' | 'full';
-  showNames: boolean; showAlternates: boolean; line: number; renderUnderChart?: ScaleChartSlot;
+  showNames: boolean; showAlternates: boolean; line: number; renderUnderChart?: ScaleChartSlot; onChartClick?(index: number): void;
 }
 
 /** Where everything of one scale line sits, in the line's own coordinates; `height` is the line's drawn height in units. */
@@ -102,7 +102,7 @@ function layoutLine(p: LineProps) {
 /** One scale line: clef, key signature, up to 15 whole notes, and under each its name and fingering stack. */
 function ScaleLine(p: LineProps) {
   const pal = usePalette();
-  const { end, xOf, ys, top, nameY, chartY, maxChars, stacks, height } = layoutLine(p);
+  const { end, step, xOf, ys, top, nameY, chartY, maxChars, stacks, height } = layoutLine(p);
   const nAcc = Math.abs(p.sig);
   const sigPos = p.sig > 0 ? SHARP_POS : FLAT_POS;
 
@@ -149,6 +149,11 @@ function ScaleLine(p: LineProps) {
             </g>
           );
         })}
+        {/* Over each note's chart: a click opens the note's fingering on the instrument (the Scales page). */}
+        {p.onChartClick && p.notes.map((n, k) => (
+          <rect key={`chart-${n.index}`} data-chart-hit={n.index} x={xOf(k) - step / 2} y={chartY} width={step} height={CHART_H}
+            fill="transparent" style={{ cursor: 'pointer' }} onClick={() => p.onChartClick?.(n.index)} />
+        ))}
         {p.last && (
           <g data-end="">
             <rect x={end - 5} y={staffTop} width={1} height={STAFF_H} fill={pal.ink} />
@@ -174,6 +179,8 @@ export interface ScaleStaffProps {
   overrides?: Record<number, number>;
   /** HTML under each chart whose note has two or more fingerings (the alternatives pill); positioned in line coordinates. */
   renderUnderChart?: ScaleChartSlot;
+  /** A click on a note's chart, by note index (the Scales page's Fingering panel). */
+  onChartClick?(index: number): void;
 }
 
 /** The lines of a scale in order, each with its drawn height in units, its number of notes and a function that renders it; the page, Play mode and the PDF use these. */
@@ -187,7 +194,7 @@ export function scaleLines(p: ScaleStaffProps): { height: number; notes: number;
     const line = lines.length;
     const props: LineProps = {
       notes: placed.slice(i, i + NOTES_PER_LINE), sig: p.scale.sig, last: i + NOTES_PER_LINE >= placed.length, kind, chartStyle: p.chartStyle,
-      showNames: p.showNames, showAlternates: p.showAlternates, line, renderUnderChart: p.renderUnderChart,
+      showNames: p.showNames, showAlternates: p.showAlternates, line, renderUnderChart: p.renderUnderChart, onChartClick: p.onChartClick,
     };
     lines.push({ height: layoutLine(props).height, notes: props.notes.length, render: () => <ScaleLine {...props} /> });
   }

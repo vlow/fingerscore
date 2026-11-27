@@ -21,6 +21,7 @@ import { requestSheetPdf, sheetPdfModule } from '../pdf/request';
 import { downloadText } from '../ui/download';
 import { ToastHost } from '../shell/Toast';
 import SheetPage from './SheetPage';
+import { fingeringPanelModule } from '../ui/fingering/useFingeringPanel';
 
 vi.mock('../ui/download', () => ({ downloadText: vi.fn() }));
 vi.mock('../pdf/request', () => ({ requestSheetPdf: vi.fn(async () => {}), sheetPdfModule: { prefetch: vi.fn() } }));
@@ -2581,6 +2582,8 @@ describe('keyboard shortcuts panel', () => {
 });
 
 describe('Fingering panel', () => {
+  // The panel's code loads on demand; loaded once here, so no test waits on a cold import (slow under coverage in CI).
+  beforeAll(async () => { await fingeringPanelModule.load(); });
   const panel = () => screen.queryByRole('complementary', { name: 'Fingering' });
   const sheet = () => screen.getByRole('group', { name: /Sheet music/ });
   const chartHits = () => [...document.querySelectorAll<SVGRectElement>('[data-chart-hit]')];
@@ -2592,13 +2595,13 @@ describe('Fingering panel', () => {
     const [first, second] = notes();
     fireEvent.click(chartHits().find(r => r.getAttribute('data-chart-hit') === second.id)!);
     expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
-    expect(shownNote()).toBe(noteNameFlat(second.written));
+    expect(shownNote()).toBe(second.spelled.name);
     expect(within(panel()!).getByText(`note 2 of ${notes().length}`)).toBeInTheDocument();
     expect(document.querySelector('[data-mark="selected"]')).toBeInTheDocument();
     sheet().focus();
     await user.keyboard('{ArrowLeft}');
     expect(within(panel()!).getByText(`note 1 of ${notes().length}`)).toBeInTheDocument();
-    expect(shownNote()).toBe(noteNameFlat(first.written));
+    expect(shownNote()).toBe(first.spelled.name);
   });
 
   it('steps with ‹ ›, picks an alternate as one undo step, and closes with Esc back to the sheet', async () => {
@@ -2649,5 +2652,46 @@ describe('Fingering panel', () => {
     expect(chartHits().length).toBeGreaterThan(0);
     await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
     expect(chartHits()).toHaveLength(0);
+  });
+});
+
+describe('Fingering panel: button, key and banner link', () => {
+  // The panel's code loads on demand; loaded once here, so no test waits on a cold import (slow under coverage in CI).
+  beforeAll(async () => { await fingeringPanelModule.load(); });
+  const panel = () => screen.queryByRole('complementary', { name: 'Fingering' });
+  const shownNote = () => within(within(panel()!).getByRole('region', { name: /^Fingering for / })).getAllByRole('paragraph')[0].textContent;
+
+  it('the Fingering button and I open it on the selected note, and close it again', async () => {
+    open('asax');
+    const button = screen.getByRole('button', { name: 'Fingering' });
+    expect(button).toHaveAttribute('aria-keyshortcuts', 'I');
+    await user.click(button);
+    expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
+    const first = derive(useApp.getState().doc!, DEFAULT_PREFS).events.find(e => !e.rest && !e.tiedFrom)!;
+    expect(shownNote()).toBe(first.spelled.name);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    const sheet = screen.getByRole('group', { name: /Sheet music/ });
+    sheet.focus();
+    await user.keyboard('i');
+    expect(panel()).toBeNull();
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    await user.keyboard('i');
+    expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
+    const selected = derive(useApp.getState().doc!, DEFAULT_PREFS).events.filter(e => !e.tiedFrom)[1];
+    expect(shownNote()).toBe(selected.spelled.name);
+  });
+
+  it('I does nothing in a text field', async () => {
+    open('asax');
+    await user.click(screen.getAllByRole('textbox', { name: /title/i })[0]);
+    await user.keyboard('i');
+    expect(panel()).toBeNull();
+  });
+
+  it('the out-of-range banner links to the Fingerings page on the highest such note', () => {
+    open('xc', { shift: 0 });
+    const highest = Math.max(...derive(useApp.getState().doc!, DEFAULT_PREFS).events.filter(e => e.state === 'bad').map(e => e.written));
+    const link = within(screen.getByRole('alert')).getByRole('link', { name: 'Show fingerings' });
+    expect(link).toHaveAttribute('href', `/fingerings?inst=xc&note=${noteNameFlat(highest).replace('♭', 'b')}`);
   });
 });

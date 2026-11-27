@@ -15,6 +15,12 @@ export interface FingeringsState {
   shape: SopranoShape;
 }
 
+/**
+ * How far outside the instrument's range an address may name a note: the range banners link to a note the sheet marks
+ * red, and the page shows it with "no sourced fingering" (design 4.5). Two octaves cover any transposed song.
+ */
+const ADDRESS_MARGIN = 24;
+
 /** The written C5, or the nearest note of the instrument's range. */
 export function defaultNote(id: InstId): number {
   const i = inst(id);
@@ -31,7 +37,7 @@ export function inRange(id: InstId, note: number): boolean {
 export const noteParam = (pitch: number): string => noteNameFlat(pitch).replace('♭', 'b');
 
 /**
- * The state an address asks for. Anything missing, unknown or out of range falls back: the preferred instrument, its
+ * The state an address asks for. Anything missing or unknown, or a note far outside the range, falls back: the preferred instrument, its
  * written C5, the standard fingering, the Baroque recorder system, the stored soprano shape. The option index is
  * checked against the note's options by the page, which knows them.
  */
@@ -40,7 +46,7 @@ export function readAddress(params: URLSearchParams, preferred: InstId, storedSh
   const id = ORDER.includes(raw as InstId) ? (raw as InstId) : preferred;
   const i = inst(id);
   const typed = params.get('note');
-  const read = typed === null ? null : readNote(typed, defaultNote(id), i.lo, i.ext);
+  const read = typed === null ? null : readNote(typed, defaultNote(id), i.lo - ADDRESS_MARGIN, i.ext + ADDRESS_MARGIN);
   const note = read !== null && 'pitch' in read ? read.pitch : defaultNote(id);
   const alt = Number(params.get('alt'));
   const shape = params.get('shape');

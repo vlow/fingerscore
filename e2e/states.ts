@@ -223,6 +223,15 @@ const RAW: AppState[] = [
     },
   },
   {
+    id: 'scales-fingering-panel',
+    landmark: page => page.getByRole('complementary', { name: 'Fingering' }),
+    open: async page => {
+      await clean(page, '/scales');
+      await expect(scalesPage(page)).toBeVisible();
+      await page.getByRole('button', { name: 'Fingering', exact: true }).click();
+    },
+  },
+  {
     id: 'fingerings',
     landmark: page => page.getByRole('region', { name: /^Fingering for / }),
     open: page => clean(page, '/fingerings?inst=asax&note=Bb4'),

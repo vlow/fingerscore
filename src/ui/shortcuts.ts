@@ -20,7 +20,7 @@ export interface Shortcut {
   macKeys?: Part[];
 }
 
-export type GroupId = 'sheet' | 'move' | 'notes' | 'text' | 'play' | 'fingerings';
+export type GroupId = 'sheet' | 'move' | 'notes' | 'text' | 'play' | 'fingerings' | 'scales';
 
 export interface Group {
   id: GroupId;
@@ -40,6 +40,7 @@ export const GROUPS: Group[] = [
     { id: 'undo', label: 'Undo', syn: 'back revert', keys: [k('Mod', 'Z')] },
     { id: 'redo', label: 'Redo', syn: 'again', keys: [k('Mod', 'Y'), 'or', k('Mod', 'Shift', 'Z')], macKeys: [k('Mod', 'Shift', 'Z')] },
     { id: 'help', label: 'Show or hide this list', syn: 'help shortcuts keys', keys: [k('?')] },
+    { id: 'fpanel', label: 'Show or hide the fingering on the instrument', syn: 'fingering panel instrument drawing keys', keys: [k('I')] },
   ] },
   { id: 'move', title: 'Move and listen', sub: 'every mode', rows: [
     { id: 'lr', label: 'Previous or next note or rest', syn: 'arrow left right select', keys: [k('←'), '/', k('→')] },
@@ -82,6 +83,12 @@ export const GROUPS: Group[] = [
     { id: 'foct', label: 'Octave up or down', syn: 'pitch octave note', keys: [k('Mod', '↑'), '/', k('Mod', '↓')] },
     { id: 'fletter', label: 'That note name, nearest to the current note', syn: 'pitch letter name note', keys: [k('A'), '–', k('G')] },
     { id: 'fesc', label: 'Unpin the highlighted key', syn: 'escape highlight', keys: [k('Esc')] },
+  ] },
+  // The Scales page has no shortcuts panel either: rowFor does not light these rows.
+  { id: 'scales', title: 'Scales page', sub: 'not in a text field', rows: [
+    { id: 'sfpanel', label: 'Show or hide the fingering on the instrument', syn: 'fingering panel instrument drawing keys', keys: [k('I')] },
+    { id: 'slr', label: 'Previous or next note of the scale, in the Fingering panel', syn: 'arrow left right step', keys: [k('←'), '/', k('→')] },
+    { id: 'sesc', label: 'Close the Fingering panel, from inside it', syn: 'escape close', keys: [k('Esc')] },
   ] },
 ];
 
@@ -145,6 +152,9 @@ export type KeyPlace = 'sheet' | 'field' | 'other';
 const MOVE_KEYS: Record<string, string> = { ArrowLeft: 'lr', ArrowRight: 'lr', Home: 'he', End: 'he', Enter: 'listen', ' ': 'listen' };
 const NOTE_KEYS: Record<string, string> = { '.': 'dot', p: 'trip', r: 'rest', t: 'tie', delete: 'del', backspace: 'del' };
 
+/** Page keys that work in every mode and anywhere but a text field. */
+const PAGE_KEYS: Record<string, string> = { i: 'fpanel' };
+
 function chordRow(e: KeyboardEvent): string | null {
   const key = e.key.toLowerCase();
   if (key === 's' && !e.shiftKey) return 'save';
@@ -179,6 +189,7 @@ export function rowFor(e: KeyboardEvent, mode: Mode, place: KeyPlace): string | 
     return noteRow(e, true);
   }
   if (place === 'field') return fieldRow(e);
+  if (e.key.toLowerCase() in PAGE_KEYS) return PAGE_KEYS[e.key.toLowerCase()];
   if (place !== 'sheet') return null;
   if (e.key === 'Escape') return mode === 'lyrics' || mode === 'chords' ? 'tesc' : 'esc';
   if (e.key === 'Tab' && !e.shiftKey && (mode === 'lyrics' || mode === 'chords')) return 'tabin';

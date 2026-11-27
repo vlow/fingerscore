@@ -12,8 +12,13 @@ describe('Fingerings address', () => {
     expect(read('')).toEqual({ inst: 'asax', note: 72, alt: 0, system: 'baroque', shape: 'straight' });
     expect(read('inst=tuba&note=H9&alt=-1&system=x&shape=bent', 'curved'))
       .toEqual({ inst: 'asax', note: 72, alt: 0, system: 'baroque', shape: 'curved' });
-    expect(read('inst=asax&note=C2')).toMatchObject({ note: 72 });
+    expect(read('inst=asax&note=C0')).toMatchObject({ note: 72 });
     expect(read('inst=asax&alt=1.5')).toMatchObject({ alt: 0 });
+  });
+
+  it('takes a note up to two octaves outside the range, as the range banners link to one', () => {
+    expect(read('inst=asax&note=C2')).toMatchObject({ note: 36 });
+    expect(read('inst=asax&note=G9')).toMatchObject({ note: 72 }); // above C7 + two octaves
   });
 
   it('starts an instrument whose range has no C5 on its nearest note', () => {

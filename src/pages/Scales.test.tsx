@@ -9,6 +9,7 @@ import { requestScalePdf, scalePdfModule } from '../pdf/request';
 import { useApp } from '../state/store';
 import type { ScalePdfInput } from '../pdf/scalePdf';
 import Scales from './Scales';
+import { fingeringPanelModule } from '../ui/fingering/useFingeringPanel';
 
 vi.mock('../pdf/request', () => ({ requestScalePdf: vi.fn(async () => {}), scalePdfModule: { prefetch: vi.fn() } }));
 
@@ -243,11 +244,14 @@ describe('choosable alternate fingerings', () => {
     expect(pill).toHaveAttribute('aria-expanded', 'true');
     const dialog = screen.getByRole('dialog', { name: 'Alternate fingerings for B♭4' });
     expect(dialog).toHaveTextContent(/^B♭4 — pick a fingering/);
-    expect(within(dialog).getAllByRole('button')).toHaveLength(4);
+    // The fingerings, then "Show on instrument" at the foot.
+    const options = within(dialog).getAllByRole('button').filter(b => b.textContent !== 'Show on instrument');
+    expect(options).toHaveLength(4);
+    expect(within(dialog).getByRole('button', { name: 'Show on instrument' })).toBeInTheDocument();
     expect(within(dialog).getByText('auto')).toBeInTheDocument();
     const before = document.querySelectorAll('[data-note]')[3].querySelector('[data-chart]')!.getAttribute('data-option');
-    const other = within(dialog).getAllByRole('button').findIndex(b => !/auto/.test(b.textContent!));
-    await user.click(within(dialog).getAllByRole('button')[other]);
+    const other = options.findIndex(b => !/auto/.test(b.textContent!));
+    await user.click(options[other]);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(pill).toHaveFocus();
     expect(screen.getByText('2 notes have alternate fingerings · 1 changed by you')).toBeInTheDocument();
@@ -514,5 +518,45 @@ describe('Download PDF', () => {
     expect(signal!.aborted).toBe(false);
     view.unmount();
     expect(signal!.aborted).toBe(true);
+  });
+});
+
+describe('Fingering panel', () => {
+  // The panel's code loads on demand; loaded once here, so no test waits on a cold import (slow under coverage in CI).
+  beforeAll(async () => { await fingeringPanelModule.load(); });
+  const panel = () => screen.queryByRole('complementary', { name: 'Fingering' });
+  const shownNote = () => within(within(panel()!).getByRole('region', { name: /^Fingering for / })).getAllByRole('paragraph')[0].textContent;
+  const chartHits = () => [...document.querySelectorAll<SVGRectElement>('[data-chart-hit]')];
+
+  it('opens from a chart on that note; ← → in the panel walk the scale; Esc closes it back on the button', async () => {
+    renderScales();
+    fireEvent.click(chartHits()[2]);
+    expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
+    expect(shownNote()).toBe('E4');
+    expect(within(panel()!).getByText('note 3 of 8')).toBeInTheDocument();
+    const next = within(panel()!).getByRole('button', { name: 'Next note' });
+    next.focus();
+    await user.keyboard('{ArrowRight}');
+    expect(shownNote()).toBe('F4');
+    await user.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(shownNote()).toBe('D4');
+    await user.keyboard('{Escape}');
+    expect(panel()).toBeNull();
+    expect(screen.getByRole('button', { name: 'Fingering' })).toHaveFocus();
+  });
+
+  it('picks an alternate as the scale\'s pick, and opens from the popover and with I', async () => {
+    renderScales();
+    await user.click(screen.getByRole('radio', { name: /^F · sounds A♭$/ }));
+    await user.click(screen.getAllByRole('button', { name: /^⇅ \d+ alternate fingerings for / })[0]);
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Show on instrument' }));
+    expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
+    expect(shownNote()).toBe('B♭4');
+    await user.click(within(panel()!).getByRole('button', { name: /^Alternate 1/ }));
+    expect(screen.getByText(/· 1 changed by you/)).toBeInTheDocument();
+    await user.keyboard('i');
+    expect(panel()).toBeNull();
+    await user.keyboard('i');
+    expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
   });
 });

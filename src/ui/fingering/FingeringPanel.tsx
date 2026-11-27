@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { FingeringOption, RecorderSystem } from '../../domain/fingerings';
-import { inst, noteNameFlat } from '../../domain/instruments';
+import { inst } from '../../domain/instruments';
 import type { InstId } from '../../domain/types';
 import { FingeringChart } from '../../render/FingeringChart';
 import { modelFor } from '../../render/keymap/models';
@@ -15,6 +15,8 @@ import s from './FingeringPanel.module.css';
 export interface PanelNote {
   id: string;
   written: number;
+  /** The note's name as the sheet or the scale spells it. */
+  name: string;
   rest: boolean;
   /** The bar it is in, as the sheet numbers bars; none on the Scales page. */
   bar?: number;
@@ -45,7 +47,7 @@ const optionLabel = (index: number) => (index === 0 ? 'Standard' : `Alternate ${
 function whereText(note: PanelNote): string {
   const bar = note.bar === undefined ? '' : `bar ${note.bar}`;
   if (note.rest) return bar ? `Rest · ${bar}` : 'Rest';
-  return bar || noteNameFlat(note.written);
+  return bar || note.name;
 }
 
 /**
@@ -124,7 +126,7 @@ export default function FingeringPanel(p: FingeringPanelProps) {
             <Segmented<string> label="Side of the instrument" size="small" value={view} onChange={setViewId}
               options={model.views.map(v => ({ value: v.id, content: v.label }))} />
           )}
-          <FingeringView inst={p.inst} written={current.written} option={option} optionLabel={optionLabel(chosen)}
+          <FingeringView inst={p.inst} written={current.written} name={current.name} option={option} optionLabel={optionLabel(chosen)}
             soprano={soprano} onlyView={view} />
           {current.options.length > 1 && (
             <div className={s.alts}>

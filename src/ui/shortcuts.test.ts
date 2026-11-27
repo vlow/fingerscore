@@ -4,8 +4,8 @@ const press = (key: string, init: KeyboardEventInit = {}) => new KeyboardEvent('
 const group = (id: string) => GROUPS.find(g => g.id === id)!;
 
 describe('the shortcut list', () => {
-  it('has six groups in a fixed order and unique row ids', () => {
-    expect(GROUPS.map(g => g.id)).toEqual(['sheet', 'move', 'notes', 'text', 'play', 'fingerings']);
+  it('has seven groups in a fixed order and unique row ids', () => {
+    expect(GROUPS.map(g => g.id)).toEqual(['sheet', 'move', 'notes', 'text', 'play', 'fingerings', 'scales']);
     const ids = GROUPS.flatMap(g => g.rows.map(r => r.id));
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -72,6 +72,12 @@ describe('rowFor', () => {
     expect(rowFor(press('Backspace'), 'notes', 'sheet')).toBe('del');
     expect(rowFor(press('t'), 'view', 'sheet')).toBeNull();
     expect(rowFor(press('t'), 'notes', 'other')).toBeNull();
+  });
+
+  it('finds I, the Fingering panel key, on the sheet and anywhere but a text field', () => {
+    expect(rowFor(press('i'), 'view', 'sheet')).toBe('fpanel');
+    expect(rowFor(press('I'), 'notes', 'other')).toBe('fpanel');
+    expect(rowFor(press('i'), 'lyrics', 'field')).toBeNull();
   });
 
   it('finds the moving keys in every mode, and Esc by mode', () => {

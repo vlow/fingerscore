@@ -17,6 +17,8 @@ export interface FingeringViewProps {
   inst: InstId;
   /** The written pitch. */
   written: number;
+  /** Its name as the score spells it (D♯5 in E major); without one, the flat name the app uses elsewhere. */
+  name?: string;
   /** The fingering shown; null when the note has no sourced fingering. */
   option: FingeringOption | null;
   /** What the option is among the note's options: "Standard", "Alternate 2". */
@@ -85,7 +87,7 @@ export function FingeringView(p: FingeringViewProps) {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [pinned]);
 
-  const name = noteNameFlat(p.written);
+  const name = p.name ?? noteNameFlat(p.written);
   const note = fingeringNote(p.option?.n ?? '');
   const press = model.keys.filter(k => pressed.has(k.id));
 
