@@ -5,6 +5,7 @@ import type { Doc, InstId } from '../domain/types';
 import type { ParsedSong } from '../import/types';
 import { canonical, validateDoc } from '../domain/persistence';
 import { getEntry, saveEntry } from './library';
+import { adoptUnsavedTempo, forgetUnsavedTempo } from './playTempos';
 import { readJSON, remove, writeJSON } from '../shell/storage';
 
 const KEY_INST = 'fingerscore.inst';
@@ -113,7 +114,7 @@ export const useApp = create<AppState>()((set, get) => {
   }
 
   /** A sheet was opened or imported: history starts afresh. */
-  const fresh = () => { endStep(); return { past: [], future: [], sheetGen: get().sheetGen + 1 }; };
+  const fresh = () => { endStep(); forgetUnsavedTempo(); return { past: [], future: [], sheetGen: get().sheetGen + 1 }; };
 
   return {
     instId: 'asax',
@@ -152,6 +153,7 @@ export const useApp = create<AppState>()((set, get) => {
       if (!doc) return false;
       const r = saveEntry(doc, libraryId);
       if (!r.ok) { set({ saveError: r.message }); return false; }
+      if (libraryId === null) adoptUnsavedTempo(r.entry.id);
       set({ libraryId: r.entry.id, savedSnapshot: canonical(doc), saveError: null });
       return true;
     },
