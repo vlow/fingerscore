@@ -124,6 +124,10 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     writePlayModePrefs(next);
   };
 
+  // Where a page turn is scrolling to. A second turn before it arrives (a pedal pressed twice) counts from there,
+  // not from wherever the smooth scroll happens to be; the page number shows that page from the start of the turn.
+  const goingTo = useRef<{ top: number; since: number } | null>(null);
+
   const measure = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -133,7 +137,9 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
       const firstTop = top(systems[0]);
       lines.current = { firstTop, pitch: systems.length > 1 ? (top(systems[systems.length - 1]) - firstTop) / (systems.length - 1) : 0 };
     }
-    const next = { n: pageNumber(el.scrollTop, el.scrollHeight, el.clientHeight), of: pageCount(el.scrollHeight, el.clientHeight) };
+    const pending = goingTo.current;
+    const at = pending && performance.now() - pending.since < TURN_MS ? pending.top : el.scrollTop;
+    const next = { n: pageNumber(at, el.scrollHeight, el.clientHeight), of: pageCount(el.scrollHeight, el.clientHeight) };
     setPage(prev => (prev.n === next.n && prev.of === next.of ? prev : next));
   }, []);
 
@@ -198,10 +204,6 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     return () => { cancelAnimationFrame(id); setStartsIn(null); };
   }, [auto]);
 
-  // Where a page turn is scrolling to. A second turn before it arrives (a pedal pressed twice) counts from there,
-  // not from wherever the smooth scroll happens to be.
-  const goingTo = useRef<{ top: number; since: number } | null>(null);
-
   function onScroll() {
     const el = scrollerRef.current;
     if (el && goingTo.current && Math.abs(el.scrollTop - goingTo.current.top) < 1) goingTo.current = null;
@@ -221,6 +223,7 @@ export default function PlayMode({ doc, derived, layout, onExit }: Props): JSX.E
     // After a turn the player reads from the top of the new page: auto-scroll waits again.
     travelled.current = 0;
     el.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+    measure();
   }
 
   /**

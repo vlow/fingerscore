@@ -67,10 +67,68 @@ describe('play mode maths', () => {
     expect(pageNumber(0, 0, 0)).toBe(1);
   });
 
+  it('shows the last page at the end of the sheet', () => {
+    // 11119 px to scroll, turns of 675.84 px: 16 full turns and a short one to the end
+    expect(pageCount(11887, 768)).toBe(18);
+    expect(pageNumber(11119, 11887, 768)).toBe(18);
+    expect(pageNumber(16 * 0.88 * 768, 11887, 768)).toBe(17);
+    expect(pageNumber(11118.6, 11887, 768)).toBe(18); // a scrollTop a fraction of a pixel short of the end
+  });
+
+  it('does not count a last turn of a few pixels as a page', () => {
+    // 1780 px to scroll, turns of 880 px: the 20 px left after two turns join the page before
+    expect(pageCount(2780, 1000)).toBe(3);
+    expect(turnTarget(880, 2780, 1000, 1)).toBe(1780);
+    expect(pageNumber(1780, 2780, 1000)).toBe(3);
+    expect(pageCount(1030, 1000)).toBe(1);
+  });
+
   it('turns by 88 % and stops at both ends', () => {
     expect(turnTarget(0, 2760, 1000, 1)).toBe(880);
     expect(turnTarget(1700, 2760, 1000, 1)).toBe(1760);
     expect(turnTarget(100, 2760, 1000, -1)).toBe(0);
+  });
+
+  it('turns back from the end to the start of the page before', () => {
+    // 1890 px to scroll: pages start at 0, 880 and 1760, the last page at the end
+    expect(pageCount(2890, 1000)).toBe(4);
+    expect(turnTarget(1890, 2890, 1000, -1)).toBe(1760);
+    expect(pageNumber(1760, 2890, 1000)).toBe(3);
+  });
+
+  it('turns from a scrolled position to the next page start', () => {
+    // a wheel left the sheet between the starts of page 2 (880) and page 3 (1760)
+    expect(turnTarget(1000, 2760, 1000, 1)).toBe(1760);
+    expect(turnTarget(1000, 2760, 1000, -1)).toBe(880);
+    expect(pageNumber(1000, 2760, 1000)).toBe(2);
+  });
+
+  it('shows every page in order, forward and back, whatever the sizes', () => {
+    // Browsers round scrollTop: to whole pixels, or to half pixels on a high-density screen.
+    const roundings = [(x: number) => Math.round(x), (x: number) => Math.round(x * 2) / 2];
+    const wrong: string[] = [];
+    for (const round of roundings) {
+      for (let scrollHeight = 3000; scrollHeight <= 15000; scrollHeight += 53) {
+        for (let clientHeight = 400; clientHeight <= 2000; clientHeight += 41) {
+          const of = pageCount(scrollHeight, clientHeight);
+          const shown: number[] = [];
+          let top = 0;
+          for (let i = 0; i < of + 1; i++) {
+            shown.push(pageNumber(top, scrollHeight, clientHeight));
+            const next = round(turnTarget(top, scrollHeight, clientHeight, 1));
+            if (next - top >= clientHeight) wrong.push(`${scrollHeight}/${clientHeight}: a turn skips lines`);
+            top = next;
+          }
+          for (let i = 0; i < of; i++) {
+            top = round(turnTarget(top, scrollHeight, clientHeight, -1));
+            shown.push(pageNumber(top, scrollHeight, clientHeight));
+          }
+          const expected = [...Array.from({ length: of }, (_, i) => i + 1), of, ...Array.from({ length: of }, (_, i) => Math.max(1, of - 1 - i))];
+          if (shown.join() !== expected.join()) wrong.push(`${scrollHeight}/${clientHeight}: ${shown.join()}`);
+        }
+      }
+    }
+    expect(wrong.slice(0, 5)).toEqual([]);
   });
 
   it('steps the zoom by 25 between 75 and 200', () => {
