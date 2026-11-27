@@ -1,11 +1,14 @@
 // Reads the commit and the version tag from git at build time, for the footer (src/shell/buildInfo.ts).
 // Version tags are v<major>.<minor>.<patch>, the tags CI runs the release check for.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, type ExecFileSyncOptionsWithStringEncoding } from 'node:child_process';
 import type { BuildInfo } from '../src/shell/buildInfo';
 
 type Git = (...args: string[]) => string;
 
-const git: Git = (...args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+// False positive: this runs only at build time, on the owner's machine or on CI's single-use runners, where no one else
+// can change PATH. Whoever can change PATH there can also replace git at a fixed path, so a fixed path protects nothing.
+const options: ExecFileSyncOptionsWithStringEncoding = { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] };
+const git: Git = (...args) => execFileSync('git', args, options).trim(); // NOSONAR typescript:S4036 false positive, see above
 
 /** Runs git, or returns '' when git fails: no repository, no tag, no git installed. */
 const quiet = (run: Git): Git => (...args) => {
