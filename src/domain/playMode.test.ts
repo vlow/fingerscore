@@ -3,7 +3,7 @@ import { DEFAULT_PREFS } from './transpose';
 import { layoutSheet } from '../render/sheetLayout';
 import { mkDoc, type BarSpec } from '../test/helpers';
 import {
-  READ_AT, SPEED, clampSpeed, fullLineBeats, leadIn, systemAt, systemBeats, fitZoom, shownZoom, zoomBelow, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget,
+  READ_AT, SCALE_TEMPO, SPEED, clampSpeed, sheetLines, fullLineBeats, leadIn, systemAt, systemBeats, fitZoom, shownZoom, zoomBelow, clampZoom, lineSeconds, pageCount, pageNumber, scrollSpeed, speedLabel, stepZoom, turnTarget,
 } from './playMode';
 
 const bars = (n: number, ticks: number): BarSpec[] => Array.from({ length: n }, () => ({ ev: [[67, ticks]] }));
@@ -15,6 +15,17 @@ describe('play mode maths', () => {
     // Nine bars of 4/4: two lines of four bars and a last line with one.
     expect(beatsOf(mkDoc(bars(9, 48)))).toEqual([16, 16, 4]);
     expect(beatsOf(mkDoc(bars(8, 36), [6, 8]))).toEqual([12, 12]);
+  });
+
+  it('gives every system of a sheet its beats and the layout\'s system height', () => {
+    const doc = mkDoc(bars(9, 48));
+    const layout = layoutSheet(doc, derive(doc, DEFAULT_PREFS));
+    expect(sheetLines(doc, layout.systems, layout.systemHeight)).toEqual([16, 16, 4].map(beats => ({ beats, height: layout.systemHeight })));
+  });
+
+  it('paces a scale at one note per beat: a full line of 15 notes takes 15 s at 100 %', () => {
+    expect(lineSeconds(15, SCALE_TEMPO, 100)).toBe(15);
+    expect(speedLabel(15, SCALE_TEMPO, 50)).toBe('50% · 1 line / 30 s');
   });
 
   it('names the pace by a full line, whatever a short last line holds', () => {

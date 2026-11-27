@@ -104,6 +104,45 @@ test('scales: print shows the scale only', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('scales: play mode shows the scale alone, turns pages, auto-scrolls and returns on Esc', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 1024, height: 600 });
+  await clean(page, '/scales');
+  await radio(page, 'Range', 'Whole range').click();
+  await radio(page, 'Direction', 'Up & down').click();
+  const count = await lines(page).count();
+  expect(count).toBeGreaterThan(2);
+
+  await page.getByRole('button', { name: 'Play mode' }).click();
+  const region = page.getByRole('region', { name: 'Play mode' });
+  const scroller = page.getByTestId('play-scroller');
+  await expect(region).toBeFocused();
+  await expect(page.locator('#root')).toHaveAttribute('inert', '');
+  await expect(region.getByRole('region', { name: 'Scale' })).toBeVisible();
+  await expect(region.locator('[data-testid="scale-line"]')).toHaveCount(count);
+  await expect(region.getByRole('button', { name: /⇅/ })).toHaveCount(0);
+
+  // One note per beat at 60 bpm: a full line of 15 notes in 15 s.
+  await expect(region.getByText('100% · 1 line / 15 s')).toBeVisible();
+  await expect(region.getByText(/^Page 1 \/ [2-9]$/)).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(region.getByText(/^Page 2 \/ [2-9]$/)).toBeVisible();
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  await scroller.evaluate(el => { el.scrollTop = 0; });
+
+  await page.keyboard.press('a');
+  await expect(region.getByRole('button', { name: 'Pause' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(region.getByText(/starts in \d+ s$/)).toBeVisible();
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop), { timeout: 15000 }).toBeGreaterThan(0);
+  await page.keyboard.press('a');
+
+  await page.keyboard.press('Escape');
+  await expect(region).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Play mode' })).toBeFocused();
+
+  expect(errors).toEqual([]);
+});
+
 test('scales: the page loads as its own chunk on first visit', async ({ page }) => {
   const errors = collectErrors(page);
   // Listen from the first navigation on, so "no Scales request before the click" covers loading the start page.
