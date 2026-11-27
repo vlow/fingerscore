@@ -113,7 +113,7 @@ New entries in `GROUPS` (`src/ui/shortcuts.ts`), with rows in `rowFor`, `aria-ke
 
 ## 6. Delivery
 
-Four steps, each its own branch and pull request, each free of SonarCloud issues before it merges:
+Four steps, one commit each, in one pull request (the owner's decision of 2026-11-27, replacing one pull request per step): the steps share the view and the models, and the page and both panels are reviewed together. Each commit passes the tests and leaves the branch free of SonarCloud issues before the next step starts, so the pull request can be reviewed commit by commit. It stays a draft until step 4 is in.
 
 1. The view (§4.1) and the page with the instrument select, the name and text pickers, the alternates, the keys and the address; the header link; storage.
 2. The staff picker and the range strip.
