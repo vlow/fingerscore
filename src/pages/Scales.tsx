@@ -1,18 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { hasSatellites, legend, type RecorderSystem } from '../domain/fingerings';
+import { SCALE_TEMPO } from '../domain/playMode';
 import { displayName, FAMILIES, familyMembers, inst, ORDER } from '../domain/instruments';
 import {
   buildScale, isKeyTransposing, keyChips, SCALE_IDS, scaleFingerings, scaleName, validPick, type ScaleDirection, type ScaleId,
   type ScaleRange,
 } from '../domain/scales';
 import type { InstId } from '../domain/types';
-import { ScaleStaff } from '../render/ScaleStaff';
+import { ScaleStaff, scaleLines, type ScaleStaffProps } from '../render/ScaleStaff';
 import { requestScalePdf, scalePdfModule } from '../pdf/request';
 import { intentProps } from '../shell/lazy';
 import { readJSON, writeJSON } from '../shell/storage';
 import { useApp } from '../state/store';
 import { Segmented } from '../ui/Segmented';
 import { usePdfJob } from '../ui/usePdfJob';
+import { PLAY_MODE_LOAD_FAILED, playModeModule, usePlayModeLoad } from '../ui/usePlayModeLoad';
 import { useScaleAlternatives } from './scales/useScaleAlternatives';
 import { usePaper } from '../shell/theme';
 import '../styles/print.css';
@@ -80,9 +82,26 @@ function load(preferred: InstId): Settings {
   return st;
 }
 
+/**
+ * The scale on paper: caption, staves and legend. On the page the staves carry the alternatives pills and the paper
+ * is what prints; Play mode shows the same paper with the player's picks and no pills.
+ */
+function ScalePaper({ caption, staff, page = false }: { caption: string; staff: ScaleStaffProps; page?: boolean }) {
+  const { paper } = usePaper();
+  return (
+    <section aria-label="Scale" className={s.paper} data-print-scale={page ? '' : undefined} data-paper={paper}>
+      <h2 className={s.caption}>{caption}</h2>
+      <ScaleStaff {...staff} />
+      <footer className={s.legend}>
+        <span>{legend(staff.inst)}</span>
+        <span>fingerscore.eu</span>
+      </footer>
+    </section>
+  );
+}
+
 /** The Scales page (design 4.4): one control card, the notice, and the scale on paper. */
 export default function Scales() {
-  const { paper } = usePaper();
   const [st, setSt] = useState<Settings>(() => load(useApp.getState().instId));
   const set = (patch: Partial<Settings>) => {
     if (SEQUENCE.some(k => k in patch)) closeAlt(false);
@@ -115,6 +134,24 @@ export default function Scales() {
     () => scaleFingerings(st.inst, scale.notes, st.recorderSystem, st.overrides),
     [st.inst, scale, st.recorderSystem, st.overrides],
   );
+  // Play mode (design 2026-11-27): the scale alone on the screen, one note per beat for auto-scroll.
+  const staff = useMemo<ScaleStaffProps>(
+    () => ({ inst: st.inst, scale, chartStyle: st.chartStyle, recorderSystem: st.recorderSystem, showNames: st.showNames, showAlternates: st.showAlternates, overrides: st.overrides }),
+    [st.inst, scale, st.chartStyle, st.recorderSystem, st.showNames, st.showAlternates, st.overrides],
+  );
+  const playLines = useMemo(() => scaleLines(staff).map(l => ({ beats: l.notes, height: l.height })), [staff]);
+  const [performing, setPerforming] = useState(false);
+  const playModeButton = useRef<HTMLButtonElement>(null);
+  const { value: PlayMode, failed: playModeFailed, request: enterPlayMode } = usePlayModeLoad(() => {
+    closeAlt(false);
+    setPerforming(true);
+  });
+  const wasPerforming = useRef(false);
+  useEffect(() => {
+    if (wasPerforming.current && !performing) playModeButton.current?.focus();
+    wasPerforming.current = performing;
+  }, [performing]);
+
   const withAlternates = fingerings.filter(f => f.options.length >= 2).length;
   const changed = fingerings.filter(f => f.overridden).length;
   // The chips change with the scale type (major or minor tonic table); the selection is the written pitch class.
@@ -149,9 +186,21 @@ export default function Scales() {
 
   return (
     <div className={s.page}>
+      {performing && PlayMode && (
+        <PlayMode lines={playLines} tempo={SCALE_TEMPO} onExit={() => setPerforming(false)}>
+          <ScalePaper caption={caption} staff={staff} />
+        </PlayMode>
+      )}
       <div className={s.head} data-print-hide="">
         <h1 className={s.h1}>Scales with fingerings</h1>
         <div className={s.buttons}>
+          <button ref={playModeButton} type="button" className={s.plain} {...intentProps(playModeModule)}
+            title="Show only the scale, full screen, with page turning and auto-scroll." onClick={enterPlayMode}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 4h16v11H4z" /><path d="M12 15v5" /><path d="M8 20h8" />
+            </svg>
+            Play mode
+          </button>
           <button type="button" className={s.primary} data-primary="" aria-disabled={pdf.busy} {...intentProps(scalePdfModule)} onClick={() => { if (!pdf.busy) void downloadPdf(); }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" />
@@ -245,6 +294,7 @@ export default function Scales() {
       </div>
 
       {pdfError && <p role="alert" className={s.pdfError} data-print-hide="">{pdfError}</p>}
+      {playModeFailed && <p role="alert" className={s.pdfError} data-print-hide="">{PLAY_MODE_LOAD_FAILED}</p>}
 
       {/* The live region stays mounted so screen readers announce a notice when it appears. */}
       <div role="status" className={s.status} data-print-hide="">
@@ -253,15 +303,7 @@ export default function Scales() {
       </div>
 
       <div className={s.scroll}>
-        <section aria-label="Scale" className={s.paper} data-print-scale="" data-paper={paper}>
-          <h2 className={s.caption}>{caption}</h2>
-          <ScaleStaff inst={st.inst} scale={scale} chartStyle={st.chartStyle} recorderSystem={st.recorderSystem}
-            showNames={st.showNames} showAlternates={st.showAlternates} overrides={st.overrides} renderUnderChart={renderUnderChart} />
-          <footer className={s.legend}>
-            <span>{legend(st.inst)}</span>
-            <span>fingerscore.eu</span>
-          </footer>
-        </section>
+        <ScalePaper caption={caption} staff={{ ...staff, renderUnderChart }} page />
       </div>
     </div>
   );
