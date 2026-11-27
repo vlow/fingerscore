@@ -103,6 +103,30 @@ describe('PlayMode', () => {
     expect(screen.getByText('Page 2 / 3')).toBeInTheDocument();
   });
 
+  it('shows the new page number as soon as a turn starts, in both directions', () => {
+    const { region, scroller } = open();
+    size(scroller, 2760, 1000);
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    expect(screen.getByText('Page 2 / 3')).toBeInTheDocument();
+    size(scroller, 2760, 1000, 300);   // on its way to 880
+    expect(screen.getByText('Page 2 / 3')).toBeInTheDocument();
+    size(scroller, 2760, 1000, 880);   // arrived
+    fireEvent.keyDown(region, { key: 'ArrowLeft' });
+    expect(screen.getByText('Page 1 / 3')).toBeInTheDocument();
+    size(scroller, 2760, 1000, 500);   // on its way to 0
+    expect(screen.getByText('Page 1 / 3')).toBeInTheDocument();
+  });
+
+  it('shows the page under the scroll again once a wheel stops a turn', () => {
+    const { region, scroller } = open();
+    size(scroller, 2760, 1000);
+    fireEvent.keyDown(region, { key: 'ArrowRight' });
+    size(scroller, 2760, 1000, 300);
+    fireEvent.wheel(scroller);
+    size(scroller, 2760, 1000, 320);
+    expect(screen.getByText('Page 1 / 3')).toBeInTheDocument();
+  });
+
   it.each(['ArrowDown', 'PageDown', ' '])('turns forward with %j', key => {
     const { region, scroller, scrollTo } = open();
     size(scroller, 2760, 1000);
@@ -136,11 +160,12 @@ describe('PlayMode', () => {
     size(scroller, 5000, 1000, 880);   // arrived
     size(scroller, 5000, 1000, 1000);  // then scrolled on by hand
     fireEvent.keyDown(region, { key: 'ArrowRight' });
-    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1880, behavior: 'smooth' });
-    size(scroller, 5000, 1000, 1500);  // on its way to 1880
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'smooth' });   // the next page start
+    size(scroller, 5000, 1000, 1500);  // on its way to 1760
     fireEvent.wheel(scroller);
     fireEvent.keyDown(region, { key: 'ArrowRight' });
-    expect(scrollTo).toHaveBeenLastCalledWith({ top: 2380, behavior: 'smooth' });
+    // from 1500, not from 1760: that would be 2640
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1760, behavior: 'smooth' });
   });
 
   it('turns with the toolbar buttons and the tap zones', async () => {

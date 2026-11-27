@@ -50,21 +50,45 @@ export function scrollSpeed(beats: number, tempo: number, speed: number, zoom: n
   return (systemHeight * zoom) / 100 / lineSeconds(beats, tempo, speed);
 }
 
+/** A rest of the sheet shorter than this share of a turn is no page of its own: the page before ends at the end. */
+const SNAP = 0.05;
+/** A scrollTop this close to a page start is on that page: browsers round scrollTop to whole or half pixels. */
+const SLACK = 1;
+
+/**
+ * Where the pages start, as scrollTops: one turn apart from the top, and the last page at the end of the scroll.
+ * Page count, page number and page turns all read this one list, so a turn always lands on a page start and the
+ * rounding of scrollTop cannot add up from turn to turn.
+ */
+function pageStarts(scrollHeight: number, clientHeight: number): number[] {
+  const page = TURN * clientHeight;
+  const end = scrollHeight - clientHeight;
+  if (page <= 0 || end <= 0) return [0];
+  const full = Math.floor(end / page - SNAP);
+  if (full < 0) return [0];
+  return [...Array.from({ length: full + 1 }, (_, i) => i * page), end];
+}
+
 export function pageCount(scrollHeight: number, clientHeight: number): number {
-  const page = TURN * clientHeight;
-  if (page <= 0) return 1;
-  return Math.max(1, Math.ceil((scrollHeight - clientHeight) / page) + 1);
+  return pageStarts(scrollHeight, clientHeight).length;
 }
 
+/** The page on screen: the last one that starts at or above scrollTop. */
 export function pageNumber(scrollTop: number, scrollHeight: number, clientHeight: number): number {
-  const page = TURN * clientHeight;
-  if (page <= 0) return 1;
-  return Math.min(Math.floor(scrollTop / page + 0.05) + 1, pageCount(scrollHeight, clientHeight));
+  const starts = pageStarts(scrollHeight, clientHeight);
+  return Math.max(1, starts.filter(start => start <= scrollTop + SLACK).length);
 }
 
-/** The scrollTop a page turn ends at; dir 1 is forward. */
+/**
+ * The scrollTop a page turn ends at; dir 1 is forward. A turn goes to the next page start in its direction, so a
+ * sheet scrolled by hand or by auto-scroll turns to a page start too.
+ */
 export function turnTarget(scrollTop: number, scrollHeight: number, clientHeight: number, dir: 1 | -1): number {
-  return Math.max(0, Math.min(scrollHeight - clientHeight, scrollTop + dir * TURN * clientHeight));
+  const starts = pageStarts(scrollHeight, clientHeight);
+  const end = Math.max(0, scrollHeight - clientHeight);
+  if (dir === 1) return starts.find(start => start > scrollTop + SLACK) ?? end;
+  const before = starts.filter(start => start < scrollTop - SLACK);
+  return before.length > 0 ? before[before.length - 1] : 0;
 }
 
 export function stepZoom(zoom: number, dir: 1 | -1): number {

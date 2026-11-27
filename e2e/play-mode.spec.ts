@@ -60,10 +60,11 @@ test('play mode: only the score, page turns, auto-scroll, size, Esc', async ({ p
   expect(moved).toBeGreaterThan(expected * 0.6);
   expect(moved).toBeLessThan(expected * 1.5);
 
-  // A page turn works while auto-scroll runs.
+  // A page turn works while auto-scroll runs: it goes to the start of the next page, pages being 88 % apart.
   const beforeTurn = await scroller.evaluate(el => el.scrollTop);
+  const nextStart = (Math.floor(beforeTurn / (height * 0.88)) + 1) * height * 0.88;
   await page.keyboard.press('ArrowRight');
-  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(beforeTurn + height * 0.8);
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(nextStart - 2);
   await page.keyboard.press('a');
   await expect(region.getByRole('button', { name: 'Auto-scroll' })).toBeVisible();
 
