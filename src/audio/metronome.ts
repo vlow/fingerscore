@@ -7,6 +7,8 @@ export interface Metronome {
   /** Takes effect at the next beat; the count of the bar carries on. */
   setTempo(bpm: number): void;
   stop(): void;
+  /** Stops and lets go of the audio context; a later start makes a new one. */
+  dispose(): void;
   readonly running: boolean;
 }
 
@@ -84,6 +86,12 @@ export function createMetronome(): Metronome {
       next = Math.max(last + interval(), ctx.currentTime + LEAD);
     },
     stop,
+    dispose() {
+      stop();
+      const c = ctx;
+      ctx = null;
+      void c?.close().catch(() => {});
+    },
     get running() { return timer !== null; },
   };
 }

@@ -575,6 +575,13 @@ describe('PlayMode', () => {
       expect(clicks()).toHaveLength(made);
     });
 
+    it('closes its audio context when Play mode closes', () => {
+      const { region, unmount } = open();
+      fireEvent.keyDown(region, { key: 'm' });
+      unmount();
+      expect(audio!.close).toHaveBeenCalledTimes(1);
+    });
+
     it('lists M in the Play mode keys card', () => {
       const { region } = open();
       fireEvent.keyDown(region, { key: '?' });

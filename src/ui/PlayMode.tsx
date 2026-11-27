@@ -139,14 +139,15 @@ export default function PlayMode({ doc, derived, layout, sheetId, onExit }: Prop
   }
 
   function toggleMetronome() {
-    const m = (metronome.current ??= createMetronome());
+    metronome.current ??= createMetronome();
+    const m = metronome.current;
     if (m.running) m.stop();
     else m.start(bpm, doc.timeSig);
     setClicking(m.running);
   }
 
-  // The metronome falls silent with Play mode.
-  useEffect(() => () => metronome.current?.stop(), []);
+  // The metronome falls silent with Play mode, and its audio context goes with it.
+  useEffect(() => () => metronome.current?.dispose(), []);
 
   // Where a page turn is scrolling to. A second turn before it arrives (a pedal pressed twice) counts from there,
   // not from wherever the smooth scroll happens to be; the page number shows that page from the start of the turn.

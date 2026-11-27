@@ -92,4 +92,19 @@ describe('metronome', () => {
     advance(0.01);
     expect(clicks()[before].frequency.value).toBe(ACCENT_HZ);
   });
+
+  it('lets go of its audio context when disposed', () => {
+    const m = createMetronome();
+    m.start(120, [4, 4]);
+    advance(0.2);
+    m.dispose();
+    expect(m.running).toBe(false);
+    expect(ctx!.close).toHaveBeenCalledTimes(1);
+    for (const o of clicks()) expect(o.stop).toHaveBeenCalledWith();
+  });
+
+  it('disposes without ever having made a context', () => {
+    expect(() => createMetronome().dispose()).not.toThrow();
+    expect(ctx).toBeNull();
+  });
 });
