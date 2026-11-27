@@ -164,6 +164,8 @@ export interface SystemViewProps {
   show?: Doc['show'];
   playingId: string | null; lastSystem: boolean; renderUnderChart?: UnderChart;
   selectedId: string | null; onSelect?(id: string | null): void;
+  /** A click on a note's fingering chart (View mode: the Fingering panel); absent, the chart is part of the note's column. */
+  onChartClick?(id: string): void;
   /** Play mode: no hit areas. */
   readOnly?: boolean;
 }
@@ -227,6 +229,11 @@ export function SystemView(p: SystemViewProps): JSX.Element {
       {!p.readOnly && columns.map(c => (
         <rect key={c.id} data-hit={c.id} className={styles.hit} x={c.x} y={frame.chordY} width={c.width} height={COLUMN_BOTTOM - frame.chordY}
           fill="transparent" onClick={() => p.onSelect?.(p.selectedId === c.id ? null : c.id)} />
+      ))}
+      {/* Over the chart of each note that has one: a click there opens the note's fingering instead of toggling it. */}
+      {!p.readOnly && p.onChartClick && columns.filter(c => { const n = byId.get(c.id); return n !== undefined && charted(n.ev); }).map(c => (
+        <rect key={`chart-${c.id}`} data-chart-hit={c.id} className={styles.hit} x={c.x} y={SHEET.chartY} width={c.width}
+          height={COLUMN_BOTTOM - SHEET.chartY} fill="transparent" onClick={() => p.onChartClick?.(c.id)} />
       ))}
     </>
   );

@@ -10,7 +10,7 @@ import { hasPill } from '../../render/pillSpread';
 import AltPill, { PILL_HALF } from '../../ui/AltPill';
 
 /** The pill under a chart with alternate fingerings, and its popover. */
-export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['kind']) {
+export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['kind'], onShowOnInstrument?: (id: string) => void) {
   const setFingering = useApp(st => st.setFingering);
 
   // Alternate fingerings: one popover at a time, anchored to its pill.
@@ -44,6 +44,7 @@ export function useAltFingering(doc: Doc, firstBar: number, kind: Instrument['ki
             top={lastSystem ? y - SHEET.altButtonDy - 148 : y - SHEET.altButtonDy + 112}
             anchor={anchorRef.current}
             onPick={k => { setFingering(ev.id, k === ev.auto ? null : k); closeAlt(true); }}
+            onShowOnInstrument={onShowOnInstrument && (() => { closeAlt(false); onShowOnInstrument(ev.id); })}
             onClose={closeAlt} />
         )}
       </>

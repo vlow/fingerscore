@@ -45,7 +45,7 @@ export const GROUPS: Group[] = [
     { id: 'lr', label: 'Previous or next note or rest', syn: 'arrow left right select', keys: [k('←'), '/', k('→')] },
     { id: 'he', label: 'First or last note or rest', syn: 'start beginning end', keys: [k('Home'), '/', k('End')] },
     { id: 'listen', label: 'Listen from the selection, or stop', syn: 'play audio sound', keys: [k('Enter'), 'or', k('Space')] },
-    { id: 'esc', label: 'Clear the selection', syn: 'escape deselect', keys: [k('Esc')] },
+    { id: 'esc', label: 'Clear the selection; in the Fingering panel, close it', syn: 'escape deselect close panel', keys: [k('Esc')] },
   ] },
   { id: 'notes', title: 'Edit notes', sub: 'note selected',
     note: shift => `On AZERTY the digits and the dot work with ${shift}. On layouts without Latin letters, keys follow their position.`,

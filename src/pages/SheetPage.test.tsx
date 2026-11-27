@@ -10,7 +10,7 @@ import type { Doc, InstId } from '../domain/types';
 import { barLabelOf } from '../domain/bars';
 import { addBarAfter, lengthName, locate, setBarMark, setJump, setLength, shiftPitch, toggleRest, toggleTriplet } from '../domain/edit';
 import { setChord } from '../domain/editText';
-import { inst } from '../domain/instruments';
+import { inst, noteNameFlat } from '../domain/instruments';
 import { mod12, signatureLetters } from '../domain/keys';
 import { MAX_BARS, serializeFile } from '../domain/persistence';
 import { mkDoc, type EvSpec } from '../test/helpers';
@@ -932,7 +932,7 @@ describe('modes, undo and redo', () => {
     const g = screen.getByRole('radiogroup', { name: 'Mode' });
     expect(within(g).getAllByRole('radio').map(r => r.textContent)).toEqual(['View', 'Edit notes', 'Lyrics', 'Chords']);
     expect(within(g).getByRole('radio', { name: 'View' })).toBeChecked();
-    expect(screen.getByText('Click a note to choose where playback starts.')).toBeInTheDocument();
+    expect(screen.getByText('Click a note to choose where playback starts, or its fingering chart to see it on the instrument.')).toBeInTheDocument();
     await user.click(within(g).getByRole('radio', { name: 'Edit notes' }));
     expect(within(g).getByRole('radio', { name: 'Edit notes' })).toBeChecked();
     expect(within(g).getByRole('radio', { name: 'View' })).not.toBeChecked();
@@ -2466,11 +2466,11 @@ describe('keyboard shortcuts panel', () => {
   it('shows the Keys button and the key hints only once a key was pressed (no fine pointer here)', async () => {
     open('asax');
     expect(keysButton()).toBeNull();
-    expect(screen.getByText('Click a note to choose where playback starts.')).toBeInTheDocument();
+    expect(screen.getByText('Click a note to choose where playback starts, or its fingering chart to see it on the instrument.')).toBeInTheDocument();
     sheet().focus();
     await user.keyboard('{Shift}');
     expect(keysButton()).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText('Click a note to choose where playback starts.')).toBeNull();
+    expect(screen.queryByText('Click a note to choose where playback starts, or its fingering chart to see it on the instrument.')).toBeNull();
     expect(screen.getByText('all keys')).toBeInTheDocument();
   });
 
@@ -2577,5 +2577,77 @@ describe('keyboard shortcuts panel', () => {
     expect(within(region).getByRole('dialog', { name: 'Play mode keys' })).toBeInTheDocument();
     await user.keyboard('?');
     expect(within(region).queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('Fingering panel', () => {
+  const panel = () => screen.queryByRole('complementary', { name: 'Fingering' });
+  const sheet = () => screen.getByRole('group', { name: /Sheet music/ });
+  const chartHits = () => [...document.querySelectorAll<SVGRectElement>('[data-chart-hit]')];
+  const shownNote = () => within(within(panel()!).getByRole('region', { name: /^Fingering for / })).getAllByRole('paragraph')[0].textContent;
+  const notes = () => derive(useApp.getState().doc!, DEFAULT_PREFS).events.filter(e => !e.rest && !e.tiedFrom);
+
+  it('opens from a chart in View mode on that note, which it selects; the sheet keys move it', async () => {
+    open('asax');
+    const [first, second] = notes();
+    fireEvent.click(chartHits().find(r => r.getAttribute('data-chart-hit') === second.id)!);
+    expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
+    expect(shownNote()).toBe(noteNameFlat(second.written));
+    expect(within(panel()!).getByText(`note 2 of ${notes().length}`)).toBeInTheDocument();
+    expect(document.querySelector('[data-mark="selected"]')).toBeInTheDocument();
+    sheet().focus();
+    await user.keyboard('{ArrowLeft}');
+    expect(within(panel()!).getByText(`note 1 of ${notes().length}`)).toBeInTheDocument();
+    expect(shownNote()).toBe(noteNameFlat(first.written));
+  });
+
+  it('steps with ‹ ›, picks an alternate as one undo step, and closes with Esc back to the sheet', async () => {
+    open('asax');
+    const withAlts = notes().find(e => e.options.length > 1)!;
+    fireEvent.click(chartHits().find(r => r.getAttribute('data-chart-hit') === withAlts.id)!);
+    await screen.findByRole('complementary', { name: 'Fingering' });
+    const alt = within(panel()!).getAllByRole('button', { name: /^Alternate 1/ })[0];
+    await user.click(alt);
+    expect(useApp.getState().doc!.fingering[withAlts.id]).toBe(1);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(useApp.getState().doc!.fingering[withAlts.id]).toBeUndefined();
+    const next = within(panel()!).getByRole('button', { name: 'Next note' });
+    await user.click(next);
+    expect(within(panel()!).getByText(new RegExp(`^note \\d+ of ${notes().length}$`))).toBeInTheDocument();
+    next.focus();
+    await user.keyboard('{Escape}');
+    expect(panel()).toBeNull();
+    expect(sheet()).toHaveFocus();
+  });
+
+  it('opens from "Show on instrument" in the alternate-fingering popover', async () => {
+    open('asax');
+    await user.click(screen.getAllByRole('button', { name: /⇅/ })[0]);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Show on instrument' }));
+    expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shares its place with the shortcuts panel: one closes the other, the shortcuts panel keeps its stored state', async () => {
+    open('asax');
+    sheet().focus();
+    await user.keyboard('?');
+    expect(screen.getByRole('complementary', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+    fireEvent.click(chartHits()[0]);
+    expect(await screen.findByRole('complementary', { name: 'Fingering' })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Keyboard shortcuts' })).toBeNull();
+    expect(localStorage.getItem('fingerscore.keysPanel')).toBe('open');
+    sheet().focus();
+    await user.keyboard('?');
+    expect(screen.getByRole('complementary', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+    expect(panel()).toBeNull();
+  });
+
+  it('has no chart click areas outside View mode', async () => {
+    open('asax');
+    expect(chartHits().length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('radio', { name: 'Edit notes' }));
+    expect(chartHits()).toHaveLength(0);
   });
 });

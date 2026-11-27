@@ -215,6 +215,14 @@ const RAW: AppState[] = [
     },
   },
   {
+    id: 'sheet-fingering-panel',
+    landmark: page => page.getByRole('complementary', { name: 'Fingering' }),
+    open: async page => {
+      await sheet(page);
+      await page.locator('[data-chart-hit]').nth(1).click();
+    },
+  },
+  {
     id: 'fingerings',
     landmark: page => page.getByRole('region', { name: /^Fingering for / }),
     open: page => clean(page, '/fingerings?inst=asax&note=Bb4'),

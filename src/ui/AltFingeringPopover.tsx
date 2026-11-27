@@ -25,6 +25,8 @@ interface Props {
   left?: number; top?: number; place?: PlacePopover;
   anchor: HTMLElement | null;
   onPick(index: number): void;
+  /** "Show on instrument" at the foot: opens the Fingering panel on this note (design 4.5). Absent, no link. */
+  onShowOnInstrument?(): void;
   /** focusAnchor: move focus back to the pill that opened the popover. */
   onClose(focusAnchor: boolean): void;
 }
@@ -96,6 +98,9 @@ export default function AltFingeringPopover(p: Props) {
           </button>
         ))}
       </div>
+      {p.onShowOnInstrument && (
+        <button type="button" className={s.foot} onClick={p.onShowOnInstrument}>Show on instrument</button>
+      )}
     </div>
   );
   return placed ? createPortal(box, document.body) : box;
