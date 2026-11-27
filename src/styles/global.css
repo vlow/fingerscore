@@ -148,6 +148,10 @@ body {
   gap: 8px;
 }
 
+.footer-version {
+  font-variant-numeric: tabular-nums;
+}
+
 .footer-brand-name {
   font-weight: 700;
   font-size: 15px;

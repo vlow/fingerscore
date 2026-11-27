@@ -1,12 +1,13 @@
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { repositoryUrl as ownerRepositoryUrl } from '../content/repository';
+import { buildInfo, versionLabel, type BuildInfo } from './buildInfo';
 import { LogoMark, Wordmark } from './icons';
 import { routeIntent } from './routes';
 
 const LINKS = [['/about', 'About'], ['/terms', 'Terms'], ['/privacy', 'Privacy'], ['/imprint', 'Imprint']];
 
-export default function Footer({ repositoryUrl = ownerRepositoryUrl }: { repositoryUrl?: string }) {
+export default function Footer({ repositoryUrl = ownerRepositoryUrl, build = buildInfo }: { repositoryUrl?: string; build?: BuildInfo }) {
   return (
     <footer className="site-footer">
       <div className="footer-row">
@@ -14,6 +15,7 @@ export default function Footer({ repositoryUrl = ownerRepositoryUrl }: { reposit
           <LogoMark size={22} />
           <Wordmark className="footer-brand-name" />
           <span>© 2026</span>
+          <span className="footer-version">{versionLabel(build)}</span>
         </div>
         <span>Your sheets are stored in your browser, not on a server.</span>
         <nav aria-label="Site" className="footer-links">

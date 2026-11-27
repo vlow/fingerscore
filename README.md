@@ -368,6 +368,8 @@ sudo nginx -t && sudo systemctl reload nginx
 
 Each deploy is four steps, run from the checkout after `npm run build`. `<host>` is the server, `<site>` the folder nginx serves, and `<releases>` a folder beside it for the release lists. Neither path may contain a space.
 
+The footer shows the build's version and commit, read from git at build time. A release is a commit tagged `v<version>`, for example `v1.3.1`, built from a checkout without local changes; its footer reads "1.3.1 · a1b2c3d". Any other build reads "dev based on 1.3.1 · a1b2c3d", or "dev · a1b2c3d" before the first tag. Build a release from the tagged commit.
+
 Once, before the first deploy, create the releases folder:
 
 ```bash
