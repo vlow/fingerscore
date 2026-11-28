@@ -12,6 +12,8 @@ it('renders the shell on every route', () => {
   expect(screen.getByRole('link', { name: 'Songs' })).toHaveAttribute('aria-current', 'page');
   expect(screen.getByRole('link', { name: 'Scales' })).toHaveAttribute('href', '/scales');
   expect(screen.getByRole('link', { name: 'Scales' })).not.toHaveAttribute('aria-current');
+  expect(screen.getByRole('link', { name: 'Fingerings' })).toHaveAttribute('href', '/fingerings');
+  expect(screen.getByRole('link', { name: 'Fingerings' })).not.toHaveAttribute('aria-current');
   expect(
     screen.getByText('Your sheets are stored in your browser, not on a server.'),
   ).toBeInTheDocument();
@@ -27,6 +29,18 @@ it.each(['/', '/tracks', '/sheet'])('header: Songs is current on %s, the brand l
   expect(screen.getByRole('link', { name: 'Songs' })).toHaveAttribute('aria-current', 'page');
   expect(screen.getByRole('link', { name: 'Scales' })).not.toHaveAttribute('aria-current');
   expect(screen.getByRole('link', { name: /fingerscore/i })).not.toHaveAttribute('aria-current');
+});
+
+it('header: Fingerings is current on /fingerings, and only it', async () => {
+  render(
+    <MemoryRouter initialEntries={['/fingerings']}>
+      <App />
+    </MemoryRouter>,
+  );
+  expect(screen.getByRole('link', { name: 'Fingerings' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('link', { name: 'Songs' })).not.toHaveAttribute('aria-current');
+  expect(screen.getByRole('link', { name: 'Scales' })).not.toHaveAttribute('aria-current');
+  expect(await screen.findByRole('heading', { level: 1, name: 'Fingerings' })).toBeInTheDocument();
 });
 
 it('dev build: /dev/sheet previews the renderer for the fixture', async () => {

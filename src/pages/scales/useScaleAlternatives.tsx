@@ -29,7 +29,10 @@ export function placeBelowPill(pill: HTMLElement): PlacePopover {
  * The pill under each chart with alternate fingerings and its popover, as on a sheet (design 4.3). onPick receives the
  * note index and the option index, or null when the player picked the automatic choice.
  */
-export function useScaleAlternatives(kind: Instrument['kind'], chartStyle: 'compact' | 'full', onPick: (index: number, option: number | null) => void) {
+export function useScaleAlternatives(
+  kind: Instrument['kind'], chartStyle: 'compact' | 'full', onPick: (index: number, option: number | null) => void,
+  onShowOnInstrument?: (index: number) => void,
+) {
   const [openAlt, setOpenAlt] = useState<number | null>(null);
   const anchorRef = useRef<HTMLButtonElement | null>(null);
   const closeAlt = useCallback((focusAnchor: boolean) => {
@@ -51,6 +54,7 @@ export function useScaleAlternatives(kind: Instrument['kind'], chartStyle: 'comp
           <AltFingeringPopover note={note} kind={kind} chartStyle={chartStyle} place={placeBelowPill(anchorRef.current)}
             anchor={anchorRef.current}
             onPick={k => { onPick(note.index, k === note.auto ? null : k); closeAlt(true); }}
+            onShowOnInstrument={onShowOnInstrument && (() => { closeAlt(false); onShowOnInstrument(note.index); })}
             onClose={closeAlt} />
         )}
       </>

@@ -90,3 +90,19 @@
   font-weight: 700;
   line-height: 12px;
 }
+
+/* "Show on instrument": a quiet link-like button under the options. */
+.foot {
+  display: block;
+  min-height: 36px;
+  margin-top: 6px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--c-accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}

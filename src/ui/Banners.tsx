@@ -3,12 +3,23 @@ import { isTransposing, noteNameFlat } from '../domain/instruments';
 import { keyName, mod12 } from '../domain/keys';
 import { reasonText } from '../domain/transpose';
 import type { Doc } from '../domain/types';
+import { Link } from 'react-router-dom';
+import { writeAddress } from '../pages/fingerings/address';
+import { readSoprano } from '../pages/fingerings/prefs';
 import { instNoun, shiftLabel } from './labels';
 import s from './Banners.module.css';
 
 interface Props { doc: Doc; derived: Derived; onShift(shift: number): void }
 
 const notesAre = (n: number) => `${n} ${n === 1 ? 'note is' : 'notes are'}`;
+
+/** "Show fingerings": the Fingerings page on the highest of these notes (design 4.5). */
+function ShowFingerings(p: { doc: Doc; notes: number[] }) {
+  if (p.notes.length === 0) return null;
+  const note = Math.max(...p.notes);
+  const to = `/fingerings?${writeAddress({ inst: p.doc.inst, note, alt: 0, system: p.doc.recorderSystem, shape: readSoprano() })}`;
+  return <Link className={s.link} to={to}>Show fingerings</Link>;
+}
 
 /** Banners above the sheet (SPEC §6.4): unplayable, extended only, or suggested key applied. */
 export default function Banners({ doc, derived, onShift }: Props) {
@@ -38,6 +49,7 @@ export default function Banners({ doc, derived, onShift }: Props) {
           <div className={s.title}>{notesAre(bad)} {where} — out of range for the {noun}</div>
           <div className={s.line}>Those notes are marked red and have no fingering chart.</div>
         </div>
+        <ShowFingerings doc={doc} notes={sounding.filter(ev => ev.state === 'bad').map(ev => ev.written)} />
         {useBest}
       </div>
     );
@@ -52,6 +64,7 @@ export default function Banners({ doc, derived, onShift }: Props) {
         <div className={s.body}>
           <div className={s.title}>{ext} {ext === 1 ? 'note needs' : 'notes need'} extended high fingerings</div>
         </div>
+        <ShowFingerings doc={doc} notes={derived.events.filter(ev => !ev.rest && !ev.tiedFrom && ev.state === 'ext').map(ev => ev.written)} />
         {useBest}
       </div>
     );

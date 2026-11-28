@@ -43,6 +43,7 @@ import { usePlayback } from './sheet/usePlayback';
 import { PLAY_MODE_LOAD_FAILED, playModeModule, usePlayModeLoad } from '../ui/usePlayModeLoad';
 import { useSelection } from './sheet/useSelection';
 import { useHasKeyboard, useKeysPanel } from './sheet/useKeysPanel';
+import { FINGERING_LOAD_FAILED, FingeringButton, useFingeringKey, useFingeringPanel } from '../ui/fingering/useFingeringPanel';
 import { useSheetKeys } from './sheet/useSheetKeys';
 import '../styles/print.css';
 import s from './SheetPage.module.css';
@@ -84,6 +85,7 @@ function Sheet({ doc }: { doc: Doc }) {
   const setShift = useApp(st => st.setShift);
   const patchDoc = useApp(st => st.patchDoc);
   const resetFingerings = useApp(st => st.resetFingerings);
+  const setFingering = useApp(st => st.setFingering);
   const undoable = useApp(canUndo);
   const redoable = useApp(canRedo);
   const saveError = useApp(st => st.saveError);
@@ -103,7 +105,9 @@ function Sheet({ doc }: { doc: Doc }) {
   const layout = useMemo(() => layoutSheet(doc, derived, force), [doc, derived, force]);
   const playLines = useMemo(() => sheetLines(doc, layout.systems, layout.systemHeight), [doc, layout]);
   const { playerRef, playing, playingId, playError, togglePlay, stopPlay } = usePlayback(doc, selectedId);
-  const { openAlt, closeAlt, renderUnderChart, altLoadFailed } = useAltFingering(doc, firstBar, i.kind);
+  // The popover's "Show on instrument" opens the Fingering panel, which is set up further down.
+  const showOnInstrument = useRef<(id: string) => void>(() => {});
+  const { openAlt, closeAlt, renderUnderChart, altLoadFailed } = useAltFingering(doc, firstBar, i.kind, id => showOnInstrument.current(id));
   const { onSheetKey, onToolbarKey } = useSheetKeys({
     doc, derived, mode, selectedId, openAlt, stops, paperRef, select, applyNoteEdit, togglePlay,
   });
@@ -136,6 +140,7 @@ function Sheet({ doc }: { doc: Doc }) {
   const { value: PlayMode, failed: playModeFailed, request: enterPlayMode } = usePlayModeLoad(() => {
     stopPlay();
     closeAlt(false);
+    fingering.close();
     changeMode('view', false);
     select(null);
     setPerforming(true);
@@ -154,6 +159,42 @@ function Sheet({ doc }: { doc: Doc }) {
   const hasKeyboard = useHasKeyboard();
   const apple = useMemo(isApple, []);
   const keys = useKeysPanel({ mode, performing, paperRef });
+
+  // The Fingering panel (design 4.3) shares the shortcuts panel's place: opening one closes the other. It shows the
+  // selected note, and keeps its last note while nothing, or a tied continuation, is selected.
+  const fingering = useFingeringPanel();
+  const [fingeringId, setFingeringId] = useState<string | null>(null);
+  const openFingering = (id: string) => {
+    if (selectedId !== id) select(id);
+    setFingeringId(id);
+    keys.hide();
+    fingering.show();
+  };
+  showOnInstrument.current = openFingering;
+  const closeFingering = () => {
+    fingering.close();
+    paperRef.current?.focus();
+  };
+  // The Fingering button and I: the panel opens on the selected note, else on its last note, else on the first note.
+  const toggleFingering = () => {
+    if (fingering.wanted) { fingering.close(); return; }
+    const selected = selectedId === null ? undefined : derived.byId[selectedId];
+    const id = (selected && !selected.tiedFrom ? selected.id : null) ?? fingeringId ?? derived.events.find(e => !e.rest && !e.tiedFrom)?.id;
+    if (id === undefined) return;
+    setFingeringId(id);
+    keys.hide();
+    fingering.show();
+  };
+  useFingeringKey(!performing, toggleFingering);
+  useEffect(() => {
+    const ev = selectedId === null ? undefined : derived.byId[selectedId];
+    if (ev && !ev.tiedFrom) setFingeringId(ev.id);
+  }, [selectedId, derived]);
+  const { close: hideFingering } = fingering;
+  useEffect(() => { if (keys.open) hideFingering(); }, [keys.open, hideFingering]);
+  const panelNotes = useMemo(() => derived.events.filter(e => !e.tiedFrom).map(e => ({
+    id: e.id, written: e.written, name: e.spelled.name, rest: e.rest, bar: e.bar + firstBar, options: e.options, chosen: e.chosen, auto: e.auto,
+  })), [derived, firstBar]);
 
   useSheetShortcuts({
     onSave: () => { if (!performing) save(); },
@@ -215,6 +256,7 @@ function Sheet({ doc }: { doc: Doc }) {
             <div className={s.barRight}>
               <UndoRedo canUndo={undoable} canRedo={redoable} onUndo={() => travel('undo')} onRedo={() => travel('redo')}
                 onFocusLost={focusSheet} />
+              <FingeringButton open={fingering.wanted} onToggle={toggleFingering} />
               {hasKeyboard && <KeysButton ref={keys.buttonRef} open={keys.open} onToggle={keys.toggleFromButton} />}
               <SaveControls status={status} error={saveError} onSave={save} />
               <FileMenu entries={entries} currentId={libraryId} onPdf={() => void downloadPdf()} pdfIntent={intentProps(sheetPdfModule)} pdfBusy={pdfBusy} onPrint={print} onDownload={download}
@@ -298,6 +340,7 @@ function Sheet({ doc }: { doc: Doc }) {
                 {playError && <p role="alert" className={s.playError}>Playback is not available in this browser.</p>}
                 {playModeFailed && <p role="alert" className={s.playError}>{PLAY_MODE_LOAD_FAILED}</p>}
                 {altLoadFailed && <p role="alert" className={s.playError}>{ALT_LOAD_FAILED}</p>}
+                {fingering.failed && <p role="alert" className={s.playError}>{FINGERING_LOAD_FAILED}</p>}
                 <Transport playing={playing} fromSelected={selectedId !== null} tempo={doc.tempo} onToggle={togglePlay} onTempo={tempo => patchDoc({ tempo }, 'tempo')}
                   onPlayMode={enterPlayMode} playModeIntent={intentProps(playModeModule)} playModeRef={playModeButton} />
               </div>
@@ -311,7 +354,7 @@ function Sheet({ doc }: { doc: Doc }) {
               <HoldView paper={paperRef} systemHeight={layout.systemHeight} selectedId={selectedId} />
               <p role="status" className={s.srOnly} aria-live="polite">{announcement}</p>
               <Paper doc={doc} derived={derived} layout={layout} playingId={playingId}
-                selectedId={selectedId} onSelect={id => select(id)}
+                selectedId={selectedId} onSelect={id => select(id)} onChartClick={mode === 'view' ? openFingering : undefined}
                 onTitle={title => patchDoc({ title }, 'title')} onSubtitle={subtitle => patchDoc({ subtitle }, 'subtitle')}
                 renderUnderChart={renderUnderChart}
                 forceShow={force} renderUnderSystem={renderUnderSystem} />
@@ -320,6 +363,10 @@ function Sheet({ doc }: { doc: Doc }) {
         </div>
         {hasKeyboard && keys.open && (
           <KeysPanel mode={mode} apple={apple} flash={keys.flash} searchRef={keys.searchRef} onClose={keys.close} />
+        )}
+        {fingering.open && fingering.Panel && fingeringId !== null && !performing && (
+          <fingering.Panel inst={doc.inst} recorderSystem={doc.recorderSystem} notes={panelNotes} currentId={fingeringId}
+            onStep={id => { select(id, true); setFingeringId(id); }} onPick={(id, k) => setFingering(id, k)} onClose={closeFingering} />
         )}
       </div>
     </div>

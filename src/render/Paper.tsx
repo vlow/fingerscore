@@ -12,6 +12,8 @@ export interface PaperProps {
   playingId: string | null;
   /** The selected event (SheetPage UI state); clicking an event reports it, clicking it again reports null. */
   selectedId?: string | null; onSelect?(id: string | null): void;
+  /** A click on a note's fingering chart; see SystemView. */
+  onChartClick?(id: string): void;
   onTitle?(title: string): void; onSubtitle?(subtitle: string): void;
   /** Play mode: the headings are plain text and nothing on the paper can be clicked, selected or edited. */
   readOnly?: boolean;
@@ -65,7 +67,7 @@ export function Paper(p: PaperProps): JSX.Element {
           <Fragment key={s.index}>
             <SystemView doc={doc} show={show} derived={derived} system={s} beams={layout.beams} tuplets={layout.tuplets} ties={ties[s.index]}
               playingId={p.playingId} selectedId={p.readOnly ? null : p.selectedId ?? null} onSelect={p.onSelect} readOnly={p.readOnly} lastSystem={s.index === last}
-              renderUnderChart={p.readOnly ? undefined : p.renderUnderChart} />
+              renderUnderChart={p.readOnly ? undefined : p.renderUnderChart} onChartClick={p.readOnly ? undefined : p.onChartClick} />
             {under != null && under !== false && <div className={styles.underSystem} data-under-system="" data-print-hide="">{under}</div>}
           </Fragment>
         );

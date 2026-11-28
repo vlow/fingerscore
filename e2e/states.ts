@@ -214,6 +214,36 @@ const RAW: AppState[] = [
       await altPopover(page);
     },
   },
+  {
+    id: 'sheet-fingering-panel',
+    landmark: page => page.getByRole('complementary', { name: 'Fingering' }),
+    open: async page => {
+      await sheet(page);
+      await page.locator('[data-chart-hit]').nth(1).click();
+    },
+  },
+  {
+    id: 'scales-fingering-panel',
+    landmark: page => page.getByRole('complementary', { name: 'Fingering' }),
+    open: async page => {
+      await clean(page, '/scales');
+      await expect(scalesPage(page)).toBeVisible();
+      await page.getByRole('button', { name: 'Fingering', exact: true }).click();
+    },
+  },
+  {
+    id: 'fingerings',
+    landmark: page => page.getByRole('region', { name: /^Fingering for / }),
+    open: page => clean(page, '/fingerings?inst=asax&note=Bb4'),
+  },
+  {
+    id: 'fingerings-staff',
+    landmark: page => page.getByRole('dialog', { name: /^Pick a note/ }),
+    open: async page => {
+      await clean(page, '/fingerings?inst=asax&note=Bb4');
+      await page.getByRole('button', { name: 'Staff', exact: true }).click();
+    },
+  },
   { id: 'about', landmark: heading('Why I made fingerscore'), open: page => clean(page, '/about') },
   { id: 'imprint', landmark: heading('Imprint'), open: page => clean(page, '/imprint') },
   { id: 'privacy', landmark: heading('Privacy'), open: page => clean(page, '/privacy') },

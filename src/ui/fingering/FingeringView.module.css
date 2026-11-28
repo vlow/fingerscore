@@ -1,0 +1,191 @@
+/* One fingering on the chart and on the instrument (design 4.1). */
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+
+.note {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.about {
+  display: flex;
+  flex-direction: column;
+}
+
+.sub {
+  margin: 0;
+  color: var(--c-muted);
+  font-size: 14px;
+}
+
+.tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--c-accent-tint);
+  color: var(--c-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* One fixed line: a longer text must not move the drawing away from under the pointer. */
+.info {
+  display: block;
+  height: 1.5em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--c-muted);
+  font-size: 14px;
+}
+
+.figures {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--c-paper);
+}
+
+.chart,
+.drawing {
+  margin: 0;
+}
+
+.chart {
+  flex: none;
+  width: 180px;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.caption {
+  color: var(--c-muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.drawing {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* The canvas keeps its shape; on a wide page it stops at a height that fits the window under the note bar, centred. */
+.drawing svg {
+  max-height: min(640px, max(360px, calc(100vh - 300px)));
+}
+
+.narrow .figures {
+  gap: 12px;
+  padding: 12px;
+}
+
+.narrow .chart {
+  width: 110px;
+}
+
+.press {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pressTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.keyButton {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.keyButton:hover,
+.keyButton[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent-tint);
+}
+
+.keyName {
+  font-weight: 700;
+}
+
+.finger {
+  color: var(--c-muted);
+  font-size: 13px;
+}
+
+.none {
+  margin: 0;
+  color: var(--c-muted);
+}
+
+/* No display on details itself: a closed one must keep its content out of the layout. */
+.all > ul {
+  margin-top: 8px;
+}
+
+.allSummary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .figures {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chart {
+    width: 120px;
+  }
+
+  .drawing {
+    width: 100%;
+  }
+}

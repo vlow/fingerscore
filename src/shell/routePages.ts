@@ -5,6 +5,7 @@ export const ROUTE_PAGES = {
   '/sheet': 'SheetPage',
   '/tracks': 'Tracks',
   '/scales': 'Scales',
+  '/fingerings': 'Fingerings',
   '/terms': 'Terms',
   '/imprint': 'Imprint',
   '/privacy': 'Privacy',

@@ -19,6 +19,7 @@
     "src/ui/LyricPanel.tsx": 4096,
     "src/ui/NotePanel.tsx": 4096,
     "src/ui/PlayMode.tsx": 6820,
+    "src/ui/fingering/FingeringPanel.tsx": 16384,
     "src/import/abc.ts": 62464,
     "src/import/midi.ts": 12288,
     "src/import/mscz.ts": 37888,

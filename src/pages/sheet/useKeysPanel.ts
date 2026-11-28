@@ -102,5 +102,11 @@ export function useKeysPanel({ mode, performing, paperRef }: Options) {
     buttonRef.current?.focus();
   }, [setOpen]);
 
-  return { open, flash, buttonRef, searchRef, toggleFromButton, close };
+  /**
+   * Closed to make room for the Fingering panel, which shares its place beside the sheet: the focus stays where it is,
+   * and the stored state stays as the player left it, so the list is open again on the next visit.
+   */
+  const hide = useCallback(() => setOpenState(false), []);
+
+  return { open, flash, buttonRef, searchRef, toggleFromButton, close, hide };
 }

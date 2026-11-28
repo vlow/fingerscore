@@ -15,6 +15,7 @@ import { useApp } from '../state/store';
 import { Segmented } from '../ui/Segmented';
 import { usePdfJob } from '../ui/usePdfJob';
 import { PLAY_MODE_LOAD_FAILED, playModeModule, usePlayModeLoad } from '../ui/usePlayModeLoad';
+import { FINGERING_LOAD_FAILED, FingeringButton, useFingeringKey, useFingeringPanel } from '../ui/fingering/useFingeringPanel';
 import { useScaleAlternatives } from './scales/useScaleAlternatives';
 import { usePaper } from '../shell/theme';
 import '../styles/print.css';
@@ -123,7 +124,12 @@ export default function Scales() {
   const [pdfProgress, setPdfProgress] = useState('');
 
   const i = inst(st.inst);
-  const { closeAlt, renderUnderChart } = useScaleAlternatives(i.kind, st.chartStyle, pickFingering);
+  // The Fingering panel (design 4.4): a chart, the popover's "Show on instrument", the Fingering button or I opens it.
+  const fingering = useFingeringPanel();
+  const [panelIndex, setPanelIndex] = useState(0);
+  const fingeringButton = useRef<HTMLButtonElement>(null);
+  const openPanel = (index: number) => { setPanelIndex(index); fingering.show(); };
+  const { closeAlt, renderUnderChart } = useScaleAlternatives(i.kind, st.chartStyle, pickFingering, openPanel);
   const transposing = isKeyTransposing(st.inst);
   const name = scaleName(st.scale);
   const scale = useMemo(
@@ -144,8 +150,22 @@ export default function Scales() {
   const playModeButton = useRef<HTMLButtonElement>(null);
   const { value: PlayMode, failed: playModeFailed, request: enterPlayMode } = usePlayModeLoad(() => {
     closeAlt(false);
+    fingering.close();
     setPerforming(true);
   });
+  const toggleFingering = () => {
+    if (fingering.wanted) fingering.close();
+    else openPanel(panelIndex);
+  };
+  useFingeringKey(!performing, toggleFingering);
+  const closeFingering = () => {
+    fingering.close();
+    fingeringButton.current?.focus();
+  };
+  const panelNotes = useMemo(() => scale.notes.map((n, k) => ({
+    id: String(k), written: n.written, name: n.spelled.name, rest: false, options: fingerings[k].options,
+    chosen: fingerings[k].chosen ?? null, auto: fingerings[k].auto ?? null,
+  })), [scale, fingerings]);
   const wasPerforming = useRef(false);
   useEffect(() => {
     if (wasPerforming.current && !performing) playModeButton.current?.focus();
@@ -194,6 +214,7 @@ export default function Scales() {
       <div className={s.head} data-print-hide="">
         <h1 className={s.h1}>Scales with fingerings</h1>
         <div className={s.buttons}>
+          <FingeringButton ref={fingeringButton} open={fingering.wanted} onToggle={toggleFingering} />
           <button ref={playModeButton} type="button" className={s.plain} {...intentProps(playModeModule)}
             title="Show only the scale, full screen, with page turning and auto-scroll." onClick={enterPlayMode}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -295,6 +316,7 @@ export default function Scales() {
 
       {pdfError && <p role="alert" className={s.pdfError} data-print-hide="">{pdfError}</p>}
       {playModeFailed && <p role="alert" className={s.pdfError} data-print-hide="">{PLAY_MODE_LOAD_FAILED}</p>}
+      {fingering.failed && <p role="alert" className={s.pdfError} data-print-hide="">{FINGERING_LOAD_FAILED}</p>}
 
       {/* The live region stays mounted so screen readers announce a notice when it appears. */}
       <div role="status" className={s.status} data-print-hide="">
@@ -302,8 +324,15 @@ export default function Scales() {
         {pdfProgress && <div>{pdfProgress}</div>}
       </div>
 
-      <div className={s.scroll}>
-        <ScalePaper caption={caption} staff={{ ...staff, renderUnderChart }} page />
+      <div className={s.withPanel}>
+        <div className={s.scroll}>
+          <ScalePaper caption={caption} staff={{ ...staff, renderUnderChart, onChartClick: openPanel }} page />
+        </div>
+        {fingering.open && fingering.Panel && !performing && panelNotes.length > 0 && (
+          <fingering.Panel inst={st.inst} recorderSystem={st.recorderSystem} notes={panelNotes} arrowKeys
+            currentId={String(Math.min(panelIndex, panelNotes.length - 1))} onStep={id => setPanelIndex(Number(id))}
+            onPick={(id, option) => pickFingering(Number(id), option)} onClose={closeFingering} />
+        )}
       </div>
     </div>
   );

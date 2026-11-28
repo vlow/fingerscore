@@ -16,6 +16,7 @@ const LOADERS: Record<PageName, () => Promise<ComponentType>> = {
   SheetPage: withStore(() => import('../pages/SheetPage')),
   Tracks: withStore(() => import('../pages/Tracks')),
   Scales: withStore(() => import('../pages/Scales')),
+  Fingerings: withStore(() => import('../pages/Fingerings')),
   Terms: plain(() => import('../pages/Terms')),
   Imprint: plain(() => import('../pages/Imprint')),
   Privacy: plain(() => import('../pages/Privacy')),

@@ -14,6 +14,7 @@ export const STORAGE_ITEMS: StorageItem[] = [
   { key: 'fingerscore.theme', where: 'local', label: 'the colour theme you chose' },
   { key: 'fingerscore.paper', where: 'local', label: 'the paper colour you chose for dark mode' },
   { key: 'fingerscore.scales', where: 'local', label: 'your last scale choice' },
+  { key: 'fingerscore.fingerings', where: 'local', label: 'the soprano saxophone shape you chose on the Fingerings page' },
   { key: 'fingerscore.song', where: 'session', label: 'the song that is open' },
   { key: 'fingerscore.doc', where: 'session', label: 'the sheet that is open' },
   { key: 'fingerscore.sheet', where: 'session', label: 'which saved sheet the open sheet came from' },

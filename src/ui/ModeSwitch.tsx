@@ -6,7 +6,7 @@ import s from './ModeSwitch.module.css';
 export type Mode = 'view' | 'notes' | 'lyrics' | 'chords';
 
 const MODES: { mode: Mode; name: string; hint: string }[] = [
-  { mode: 'view', name: 'View', hint: 'Click a note to choose where playback starts.' },
+  { mode: 'view', name: 'View', hint: 'Click a note to choose where playback starts, or its fingering chart to see it on the instrument.' },
   { mode: 'notes', name: 'Edit notes', hint: 'Click a note or rest, then change its pitch or length. Arrow keys work too.' },
   { mode: 'lyrics', name: 'Lyrics', hint: 'Click a note and type. Enter moves to the next note.' },
   { mode: 'chords', name: 'Chords', hint: 'Click a note or rest and type a chord, for example Am7 or F♯m7♭5.' },
