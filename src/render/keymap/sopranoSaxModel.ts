@@ -50,6 +50,7 @@ export const SOPRANO_SAX: InstrumentModel = {
     { id: 'front', label: 'Front, from the right', yaw: 60, elev: 12 },
     { id: 'back', label: 'Back, from the left', yaw: -120, elev: 12 },
   ],
+  tilt: [-30, 0],
   distance: 1300,
   outline: [body],
   layers: [{

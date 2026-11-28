@@ -95,13 +95,17 @@ export default function Fingerings() {
       <RangeStrip notes={range} current={st.note} onPick={pickNote}
         hasAlternates={n => optionsFor(st.inst, n, st.system).length > 1} extended={n => n > i.hi} />
 
-      <div className={s.grid}>
-        <aside className={s.picker} aria-label="Choose a note">
+      {/* The note picker in one bar above the stage, so the instrument gets the page's full width. */}
+      <section className={s.picker} aria-label="Choose a note">
+        <div className={s.pickStaff}>
           <h2 className={s.cardTitle}>Note as you read it</h2>
           <StaffPicker pitch={st.note} lo={i.lo} hi={i.ext} onPick={pickNote} />
+        </div>
+        <div className={s.pickName}>
           <NamePicker pitch={st.note} lo={i.lo} hi={i.ext} instName={displayName(i)} mod={mod} onPick={pickNote} />
           <p className={s.keysHint}>↑ ↓ semitone · {mod} ↑ ↓ octave · A – G note name</p>
-
+        </div>
+        <div className={s.pickAlts}>
           <h2 className={s.cardTitle}>Fingerings for this note <span className={s.count}>{options.length}</span></h2>
           {options.length === 0 ? (
             <p className={s.muted}>No sourced fingering for this note.</p>
@@ -122,10 +126,10 @@ export default function Fingerings() {
               ))}
             </ul>
           )}
-        </aside>
+        </div>
+      </section>
 
-        <FingeringView inst={st.inst} written={st.note} option={option} optionLabel={optionLabel(alt)} soprano={st.shape} />
-      </div>
+      <FingeringView inst={st.inst} written={st.note} option={option} optionLabel={optionLabel(alt)} soprano={st.shape} />
     </div>
   );
 }

@@ -67,7 +67,7 @@
 
 .chart {
   flex: none;
-  width: 150px;
+  width: 180px;
 }
 
 .chart svg {
@@ -86,6 +86,11 @@
 .drawing {
   flex: 1 1 0;
   min-width: 0;
+}
+
+/* The canvas keeps its shape; on a wide page it stops at a height that fits the window, centred. */
+.drawing svg {
+  max-height: min(640px, 75vh);
 }
 
 .narrow .figures {

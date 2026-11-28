@@ -38,7 +38,7 @@ it('opens on the note of the address, with the keys to press and every sourced f
   expect(note()).toBe('B♭4');
   expect(within(view()).getByText('written · sounds D♭4')).toBeInTheDocument();
   expect(press()).toEqual(['B keyleft index · pressed', 'A keyleft middle · pressed', 'Side B♭right index, side · pressed']);
-  const alternates = within(screen.getByRole('complementary', { name: 'Choose a note' })).getAllByRole('button', { name: /^(Standard|Alternate)/ });
+  const alternates = within(screen.getByRole('region', { name: 'Choose a note' })).getAllByRole('button', { name: /^(Standard|Alternate)/ });
   expect(alternates.map(b => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
 });
 
@@ -51,7 +51,7 @@ it('opens on the preferred instrument and its written C5 without an address', ()
 
 it('shows a picked alternate, names it and keeps it in the address', async () => {
   renderAt('?inst=asax&note=Bb4');
-  await user.click(within(screen.getByRole('complementary', { name: 'Choose a note' })).getByRole('button', { name: /^Alternate 1/ }));
+  await user.click(within(screen.getByRole('region', { name: 'Choose a note' })).getByRole('button', { name: /^Alternate 1/ }));
   expect(within(view()).getByText('Alternate 1')).toBeInTheDocument();
   expect(address()).toBe('?inst=asax&note=Bb4&alt=2');
   expect(press()).toContain('Bis B♭left index · pressed');

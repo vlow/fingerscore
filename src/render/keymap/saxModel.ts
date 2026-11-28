@@ -127,6 +127,7 @@ export const SAX: InstrumentModel = {
     { id: 'right', label: 'Right side, from the front', yaw: 40, elev: 12 },
     { id: 'left', label: 'Left side, from behind', yaw: -150, elev: 12 },
   ],
+  tilt: [-15, 10],
   distance: 1200,
   outline: [body, bow, bell, neck],
   layers: [

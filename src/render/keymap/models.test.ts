@@ -1,6 +1,6 @@
 import { ORDER, inst, type Instrument } from '../../domain/instruments';
 import { chartIds } from './ChartTargets';
-import { keyShows } from './InstrumentDrawing';
+import { fitViews, keyShows } from './InstrumentDrawing';
 import type { InstrumentModel, ModelKey } from './model';
 import { MODELS, modelFor } from './models';
 import { add, camera, cross, mul, norm, v3, type Projection, type Vec3 } from './project';
@@ -89,5 +89,26 @@ describe.each(CASES)('key map model: %s', (_name, kind, model) => {
       }
     }
     expect(covered).toEqual([]);
+  });
+});
+
+describe('canvas fit', () => {
+  // The page's canvas: two views of 308 × 534 units each (640 × 560, a 24-unit gap and a label line).
+  const cellW = (640 - 24) / 2;
+  const cellH = 560 - 26;
+
+  it.each(CASES)('%s: a tilt within its range, and both views fit their cells at one scale', (_name, _kind, model) => {
+    const fit = fitViews(model, model.views.map(v => v.id), cellW, cellH);
+    expect(fit.tilt).toBeGreaterThanOrEqual(model.tilt[0]);
+    expect(fit.tilt).toBeLessThanOrEqual(model.tilt[1]);
+    for (const b of fit.boxes) {
+      expect(b.w * fit.scale).toBeLessThanOrEqual(cellW + 0.01);
+      expect(b.h * fit.scale).toBeLessThanOrEqual(cellH + 0.01);
+    }
+  });
+
+  it('lays the flute diagonally and keeps the alto saxophone upright', () => {
+    expect(fitViews(MODELS.fl, ['top', 'bottom'], cellW, cellH).tilt).toBeGreaterThan(0);
+    expect(fitViews(MODELS.sax, ['right', 'left'], cellW, cellH).tilt).toBe(0);
   });
 });

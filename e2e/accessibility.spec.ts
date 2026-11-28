@@ -185,13 +185,19 @@ async function smallTargets(page: Page): Promise<TargetResult> {
       const labels = (el as HTMLInputElement).labels ? [...(el as HTMLInputElement).labels!] : [];
       const boxes = () => [el, ...labels].map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
       if (boxes().length === 0 || el.getBoundingClientRect().width === 0) continue;
-      // Outside the window, or cut off by a scrolling container (the paper beside the open shortcuts panel): a person scrolls to it first.
-      let scroller = el.parentElement;
-      while (scroller && !/auto|scroll|hidden/.test(getComputedStyle(scroller).overflowX)) scroller = scroller.parentElement;
+      // Outside the window, or cut off by a scrolling container: sideways (the paper beside the open shortcuts panel) or
+      // from below (a side panel that scrolls in itself, such as the Fingering panel at 720 px). A person scrolls to it first.
+      const scrollerOf = (axis: 'overflowX' | 'overflowY') => {
+        let n = el.parentElement;
+        while (n && !/auto|scroll|hidden/.test(getComputedStyle(n)[axis])) n = n.parentElement;
+        return n;
+      };
+      const across = scrollerOf('overflowX');
+      const down = scrollerOf('overflowY');
       const clipped = (r: DOMRect) => {
-        if (!scroller) return false;
-        const c = scroller.getBoundingClientRect();
-        return r.left < c.left || r.right > c.right;
+        const x = across?.getBoundingClientRect();
+        const y = down?.getBoundingClientRect();
+        return (!!x && (r.left < x.left || r.right > x.right)) || (!!y && (r.top < y.top || r.bottom > y.bottom));
       };
       const outside = () => boxes().some(r => r.bottom < 0 || r.top < 0 || r.bottom > innerHeight || r.right < 0 || r.left < 0 || r.right > innerWidth || clipped(r));
       if (outside()) {

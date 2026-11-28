@@ -45,6 +45,7 @@ export const RECORDER: InstrumentModel = {
     { id: 'front', label: 'Front', yaw: 80, elev: 10 },
     { id: 'back', label: 'Back', yaw: -100, elev: 10 },
   ],
+  tilt: [-30, 0],
   distance: 900,
   outline: [tube],
   layers: [{

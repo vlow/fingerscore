@@ -42,17 +42,12 @@
   font-size: 15px;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-  align-items: start;
-  gap: 24px;
-}
-
+/* The note picker: staff, names and alternates side by side, wrapping on narrow screens. */
 .picker {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(260px, 340px) minmax(220px, 1fr);
+  align-items: start;
+  gap: 16px 24px;
   padding: 16px;
   border: 1px solid var(--c-border);
   border-radius: var(--radius-card);
@@ -319,7 +314,7 @@
   display: block;
   width: 100%;
   height: auto;
-  max-height: 260px;
+  max-height: 200px;
   border-radius: var(--radius);
   background: var(--c-paper);
 }
@@ -328,8 +323,33 @@
   margin-top: 6px;
 }
 
-@media (max-width: 899px) {
-  .grid {
+.pickStaff,
+.pickName,
+.pickAlts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The alternates: two columns of cards while there is room. */
+.pickAlts .alts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+@media (max-width: 1023px) {
+  .picker {
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  }
+
+  .pickAlts {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 599px) {
+  .picker {
     grid-template-columns: minmax(0, 1fr);
   }
 }

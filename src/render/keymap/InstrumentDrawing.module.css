@@ -1,0 +1,17 @@
+/* The instrument canvas: one fixed aspect for every instrument. */
+.canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/*
+ * Lines keep their width however far the drawing is scaled to fill the canvas, so a small instrument drawn large gets no
+ * heavy outlines and a large one no hairlines.
+ */
+.canvas path,
+.canvas rect,
+.canvas ellipse,
+.canvas circle {
+  vector-effect: non-scaling-stroke;
+}

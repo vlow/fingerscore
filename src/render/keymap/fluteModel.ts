@@ -55,6 +55,7 @@ export const FLUTE: InstrumentModel = {
     { id: 'top', label: 'From above', yaw: 72, elev: 0, roll: -90 },
     { id: 'bottom', label: 'From below', yaw: -108, elev: 0, roll: -90 },
   ],
+  tilt: [15, 60],
   distance: 1300,
   outline: [tube],
   layers: [{

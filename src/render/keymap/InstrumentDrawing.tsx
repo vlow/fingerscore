@@ -1,5 +1,6 @@
 import { useId, useMemo, type ReactNode } from 'react';
 import { usePalette } from '../palette';
+import styles from './InstrumentDrawing.module.css';
 import { KeyTarget, type KeyEvents } from './KeyTarget';
 import type { InstrumentModel, KeyFrame, Layer, ModelKey } from './model';
 import {
@@ -12,12 +13,42 @@ const FILL = 'var(--c-raised)';
 const MIN_FACING = 0.06;
 const GAP = 24;
 const LABEL_SPACE = 26;
-/** About the width of one character of a view's label, at its 14 px bold. */
-const LABEL_CHAR = 7.6;
 
-function cameraOf(model: InstrumentModel, viewId: string): Projection {
+/** A view's camera, turned by `tilt` degrees in the picture on top of the view's own roll. */
+function cameraOf(model: InstrumentModel, viewId: string, tilt = 0): Projection {
   const v = model.views.find(x => x.id === viewId) ?? model.views[0];
-  return camera(v.yaw, v.elev, model.distance, v.roll ?? 0);
+  return camera(v.yaw, v.elev, model.distance, (v.roll ?? 0) + tilt);
+}
+
+/** The canvas: one fixed size for every instrument, so each is drawn as large as it fits (in px at 1×). */
+const CANVAS_H = 560;
+const CANVAS_W = { one: 340, two: 640 } as const;
+const TILT_STEP = 5;
+/** A larger tilt is taken only when it draws the instrument at least this much larger: upright stays the default. */
+const TILT_GAIN = 1.04;
+
+interface Fit { tilt: number; scale: number; boxes: { x: number; y: number; w: number; h: number }[] }
+
+/**
+ * The tilt within the model's range that draws its views largest in cells of cellW × cellH, and that scale. Both views
+ * share it, so the front and the back of an instrument are the same size.
+ */
+export function fitViews(model: InstrumentModel, viewIds: string[], cellW: number, cellH: number): Fit {
+  const tubes = [...model.outline, ...model.layers.flatMap(l => l.dark ?? [])];
+  const [from, to] = model.tilt;
+  let best: Fit | null = null;
+  // Upright first, then further out on either side, so a tie keeps the smaller tilt.
+  const tilts = Array.from({ length: Math.floor((to - from) / TILT_STEP) + 1 }, (_, k) => from + k * TILT_STEP)
+    .sort((a, b) => Math.abs(a) - Math.abs(b));
+  for (const tilt of tilts) {
+    const boxes = viewIds.map(id => {
+      const [x0, y0, x1, y1] = tubeBounds(cameraOf(model, id, tilt), tubes);
+      return { x: x0 - 6, y: y0 - 6, w: x1 - x0 + 12, h: y1 - y0 + 12 };
+    });
+    const scale = Math.min(...boxes.map(b => Math.min(cellW / b.w, cellH / b.h)));
+    if (best === null || scale > best.scale * TILT_GAIN) best = { tilt, scale, boxes };
+  }
+  return best!;
 }
 
 /** Whether a key faces the viewer in this view of its model. */
@@ -96,6 +127,8 @@ function KeyFace(p: { cam: Projection; k: ModelKey; value: number; clip: string 
 interface ViewProps {
   model: InstrumentModel;
   viewId: string;
+  /** Degrees the picture is turned, from the layout's fit. */
+  tilt?: number;
   pressed: ReadonlyMap<string, number>;
   shown: string | null;
   events: KeyEvents;
@@ -108,7 +141,7 @@ function ModelView(p: ViewProps) {
   const pal = usePalette();
   // React's ids hold colons, which a url(#…) reference cannot take.
   const uid = useId().replace(/:/g, '');
-  const cam = useMemo(() => cameraOf(p.model, p.viewId), [p.model, p.viewId]);
+  const cam = useMemo(() => cameraOf(p.model, p.viewId, p.tilt ?? 0), [p.model, p.viewId, p.tilt]);
   const faces = (n: KeyFrame['n']) => cam.facing(n) > MIN_FACING;
   const fitting = pal.muted;
 
@@ -186,43 +219,33 @@ function ModelView(p: ViewProps) {
 }
 
 /**
- * An instrument from each of its fixed views: side by side for an upright instrument, one above the other for one
- * that lies on its side, such as the flute. Pressed keys fill; the shown key gets an accent ring. `only` draws one view.
+ * An instrument from each of its fixed views, side by side on a canvas of one fixed size: every instrument is drawn
+ * as large as it fits, turned within its tilt range where that makes it larger. Pressed keys fill; the shown key gets an
+ * accent ring. `only` draws one view, on a narrower canvas.
  */
-export function InstrumentDrawing(p: Omit<ViewProps, 'viewId'> & { only?: string }) {
+export function InstrumentDrawing(p: Omit<ViewProps, 'viewId' | 'tilt'> & { only?: string }) {
   const pal = usePalette();
   const views = p.model.views.filter(v => p.only === undefined || v.id === p.only);
-  const boxes = useMemo(() => views.map(v => {
-    const [x0, y0, x1, y1] = tubeBounds(cameraOf(p.model, v.id), [...p.model.outline, ...p.model.layers.flatMap(l => l.dark ?? [])]);
-    return { x: x0 - 10, y: y0 - 10, w: x1 - x0 + 20, h: y1 - y0 + 20, label: v.label.length * LABEL_CHAR + 2 * GAP };
-  }), [p.model, p.only]); // `views` follows from these two
-  const stacked = boxes.every(b => b.w > b.h);
-  // A slim instrument's cell is as wide as its label at least, so the labels never run into each other.
-  const cellWidth = (b: (typeof boxes)[number]) => Math.max(b.w, b.label);
-  const cellW = Math.max(...boxes.map(cellWidth));
-  const cellH = Math.max(...boxes.map(b => b.h)) + LABEL_SPACE;
-  const width = stacked ? cellW : boxes.reduce((sum, b) => sum + cellWidth(b), 0) + GAP * (boxes.length - 1);
-  const height = stacked ? cellH * boxes.length + GAP * (boxes.length - 1) : cellH;
-  let offset = 0;
+  const width = views.length > 1 ? CANVAS_W.two : CANVAS_W.one;
+  const cellW = (width - GAP * (views.length - 1)) / views.length;
+  const cellH = CANVAS_H - LABEL_SPACE;
+  const ids = views.map(v => v.id).join(' ');
+  const fit = useMemo(() => fitViews(p.model, ids.split(' '), cellW, cellH), [p.model, ids, cellW, cellH]);
   return (
-    <svg viewBox={`0 0 ${width.toFixed(0)} ${height.toFixed(0)}`} role="group"
-      aria-label={`${p.model.name}: ${views.map(v => v.label.toLowerCase()).join(' and ')}`}
-      style={{ width: '100%', height: 'auto' }}>
+    <svg viewBox={`0 0 ${width} ${CANVAS_H}`} role="group" className={styles.canvas}
+      aria-label={`${p.model.name}: ${views.map(v => v.label.toLowerCase()).join(' and ')}`}>
       {views.map((v, i) => {
-        const box = boxes[i];
-        // The cell's top-left corner, and the drawing centred in it above its label.
-        const cx = stacked ? 0 : offset;
-        const cy = stacked ? offset : 0;
-        const w = stacked ? cellW : cellWidth(box);
-        offset += (stacked ? cellH : w) + GAP;
-        const dx = cx + (w - box.w) / 2 - box.x;
-        const dy = cy + (cellH - LABEL_SPACE - box.h) / 2 - box.y;
+        const box = fit.boxes[i];
+        const left = i * (cellW + GAP);
+        // Centre the view in its cell at the shared scale; the label sits under the cell.
+        const transform = `translate(${(left + cellW / 2).toFixed(1)} ${(cellH / 2).toFixed(1)}) scale(${fit.scale.toFixed(4)}) `
+          + `translate(${(-(box.x + box.w / 2)).toFixed(1)} ${(-(box.y + box.h / 2)).toFixed(1)})`;
         return (
           <g key={v.id} data-view={v.id}>
-            <g transform={`translate(${dx.toFixed(1)} ${dy.toFixed(1)})`}>
-              <ModelView {...p} viewId={v.id} />
+            <g transform={transform}>
+              <ModelView {...p} viewId={v.id} tilt={fit.tilt} />
             </g>
-            <text x={cx + w / 2} y={cy + cellH - 8} textAnchor="middle" fontSize={14} fontWeight={700}
+            <text x={left + cellW / 2} y={CANVAS_H - 8} textAnchor="middle" fontSize={14} fontWeight={700}
               fill={pal.text} fontFamily="'Atkinson Hyperlegible', system-ui, sans-serif">{v.label}</text>
           </g>
         );

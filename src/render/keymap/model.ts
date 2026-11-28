@@ -70,6 +70,12 @@ export interface InstrumentModel {
   /** Short name of what is modelled, for the drawing's label. */
   name: string;
   views: ViewSpec[];
+  /**
+   * How far the drawing may be turned in the picture, in degrees clockwise on top of each view's roll: the layout picks
+   * the angle in this range that draws the instrument largest on its canvas. A flute lies diagonally, a clarinet may
+   * lean a little; [0, 0] keeps the views as they are.
+   */
+  tilt: [number, number];
   /** How far the camera stands, in mm. */
   distance: number;
   /** The whole outline, drawn once below the layers so the silhouette has no seams. */
