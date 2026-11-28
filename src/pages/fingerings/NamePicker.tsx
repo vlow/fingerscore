@@ -9,14 +9,13 @@ const NATURAL: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B:
 /** The octave of a written pitch, middle C = 4. */
 const octaveOf = (pitch: number) => Math.floor(pitch / 12) - 1;
 
+interface PickProps { pitch: number; lo: number; hi: number; onPick(pitch: number): void }
+
 /**
- * Picking a note by name (design 4.2): letter buttons keep the octave, ♭ ♮ ♯ alter the letter, Octave − + move by an
- * octave, and a text field reads a typed name. A button whose note lies outside lo..hi is disabled.
+ * Picking a note by name (design 4.2), in the note popover: letter buttons keep the octave, ♭ ♮ ♯ alter the letter,
+ * Octave − + move by an octave. A button whose note lies outside lo..hi is disabled.
  */
-export function NamePicker(p: { pitch: number; lo: number; hi: number; instName: string; mod: string; onPick(pitch: number): void }) {
-  const fieldId = useId();
-  const [text, setText] = useState('');
-  const [error, setError] = useState<string | null>(null);
+export function LetterPicker(p: PickProps & { mod: string }) {
   const name = noteNameFlat(p.pitch);
   const letter = name[0];
   const octave = octaveOf(p.pitch);
@@ -31,18 +30,6 @@ export function NamePicker(p: { pitch: number; lo: number; hi: number; instName:
       {label}
     </button>
   );
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const read = readNote(text, p.pitch, p.lo, p.hi);
-    if ('pitch' in read) {
-      setError(null);
-      setText('');
-      p.onPick(read.pitch);
-    } else {
-      setError(read.error === 'range' ? `That note is outside the range of the ${p.instName}.` : 'Type a note name such as C, F♯5, Bb or Fis.');
-    }
-  };
 
   return (
     <div className={s.names}>
@@ -63,16 +50,41 @@ export function NamePicker(p: { pitch: number; lo: number; hi: number; instName:
         {button('+', p.pitch + 12, undefined,
           { name: 'Octave up', title: `Octave up (${p.mod}+↑)`, keys: 'Control+ArrowUp Meta+ArrowUp' })}
       </div>
-      <form className={s.type} onSubmit={submit}>
-        <label htmlFor={fieldId} className={s.label}>Type a note</label>
-        <div className={s.typeRow}>
-          <input id={fieldId} className={s.input} value={text} placeholder="Bb4, F♯, Fis" autoComplete="off" spellCheck={false}
-            aria-invalid={error !== null} aria-describedby={error ? `${fieldId}-error` : undefined}
-            onChange={e => { setText(e.target.value); setError(null); }} />
-          <button type="submit" className={s.pickButton}>Show</button>
-        </div>
-        {error && <p id={`${fieldId}-error`} className={s.error} role="alert">{error}</p>}
-      </form>
     </div>
+  );
+}
+
+/**
+ * A typed note name (design 4.2), in the note bar: English or German names, with or without an octave. Says when a
+ * name cannot be read or lies outside the instrument's range.
+ */
+export function TypeNote(p: PickProps & { instName: string }) {
+  const fieldId = useId();
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const read = readNote(text, p.pitch, p.lo, p.hi);
+    if ('pitch' in read) {
+      setError(null);
+      setText('');
+      p.onPick(read.pitch);
+    } else {
+      setError(read.error === 'range' ? `That note is outside the range of the ${p.instName}.` : 'Type a note name such as C, F♯5, Bb or Fis.');
+    }
+  };
+
+  return (
+    <form className={s.type} onSubmit={submit}>
+      <label htmlFor={fieldId} className={s.srOnly}>Type a note</label>
+      <div className={s.typeRow}>
+        <input id={fieldId} className={s.input} value={text} placeholder="Type a note: Bb4, Fis" autoComplete="off" spellCheck={false}
+          aria-invalid={error !== null} aria-describedby={error ? `${fieldId}-error` : undefined}
+          onChange={e => { setText(e.target.value); setError(null); }} />
+        <button type="submit" className={s.pickButton}>Show</button>
+      </div>
+      {error && <p id={`${fieldId}-error`} className={s.error} role="alert">{error}</p>}
+    </form>
   );
 }

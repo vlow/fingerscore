@@ -88,9 +88,9 @@
   min-width: 0;
 }
 
-/* The canvas keeps its shape; on a wide page it stops at a height that fits the window, centred. */
+/* The canvas keeps its shape; on a wide page it stops at a height that fits the window under the note bar, centred. */
 .drawing svg {
-  max-height: min(640px, 75vh);
+  max-height: min(640px, max(360px, calc(100vh - 300px)));
 }
 
 .narrow .figures {

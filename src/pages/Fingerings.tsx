@@ -11,9 +11,7 @@ import { Segmented } from '../ui/Segmented';
 import { isApple } from '../ui/shortcuts';
 import { readNote } from '../domain/noteText';
 import { defaultNote, inRange, readAddress, writeAddress, type FingeringsState } from './fingerings/address';
-import { NamePicker } from './fingerings/NamePicker';
-import { RangeStrip } from './fingerings/RangeStrip';
-import { StaffPicker } from './fingerings/StaffPicker';
+import { NoteBar } from './fingerings/NoteBar';
 import { readSoprano, writeSoprano } from './fingerings/prefs';
 import s from './Fingerings.module.css';
 
@@ -92,42 +90,29 @@ export default function Fingerings() {
         </div>
       </div>
 
-      <RangeStrip notes={range} current={st.note} onPick={pickNote}
-        hasAlternates={n => optionsFor(st.inst, n, st.system).length > 1} extended={n => n > i.hi} />
-
-      {/* The note picker in one bar above the stage, so the instrument gets the page's full width. */}
-      <section className={s.picker} aria-label="Choose a note">
-        <div className={s.pickStaff}>
-          <h2 className={s.cardTitle}>Note as you read it</h2>
-          <StaffPicker pitch={st.note} lo={i.lo} hi={i.ext} onPick={pickNote} />
-        </div>
-        <div className={s.pickName}>
-          <NamePicker pitch={st.note} lo={i.lo} hi={i.ext} instName={displayName(i)} mod={mod} onPick={pickNote} />
-          <p className={s.keysHint}>↑ ↓ semitone · {mod} ↑ ↓ octave · A – G note name</p>
-        </div>
-        <div className={s.pickAlts}>
-          <h2 className={s.cardTitle}>Fingerings for this note <span className={s.count}>{options.length}</span></h2>
+      <NoteBar pitch={st.note} lo={i.lo} hi={i.ext} instName={displayName(i)} mod={mod} range={range} onPick={pickNote}
+        hasAlternates={n => optionsFor(st.inst, n, st.system).length > 1} extended={n => n > i.hi}>
+        <div className={s.altsRow}>
+          <span className={s.cardTitle}>Fingerings <span className={s.count}>{options.length}</span></span>
           {options.length === 0 ? (
             <p className={s.muted}>No sourced fingering for this note.</p>
           ) : (
-            <ul className={s.alts}>
+            <ul className={s.alts} aria-label="Fingerings for this note">
               {options.map((o, k) => (
                 <li key={`${k}-${o.n}`}>
-                  <button type="button" className={s.alt} aria-pressed={k === alt} onClick={() => show({ alt: k })}>
+                  <button type="button" className={s.alt} aria-pressed={k === alt} title={fingeringNote(o.n) || undefined}
+                    onClick={() => show({ alt: k })}>
                     <svg className={s.mini} viewBox="-22 -4 44 98" aria-hidden="true">
                       <FingeringChart kind={i.kind} option={o} style="full" x={0} y={0} />
                     </svg>
-                    <span className={s.altText}>
-                      <span className={s.altName}>{optionLabel(k)}</span>
-                      {fingeringNote(o.n) && <span className={s.muted}>{fingeringNote(o.n)}</span>}
-                    </span>
+                    <span className={s.altName}>{optionLabel(k)}</span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
         </div>
-      </section>
+      </NoteBar>
 
       <FingeringView inst={st.inst} written={st.note} option={option} optionLabel={optionLabel(alt)} soprano={st.shape} />
     </div>

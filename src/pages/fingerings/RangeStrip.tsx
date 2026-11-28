@@ -7,10 +7,10 @@ import { capacity, CELL, clampStart, follow, pageStep } from './strip';
 const WHEEL_STEP = 40;
 
 /**
- * The instrument's whole written range in one row (design 4.2). A dot marks notes with more than one fingering; extended
- * notes are shaded. When not all notes fit, the line under the row names the hidden ones as buttons that page the row,
- * and a sideways swipe, trackpad swipe or Shift+wheel moves it by one note. Choosing a note elsewhere moves the row just
- * enough to show it.
+ * The instrument's whole written range in one row of the note bar (design 4.2). A dot marks notes with more than one
+ * fingering; extended notes are shaded. When not all notes fit, « and » at the row's ends page it (their names say which
+ * notes they show), and a sideways swipe, trackpad swipe or Shift+wheel moves it by one note. Choosing a note elsewhere
+ * moves the row just enough to show it.
  */
 export function RangeStrip(p: {
   notes: number[]; current: number; onPick(pitch: number): void;
@@ -66,45 +66,41 @@ export function RangeStrip(p: {
     move(steps);
   };
 
+  const notesRow = (
+    // Sideways swipes move the row; the notes inside are the controls.
+    <div ref={row} className={s.stripRow} role="group" aria-label="Notes of the range" onWheel={onWheel}
+      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => { touchX.current = null; }}>
+      {visible.map(n => {
+        const multi = p.hasAlternates(n);
+        const ext = p.extended(n);
+        const name = noteNameFlat(n);
+        let label = name;
+        if (multi) label += ', more than one fingering';
+        if (ext) label += ', extended';
+        return (
+          <button key={n} type="button" className={`${s.stripNote} ${ext ? s.stripExt : ''}`} aria-pressed={n === p.current}
+            aria-label={label} onClick={() => p.onPick(n)}>
+            <span>{name}</span>
+            <span className={multi ? s.dot : s.noDot} aria-hidden="true" />
+          </button>
+        );
+      })}
+    </div>
+  );
+  const lower = (text: string) => before.length > 0 && (
+    <button type="button" className={s.pageButton} aria-label={`Show lower notes, ${span(before)}`} title={`Show ${span(before)}`}
+      onClick={() => move(-pageStep(shown))}>{text}</button>
+  );
+  const higher = (text: string) => after.length > 0 && (
+    <button type="button" className={s.pageButton} aria-label={`Show higher notes, ${span(after)}`} title={`Show ${span(after)}`}
+      onClick={() => move(pageStep(shown))}>{text}</button>
+  );
+
   return (
-    <section className={s.strip} aria-labelledby="range-strip-title">
-      <p className={s.stripHead}>
-        <span id="range-strip-title" className={s.cardTitle}>Whole range</span>
-        <span className={s.muted}>click a note · a dot marks notes with more than one fingering</span>
-      </p>
-      {/* Sideways swipes move the row; the notes inside are the controls. */}
-      <div ref={row} className={s.stripRow} role="group" aria-label="Notes of the range" onWheel={onWheel}
-        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => { touchX.current = null; }}>
-        {visible.map(n => {
-          const multi = p.hasAlternates(n);
-          const ext = p.extended(n);
-          const name = noteNameFlat(n);
-          let label = name;
-          if (multi) label += ', more than one fingering';
-          if (ext) label += ', extended';
-          return (
-            <button key={n} type="button" className={`${s.stripNote} ${ext ? s.stripExt : ''}`} aria-pressed={n === p.current}
-              aria-label={label} onClick={() => p.onPick(n)}>
-              <span>{name}</span>
-              <span className={multi ? s.dot : s.noDot} aria-hidden="true" />
-            </button>
-          );
-        })}
-      </div>
-      {(before.length > 0 || after.length > 0) && (
-        <div className={s.stripPages}>
-          {before.length > 0 ? (
-            <button type="button" className={s.pageButton} aria-label={`Show lower notes, ${span(before)}`} onClick={() => move(-pageStep(shown))}>
-              ‹ {span(before)}
-            </button>
-          ) : <span />}
-          {after.length > 0 && (
-            <button type="button" className={s.pageButton} aria-label={`Show higher notes, ${span(after)}`} onClick={() => move(pageStep(shown))}>
-              {span(after)} ›
-            </button>
-          )}
-        </div>
-      )}
-    </section>
+    <div className={s.stripCompact}>
+      {lower('«')}
+      {notesRow}
+      {higher('»')}
+    </div>
   );
 }

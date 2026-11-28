@@ -39,7 +39,7 @@ The fingering chart is an abstract column of dots. A beginner does not know whic
 
 - **Stage header:** the written note large ("B♭4"), "written · sounds {concert}" for transposing instruments, then "{instrument} · {fingering name}" and a tag naming the option ("Standard", "Alternate 2").
 - **Chart:** the full key map chart (`FingeringChart`, style full), large.
-- **Drawings:** the instrument model's views (`InstrumentDrawing`): two fixed views per instrument, each chosen so that no part of the instrument hides a key. They are drawn on a canvas of one fixed size for every instrument (the owner's finding of 2026-11-28: the clarinet took far more room than the saxophone, the flute was too small to read), scaled to fill it at one scale for both views, and turned within the model's tilt range where that draws them larger: the flute lies diagonally, the straight instruments may lean. Lines keep one width at any scale. On the page the note picker sits in a bar above the stage, so the canvas gets the full width. On the panel, one view at a time with a "Front / Behind" toggle (labels follow the model's views).
+- **Drawings:** the instrument model's views (`InstrumentDrawing`): two fixed views per instrument, each chosen so that no part of the instrument hides a key. They are drawn on a canvas of one fixed size for every instrument (the owner's finding of 2026-11-28: the clarinet took far more room than the saxophone, the flute was too small to read), scaled to fill it at one scale for both views, and turned within the model's tilt range where that draws them larger: the flute lies diagonally, the straight instruments may lean. Lines keep one width at any scale. On the page the note bar sits above the stage (§4.2), so the canvas gets the full width. On the panel, one view at a time with a "Front / Behind" toggle (labels follow the model's views).
 - **Press list:** the keys held down, by name and finger ("Octave key · left thumb"); "Nothing — every key open" when none.
 - **Linked highlight:** pointing at a key in the chart, on a drawing or in the press list highlights it everywhere (accent fill, ring) and names it in one fixed line. Click pins the highlight; a second click or Esc unpins. The line has a fixed height, so a long name never moves the drawing.
 - **Keyboard (deviation from the mockup, found in the build):** the chart's and drawings' keys are pointer-only. The chart's keys sit about 21 px apart, so as controls they could never meet the app's 36 px target size, which `e2e/accessibility.spec.ts` enforces. The keyboard and screen readers reach every key through buttons instead: the press list, and "All keys of the {instrument}", a disclosure listing every key. Focusing one highlights the key in the chart and on the drawings, as pointing does; Enter or Space pins it.
@@ -49,13 +49,15 @@ The fingering chart is an abstract column of dots. A beginner does not know whic
 
 - Header navigation: Songs · Scales · **Fingerings**; "Fingerings" is current on `/fingerings`.
 - **Page bar:** title "Fingerings for", the instrument select (grouped by family, as elsewhere), the recorder system (Baroque / German) for recorders, the shape (Straight / Curved) for the soprano saxophone.
-- **Range strip:** the instrument's whole written range in one row of notes, each at least 34 px wide; a dot marks notes with more than one fingering; shaded: extended notes. When not all fit, the strip shows what fits and names the rest as buttons ("‹ B♭3 – D4", "C5 – F6 ›") that move a screenful minus two notes. It never wraps and never scrolls sideways; a sideways swipe, trackpad swipe or Shift+wheel moves one note. Choosing a note elsewhere moves the strip just enough to show it.
-- **Note picker, left column:**
-  - *Staff:* a treble staff in written pitch. Pointing at a line or space shows a ghost note with its name; outside the range the area is shaded and the tag says so. Click picks the natural note; ♭ ♮ ♯ change it. Ledger lines as needed.
-  - *By name:* letter buttons C–B keep the octave; ♭ ♮ ♯; "Octave {n}" with − and +.
+- **Note bar** (the owner's concept A of 2026-11-28: on a 16" laptop the picker and the instrument did not fit on one screen). One bar above the stage holds every way to change the note. From 600 px width up it stays at the top of the window while the page scrolls, so the note changes with the instrument in view; on a phone it takes three rows and scrolls away with the page.
+  - *Stepper:* ‹ and › move a semitone (↑ ↓), with the note's name between them.
+  - *Range strip:* the instrument's whole written range in one row of notes, each at least 36 px wide; a dot marks notes with more than one fingering; shaded: extended notes. When not all fit, « and » at the row's ends move it a screenful minus two notes; their names say which notes they show ("Show higher notes, C5 – C7"). It never wraps and never scrolls sideways; a sideways swipe, trackpad swipe or Shift+wheel moves one note. Choosing a note elsewhere moves the strip just enough to show it.
   - *Type:* a text field that takes C, c#, Db, F♯5, Bes, Fis (German names too); without an octave it takes the nearest note in range.
-  - *Alternates:* every sourced option for the note, each with a mini chart and its name; picking one changes the view only.
-- **Stage, right column:** the view of §4.1, both drawings side by side.
+  - *Staff:* a button that opens a popover with the staff and the letter buttons. Esc, ✕ or a click outside closes it.
+    - The staff: a treble staff in written pitch. Pointing at a line or space shows a ghost note with its name; outside the range the area is shaded and the tag says so. Click picks the natural note; ♭ ♮ ♯ change it. Ledger lines as needed.
+    - By name: letter buttons C–B keep the octave; ♭ ♮ ♯; "Octave {n}" with − and +.
+  - *Fingerings*, the bar's second row: every sourced option for the note as a chip with a mini chart and its name; picking one changes the view only.
+- **Stage**, below the bar: the view of §4.1, both drawings side by side. The canvas stops at a height that fits the window under the bar.
 - **Address:** the state is in the URL (`/fingerings?inst=asax&note=Bb4&alt=2`, plus `shape=curved` and `system=german` where they apply), so a link opens on that note. Unknown or out-of-range values fall back: the preferred instrument, its written C5 (or the nearest note in range), the standard fingering.
 - **Defaults:** the preferred instrument and written C5. The soprano shape is remembered in this browser (§4.8).
 
@@ -105,7 +107,7 @@ New entries in `GROUPS` (`src/ui/shortcuts.ts`), with rows in `rowFor`, `aria-ke
 
 - `src/render/keymap/`: models, projection, `InstrumentDrawing`, `ChartTargets` (from the prototype).
 - `src/ui/fingering/FingeringView.tsx`: the view of §4.1; `FingeringPanel.tsx`: the panel of §4.3–4.4.
-- `src/pages/Fingerings.tsx` and `src/pages/fingerings/`: the page, the range strip, the staff picker, the name picker.
+- `src/pages/Fingerings.tsx` and `src/pages/fingerings/`: the page, the note bar, the range strip, the staff picker, the letter picker and the type field.
 - `src/domain/noteText.ts`: reading a typed note name (English and German) to a written pitch. Unit-tested.
 - `src/shell/routePages.ts`, `routes.tsx`, `Header.tsx`: the route and the link. `bundle-budget.json`: a route budget for `/fingerings` and a feature budget for the panel.
 - `/dev/keymap` and `src/pages/DevKeymap.tsx` are removed once the page exists.

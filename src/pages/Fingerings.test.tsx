@@ -18,6 +18,9 @@ const renderAt = (query: string) => render(
 
 const view = () => screen.getByRole('region', { name: /^Fingering for / });
 const note = () => within(view()).getAllByRole('paragraph')[0].textContent;
+/** The note bar over the stage, and the popover its Staff button opens. */
+const noteBar = () => screen.getByRole('group', { name: 'Choose a note' });
+const openPopover = async () => { await user.click(within(noteBar()).getByRole('button', { name: 'Staff' })); return screen.getByRole('dialog', { name: /^Pick a note/ }); };
 const address = () => screen.getByTestId('address').textContent;
 const info = () => within(view()).getByRole('status').textContent;
 /** The Press section: the keys the fingering holds down. */
@@ -38,7 +41,7 @@ it('opens on the note of the address, with the keys to press and every sourced f
   expect(note()).toBe('B♭4');
   expect(within(view()).getByText('written · sounds D♭4')).toBeInTheDocument();
   expect(press()).toEqual(['B keyleft index · pressed', 'A keyleft middle · pressed', 'Side B♭right index, side · pressed']);
-  const alternates = within(screen.getByRole('region', { name: 'Choose a note' })).getAllByRole('button', { name: /^(Standard|Alternate)/ });
+  const alternates = within(noteBar()).getAllByRole('button', { name: /^(Standard|Alternate)/ });
   expect(alternates.map(b => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
 });
 
@@ -51,7 +54,7 @@ it('opens on the preferred instrument and its written C5 without an address', ()
 
 it('shows a picked alternate, names it and keeps it in the address', async () => {
   renderAt('?inst=asax&note=Bb4');
-  await user.click(within(screen.getByRole('region', { name: 'Choose a note' })).getByRole('button', { name: /^Alternate 1/ }));
+  await user.click(within(noteBar()).getByRole('button', { name: /^Alternate 1/ }));
   expect(within(view()).getByText('Alternate 1')).toBeInTheDocument();
   expect(address()).toBe('?inst=asax&note=Bb4&alt=2');
   expect(press()).toContain('Bis B♭left index · pressed');
@@ -112,17 +115,44 @@ it('reads a typed note name, and says when it cannot', async () => {
   expect(screen.getByRole('alert')).toHaveTextContent('Type a note name such as C, F♯5, Bb or Fis.');
 });
 
-it('picks a note by letter, accidental and octave; a note out of range is not offered', async () => {
+it('steps a semitone from the bar, and not past the range', async () => {
+  renderAt('?inst=asax&note=B3');
+  await user.click(within(noteBar()).getByRole('button', { name: 'Semitone up' }));
+  expect(note()).toBe('C4');
+  await user.click(within(noteBar()).getByRole('button', { name: 'Semitone down' }));
+  await user.click(within(noteBar()).getByRole('button', { name: 'Semitone down' }));
+  expect(note()).toBe('B♭3');
+  expect(within(noteBar()).getByRole('button', { name: 'Semitone down' })).toBeDisabled();
+});
+
+it('opens the staff and names in a popover that Esc and a click outside close', async () => {
   renderAt('?inst=asax&note=Bb4');
+  const staff = within(noteBar()).getByRole('button', { name: 'Staff' });
+  expect(staff).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await openPopover();
+  expect(staff).toHaveAttribute('aria-expanded', 'true');
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(staff).toHaveFocus();
+  await openPopover();
+  await user.click(screen.getByRole('heading', { level: 1 }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('picks a note by letter, accidental and octave; a note out of range is not offered', async () => {
+  const { unmount } = renderAt('?inst=asax&note=Bb4');
+  await openPopover();
   await user.click(screen.getByRole('button', { name: 'E' }));
   expect(note()).toBe('E4');
   await user.click(screen.getByRole('button', { name: 'Flat' }));
   expect(note()).toBe('E♭4');
   await user.click(screen.getByRole('button', { name: 'Octave up' }));
   expect(note()).toBe('E♭5');
+  unmount();
   renderAt('?inst=asax&note=B3');
-  const downs = screen.getAllByRole('button', { name: 'Octave down' });
-  expect(downs[downs.length - 1]).toBeDisabled();
+  await openPopover();
+  expect(screen.getByRole('button', { name: 'Octave down' })).toBeDisabled();
 });
 
 it('offers the soprano saxophone straight or curved and remembers the choice', async () => {
@@ -174,7 +204,7 @@ describe('range strip', () => {
       await user.click(screen.getByRole('button', { name: 'Show higher notes, A♭4 – C7' }));
       expect(shownNotes()[0]).toBe('G♭4'); // eight notes on: a screenful of ten minus two
       expect(screen.getByRole('button', { name: 'Show lower notes, B♭3 – F4' })).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: 'Octave up' }));
+      fireEvent.keyDown(window, { key: 'ArrowUp', ctrlKey: true });
       expect(note()).toBe('B♭4');
       await user.type(screen.getByRole('textbox', { name: 'Type a note' }), 'C7{Enter}');
       expect(shownNotes()[shownNotes().length - 1]).toBe('C7');
@@ -184,8 +214,9 @@ describe('range strip', () => {
   });
 });
 
-it('draws the staff with the chosen note and a picker caption', () => {
+it('draws the staff with the chosen note and a picker caption', async () => {
   renderAt('?inst=asax&note=Bb4');
+  await openPopover();
   expect(screen.getByRole('img', { name: /^Staff showing B♭4\./ })).toBeInTheDocument();
   expect(screen.getByText(/Shaded: outside the range of the instrument\./)).toBeInTheDocument();
 });

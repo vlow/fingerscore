@@ -1,4 +1,4 @@
-/* The Fingerings page (design 4.2): a page bar, the note picker on the left, the fingering on the right. */
+/* The Fingerings page (design 4.2, concept A): a page bar, a note bar that stays in view, the fingering below. */
 .page {
   display: flex;
   flex-direction: column;
@@ -40,18 +40,6 @@
   color: var(--c-text);
   font-family: inherit;
   font-size: 15px;
-}
-
-/* The note picker: staff, names and alternates side by side, wrapping on narrow screens. */
-.picker {
-  display: grid;
-  grid-template-columns: minmax(200px, 260px) minmax(260px, 340px) minmax(220px, 1fr);
-  align-items: start;
-  gap: 16px 24px;
-  padding: 16px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-card);
-  background: var(--c-surface);
 }
 
 .cardTitle {
@@ -137,11 +125,6 @@
   gap: 6px;
 }
 
-.label {
-  font-size: 14px;
-  font-weight: 600;
-}
-
 .typeRow {
   display: flex;
   gap: 8px;
@@ -165,29 +148,42 @@
   font-size: 13px;
 }
 
+/* The note's fingerings as chips in one row; on a narrow screen the row scrolls sideways. */
+.altsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .alts {
   display: flex;
-  flex-direction: column;
   gap: 6px;
+  min-width: 0;
   margin: 0;
-  padding: 0;
+  padding: 2px;
+  overflow-x: auto;
   list-style: none;
 }
 
 .alt {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
+  gap: 8px;
   min-height: 44px;
-  padding: 6px 10px;
+  padding: 4px 12px 4px 8px;
   border: 1px solid var(--c-border);
-  border-radius: var(--radius);
+  border-radius: 999px;
   background: var(--c-surface);
   color: var(--c-text);
   font-family: inherit;
-  text-align: left;
+  font-size: 14px;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.alt:hover {
+  border-color: var(--c-border-strong);
 }
 
 .alt[aria-pressed='true'] {
@@ -197,46 +193,135 @@
 
 .mini {
   flex: none;
-  width: 26px;
+  width: 16px;
   height: auto;
-}
-
-.altText {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 14px;
 }
 
 .altName {
   font-weight: 700;
 }
 
-/* Range strip: one row that never wraps; the line under it pages the row. */
-.strip {
+/* The note bar: stays at the top of the window, so the note changes while the instrument stays in view. */
+.noteBar {
+  position: relative;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* As wide as the page, not as its notes: the strip measures this width to decide how many notes fit. */
-  min-width: 0;
-  padding: 12px 16px;
+  padding: 10px 12px;
   border: 1px solid var(--c-border);
   border-radius: var(--radius-card);
   background: var(--c-surface);
 }
 
-.stripHead {
+.barMain {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
-  margin: 0;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
 }
 
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepButton {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stepButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.barNote {
+  min-width: 2.6em;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* As wide as the bar leaves it, not as its notes: the strip measures this width to decide how many notes fit. */
+.stripCompact {
+  display: flex;
+  flex: 1 1 240px;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.stripCompact .stripRow {
+  flex: 1 1 0;
+}
+
+.barEnd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.barEnd .typeRow {
+  width: 15em;
+}
+
+/* The staff and the letter buttons, opened from the bar over the page. */
+.notePop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100vh - 120px);
+  padding: 14px 16px 16px;
+  overflow-y: auto;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius-card);
+  background: var(--c-surface);
+  box-shadow: 0 12px 32px var(--c-shadow);
+}
+
+.popHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.popClose {
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--c-text);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.popBody {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px 20px;
+}
+
+/* No gap between the notes: the strip counts what fits in whole cells of CELL px (strip.ts). */
 .stripRow {
   display: flex;
   min-width: 0;
-  gap: 2px;
   overflow: hidden;
   touch-action: pan-y;
 }
@@ -286,15 +371,10 @@
   background: currentColor;
 }
 
-.stripPages {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .pageButton {
-  min-height: 36px;
-  padding: 0 12px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
   border: 1px solid var(--c-border-strong);
   border-radius: var(--radius);
   background: var(--c-surface);
@@ -323,34 +403,39 @@
   margin-top: 6px;
 }
 
-.pickStaff,
-.pickName,
-.pickAlts {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-/* The alternates: two columns of cards while there is room. */
-.pickAlts .alts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-}
-
-@media (max-width: 1023px) {
-  .picker {
-    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
-  }
-
-  .pickAlts {
-    grid-column: 1 / -1;
+/* On a phone the bar takes three rows, too many to keep over the page; there it scrolls away. */
+@media (min-width: 600px) {
+  .noteBar {
+    position: sticky;
+    top: 0;
   }
 }
 
 @media (max-width: 599px) {
-  .picker {
+  .popBody {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notePop {
+    left: 0;
+    width: auto;
+  }
+
+  .stripCompact {
+    flex-basis: 150px;
+  }
+
+  .barEnd {
+    width: 100%;
+  }
+
+  .barEnd .type {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .barEnd .typeRow {
+    width: auto;
   }
 }
 
